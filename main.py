@@ -132,9 +132,9 @@ def generate_hcl_file():
             if isinstance(value, str):
                 return f'"{value}"'
             if isinstance(value, list):
-                return "[" + ", ".join([convert_value(v) for v in value]) + "]"
+                return "[\n" + "\n ".join([convert_value(v) for v in value]) + "\n]"
             if isinstance(value, dict):
-                return "{" + ", ".join([f'{k}={convert_value(v)}' for k, v in value.items()]) + "}"
+                return "{\n" + "\n ".join([f'"{k}"={convert_value(v)}' for k, v in value.items()]) + "\n}"
             return ""
 
         with open( f"{resource_type}.tf", "a") as hcl_output:
@@ -148,6 +148,11 @@ def generate_hcl_file():
                         if key in hcl_drop_fields:
                             if hcl_drop_fields[key] == 'ALL' or hcl_drop_fields[key] == value:
                                 continue
+                    if 'hcl_keep_fields' in transform_rules[resource_type]:
+                        hcl_keep_fields = transform_rules[resource_type]['hcl_keep_fields']
+                        if key in hcl_keep_fields:
+                            hcl_output.write(f'  {key} = {convert_value(value)}\n')
+                            continue
                     if 'hcl_transform_fields' in transform_rules[resource_type]:
                         hcl_transform_fields = transform_rules[resource_type]['hcl_transform_fields']
                         if key in hcl_transform_fields:
@@ -174,7 +179,7 @@ def generate_hcl_file():
                     continue
 
                 if key in schema_block_types:
-                    if schema_block_types[key]['nesting_mode'] == 'list':
+                    if schema_block_types[key]['nesting_mode'] == 'list' or schema_block_types[key]['nesting_mode'] == 'set':
                         for block in value:
                             hcl_output.write(f'  {key} {{\n')
                             for block_key, block_value in block.items():
@@ -226,7 +231,10 @@ def process_vpc():
 def refresh_state():
     print("Refreshing state...")
     subprocess.run(["terraform", "refresh"], check=True)
-    subprocess.run(["rm", terraform_state_file+".backup"], check=True)
+    try:
+        subprocess.run(["rm", terraform_state_file+".backup"], check=True)
+    except:
+        pass
 
 def process_route53():
     route53 = session.client("route53", region_name=region)
@@ -246,7 +254,7 @@ def process_route53():
             print(f"Processing hosted zone: {zone_name} (ID: {zone_id})")
 
             process_resource("aws_route53_zone",
-                             zone_name.replace(".", "_"), attributes)
+                             zone_id+"_"+zone_name.replace(".", "_"), attributes)
             generated=True
 
             record_paginator = route53.get_paginator(
@@ -306,15 +314,28 @@ def create_folder(folder):
         print(f"Folder '{folder}' already exists.")
 
 if __name__ == "__main__":
-    aws_profile = "appkube"  # Update this with your AWS profile name, if needed
-    region = "us-east-1"  # Replace with your desired region
-    session = boto3.Session(profile_name=aws_profile)
+    aws_access_key_id = os.getenv("AWS_ACCESS_KEY_ID")
+    aws_secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")
+    aws_session_token = os.getenv("AWS_SESSION_TOKEN")
+    region = os.getenv("AWS_REGION")
+
+    if aws_access_key_id and aws_secret_access_key and region:
+        session = boto3.Session(
+            aws_access_key_id=aws_access_key_id,
+            aws_secret_access_key=aws_secret_access_key,
+            aws_session_token=aws_session_token,
+            region_name=region,
+        )
+    else:
+        print("AWS credentials not found in environment variables.")
+        exit()
 
     terraform_state_file = "terraform.tfstate"
     provider_name = "registry.terraform.io/hashicorp/aws"
     transform_rules = {
         "aws_vpc": {
             "hcl_drop_fields": {"ipv6_netmask_length": 0},
+            "hcl_keep_fields": {"cidr_block": True},
         },
         "aws_route53_zone": {
             "hcl_transform_fields": {
