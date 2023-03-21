@@ -3,6 +3,8 @@ import subprocess
 import boto3
 import os
 import sys
+import shutil
+
 
 def create_temporary_config(resource_type, resource_name, attributes):
     with open("temp.tf", "w") as temp_file:
@@ -21,7 +23,6 @@ def search_state_file(resource_type, resource_name, resource_id):
             state_data = json.load(f)
         state_resources = state_data['resources']
     except Exception as e:
-        print(f'Failed to load state file "{terraform_state_file}": {e}')
         return False
 
     # Search for the resource in the state
@@ -49,6 +50,12 @@ def search_state_file(resource_type, resource_name, resource_id):
 
 
 def load_provider_schema():
+    create_folder(os.path.join("tmp"))
+    os.chdir(os.path.join("tmp"))
+    create_version_file()
+    print("Initializing Terraform...")
+    subprocess.run(["terraform", "init"], check=True)
+    print("Loading provider schema...")
     global schema_data
     temp_file='terraform_providers_schema.json'
     # Load the provider schema using the terraform cli
@@ -58,7 +65,8 @@ def load_provider_schema():
     with open(temp_file, "r") as schema_file:
         schema_data = json.load(schema_file)
     # remove the temporary file
-    subprocess.run(["rm", temp_file], check=True)
+    os.chdir(script_dir)
+    shutil.rmtree(os.path.join("tmp"))
     return schema_data
 
 
@@ -129,7 +137,7 @@ def generate_hcl_file():
                 return "{" + ", ".join([f'{k}={convert_value(v)}' for k, v in value.items()]) + "}"
             return ""
 
-        with open( f"{resource_type}_{resource_name}.tf", "w") as hcl_output:
+        with open( f"{resource_type}.tf", "a") as hcl_output:
             hcl_output.write(
                 f'resource "{resource_type}" "{resource_name}" {{\n')
             for key, value in attributes.items():
@@ -177,29 +185,26 @@ def generate_hcl_file():
 
                 hcl_output.write(f'  {key} = {convert_value(value)}\n')
             hcl_output.write("}\n")
-
+    print("Formatting HCL files...")
+    subprocess.run(["terraform", "fmt"], check=True)
 
 def process_resource(resource_type, resource_name, attributes):
     resource_id = attributes["id"]
-    # create_temporary_config(resource_type, resource_name, attributes)
     # search if resource exists in the state
     if not search_state_file(resource_type, resource_name, resource_id):
         print("Importing resource...")
         create_state_file(resource_type, resource_name, attributes)
-        # subprocess.run(["terraform", "import", resource_type+"." +
-        #                 resource_name, resource_id], check=True)
-
 
 def main():
     print("Fetching AWS resources using boto3...")
 
-    aws_profile = "appkube"  # Update this with your AWS profile name, if needed
-    region = "us-east-1"  # Replace with your desired region
+    process_vpc()
+    process_route53()
 
-    session = boto3.Session(profile_name=aws_profile)
-    route53 = session.client("route53", region_name=region)
+    print("Finished processing AWS resources.")
+
+def process_vpc():
     ec2 = session.client("ec2", region_name=region)
-
 
     print("Processing VPCs...")
     prepare_folder(os.path.join("generated","vpc"))
@@ -215,12 +220,16 @@ def main():
         generated=True
     
     if generated:
-        print("Refreshing state...")
-        subprocess.run(["terraform", "refresh"], check=True)
-        # Generate HCL files from the state file
+        refresh_state()
         generate_hcl_file()
 
+def refresh_state():
+    print("Refreshing state...")
+    subprocess.run(["terraform", "refresh"], check=True)
+    subprocess.run(["rm", terraform_state_file+".backup"], check=True)
 
+def process_route53():
+    route53 = session.client("route53", region_name=region)
 
     print("Processing Route53 hosted zones and records...")
     prepare_folder(os.path.join("generated","route53"))
@@ -266,12 +275,8 @@ def main():
                                      resource_name, attributes)
                     generated=True
     if generated:
-        print("Refreshing state...")
-        subprocess.run(["terraform", "refresh"], check=True)
-        # Generate HCL files from the state file
+        refresh_state()
         generate_hcl_file()
-
-    print("Finished processing AWS resources.")
 
 def prepare_folder(folder):
     os.chdir(script_dir)
@@ -301,10 +306,12 @@ def create_folder(folder):
         print(f"Folder '{folder}' already exists.")
 
 if __name__ == "__main__":
+    aws_profile = "appkube"  # Update this with your AWS profile name, if needed
+    region = "us-east-1"  # Replace with your desired region
+    session = boto3.Session(profile_name=aws_profile)
 
     terraform_state_file = "terraform.tfstate"
     provider_name = "registry.terraform.io/hashicorp/aws"
-
     transform_rules = {
         "aws_vpc": {
             "hcl_drop_fields": {"ipv6_netmask_length": 0},
@@ -322,10 +329,10 @@ if __name__ == "__main__":
             },
         },
     }
-
     script_dir = os.path.dirname(os.path.abspath(sys.argv[0]))
 
     # Load the provider schema
-    schema_data = load_provider_schema()
+
+    schema_data=load_provider_schema()
 
     main()
