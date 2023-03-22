@@ -204,7 +204,7 @@ def main():
     print("Fetching AWS resources using boto3...")
 
     process_vpc()
-    process_route53()
+    # process_route53()
 
     print("Finished processing AWS resources.")
 
@@ -222,7 +222,20 @@ def process_vpc():
             "id": vpc_id,
         }
         process_resource("aws_vpc", vpc_id.replace("-", "_"), attributes)
-        generated=True
+
+        print(f"  Processing Subnets for VPC: {vpc_id}")
+        subnets = ec2.describe_subnets(Filters=[{"Name": "vpc-id", "Values": [vpc_id]}])["Subnets"]
+        for subnet in subnets:
+            subnet_id = subnet["SubnetId"]
+            print(f"    Processing Subnet: {subnet_id}")
+            attributes = {
+                "id": subnet_id,
+                "vpc_id": vpc_id,
+                "cidr_block": subnet["CidrBlock"],
+                "availability_zone": subnet["AvailabilityZone"],
+            }
+            process_resource("aws_subnet", subnet_id.replace("-", "_"), attributes)
+            generated=True
     
     if generated:
         refresh_state()
@@ -336,6 +349,9 @@ if __name__ == "__main__":
         "aws_vpc": {
             "hcl_drop_fields": {"ipv6_netmask_length": 0},
             "hcl_keep_fields": {"cidr_block": True},
+        },
+        "aws_subnet": {
+            "hcl_drop_fields": {"map_customer_owned_ip_on_launch": False},
         },
         "aws_route53_zone": {
             "hcl_transform_fields": {
