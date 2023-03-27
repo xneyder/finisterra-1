@@ -6,8 +6,8 @@ from providers.aws.Aws import Aws
 def main():
     print("Fetching AWS resources using boto3...")
 
-    provider.process_vpc()
-    provider.process_route53()
+    provider.vpc()
+    # provider.route53()
 
     print("Finished processing AWS resources.")
 

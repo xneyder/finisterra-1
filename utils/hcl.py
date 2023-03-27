@@ -1,6 +1,8 @@
 import json
 import subprocess
 import os
+import re
+import shutil
 
 class HCL:
     def __init__(self, schema_data, provider_name, script_dir, transform_rules):
@@ -103,10 +105,27 @@ class HCL:
                 if isinstance(value, str):
                     return f'"{value}"'
                 if isinstance(value, list):
-                    return "[\n" + "\n ".join([convert_value(v) for v in value]) + "\n]"
+                    return "[\n" + ", ".join([convert_value(v) for v in value]) + "\n]"
                 if isinstance(value, dict):
-                    return "{\n" + "\n ".join([f'"{k}"={convert_value(v)}' for k, v in value.items()]) + "\n}"
+                    return "{\n" + "\n ".join([f'{process_key(k,v)}' for k, v in value.items()]) + "\n}"
                 return ""
+            
+            def process_key(key,value,validate=True):
+                if validate:
+                    if value == None or value == "":
+                        return ""
+                    if isinstance(value, dict) and not value:
+                        return ""
+                    if isinstance(value, list) and not value:
+                        return ""
+                    
+                return f'{quote_string(key)}={convert_value(value)}\n'
+            
+            def quote_string(s):
+                if re.search(r'\W', s):
+                    return f'"{s}"'
+                else:
+                    return s
 
             with open( f"{resource_type}.tf", "a") as hcl_output:
                 hcl_output.write(
@@ -122,7 +141,7 @@ class HCL:
                         if 'hcl_keep_fields' in self.transform_rules[resource_type]:
                             hcl_keep_fields = self.transform_rules[resource_type]['hcl_keep_fields']
                             if key in hcl_keep_fields:
-                                hcl_output.write(f'  {key} = {convert_value(value)}\n')
+                                hcl_output.write(f'{process_key(key, value, False)}')
                                 continue
                         if 'hcl_transform_fields' in self.transform_rules[resource_type]:
                             hcl_transform_fields = self.transform_rules[resource_type]['hcl_transform_fields']
@@ -130,7 +149,7 @@ class HCL:
                                 if hcl_transform_fields[key]['source'] == value:
                                     target = hcl_transform_fields[key]['target']
                                     hcl_output.write(
-                                        f'  {key} = {convert_value(target)}\n')
+                                        f' {process_key(key, target, False)}')
                                     continue
 
                     # Ignore is key is computed and handled the exception
@@ -140,26 +159,20 @@ class HCL:
                     except:
                         pass
 
-                    if value == None or value == "":
-                        continue
-
-                    if isinstance(value, dict) and not value:
-                        continue
-
-                    if isinstance(value, list) and not value:
-                        continue
-
                     if key in schema_block_types:
                         if schema_block_types[key]['nesting_mode'] == 'list' or schema_block_types[key]['nesting_mode'] == 'set':
                             for block in value:
-                                hcl_output.write(f'  {key} {{\n')
+                                hcl_output.write(f'  {quote_string(key)} {{\n')
                                 for block_key, block_value in block.items():
                                     hcl_output.write(
-                                        f'    {block_key} = {convert_value(block_value)}\n')
+                                        f'    {process_key(block_key, block_value)}')
                                 hcl_output.write("  }\n")
                             continue
 
-                    hcl_output.write(f'  {key} = {convert_value(value)}\n')
+                    hcl_output.write(f'  {process_key(key, value)}')
+
+
+                    
                 hcl_output.write("}\n")
         print("Formatting HCL files...")
         subprocess.run(["terraform", "fmt"], check=True)
@@ -180,8 +193,8 @@ class HCL:
             pass
 
     def create_folder(self, folder):
-        if not os.path.exists(folder):
-            os.makedirs(folder)
-            print(f"Folder '{folder}' has been created.")
-        else:
-            print(f"Folder '{folder}' already exists.")
+        if  os.path.exists(folder):
+            print(f"Folder '{folder}' already exists removing it.")
+            shutil.rmtree(folder)
+        os.makedirs(folder)
+        print(f"Folder '{folder}' has been created.")
