@@ -19,7 +19,9 @@ class VPC:
             },
             "aws_network_interface": {
                 "hcl_keep_fields": {"instance": True},
-            },     
+                "hcl_drop_blocks": {"attachment": {"instance": ""}},
+                "hcl_drop_fields": {"attachment_id": 'ALL'},
+            },
             
         }
         self.provider_name = provider_name
@@ -59,7 +61,7 @@ class VPC:
         # self.aws_network_acl_rule()  # OK
         self.aws_network_interface() # terraform plan error
         # self.aws_network_interface_attachment() # OK
-        # self.aws_network_interface_sg_attachment() #OK
+        # self.aws_network_interface_sg_attachment() # OK
         # self.aws_route() # terraform plan error
         # self.aws_route_table() #OK
         # self.aws_route_table_association() #OK
@@ -603,21 +605,22 @@ class VPC:
     def aws_network_interface(self):
         ec2 = self.session.client("ec2", region_name=self.region)
         print("Processing Network Interfaces...")
-        network_interfaces = ec2.describe_network_interfaces()["NetworkInterfaces"]
 
-        for eni in network_interfaces:
-            eni_id = eni["NetworkInterfaceId"]
+        network_interfaces = ec2.describe_network_interfaces()["NetworkInterfaces"]
+        for network_interface in network_interfaces:
+            eni_id = network_interface["NetworkInterfaceId"]
+            subnet_id = network_interface["SubnetId"]
+            description = network_interface.get("Description", "")
+            private_ips = [private_ip["PrivateIpAddress"] for private_ip in network_interface["PrivateIpAddresses"]]
             print(f"  Processing Network Interface: {eni_id}")
 
             attributes = {
                 "id": eni_id,
-                "subnet_id": eni["SubnetId"],
-                "vpc_id": eni["VpcId"],
-                "description": eni.get("Description", ""),
-                "private_ip": eni["PrivateIpAddress"],
-                "security_groups": [sg["GroupId"] for sg in eni["Groups"]],
-                "availability_zone": eni["AvailabilityZone"],
+                "subnet_id": subnet_id,
+                "description": description,
+                "private_ips": private_ips,
             }
+
             self.hcl.process_resource("aws_network_interface", eni_id.replace("-", "_"), attributes)
 
 

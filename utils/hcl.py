@@ -127,7 +127,18 @@ class HCL:
                     return f'"{s}"'
                 else:
                     return s
-
+                
+            def validate_block(key, block, resource_type):
+                if resource_type in self.transform_rules:
+                    if 'hcl_drop_blocks' in self.transform_rules[resource_type]:
+                        hcl_drop_blocks = self.transform_rules[resource_type]['hcl_drop_blocks']
+                        if key in hcl_drop_blocks:
+                            for bkey, bvalue in block.items():
+                                if bkey in hcl_drop_blocks[key]:
+                                    if hcl_drop_blocks[key][bkey] == 'ALL' or hcl_drop_blocks[key][bkey] == bvalue:
+                                        return False
+                return True
+                
             with open( f"{resource_type}.tf", "a") as hcl_output:
                 hcl_output.write(
                     f'resource "{resource_type}" "{resource_name}" {{\n')
@@ -163,6 +174,9 @@ class HCL:
                     if key in schema_block_types:
                         if schema_block_types[key]['nesting_mode'] == 'list' or schema_block_types[key]['nesting_mode'] == 'set':
                             for block in value:
+                                #validate if a field in the block is empty
+                                if not validate_block(key, block, resource_type):
+                                    continue
                                 hcl_output.write(f'  {quote_string(key)} {{\n')
                                 for block_key, block_value in block.items():
                                     hcl_output.write(
