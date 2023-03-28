@@ -3,6 +3,7 @@ import subprocess
 import os
 import re
 import shutil
+from utils.filesystem import create_version_file
 
 class HCL:
     def __init__(self, schema_data, provider_name, script_dir, transform_rules):
@@ -177,8 +178,14 @@ class HCL:
         print("Formatting HCL files...")
         subprocess.run(["terraform", "fmt"], check=True)
 
+    def replace_special_chars(self, input_string):
+        # Replace spaces, "-", ".", and any special character with "_"
+        output_string = re.sub(r'\s|-|\.|\W', '_', input_string)
+        return output_string
+
     def process_resource(self,resource_type, resource_name, attributes):
         resource_id = attributes["id"]
+        resource_name=self.replace_special_chars(resource_name)
         # search if resource exists in the state
         if not self.search_state_file(resource_type, resource_name, resource_id):
             print("Importing resource...")
@@ -198,3 +205,17 @@ class HCL:
             shutil.rmtree(folder)
         os.makedirs(folder)
         print(f"Folder '{folder}' has been created.")
+
+
+    def prepare_folder(self,folder):
+        try:
+            os.chdir(self.script_dir)
+            generated_path=os.path.join(folder)
+            self.create_folder(generated_path)
+            os.chdir(generated_path)
+            create_version_file()
+            print("Initializing Terraform...")
+            subprocess.run(["terraform", "init"], check=True)
+        except Exception as e:
+            print(e)
+            exit()        
