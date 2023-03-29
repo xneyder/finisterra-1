@@ -5,6 +5,7 @@ import re
 import shutil
 from utils.filesystem import create_version_file
 
+
 class HCL:
     def __init__(self, schema_data, provider_name, script_dir, transform_rules):
         self.terraform_state_file = "terraform.tfstate"
@@ -13,10 +14,10 @@ class HCL:
         self.script_dir = script_dir
         self.transform_rules = transform_rules
 
-    def search_state_file( self, resource_type, resource_name, resource_id):
+    def search_state_file(self, resource_type, resource_name, resource_id):
         # Load the state file
         try:
-            with open( self.terraform_state_file, 'r') as f:
+            with open(self.terraform_state_file, 'r') as f:
                 state_data = json.load(f)
             state_resources = state_data['resources']
         except Exception as e:
@@ -44,10 +45,10 @@ class HCL:
                 f'Resource "{resource_name}" of type "{resource_type}" with ID "{resource_id}" was not found in the state.')
 
         return found
-    
+
     def create_state_file(self, resource_type, resource_name, attributes):
         schema_version = int(self.schema_data['provider_schemas'][self.provider_name]
-                            ['resource_schemas'][resource_type]['version'])
+                             ['resource_schemas'][resource_type]['version'])
         # create resource
         resource = {
             "mode": "managed",
@@ -63,7 +64,7 @@ class HCL:
         }
         # Load the state file
         try:
-            with open( self.terraform_state_file, 'r') as f:
+            with open(self.terraform_state_file, 'r') as f:
                 state_data = json.load(f)
             # add resource to state
             state_data['resources'].append(resource)
@@ -80,12 +81,12 @@ class HCL:
                     resource
                 ]
             }
-        with open( self.terraform_state_file, 'w') as state_file:
+        with open(self.terraform_state_file, 'w') as state_file:
             json.dump(state_data, state_file, indent=2)
 
     def generate_hcl_file(self):
         print("Generating HCL files from the state file...")
-        with open( self.terraform_state_file, "r") as state_file:
+        with open(self.terraform_state_file, "r") as state_file:
             state_data = json.load(state_file)
 
         for resource in state_data["resources"]:
@@ -110,8 +111,8 @@ class HCL:
                 if isinstance(value, dict):
                     return "{\n" + "\n ".join([f'{process_key(k,v)}' for k, v in value.items()]) + "\n}"
                 return ""
-            
-            def process_key(key,value,validate=True):
+
+            def process_key(key, value, validate=True):
                 if validate:
                     if value == None or value == "":
                         return ""
@@ -119,15 +120,15 @@ class HCL:
                         return ""
                     if isinstance(value, list) and not value:
                         return ""
-                    
+
                 return f'{quote_string(key)}={convert_value(value)}\n'
-            
+
             def quote_string(s):
                 if re.search(r'\W', s):
                     return f'"{s}"'
                 else:
                     return s
-                
+
             def validate_block(key, block, resource_type):
                 if resource_type in self.transform_rules:
                     if 'hcl_drop_blocks' in self.transform_rules[resource_type]:
@@ -138,8 +139,8 @@ class HCL:
                                     if hcl_drop_blocks[key][bkey] == 'ALL' or hcl_drop_blocks[key][bkey] == bvalue:
                                         return False
                 return True
-                
-            with open( f"{resource_type}.tf", "a") as hcl_output:
+
+            with open(f"{resource_type}.tf", "a") as hcl_output:
                 hcl_output.write(
                     f'resource "{resource_type}" "{resource_name}" {{\n')
                 for key, value in attributes.items():
@@ -153,7 +154,8 @@ class HCL:
                         if 'hcl_keep_fields' in self.transform_rules[resource_type]:
                             hcl_keep_fields = self.transform_rules[resource_type]['hcl_keep_fields']
                             if key in hcl_keep_fields:
-                                hcl_output.write(f'{process_key(key, value, False)}')
+                                hcl_output.write(
+                                    f'{process_key(key, value, False)}')
                                 continue
                         if 'hcl_transform_fields' in self.transform_rules[resource_type]:
                             hcl_transform_fields = self.transform_rules[resource_type]['hcl_transform_fields']
@@ -174,11 +176,17 @@ class HCL:
                     if key in schema_block_types:
                         if schema_block_types[key]['nesting_mode'] == 'list' or schema_block_types[key]['nesting_mode'] == 'set':
                             for block in value:
-                                #validate if a field in the block is empty
+                                # validate if a field in the block is empty
                                 if not validate_block(key, block, resource_type):
                                     continue
                                 hcl_output.write(f'  {quote_string(key)} {{\n')
                                 for block_key, block_value in block.items():
+                                    # Ignore is key is computed and handled the exception
+                                    try:
+                                        if schema_block_types[key]['block']['attributes'][block_key]['computed']:
+                                            continue
+                                    except:
+                                        pass
                                     hcl_output.write(
                                         f'    {process_key(block_key, block_value)}')
                                 hcl_output.write("  }\n")
@@ -186,8 +194,6 @@ class HCL:
 
                     hcl_output.write(f'  {process_key(key, value)}')
 
-
-                    
                 hcl_output.write("}\n")
         print("Formatting HCL files...")
         subprocess.run(["terraform", "fmt"], check=True)
@@ -197,34 +203,34 @@ class HCL:
         output_string = re.sub(r'\s|-|\.|\W', '_', input_string)
         return output_string
 
-    def process_resource(self,resource_type, resource_name, attributes):
+    def process_resource(self, resource_type, resource_name, attributes):
         resource_id = attributes["id"]
-        resource_name=self.replace_special_chars(resource_name)
+        resource_name = self.replace_special_chars(resource_name)
         # search if resource exists in the state
         if not self.search_state_file(resource_type, resource_name, resource_id):
             print("Importing resource...")
             self.create_state_file(resource_type, resource_name, attributes)
-    
+
     def refresh_state(self):
         print("Refreshing state...")
         subprocess.run(["terraform", "refresh"], check=True)
         try:
-            subprocess.run(["rm", self.terraform_state_file+".backup"], check=True)
+            subprocess.run(
+                ["rm", self.terraform_state_file+".backup"], check=True)
         except:
             pass
 
     def create_folder(self, folder):
-        if  os.path.exists(folder):
+        if os.path.exists(folder):
             print(f"Folder '{folder}' already exists removing it.")
             shutil.rmtree(folder)
         os.makedirs(folder)
         print(f"Folder '{folder}' has been created.")
 
-
-    def prepare_folder(self,folder):
+    def prepare_folder(self, folder):
         try:
             os.chdir(self.script_dir)
-            generated_path=os.path.join(folder)
+            generated_path = os.path.join(folder)
             self.create_folder(generated_path)
             os.chdir(generated_path)
             create_version_file()
@@ -232,4 +238,4 @@ class HCL:
             subprocess.run(["terraform", "init"], check=True)
         except Exception as e:
             print(e)
-            exit()        
+            exit()
