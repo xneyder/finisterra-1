@@ -3,8 +3,8 @@ from utils.hcl import HCL
 
 
 class VPC:
-    def __init__(self, session, script_dir, provider_name, schema_data, region):
-        self.session = session
+    def __init__(self, ec2_client, script_dir, provider_name, schema_data, region):
+        self.ec2_client = ec2_client
         self.transform_rules = {
             "aws_vpc": {
                 "hcl_drop_fields": {"ipv6_netmask_length": 0},
@@ -96,9 +96,8 @@ class VPC:
         self.hcl.generate_hcl_file()
 
     def aws_vpc(self):
-        ec2 = self.session.client("ec2", region_name=self.region)
         print("Processing VPCs...")
-        vpcs = ec2.describe_vpcs()["Vpcs"]
+        vpcs = self.ec2_client.describe_vpcs()["Vpcs"]
         for vpc in vpcs:
             is_default = vpc.get("IsDefault", False)
             if not is_default:
@@ -111,18 +110,17 @@ class VPC:
                     "aws_vpc", vpc_id.replace("-", "_"), attributes)
 
     def aws_subnet(self):
-        ec2 = self.session.client("ec2", region_name=self.region)
         print("Processing Subnets...")
 
         # Retrieve the default VPC
         default_vpc = None
-        vpcs = ec2.describe_vpcs()["Vpcs"]
+        vpcs = self.ec2_client.describe_vpcs()["Vpcs"]
         for vpc in vpcs:
             if vpc.get("IsDefault", False):
                 default_vpc = vpc
                 break
 
-        subnets = ec2.describe_subnets()["Subnets"]
+        subnets = self.ec2_client.describe_subnets()["Subnets"]
         for subnet in subnets:
             vpc_id = subnet["VpcId"]
 
@@ -142,10 +140,9 @@ class VPC:
                 "aws_subnet", subnet_id.replace("-", "_"), attributes)
 
     def aws_default_network_acl(self):
-        ec2 = self.session.client("ec2", region_name=self.region)
 
         print("Processing Default Network ACLs...")
-        network_acls = ec2.describe_network_acls(
+        network_acls = self.ec2_client.describe_network_acls(
             Filters=[{"Name": "default", "Values": ["true"]}]
         )["NetworkAcls"]
         for network_acl in network_acls:
@@ -164,9 +161,8 @@ class VPC:
                 "aws_default_network_acl", network_acl_id.replace("-", "_"), attributes)
 
     def aws_default_route_table(self):
-        ec2 = self.session.client("ec2", region_name=self.region)
         print("Processing Default Route Tables...")
-        route_tables = ec2.describe_route_tables(
+        route_tables = self.ec2_client.describe_route_tables(
             Filters=[{"Name": "association.main", "Values": ["true"]}]
         )["RouteTables"]
 
@@ -184,9 +180,8 @@ class VPC:
                 "aws_default_route_table", route_table_id.replace("-", "_"), attributes)
 
     def aws_default_security_group(self):
-        ec2 = self.session.client("ec2", region_name=self.region)
         print("Processing Default Security Groups...")
-        security_groups = ec2.describe_security_groups(
+        security_groups = self.ec2_client.describe_security_groups(
             Filters=[{"Name": "group-name", "Values": ["default"]}]
         )["SecurityGroups"]
 
@@ -204,9 +199,8 @@ class VPC:
                 "aws_default_security_group", security_group_id.replace("-", "_"), attributes)
 
     def aws_default_subnet(self):
-        ec2 = self.session.client("ec2", region_name=self.region)
         print("Processing Default Subnets...")
-        subnets = ec2.describe_subnets(
+        subnets = self.ec2_client.describe_subnets(
             Filters=[{"Name": "default-for-az", "Values": ["true"]}]
         )["Subnets"]
 
@@ -226,9 +220,8 @@ class VPC:
                 "aws_default_subnet", subnet_id.replace("-", "_"), attributes)
 
     def aws_default_vpc(self):
-        ec2 = self.session.client("ec2", region_name=self.region)
         print("Processing Default VPCs...")
-        vpcs = ec2.describe_vpcs(
+        vpcs = self.ec2_client.describe_vpcs(
             Filters=[{"Name": "isDefault", "Values": ["true"]}]
         )["Vpcs"]
 
@@ -243,9 +236,8 @@ class VPC:
                 "aws_default_vpc", vpc_id.replace("-", "_"), attributes)
 
     def aws_default_vpc_dhcp_options(self):
-        ec2 = self.session.client("ec2", region_name=self.region)
         print("Processing Default VPC DHCP Options...")
-        dhcp_options = ec2.describe_dhcp_options(
+        dhcp_options = self.ec2_client.describe_dhcp_options(
             Filters=[{"Name": "default", "Values": ["true"]}]
         )["DhcpOptions"]
 
@@ -260,16 +252,16 @@ class VPC:
                 "aws_default_vpc_dhcp_options", dhcp_options_id.replace("-", "_"), attributes)
 
     def aws_ec2_managed_prefix_list(self):
-        ec2 = self.session.client("ec2", region_name=self.region)
         print("Processing EC2 Managed Prefix Lists...")
-        prefix_lists = ec2.describe_managed_prefix_lists()["PrefixLists"]
+        prefix_lists = self.ec2_client.describe_managed_prefix_lists()[
+            "PrefixLists"]
 
         for prefix_list in prefix_lists:
             prefix_list_id = prefix_list["PrefixListId"]
             print(f"  Processing EC2 Managed Prefix List: {prefix_list_id}")
 
             # Get the entries for the prefix list
-            entries = ec2.get_managed_prefix_list_entries(
+            entries = self.ec2_client.get_managed_prefix_list_entries(
                 PrefixListId=prefix_list_id)["Entries"]
 
             entry_attributes = []
@@ -289,9 +281,8 @@ class VPC:
                 "aws_ec2_managed_prefix_list", prefix_list_id.replace("-", "_"), attributes)
 
     def aws_ec2_network_insights_analysis(self):
-        ec2 = self.session.client("ec2", region_name=self.region)
         print("Processing EC2 Network Insights Analysis...")
-        network_insights_analyses = ec2.describe_network_insights_analyses()[
+        network_insights_analyses = self.ec2_client.describe_network_insights_analyses()[
             "NetworkInsightsAnalyses"]
 
         for analysis in network_insights_analyses:
@@ -308,9 +299,8 @@ class VPC:
                 "aws_ec2_network_insights_analysis", analysis_id.replace("-", "_"), attributes)
 
     def aws_ec2_network_insights_path(self):
-        ec2 = self.session.client("ec2", region_name=self.region)
         print("Processing EC2 Network Insights Paths...")
-        network_insights_paths = ec2.describe_network_insights_paths()[
+        network_insights_paths = self.ec2_client.describe_network_insights_paths()[
             "NetworkInsightsPaths"]
 
         for path in network_insights_paths:
@@ -327,13 +317,12 @@ class VPC:
                 "aws_ec2_network_insights_path", path_id.replace("-", "_"), attributes)
 
     def aws_ec2_subnet_cidr_reservation(self):
-        ec2 = self.session.client("ec2", region_name=self.region)
         print("Processing Subnet CIDR Reservations...")
-        subnets = ec2.describe_subnets()["Subnets"]
+        subnets = self.ec2_client.describe_subnets()["Subnets"]
 
         for subnet in subnets:
             subnet_id = subnet["SubnetId"]
-            cidr_reservations_response = ec2.get_subnet_cidr_reservations(
+            cidr_reservations_response = self.ec2_client.get_subnet_cidr_reservations(
                 SubnetId=subnet_id)
 
             # Process IPv4 CIDR reservations
@@ -367,9 +356,8 @@ class VPC:
                     "aws_ec2_subnet_cidr_reservation", reservation_id.replace("-", "_"), attributes)
 
     def aws_ec2_traffic_mirror_filter(self):
-        ec2 = self.session.client("ec2", region_name=self.region)
         print("Processing EC2 Traffic Mirror Filters...")
-        traffic_mirror_filters = ec2.describe_traffic_mirror_filters()[
+        traffic_mirror_filters = self.ec2_client.describe_traffic_mirror_filters()[
             "TrafficMirrorFilters"]
 
         for tm_filter in traffic_mirror_filters:
@@ -384,22 +372,21 @@ class VPC:
                 "aws_ec2_traffic_mirror_filter", tm_filter_id.replace("-", "_"), attributes)
 
     def aws_ec2_traffic_mirror_filter_rule(self):
-        ec2 = self.session.client("ec2", region_name=self.region)
         print("Processing EC2 Traffic Mirror Filter Rules...")
-        traffic_mirror_filters = ec2.describe_traffic_mirror_filters()[
+        traffic_mirror_filters = self.ec2_client.describe_traffic_mirror_filters()[
             "TrafficMirrorFilters"]
 
         for tm_filter in traffic_mirror_filters:
             tm_filter_id = tm_filter["TrafficMirrorFilterId"]
 
             # Describe the ingress and egress rules for the traffic mirror filter
-            ingress_rules = ec2.describe_traffic_mirror_filter_rules(
+            ingress_rules = self.ec2_client.describe_traffic_mirror_filter_rules(
                 Filters=[{"Name": "traffic-mirror-filter-id",
                           "Values": [tm_filter_id]}],
                 Direction="ingress"
             )["TrafficMirrorFilterRules"]
 
-            egress_rules = ec2.describe_traffic_mirror_filter_rules(
+            egress_rules = self.ec2_client.describe_traffic_mirror_filter_rules(
                 Filters=[{"Name": "traffic-mirror-filter-id",
                           "Values": [tm_filter_id]}],
                 Direction="egress"
@@ -428,9 +415,8 @@ class VPC:
                     "aws_ec2_traffic_mirror_filter_rule", rule_id.replace("-", "_"), attributes)
 
     def aws_ec2_traffic_mirror_session(self):
-        ec2 = self.session.client("ec2", region_name=self.region)
         print("Processing EC2 Traffic Mirror Sessions...")
-        traffic_mirror_sessions = ec2.describe_traffic_mirror_sessions()[
+        traffic_mirror_sessions = self.ec2_client.describe_traffic_mirror_sessions()[
             "TrafficMirrorSessions"]
 
         for tm_session in traffic_mirror_sessions:
@@ -450,9 +436,8 @@ class VPC:
                 "aws_ec2_traffic_mirror_session", tm_session_id.replace("-", "_"), attributes)
 
     def aws_ec2_traffic_mirror_target(self):
-        ec2 = self.session.client("ec2", region_name=self.region)
         print("Processing EC2 Traffic Mirror Targets...")
-        traffic_mirror_targets = ec2.describe_traffic_mirror_targets()[
+        traffic_mirror_targets = self.ec2_client.describe_traffic_mirror_targets()[
             "TrafficMirrorTargets"]
 
         for tm_target in traffic_mirror_targets:
@@ -469,9 +454,8 @@ class VPC:
                 "aws_ec2_traffic_mirror_target", tm_target_id.replace("-", "_"), attributes)
 
     def aws_egress_only_internet_gateway(self):
-        ec2 = self.session.client("ec2", region_name=self.region)
         print("Processing Egress Only Internet Gateways...")
-        egress_only_igws = ec2.describe_egress_only_internet_gateways()[
+        egress_only_igws = self.ec2_client.describe_egress_only_internet_gateways()[
             "EgressOnlyInternetGateways"]
 
         for egress_only_igw in egress_only_igws:
@@ -490,9 +474,8 @@ class VPC:
                 "aws_egress_only_internet_gateway", egress_only_igw_id.replace("-", "_"), attributes)
 
     def aws_flow_log(self):
-        ec2 = self.session.client("ec2", region_name=self.region)
         print("Processing Flow Logs...")
-        flow_logs = ec2.describe_flow_logs()["FlowLogs"]
+        flow_logs = self.ec2_client.describe_flow_logs()["FlowLogs"]
 
         for flow_log in flow_logs:
             flow_log_id = flow_log["FlowLogId"]
@@ -512,9 +495,8 @@ class VPC:
                 "aws_flow_log", flow_log_id.replace("-", "_"), attributes)
 
     def aws_internet_gateway(self):
-        ec2 = self.session.client("ec2", region_name=self.region)
         print("Processing Internet Gateways...")
-        internet_gateways = ec2.describe_internet_gateways()[
+        internet_gateways = self.ec2_client.describe_internet_gateways()[
             "InternetGateways"]
 
         for igw in internet_gateways:
@@ -532,9 +514,8 @@ class VPC:
                 "aws_internet_gateway", igw_id.replace("-", "_"), attributes)
 
     def aws_internet_gateway_attachment(self):
-        ec2 = self.session.client("ec2", region_name=self.region)
         print("Processing Internet Gateway Attachments...")
-        internet_gateways = ec2.describe_internet_gateways()[
+        internet_gateways = self.ec2_client.describe_internet_gateways()[
             "InternetGateways"]
 
         for igw in internet_gateways:
@@ -554,9 +535,8 @@ class VPC:
                     "aws_internet_gateway_attachment", f"{igw_id.replace('-', '_')}-{vpc_id.replace('-', '_')}", attributes)
 
     def aws_main_route_table_association(self):
-        ec2 = self.session.client("ec2", region_name=self.region)
         print("Processing Main Route Table Associations...")
-        route_tables = ec2.describe_route_tables()["RouteTables"]
+        route_tables = self.ec2_client.describe_route_tables()["RouteTables"]
 
         for rt in route_tables:
             rt_id = rt["RouteTableId"]
@@ -577,9 +557,8 @@ class VPC:
                         "aws_main_route_table_association", assoc_id.replace("-", "_"), attributes)
 
     def aws_nat_gateway(self):
-        ec2 = self.session.client("ec2", region_name=self.region)
         print("Processing NAT Gateways...")
-        nat_gateways = ec2.describe_nat_gateways()["NatGateways"]
+        nat_gateways = self.ec2_client.describe_nat_gateways()["NatGateways"]
 
         for nat_gw in nat_gateways:
             nat_gw_id = nat_gw["NatGatewayId"]
@@ -597,9 +576,8 @@ class VPC:
                 "aws_nat_gateway", nat_gw_id.replace("-", "_"), attributes)
 
     def aws_network_acl(self):
-        ec2 = self.session.client("ec2", region_name=self.region)
         print("Processing Network ACLs...")
-        network_acls = ec2.describe_network_acls()["NetworkAcls"]
+        network_acls = self.ec2_client.describe_network_acls()["NetworkAcls"]
 
         for network_acl in network_acls:
             if not network_acl["IsDefault"]:
@@ -616,9 +594,8 @@ class VPC:
                     "aws_network_acl", network_acl_id.replace("-", "_"), attributes)
 
     def aws_network_acl_association(self):
-        ec2 = self.session.client("ec2", region_name=self.region)
         print("Processing Network ACL Associations...")
-        network_acls = ec2.describe_network_acls()["NetworkAcls"]
+        network_acls = self.ec2_client.describe_network_acls()["NetworkAcls"]
 
         for network_acl in network_acls:
             if not network_acl["IsDefault"]:
@@ -639,9 +616,8 @@ class VPC:
                         "aws_network_acl_association", assoc_id.replace("-", "_"), attributes)
 
     def aws_network_acl_rule(self):
-        ec2 = self.session.client("ec2", region_name=self.region)
         print("Processing Network ACL Rules...")
-        network_acls = ec2.describe_network_acls()["NetworkAcls"]
+        network_acls = self.ec2_client.describe_network_acls()["NetworkAcls"]
 
         for network_acl in network_acls:
             if not network_acl["IsDefault"]:
@@ -668,10 +644,9 @@ class VPC:
                         "aws_network_acl_rule", f"{network_acl_id.replace('-', '_')}-{rule_number}", attributes)
 
     def aws_network_interface(self):
-        ec2 = self.session.client("ec2", region_name=self.region)
         print("Processing Network Interfaces...")
 
-        network_interfaces = ec2.describe_network_interfaces()[
+        network_interfaces = self.ec2_client.describe_network_interfaces()[
             "NetworkInterfaces"]
         for network_interface in network_interfaces:
             eni_id = network_interface["NetworkInterfaceId"]
@@ -692,9 +667,8 @@ class VPC:
                 "aws_network_interface", eni_id.replace("-", "_"), attributes)
 
     def aws_network_interface_attachment(self):
-        ec2 = self.session.client("ec2", region_name=self.region)
         print("Processing Network Interface Attachments...")
-        network_interfaces = ec2.describe_network_interfaces()[
+        network_interfaces = self.ec2_client.describe_network_interfaces()[
             "NetworkInterfaces"]
 
         for eni in network_interfaces:
@@ -717,9 +691,8 @@ class VPC:
                     "aws_network_interface_attachment", attachment_id.replace("-", "_"), attributes)
 
     def aws_network_interface_sg_attachment(self):
-        ec2 = self.session.client("ec2", region_name=self.region)
         print("Processing Network Interface Security Group Attachments...")
-        network_interfaces = ec2.describe_network_interfaces()[
+        network_interfaces = self.ec2_client.describe_network_interfaces()[
             "NetworkInterfaces"]
 
         for eni in network_interfaces:
@@ -739,9 +712,8 @@ class VPC:
                                           f"{eni_id.replace('-', '_')}-{sg_id.replace('-', '_')}", attributes)
 
     def aws_route(self):
-        ec2 = self.session.client("ec2", region_name=self.region)
         print("Processing Routes...")
-        route_tables = ec2.describe_route_tables()["RouteTables"]
+        route_tables = self.ec2_client.describe_route_tables()["RouteTables"]
 
         for rt in route_tables:
             route_table_id = rt["RouteTableId"]
@@ -769,9 +741,8 @@ class VPC:
                         "aws_route", f"{route_table_id.replace('-', '_')}-{destination.replace('/', '-')}", attributes)
 
     def aws_route_table(self):
-        ec2 = self.session.client("ec2", region_name=self.region)
         print("Processing Route Tables...")
-        route_tables = ec2.describe_route_tables()["RouteTables"]
+        route_tables = self.ec2_client.describe_route_tables()["RouteTables"]
 
         for rt in route_tables:
             route_table_id = rt["RouteTableId"]
@@ -787,9 +758,8 @@ class VPC:
                 "aws_route_table", route_table_id.replace("-", "_"), attributes)
 
     def aws_route_table_association(self):
-        ec2 = self.session.client("ec2", region_name=self.region)
         print("Processing Route Table Associations...")
-        route_tables = ec2.describe_route_tables()["RouteTables"]
+        route_tables = self.ec2_client.describe_route_tables()["RouteTables"]
 
         for rt in route_tables:
             route_table_id = rt["RouteTableId"]
@@ -810,9 +780,9 @@ class VPC:
                         "aws_route_table_association", assoc_id.replace("-", "_"), attributes)
 
     def aws_security_group(self):
-        ec2 = self.session.client("ec2", region_name=self.region)
         print("Processing Security Groups...")
-        security_groups = ec2.describe_security_groups()["SecurityGroups"]
+        security_groups = self.ec2_client.describe_security_groups()[
+            "SecurityGroups"]
 
         for sg in security_groups:
             sg_id = sg["GroupId"]
@@ -829,9 +799,9 @@ class VPC:
                 "aws_security_group", sg_id.replace("-", "_"), attributes)
 
     def aws_security_group_rule(self):
-        ec2 = self.session.client("ec2", region_name=self.region)
         print("Processing Security Group Rules...")
-        security_groups = ec2.describe_security_groups()["SecurityGroups"]
+        security_groups = self.ec2_client.describe_security_groups()[
+            "SecurityGroups"]
 
         for sg in security_groups:
             sg_id = sg["GroupId"]
@@ -879,9 +849,9 @@ class VPC:
                         "aws_security_group_rule", rule_id.replace("-", "_"), attributes)
 
     def aws_vpc_dhcp_options(self):
-        ec2 = self.session.client("ec2", region_name=self.region)
         print("Processing VPC DHCP Options...")
-        dhcp_options_list = ec2.describe_dhcp_options()["DhcpOptions"]
+        dhcp_options_list = self.ec2_client.describe_dhcp_options()[
+            "DhcpOptions"]
 
         for dhcp_options in dhcp_options_list:
             dhcp_options_id = dhcp_options["DhcpOptionsId"]
@@ -900,9 +870,8 @@ class VPC:
                 "aws_vpc_dhcp_options", dhcp_options_id.replace("-", "_"), attributes)
 
     def aws_vpc_dhcp_options_association(self):
-        ec2 = self.session.client("ec2", region_name=self.region)
         print("Processing VPC DHCP Options Associations...")
-        vpcs = ec2.describe_vpcs()["Vpcs"]
+        vpcs = self.ec2_client.describe_vpcs()["Vpcs"]
 
         for vpc in vpcs:
             vpc_id = vpc["VpcId"]
@@ -921,9 +890,9 @@ class VPC:
                     "aws_vpc_dhcp_options_association", assoc_id.replace("-", "_"), attributes)
 
     def aws_vpc_endpoint(self):
-        ec2 = self.session.client("ec2", region_name=self.region)
         print("Processing VPC Endpoints...")
-        vpc_endpoints = ec2.describe_vpc_endpoints()["VpcEndpoints"]
+        vpc_endpoints = self.ec2_client.describe_vpc_endpoints()[
+            "VpcEndpoints"]
 
         for endpoint in vpc_endpoints:
             endpoint_id = endpoint["VpcEndpointId"]
@@ -944,9 +913,9 @@ class VPC:
                 "aws_vpc_endpoint", endpoint_id.replace("-", "_"), attributes)
 
     def aws_vpc_endpoint_connection_accepter(self):
-        ec2 = self.session.client("ec2", region_name=self.region)
         print("Processing VPC Endpoint Connection Accepters...")
-        vpc_endpoints = ec2.describe_vpc_endpoints()["VpcEndpoints"]
+        vpc_endpoints = self.ec2_client.describe_vpc_endpoints()[
+            "VpcEndpoints"]
 
         for endpoint in vpc_endpoints:
             if endpoint["State"] == "pendingAcceptance":
@@ -967,9 +936,8 @@ class VPC:
                     "aws_vpc_endpoint_connection_accepter", accepter_id.replace("-", "_"), attributes)
 
     def aws_vpc_endpoint_connection_notification(self):
-        ec2 = self.session.client("ec2", region_name=self.region)
         print("Processing VPC Endpoint Connection Notifications...")
-        connection_notifications = ec2.describe_vpc_endpoint_connection_notifications()[
+        connection_notifications = self.ec2_client.describe_vpc_endpoint_connection_notifications()[
             "ConnectionNotificationSet"]
 
         for notification in connection_notifications:
@@ -992,9 +960,9 @@ class VPC:
                 "aws_vpc_endpoint_connection_notification", notification_id.replace("-", "_"), attributes)
 
     def aws_vpc_endpoint_policy(self):
-        ec2 = self.session.client("ec2", region_name=self.region)
         print("Processing VPC Endpoint Policies...")
-        vpc_endpoints = ec2.describe_vpc_endpoints()["VpcEndpoints"]
+        vpc_endpoints = self.ec2_client.describe_vpc_endpoints()[
+            "VpcEndpoints"]
 
         for endpoint in vpc_endpoints:
             endpoint_id = endpoint["VpcEndpointId"]
@@ -1013,9 +981,9 @@ class VPC:
                 "aws_vpc_endpoint_policy", endpoint_id.replace("-", "_"), attributes)
 
     def aws_vpc_endpoint_route_table_association(self):
-        ec2 = self.session.client("ec2", region_name=self.region)
         print("Processing VPC Endpoint Route Table Associations...")
-        vpc_endpoints = ec2.describe_vpc_endpoints()["VpcEndpoints"]
+        vpc_endpoints = self.ec2_client.describe_vpc_endpoints()[
+            "VpcEndpoints"]
 
         for endpoint in vpc_endpoints:
             endpoint_id = endpoint["VpcEndpointId"]
@@ -1035,9 +1003,9 @@ class VPC:
                     "aws_vpc_endpoint_route_table_association", assoc_id.replace("-", "_"), attributes)
 
     def aws_vpc_endpoint_security_group_association(self):
-        ec2 = self.session.client("ec2", region_name=self.region)
         print("Processing VPC Endpoint Security Group Associations...")
-        vpc_endpoints = ec2.describe_vpc_endpoints()["VpcEndpoints"]
+        vpc_endpoints = self.ec2_client.describe_vpc_endpoints()[
+            "VpcEndpoints"]
 
         for endpoint in vpc_endpoints:
             endpoint_id = endpoint["VpcEndpointId"]
@@ -1058,9 +1026,8 @@ class VPC:
                     "aws_vpc_endpoint_security_group_association", assoc_id.replace("-", "_"), attributes)
 
     def aws_vpc_endpoint_service(self):
-        ec2 = self.session.client("ec2", region_name=self.region)
         print("Processing VPC Endpoint Services...")
-        vpc_endpoint_services = ec2.describe_vpc_endpoint_services()[
+        vpc_endpoint_services = self.ec2_client.describe_vpc_endpoint_services()[
             "ServiceDetails"]
 
         for service in vpc_endpoint_services:
@@ -1080,9 +1047,8 @@ class VPC:
                 "aws_vpc_endpoint_service", service_id.replace("-", "_"), attributes)
 
     def aws_vpc_endpoint_service_allowed_principal(self):
-        ec2 = self.session.client("ec2", region_name=self.region)
         print("Processing VPC Endpoint Service Allowed Principals...")
-        vpc_endpoint_services = ec2.describe_vpc_endpoint_service_configurations()[
+        vpc_endpoint_services = self.ec2_client.describe_vpc_endpoint_service_configurations()[
             "ServiceConfigurations"]
 
         for service in vpc_endpoint_services:
@@ -1103,9 +1069,9 @@ class VPC:
                     "aws_vpc_endpoint_service_allowed_principal", assoc_id.replace("-", "_"), attributes)
 
     def aws_vpc_endpoint_subnet_association(self):
-        ec2 = self.session.client("ec2", region_name=self.region)
         print("Processing VPC Endpoint Subnet Associations...")
-        vpc_endpoints = ec2.describe_vpc_endpoints()["VpcEndpoints"]
+        vpc_endpoints = self.ec2_client.describe_vpc_endpoints()[
+            "VpcEndpoints"]
 
         for endpoint in vpc_endpoints:
             endpoint_id = endpoint["VpcEndpointId"]
@@ -1125,9 +1091,8 @@ class VPC:
                     "aws_vpc_endpoint_subnet_association", assoc_id.replace("-", "_"), attributes)
 
     def aws_vpc_ipv4_cidr_block_association(self):
-        ec2 = self.session.client("ec2", region_name=self.region)
         print("Processing VPC IPv4 CIDR Block Associations...")
-        vpcs = ec2.describe_vpcs()["Vpcs"]
+        vpcs = self.ec2_client.describe_vpcs()["Vpcs"]
 
         for vpc in vpcs:
             vpc_id = vpc["VpcId"]
@@ -1147,9 +1112,8 @@ class VPC:
                     "aws_vpc_ipv4_cidr_block_association", assoc_id.replace("-", "_"), attributes)
 
     def aws_vpc_ipv6_cidr_block_association(self):
-        ec2 = self.session.client("ec2", region_name=self.region)
         print("Processing VPC IPv6 CIDR Block Associations...")
-        vpcs = ec2.describe_vpcs()["Vpcs"]
+        vpcs = self.ec2_client.describe_vpcs()["Vpcs"]
 
         for vpc in vpcs:
             vpc_id = vpc["VpcId"]
@@ -1165,13 +1129,16 @@ class VPC:
                     "vpc_id": vpc_id,
                     "ipv6_cidr_block": ipv6_cidr_block["Ipv6CidrBlock"],
                 }
+
+                if "Ipv6Pool" in ipv6_cidr_block:
+                    attributes["ipv6_ipam_pool_id"] = ipv6_cidr_block["Ipv6Pool"]
+
                 self.hcl.process_resource(
                     "aws_vpc_ipv6_cidr_block_association", assoc_id.replace("-", "_"), attributes)
 
     def aws_vpc_peering_connection(self):
-        ec2 = self.session.client("ec2", region_name=self.region)
         print("Processing VPC Peering Connections...")
-        vpc_peering_connections = ec2.describe_vpc_peering_connections()[
+        vpc_peering_connections = self.ec2_client.describe_vpc_peering_connections()[
             "VpcPeeringConnections"]
 
         for peering_connection in vpc_peering_connections:
@@ -1190,9 +1157,8 @@ class VPC:
                 "aws_vpc_peering_connection", peering_connection_id.replace("-", "_"), attributes)
 
     def aws_vpc_peering_connection_accepter(self):
-        ec2 = self.session.client("ec2", region_name=self.region)
         print("Processing VPC Peering Connection Accepters...")
-        vpc_peering_connections = ec2.describe_vpc_peering_connections()[
+        vpc_peering_connections = self.ec2_client.describe_vpc_peering_connections()[
             "VpcPeeringConnections"]
 
         for peering_connection in vpc_peering_connections:
@@ -1212,9 +1178,8 @@ class VPC:
                 "aws_vpc_peering_connection_accepter", peering_connection_id.replace("-", "_"), attributes)
 
     def aws_vpc_peering_connection_options(self):
-        ec2 = self.session.client("ec2", region_name=self.region)
         print("Processing VPC Peering Connection Options...")
-        vpc_peering_connections = ec2.describe_vpc_peering_connections()[
+        vpc_peering_connections = self.ec2_client.describe_vpc_peering_connections()[
             "VpcPeeringConnections"]
 
         for peering_connection in vpc_peering_connections:
@@ -1229,9 +1194,8 @@ class VPC:
                 "aws_vpc_peering_connection_options", peering_connection_id.replace("-", "_"), attributes)
 
     def aws_vpc_security_group_egress_rule(self):
-        ec2 = self.session.client("ec2", region_name=self.region)
         print("Processing VPC Security Group Egress Rules...")
-        security_group_rules = ec2.describe_security_group_rules()[
+        security_group_rules = self.ec2_client.describe_security_group_rules()[
             "SecurityGroupRules"]
 
         for rule in security_group_rules:
@@ -1245,9 +1209,8 @@ class VPC:
                     "aws_vpc_security_group_egress_rule", rule_id.replace("-", "_"), attributes)
 
     def aws_vpc_security_group_ingress_rule(self):
-        ec2 = self.session.client("ec2", region_name=self.region)
         print("Processing VPC Security Group Egress Rules...")
-        security_group_rules = ec2.describe_security_group_rules()[
+        security_group_rules = self.ec2_client.describe_security_group_rules()[
             "SecurityGroupRules"]
 
         for rule in security_group_rules:

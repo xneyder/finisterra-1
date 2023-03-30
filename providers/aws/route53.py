@@ -3,8 +3,8 @@ from utils.hcl import HCL
 
 
 class Route53:
-    def __init__(self, session, script_dir, provider_name, schema_data, region):
-        self.session = session
+    def __init__(self, route53_client, script_dir, provider_name, schema_data, region):
+        self.route53_client = route53_client
         self.        self.transform_rules = {
             "aws_route53_zone": {
                 "hcl_transform_fields": {
@@ -44,54 +44,10 @@ class Route53:
         self.hcl.refresh_state()
         self.hcl.generate_hcl_file()
 
-    # def process_route53(self):
-    #     route53 = self.session.client("route53", region_name=self.region)
-
-    #     print("Processing Route53 hosted zones and records...")
-    #     paginator = route53.get_paginator("list_hosted_zones")
-    #     for page in paginator.paginate():
-    #         for hosted_zone in page["HostedZones"]:
-    #             zone_id = hosted_zone["Id"].split("/")[-1]
-    #             zone_name = hosted_zone["Name"].rstrip(".")
-
-    #             attributes = {
-    #                 "id": zone_id,
-    #             }
-    #             print(f"Processing hosted zone: {zone_name} (ID: {zone_id})")
-
-    #             self.hcl.process_resource("aws_route53_zone",
-    #                             zone_id+"_"+zone_name.replace(".", "_"), attributes)
-
-    #             record_paginator = route53.get_paginator(
-    #                 "list_resource_record_sets")
-    #             for record_page in record_paginator.paginate(HostedZoneId=hosted_zone["Id"]):
-    #                 for record in record_page["ResourceRecordSets"]:
-    #                     record_name = record["Name"].rstrip(".")
-    #                     record_type = record["Type"]
-
-    #                     if record_type in ["SOA", "NS"]:
-    #                         continue
-
-    #                     print(
-    #                         f"  Processing record: {record_name} ({record_type})")
-
-    #                     resource_name = f"{zone_name}_{record_name}_{record_type}".replace(
-    #                         ".", "_")
-    #                     resource_id = f"{zone_id}_{record_name}_{record_type}"
-    #                     attributes = {
-    #                         "id": resource_id,
-    #                         "type": record_type,
-    #                         "name": record_name,
-    #                         "zone_id": zone_id,
-    #                     }
-    #                     self.hcl.process_resource("aws_route53_record",
-    #                                     resource_name, attributes)
-
     def aws_route53_delegation_set(self):
-        route53 = self.session.client("route53", region_name=self.region)
         print("Processing Route53 Delegation Sets...")
 
-        delegation_sets = route53.list_reusable_delegation_sets()[
+        delegation_sets = self.route53_client.list_reusable_delegation_sets()[
             "DelegationSets"]
         for delegation_set in delegation_sets:
             delegation_set_id = delegation_set["Id"]
@@ -107,10 +63,9 @@ class Route53:
                 "aws_route53_delegation_set", delegation_set_id.replace("-", "_"), attributes)
 
     def aws_route53_health_check(self):
-        route53 = self.session.client("route53", region_name=self.region)
         print("Processing Route53 Health Checks...")
 
-        paginator = route53.get_paginator("list_health_checks")
+        paginator = self.route53_client.get_paginator("list_health_checks")
         for page in paginator.paginate():
             health_checks = page["HealthChecks"]
             for health_check in health_checks:
@@ -140,15 +95,14 @@ class Route53:
                     "aws_route53_health_check", health_check_id.replace("-", "_"), attributes)
 
     def aws_route53_hosted_zone_dnssec(self):
-        route53 = self.session.client("route53", region_name=self.region)
         print("Processing Route53 Hosted Zone DNSSEC...")
 
-        paginator = route53.get_paginator("list_hosted_zones")
+        paginator = self.route53_client.get_paginator("list_hosted_zones")
         for page in paginator.paginate():
             hosted_zones = page["HostedZones"]
             for hosted_zone in hosted_zones:
                 hosted_zone_id = hosted_zone["Id"]
-                dnssec_resp = route53.get_dnssec(hosted_zone_id)
+                dnssec_resp = self.route53_client.get_dnssec(hosted_zone_id)
                 dnssec = dnssec_resp["DNSSEC"]
 
                 if dnssec["Status"] != "DISABLED":
@@ -171,15 +125,15 @@ class Route53:
                         "aws_route53_hosted_zone_dnssec", hosted_zone_id.replace("/", "_"), attributes)
 
     def aws_route53_key_signing_key(self):
-        route53 = self.session.client("route53", region_name=self.region)
         print("Processing Route53 Key Signing Key...")
 
-        paginator = route53.get_paginator("list_hosted_zones")
+        paginator = self.route53_client.get_paginator("list_hosted_zones")
         for page in paginator.paginate():
             hosted_zones = page["HostedZones"]
             for hosted_zone in hosted_zones:
                 hosted_zone_id = hosted_zone["Id"]
-                paginator_ksk = route53.get_paginator("list_key_signing_keys")
+                paginator_ksk = self.route53_client.get_paginator(
+                    "list_key_signing_keys")
 
                 for ksk_page in paginator_ksk.paginate(HostedZoneId=hosted_zone_id):
                     key_signing_keys = ksk_page["KeySigningKeys"]
@@ -206,17 +160,16 @@ class Route53:
                             "aws_route53_key_signing_key", ksk_id.replace("-", "_"), attributes)
 
     def aws_route53_query_log(self):
-        route53 = self.session.client("route53", region_name=self.region)
         print("Processing Route53 Query Logs...")
 
-        paginator = route53.get_paginator("list_hosted_zones")
+        paginator = self.route53_client.get_paginator("list_hosted_zones")
         for page in paginator.paginate():
             hosted_zones = page["HostedZones"]
             for hosted_zone in hosted_zones:
                 hosted_zone_id = hosted_zone["Id"]
 
                 try:
-                    query_logging_config = route53.list_query_logging_configs(
+                    query_logging_config = self.route53_client.list_query_logging_configs(
                         HostedZoneId=hosted_zone_id)
                     configs = query_logging_config["QueryLoggingConfigs"]
 
@@ -239,16 +192,15 @@ class Route53:
                         f"  No Route53 Query Log found for Hosted Zone: {hosted_zone_id}")
 
     def aws_route53_record(self):
-        route53 = self.session.client("route53", region_name=self.region)
         print("Processing Route53 Records...")
 
-        paginator = route53.get_paginator("list_hosted_zones")
+        paginator = self.route53_client.get_paginator("list_hosted_zones")
         for page in paginator.paginate():
             hosted_zones = page["HostedZones"]
             for hosted_zone in hosted_zones:
                 hosted_zone_id = hosted_zone["Id"]
 
-                paginator_records = route53.get_paginator(
+                paginator_records = self.route53_client.get_paginator(
                     "list_resource_record_sets")
                 for record_page in paginator_records.paginate(HostedZoneId=hosted_zone_id):
                     record_sets = record_page["ResourceRecordSets"]
@@ -274,10 +226,9 @@ class Route53:
                             "aws_route53_record", record_id.replace("-", "_"), attributes)
 
     def aws_route53_traffic_policy(self):
-        route53 = self.session.client("route53", region_name=self.region)
         print("Processing Route53 Traffic Policies...")
 
-        paginator = route53.get_paginator("list_traffic_policies")
+        paginator = self.route53_client.get_paginator("list_traffic_policies")
         for page in paginator.paginate():
             traffic_policies = page["TrafficPolicySummaries"]
             for traffic_policy in traffic_policies:
@@ -287,7 +238,7 @@ class Route53:
                 print(
                     f"  Processing Route53 Traffic Policy: {traffic_policy_id} Version: {traffic_policy_version}")
 
-                traffic_policy_detail = route53.get_traffic_policy(
+                traffic_policy_detail = self.route53_client.get_traffic_policy(
                     Id=traffic_policy_id,
                     Version=traffic_policy_version
                 )["TrafficPolicy"]
@@ -303,10 +254,10 @@ class Route53:
                     "aws_route53_traffic_policy", traffic_policy_id.replace("-", "_"), attributes)
 
     def aws_route53_traffic_policy_instance(self):
-        route53 = self.session.client("route53", region_name=self.region)
         print("Processing Route53 Traffic Policy Instances...")
 
-        paginator = route53.get_paginator("list_traffic_policy_instances")
+        paginator = self.route53_client.get_paginator(
+            "list_traffic_policy_instances")
         for page in paginator.paginate():
             traffic_policy_instances = page["TrafficPolicyInstances"]
             for instance in traffic_policy_instances:
@@ -330,16 +281,15 @@ class Route53:
                     "aws_route53_traffic_policy_instance", instance_id.replace("-", "_"), attributes)
 
     def aws_route53_vpc_association_authorization(self):
-        route53 = self.session.client("route53", region_name=self.region)
         print("Processing Route53 VPC Association Authorizations...")
 
-        paginator = route53.get_paginator("list_hosted_zones")
+        paginator = self.route53_client.get_paginator("list_hosted_zones")
         for page in paginator.paginate():
             hosted_zones = page["HostedZones"]
             for hosted_zone in hosted_zones:
                 hosted_zone_id = hosted_zone["Id"]
 
-                vpc_association_authorizations = route53.list_vpc_association_authorizations(
+                vpc_association_authorizations = self.route53_client.list_vpc_association_authorizations(
                     HostedZoneId=hosted_zone_id
                 )["VPCs"]
 
@@ -361,10 +311,9 @@ class Route53:
                                               f"{hosted_zone_id.replace('/', '_')}-{vpc_id.replace('-', '_')}", attributes)
 
     def aws_route53_zone(self):
-        route53 = self.session.client("route53", region_name=self.region)
         print("Processing Route53 Zones...")
 
-        paginator = route53.get_paginator("list_hosted_zones")
+        paginator = self.route53_client.get_paginator("list_hosted_zones")
         for page in paginator.paginate():
             hosted_zones = page["HostedZones"]
             for hosted_zone in hosted_zones:
@@ -385,18 +334,17 @@ class Route53:
                     "aws_route53_zone", hosted_zone_id.replace("/", "_"), attributes)
 
     def aws_route53_zone_association(self):
-        route53 = self.session.client("route53", region_name=self.region)
         ec2 = self.session.client("ec2", region_name=self.region)
         print("Processing Route53 Zone Associations...")
 
-        paginator = route53.get_paginator("list_hosted_zones")
+        paginator = self.route53_client.get_paginator("list_hosted_zones")
         for page in paginator.paginate():
             hosted_zones = page["HostedZones"]
             for hosted_zone in hosted_zones:
                 hosted_zone_id = hosted_zone["Id"]
 
                 if hosted_zone["Config"]["PrivateZone"]:
-                    associations = route53.list_vpc_association_authorizations(
+                    associations = self.route53_client.list_vpc_association_authorizations(
                         HostedZoneId=hosted_zone_id)
 
                     for association in associations["VPCs"]:
