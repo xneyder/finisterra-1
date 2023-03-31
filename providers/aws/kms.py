@@ -185,4 +185,26 @@ class KMS:
                     self.hcl.process_resource(
                         "aws_kms_replica_external_key", key_id.replace("-", "_"), attributes)
 
-    # aws_kms_replica_key
+    def aws_kms_replica_key(self):
+        print("Processing KMS Replica Keys...")
+        paginator = self.kms_client.get_paginator("list_keys")
+        for page in paginator.paginate():
+            for key in page["Keys"]:
+                key_id = key["KeyId"]
+                key_metadata = self.kms_client.describe_key(KeyId=key_id)[
+                    "KeyMetadata"]
+
+                if key_metadata["Origin"] == "AWS_KMS":
+                    print(f"  Processing KMS Replica Key: {key_id}")
+
+                    attributes = {
+                        "id": key_id,
+                        "key_id": key_id,
+                        "arn": key_metadata["Arn"],
+                        "creation_date": key_metadata["CreationDate"].isoformat(),
+                        "enabled": key_metadata["Enabled"],
+                        "key_usage": key_metadata["KeyUsage"],
+                        "key_state": key_metadata["KeyState"],
+                    }
+                    self.hcl.process_resource(
+                        "aws_kms_replica_key", key_id.replace("-", "_"), attributes)
