@@ -11,6 +11,7 @@ from providers.aws.route53 import Route53
 from providers.aws.acm import ACM
 from providers.aws.cloudfront import CloudFront
 from providers.aws.s3 import S3
+from providers.aws.iam import IAM
 
 
 class Aws:
@@ -100,10 +101,16 @@ class Aws:
             self.schema_data, self.region).vpc()
 
     def s3(self):
-        route53_client = self.session.client(
+        s3_client = self.session.client(
             "s3", region_name=self.region)
-        S3(route53_client, self.script_dir, self.provider_name,
+        S3(s3_client, self.script_dir, self.provider_name,
            self.schema_data, self.region).s3()
+
+    def iam(self):
+        iam_client = self.session.client(
+            "iam", region_name=self.region)
+        IAM(iam_client, self.script_dir, self.provider_name,
+            self.schema_data, self.region).iam()
 
     def acm(self):
         acm_client = self.session.client(

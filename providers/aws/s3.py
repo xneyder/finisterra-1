@@ -23,7 +23,7 @@ class S3:
 
         self.aws_s3_bucket()
         self.aws_s3_bucket_accelerate_configuration()
-        self.aws_s3_bucket_acl()  # state error
+        self.aws_s3_bucket_acl()
         self.aws_s3_bucket_analytics_configuration()
         self.aws_s3_bucket_cors_configuration()
         self.aws_s3_bucket_intelligent_tiering_configuration()

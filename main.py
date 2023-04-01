@@ -9,7 +9,8 @@ def main():
 
     # provider.vpc()
     # provider.route53()
-    provider.s3()
+    # provider.s3()
+    provider.iam()
 
     print("Finished processing AWS resources.")
 

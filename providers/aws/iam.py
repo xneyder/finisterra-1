@@ -1,11 +1,30 @@
 import os
 from utils.hcl import HCL
+import json
 
 
 class IAM:
     def __init__(self, iam_client, script_dir, provider_name, schema_data, region):
         self.iam_client = iam_client
-        self.transform_rules = {}
+        self.transform_rules = {
+            "aws_iam_group_policy": {
+                "hcl_json_multiline": {"policy": True}
+            },
+            "aws_iam_policy": {
+                "hcl_json_multiline": {"policy": True}
+            },
+            "aws_iam_role_policy": {
+                "hcl_json_multiline": {"policy": True}
+            },
+            "aws_iam_user_policy": {
+                "hcl_json_multiline": {"policy": True}
+            },
+            "aws_iam_role": {
+                "hcl_json_multiline": {"assume_role_policy": True, "policy": True}
+            }
+
+
+        }
         self.provider_name = provider_name
         self.script_dir = script_dir
         self.schema_data = schema_data
@@ -15,6 +34,30 @@ class IAM:
 
     def iam(self):
         self.hcl.prepare_folder(os.path.join("generated", "iam"))
+
+        # self.aws_iam_access_key()
+        # self.aws_iam_account_alias()
+        # self.aws_iam_account_password_policy()
+        # self.aws_iam_group()
+        # self.aws_iam_group_policy()
+        # self.aws_iam_instance_profile()
+        # self.aws_iam_openid_connect_provider()
+        # self.aws_iam_policy()
+        # self.aws_iam_policy_attachment()
+        self.aws_iam_role()
+        # self.aws_iam_role_policy()
+        # self.aws_iam_saml_provider()
+        # self.aws_iam_server_certificate()
+        # self.aws_iam_service_linked_role()
+        # self.aws_iam_service_specific_credential()
+        # self.aws_iam_signing_certificate()
+        # self.aws_iam_user()
+        # self.aws_iam_user_group_membership()
+        # self.aws_iam_user_login_profile()
+        # self.aws_iam_user_policy()
+        # self.aws_iam_user_policy_attachment()
+        # self.aws_iam_user_ssh_key()
+        # self.aws_iam_virtual_mfa_device()
 
         self.hcl.refresh_state()
         self.hcl.generate_hcl_file()
@@ -103,30 +146,6 @@ class IAM:
                 self.hcl.process_resource(
                     "aws_iam_group", group_name.replace("-", "_"), attributes)
 
-    def aws_iam_group_membership(self):
-        print("Processing IAM Group Memberships...")
-        paginator = self.iam_client.get_paginator("list_groups")
-
-        for page in paginator.paginate():
-            for group in page["Groups"]:
-                group_name = group["GroupName"]
-                users_paginator = self.iam_client.get_paginator(
-                    "list_group_members")
-
-                for users_page in users_paginator.paginate(GroupName=group_name):
-                    for user in users_page["Users"]:
-                        user_name = user["UserName"]
-                        print(
-                            f"  Processing IAM Group Membership: {group_name} - {user_name}")
-
-                        attributes = {
-                            "id": f"{group_name}-{user_name}",
-                            "group_name": group_name,
-                            "user_name": user_name,
-                        }
-                        self.hcl.process_resource(
-                            "aws_iam_group_membership", f"{group_name}_{user_name}", attributes)
-
     def aws_iam_group_policy(self):
         print("Processing IAM Group Policies...")
         paginator = self.iam_client.get_paginator("list_groups")
@@ -145,37 +164,13 @@ class IAM:
                         policy_document = self.iam_client.get_group_policy(
                             GroupName=group_name, PolicyName=policy_name)
                         attributes = {
-                            "id": f"{group_name}-{policy_name}",
+                            "id": f"{group_name}:{policy_name}",
                             "group_name": group_name,
                             "policy_name": policy_name,
                             "policy_document": json.dumps(policy_document["PolicyDocument"]),
                         }
                         self.hcl.process_resource(
                             "aws_iam_group_policy", f"{group_name}_{policy_name}", attributes)
-
-    def aws_iam_group_policy_attachment(self):
-        print("Processing IAM Group Policy Attachments...")
-        paginator = self.iam_client.get_paginator("list_groups")
-
-        for page in paginator.paginate():
-            for group in page["Groups"]:
-                group_name = group["GroupName"]
-                attached_policies_paginator = self.iam_client.get_paginator(
-                    "list_attached_group_policies")
-
-                for attached_policies_page in attached_policies_paginator.paginate(GroupName=group_name):
-                    for policy in attached_policies_page["AttachedPolicies"]:
-                        policy_arn = policy["PolicyArn"]
-                        print(
-                            f"  Processing IAM Group Policy Attachment: {group_name} - {policy_arn}")
-
-                        attributes = {
-                            "id": f"{group_name}-{policy_arn}",
-                            "group_name": group_name,
-                            "policy_arn": policy_arn,
-                        }
-                        self.hcl.process_resource(
-                            "aws_iam_group_policy_attachment", f"{group_name}_{policy_arn.split(':')[-1]}", attributes)
 
     def aws_iam_instance_profile(self):
         print("Processing IAM Instance Profiles...")
@@ -230,9 +225,9 @@ class IAM:
                     "id": policy_arn,
                     "arn": policy_arn,
                     "name": policy_name,
-                    "description": policy["Description"],
-                    "path": policy["Path"],
-                    "policy": self.iam_client.get_policy_version(PolicyArn=policy_arn, VersionId=policy["DefaultVersionId"])["PolicyVersion"]["Document"],
+                    # "description": policy["Description"],
+                    # "path": policy["Path"],
+                    # "policy": self.iam_client.get_policy_version(PolicyArn=policy_arn, VersionId=policy["DefaultVersionId"])["PolicyVersion"]["Document"],
                 }
                 self.hcl.process_resource(
                     "aws_iam_policy", policy_name, attributes)
@@ -301,7 +296,7 @@ class IAM:
                 print(f"  Processing IAM Role: {role_name}")
 
                 attributes = {
-                    "id": role["Arn"],
+                    "id": role_name,
                     "name": role_name,
                     "assume_role_policy": json.dumps(role["AssumeRolePolicyDocument"]),
                     "description": role.get("Description"),

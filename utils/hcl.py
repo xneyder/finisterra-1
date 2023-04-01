@@ -121,6 +121,12 @@ class HCL:
                     if isinstance(value, list) and not value:
                         return ""
 
+                # Check if the field is in the transform rules
+                is_transformed, transform_str = check_transform_rules(
+                    key, value, resource_type)
+                if is_transformed:
+                    return(f'  {transform_str}')
+
                 return f'{quote_string(key)}={convert_value(value)}\n'
 
             def quote_string(s):
@@ -142,7 +148,7 @@ class HCL:
 
             def multiline_json(value):
                 json_value = json.loads(value)
-                return json.dumps(json_value, indent=2)
+                return json.dumps(json_value, indent=2).replace("${", "$${")
 
             def process_block_type(key, value, schema_block_types, resource_type):
                 return_str = ""
@@ -176,37 +182,43 @@ class HCL:
                             return_str += ("  }\n   ")
                 return is_block, return_str
 
+            def check_transform_rules(key, value, resource_type):
+                is_transformed = False
+                return_str = ""
+                if resource_type in self.transform_rules:
+                    if 'hcl_drop_fields' in self.transform_rules[resource_type]:
+                        hcl_drop_fields = self.transform_rules[resource_type]['hcl_drop_fields']
+                        if key in hcl_drop_fields:
+                            if hcl_drop_fields[key] == 'ALL' or hcl_drop_fields[key] == value:
+                                return_str = ""
+                                is_transformed = True
+                    if 'hcl_keep_fields' in self.transform_rules[resource_type]:
+                        hcl_keep_fields = self.transform_rules[resource_type]['hcl_keep_fields']
+                        if key in hcl_keep_fields:
+                            return_str += (
+                                f'{process_key(key, value, False)}')
+                            is_transformed = True
+                    if 'hcl_json_multiline' in self.transform_rules[resource_type]:
+                        hcl_json_multiline = self.transform_rules[resource_type]['hcl_json_multiline']
+                        if key in hcl_json_multiline:
+                            return_str += (
+                                f'{quote_string(key)}=<<EOF\n{multiline_json(value)}\nEOF\n')
+                            is_transformed = True
+                    if 'hcl_transform_fields' in self.transform_rules[resource_type]:
+                        hcl_transform_fields = self.transform_rules[resource_type]['hcl_transform_fields']
+                        if key in hcl_transform_fields:
+                            if hcl_transform_fields[key]['source'] == value:
+                                target = hcl_transform_fields[key]['target']
+                                return_str += (
+                                    f' {process_key(key, target, False)}')
+                                is_transformed = True
+
+                    return is_transformed, return_str
+
             with open(f"{resource_type}.tf", "a") as hcl_output:
                 hcl_output.write(
                     f'resource "{resource_type}" "{resource_name}" {{\n')
                 for key, value in attributes.items():
-
-                    if resource_type in self.transform_rules:
-                        if 'hcl_drop_fields' in self.transform_rules[resource_type]:
-                            hcl_drop_fields = self.transform_rules[resource_type]['hcl_drop_fields']
-                            if key in hcl_drop_fields:
-                                if hcl_drop_fields[key] == 'ALL' or hcl_drop_fields[key] == value:
-                                    continue
-                        if 'hcl_keep_fields' in self.transform_rules[resource_type]:
-                            hcl_keep_fields = self.transform_rules[resource_type]['hcl_keep_fields']
-                            if key in hcl_keep_fields:
-                                hcl_output.write(
-                                    f'{process_key(key, value, False)}')
-                                continue
-                        if 'hcl_json_multiline' in self.transform_rules[resource_type]:
-                            hcl_json_multiline = self.transform_rules[resource_type]['hcl_json_multiline']
-                            if key in hcl_json_multiline:
-                                hcl_output.write(
-                                    f'{quote_string(key)}=<<EOF\n{multiline_json(value)}\nEOF\n')
-                                continue
-                        if 'hcl_transform_fields' in self.transform_rules[resource_type]:
-                            hcl_transform_fields = self.transform_rules[resource_type]['hcl_transform_fields']
-                            if key in hcl_transform_fields:
-                                if hcl_transform_fields[key]['source'] == value:
-                                    target = hcl_transform_fields[key]['target']
-                                    hcl_output.write(
-                                        f' {process_key(key, target, False)}')
-                                    continue
 
                     # Ignore is key is computed and handled the exception
                     try:
