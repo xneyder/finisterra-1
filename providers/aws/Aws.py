@@ -5,10 +5,12 @@ import subprocess
 import shutil
 import json
 from utils.hcl import HCL
+from utils.filesystem import create_version_file
 from providers.aws.vpc import VPC
 from providers.aws.route53 import Route53
 from providers.aws.acm import ACM
-from utils.filesystem import create_version_file
+from providers.aws.cloudfront import CloudFront
+from providers.aws.s3 import S3
 
 
 class Aws:
@@ -54,22 +56,27 @@ class Aws:
             print(f"Folder '{folder}' already exists.")
 
     def load_provider_schema(self):
-        self.create_folder(os.path.join("tmp"))
+        # Remove these comments
+        # self.create_folder(os.path.join("tmp"))
         os.chdir(os.path.join("tmp"))
-        create_version_file()
-        print("Initializing Terraform...")
-        subprocess.run(["terraform", "init"], check=True)
+        # create_version_file()
+        # print("Initializing Terraform...")
+        # subprocess.run(["terraform", "init"], check=True)
+
         print("Loading provider schema...")
         temp_file = 'terraform_providers_schema.json'
-        # Load the provider schema using the terraform cli
-        output = open(temp_file, 'w')
-        subprocess.run(["terraform", "providers", "schema",
-                        "-json"], check=True, stdout=output)
+        # Remove these comments
+        # output = open(temp_file, 'w')
+        # subprocess.run(["terraform", "providers", "schema",
+        #                 "-json"], check=True, stdout=output)
         with open(temp_file, "r") as schema_file:
             schema_data = json.load(schema_file)
+
         # remove the temporary file
-        os.chdir(self.script_dir)
-        shutil.rmtree(os.path.join("tmp"))
+
+        # Remove these comments
+        # os.chdir(self.script_dir)
+        # shutil.rmtree(os.path.join("tmp"))
         return schema_data
 
     def route53(self):
@@ -91,6 +98,12 @@ class Aws:
         #                                   )
         VPC(ec2_client, self.script_dir, self.provider_name,
             self.schema_data, self.region).vpc()
+
+    def s3(self):
+        route53_client = self.session.client(
+            "s3", region_name=self.region)
+        S3(route53_client, self.script_dir, self.provider_name,
+           self.schema_data, self.region).s3()
 
     def acm(self):
         acm_client = self.session.client(

@@ -5,7 +5,7 @@ from utils.hcl import HCL
 class Route53:
     def __init__(self, route53_client, script_dir, provider_name, schema_data, region):
         self.route53_client = route53_client
-        self.        self.transform_rules = {
+        self.transform_rules = {
             "aws_route53_zone": {
                 "hcl_transform_fields": {
                     "force_destroy": {'source': None, 'target': False},
@@ -31,12 +31,12 @@ class Route53:
 
         self.aws_route53_delegation_set()
         self.aws_route53_health_check()
-        self.aws_route53_hosted_zone_dnssec()
-        self.aws_route53_key_signing_key()
+        # self.aws_route53_hosted_zone_dnssec() #Compilation errors
+        # self.aws_route53_key_signing_key() #Compilation errors
         self.aws_route53_query_log()
         self.aws_route53_record()
-        self.aws_route53_traffic_policy()
-        self.aws_route53_traffic_policy_instance()
+        # self.aws_route53_traffic_policy() #Compilation errors
+        # self.aws_route53_traffic_policy_instance() #Compilation errors
         self.aws_route53_vpc_association_authorization()
         self.aws_route53_zone()
         self.aws_route53_zone_association()
@@ -206,7 +206,7 @@ class Route53:
                     record_sets = record_page["ResourceRecordSets"]
 
                     for record in record_sets:
-                        record_name = record["Name"]
+                        record_name = record["Name"].rsplit(".", 1)[0]
                         record_type = record["Type"]
 
                         record_id = f"{hosted_zone_id}-{record_name}-{record_type}"
@@ -334,7 +334,6 @@ class Route53:
                     "aws_route53_zone", hosted_zone_id.replace("/", "_"), attributes)
 
     def aws_route53_zone_association(self):
-        ec2 = self.session.client("ec2", region_name=self.region)
         print("Processing Route53 Zone Associations...")
 
         paginator = self.route53_client.get_paginator("list_hosted_zones")

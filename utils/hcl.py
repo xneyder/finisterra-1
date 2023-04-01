@@ -140,6 +140,42 @@ class HCL:
                                         return False
                 return True
 
+            def multiline_json(value):
+                json_value = json.loads(value)
+                return json.dumps(json_value, indent=2)
+
+            def process_block_type(key, value, schema_block_types, resource_type):
+                return_str = ""
+                is_block = False
+                if key in schema_block_types:
+                    is_block = True
+                    if schema_block_types[key]['nesting_mode'] == 'list' or schema_block_types[key]['nesting_mode'] == 'set':
+                        for block in value:
+                            # validate if a field in the block is empty
+                            if not validate_block(key, block, resource_type):
+                                return return_str
+                            return_str += (f'  {quote_string(key)} {{\n')
+                            for block_key, block_value in block.items():
+                                # Ignore is key is computed and handled the exception
+                                try:
+                                    if schema_block_types[key]['block']['attributes'][block_key]['computed']:
+                                        continue
+                                except:
+                                    pass
+
+                                schema_block_types_child = schema_block_types[key]['block'].get(
+                                    "block_types", {})
+                                is_child_block, block_child_str = process_block_type(
+                                    block_key, block_value, schema_block_types_child, resource_type)
+                                if is_child_block:
+                                    return_str += (f'    {block_child_str}')
+                                    continue
+
+                                return_str += (
+                                    f'    {process_key(block_key, block_value)}')
+                            return_str += ("  }\n   ")
+                return is_block, return_str
+
             with open(f"{resource_type}.tf", "a") as hcl_output:
                 hcl_output.write(
                     f'resource "{resource_type}" "{resource_name}" {{\n')
@@ -157,6 +193,12 @@ class HCL:
                                 hcl_output.write(
                                     f'{process_key(key, value, False)}')
                                 continue
+                        if 'hcl_json_multiline' in self.transform_rules[resource_type]:
+                            hcl_json_multiline = self.transform_rules[resource_type]['hcl_json_multiline']
+                            if key in hcl_json_multiline:
+                                hcl_output.write(
+                                    f'{quote_string(key)}=<<EOF\n{multiline_json(value)}\nEOF\n')
+                                continue
                         if 'hcl_transform_fields' in self.transform_rules[resource_type]:
                             hcl_transform_fields = self.transform_rules[resource_type]['hcl_transform_fields']
                             if key in hcl_transform_fields:
@@ -173,28 +215,15 @@ class HCL:
                     except:
                         pass
 
-                    if key in schema_block_types:
-                        if schema_block_types[key]['nesting_mode'] == 'list' or schema_block_types[key]['nesting_mode'] == 'set':
-                            for block in value:
-                                # validate if a field in the block is empty
-                                if not validate_block(key, block, resource_type):
-                                    continue
-                                hcl_output.write(f'  {quote_string(key)} {{\n')
-                                for block_key, block_value in block.items():
-                                    # Ignore is key is computed and handled the exception
-                                    try:
-                                        if schema_block_types[key]['block']['attributes'][block_key]['computed']:
-                                            continue
-                                    except:
-                                        pass
-                                    hcl_output.write(
-                                        f'    {process_key(block_key, block_value)}')
-                                hcl_output.write("  }\n")
-                            continue
+                    is_block, block_str = process_block_type(
+                        key, value, schema_block_types, resource_type)
+                    if is_block:
+                        hcl_output.write(f'    {block_str}')
+                        continue
 
                     hcl_output.write(f'  {process_key(key, value)}')
 
-                hcl_output.write("}\n")
+                hcl_output.write("}\n\n")
         print("Formatting HCL files...")
         subprocess.run(["terraform", "fmt"], check=True)
 
