@@ -21,6 +21,9 @@ class IAM:
             },
             "aws_iam_role": {
                 "hcl_json_multiline": {"assume_role_policy": True, "policy": True}
+            },
+            "aws_iam_saml_provider": {
+                "hcl_file_function": {"saml_metadata_document": {"type": "xml"}}
             }
 
 
@@ -44,9 +47,9 @@ class IAM:
         # self.aws_iam_openid_connect_provider()
         # self.aws_iam_policy()
         # self.aws_iam_policy_attachment()
-        self.aws_iam_role()
+        # self.aws_iam_role()
         # self.aws_iam_role_policy()
-        # self.aws_iam_saml_provider()
+        self.aws_iam_saml_provider()
         # self.aws_iam_server_certificate()
         # self.aws_iam_service_linked_role()
         # self.aws_iam_service_specific_credential()

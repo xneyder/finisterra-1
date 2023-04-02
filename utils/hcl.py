@@ -204,6 +204,14 @@ class HCL:
                             return_str += (
                                 f'{quote_string(key)}=<<EOF\n{multiline_json(value)}\nEOF\n')
                             is_transformed = True
+                    if 'hcl_file_function' in self.transform_rules[resource_type]:
+                        hcl_file_function = self.transform_rules[resource_type]['hcl_file_function']
+                        if key in hcl_file_function:
+                            with open(f"{resource_name}.{hcl_file_function[key]['type']}", "w") as hcl_output:
+                                hcl_output.write(f'{value}')
+                                return_str += (
+                                    f'{quote_string(key)}=file("{resource_name}")\n')
+                                is_transformed = True
                     if 'hcl_transform_fields' in self.transform_rules[resource_type]:
                         hcl_transform_fields = self.transform_rules[resource_type]['hcl_transform_fields']
                         if key in hcl_transform_fields:
@@ -213,7 +221,7 @@ class HCL:
                                     f' {process_key(key, target, False)}')
                                 is_transformed = True
 
-                    return is_transformed, return_str
+                return is_transformed, return_str
 
             with open(f"{resource_type}.tf", "a") as hcl_output:
                 hcl_output.write(
