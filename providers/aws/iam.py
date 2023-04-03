@@ -24,6 +24,9 @@ class IAM:
             },
             "aws_iam_saml_provider": {
                 "hcl_file_function": {"saml_metadata_document": {"type": "xml"}}
+            },
+            "aws_iam_openid_connect_provider": {
+                "hcl_prefix": {"url": "https://"}
             }
 
 
@@ -38,29 +41,31 @@ class IAM:
     def iam(self):
         self.hcl.prepare_folder(os.path.join("generated", "iam"))
 
-        # self.aws_iam_access_key()
-        # self.aws_iam_account_alias()
-        # self.aws_iam_account_password_policy()
-        # self.aws_iam_group()
-        # self.aws_iam_group_policy()
-        # self.aws_iam_instance_profile()
-        # self.aws_iam_openid_connect_provider()
-        # self.aws_iam_policy()
-        # self.aws_iam_policy_attachment()
-        # self.aws_iam_role()
-        # self.aws_iam_role_policy()
+        self.aws_iam_access_key()
+        self.aws_iam_account_alias()
+        self.aws_iam_account_password_policy()
+        self.aws_iam_group()
+        self.aws_iam_group_policy()
+        self.aws_iam_instance_profile()
+        self.aws_iam_openid_connect_provider()
+        self.aws_iam_policy()
+        # self.aws_iam_policy_attachment() #Is a dangerous resource, can delete data conflicts with aws_iam_role_policy_attachment, aws_iam_user_policy_attachment, aws_iam_group_policy_attachment
+        self.aws_iam_role()
+        self.aws_iam_role_policy()
         self.aws_iam_saml_provider()
-        # self.aws_iam_server_certificate()
-        # self.aws_iam_service_linked_role()
-        # self.aws_iam_service_specific_credential()
-        # self.aws_iam_signing_certificate()
-        # self.aws_iam_user()
-        # self.aws_iam_user_group_membership()
-        # self.aws_iam_user_login_profile()
-        # self.aws_iam_user_policy()
-        # self.aws_iam_user_policy_attachment()
-        # self.aws_iam_user_ssh_key()
-        # self.aws_iam_virtual_mfa_device()
+        self.aws_iam_server_certificate()
+        self.aws_iam_service_linked_role()
+        self.aws_iam_service_specific_credential()
+        self.aws_iam_signing_certificate()
+        self.aws_iam_user()
+        self.aws_iam_user_group_membership()
+        self.aws_iam_user_login_profile()
+        self.aws_iam_user_policy()
+        self.aws_iam_user_policy_attachment()
+        self.aws_iam_user_ssh_key()
+        self.aws_iam_virtual_mfa_device()
+        self.aws_iam_group_policy_attachment()
+        self.aws_iam_role_policy_attachment()
 
         self.hcl.refresh_state()
         self.hcl.generate_hcl_file()
@@ -235,59 +240,59 @@ class IAM:
                 self.hcl.process_resource(
                     "aws_iam_policy", policy_name, attributes)
 
-    def aws_iam_policy_attachment(self):
-        print("Processing IAM Policy Attachments...")
-        paginator = self.iam_client.get_paginator("list_policies")
+    # def aws_iam_policy_attachment(self):
+    #     print("Processing IAM Policy Attachments...")
+    #     paginator = self.iam_client.get_paginator("list_policies")
 
-        for page in paginator.paginate(Scope='Local'):
-            for policy in page["Policies"]:
-                policy_arn = policy["Arn"]
-                policy_name = policy["PolicyName"]
+    #     for page in paginator.paginate(Scope='Local'):
+    #         for policy in page["Policies"]:
+    #             policy_arn = policy["Arn"]
+    #             policy_name = policy["PolicyName"]
 
-                # Process Group Attachments
-                group_paginator = self.iam_client.get_paginator(
-                    "list_entities_for_policy")
-                for group_page in group_paginator.paginate(PolicyArn=policy_arn, EntityFilter="Group"):
-                    for group in group_page["PolicyGroups"]:
-                        group_name = group["GroupName"]
-                        attachment_name = f"{policy_name}_to_{group_name}"
-                        attributes = {
-                            "id": attachment_name,
-                            "policy_arn": policy_arn,
-                            "groups": [group_name],
-                        }
-                        self.hcl.process_resource(
-                            "aws_iam_policy_attachment", attachment_name, attributes)
+    #             # Process Group Attachments
+    #             group_paginator = self.iam_client.get_paginator(
+    #                 "list_entities_for_policy")
+    #             for group_page in group_paginator.paginate(PolicyArn=policy_arn, EntityFilter="Group"):
+    #                 for group in group_page["PolicyGroups"]:
+    #                     group_name = group["GroupName"]
+    #                     attachment_name = f"{policy_name}_to_{group_name}"
+    #                     attributes = {
+    #                         "id": attachment_name,
+    #                         "policy_arn": policy_arn,
+    #                         "groups": [group_name],
+    #                     }
+    #                     self.hcl.process_resource(
+    #                         "aws_iam_policy_attachment", attachment_name, attributes)
 
-                # Process Role Attachments
-                role_paginator = self.iam_client.get_paginator(
-                    "list_entities_for_policy")
-                for role_page in role_paginator.paginate(PolicyArn=policy_arn, EntityFilter="Role"):
-                    for role in role_page["PolicyRoles"]:
-                        role_name = role["RoleName"]
-                        attachment_name = f"{policy_name}_to_{role_name}"
-                        attributes = {
-                            "id": attachment_name,
-                            "policy_arn": policy_arn,
-                            "roles": [role_name],
-                        }
-                        self.hcl.process_resource(
-                            "aws_iam_policy_attachment", attachment_name, attributes)
+    #             # Process Role Attachments
+    #             role_paginator = self.iam_client.get_paginator(
+    #                 "list_entities_for_policy")
+    #             for role_page in role_paginator.paginate(PolicyArn=policy_arn, EntityFilter="Role"):
+    #                 for role in role_page["PolicyRoles"]:
+    #                     role_name = role["RoleName"]
+    #                     attachment_name = f"{policy_name}_to_{role_name}"
+    #                     attributes = {
+    #                         "id": attachment_name,
+    #                         "policy_arn": policy_arn,
+    #                         "roles": [role_name],
+    #                     }
+    #                     self.hcl.process_resource(
+    #                         "aws_iam_policy_attachment", attachment_name, attributes)
 
-                # Process User Attachments
-                user_paginator = self.iam_client.get_paginator(
-                    "list_entities_for_policy")
-                for user_page in user_paginator.paginate(PolicyArn=policy_arn, EntityFilter="User"):
-                    for user in user_page["PolicyUsers"]:
-                        user_name = user["UserName"]
-                        attachment_name = f"{policy_name}_to_{user_name}"
-                        attributes = {
-                            "id": attachment_name,
-                            "policy_arn": policy_arn,
-                            "users": [user_name],
-                        }
-                        self.hcl.process_resource(
-                            "aws_iam_policy_attachment", attachment_name, attributes)
+    #             # Process User Attachments
+    #             user_paginator = self.iam_client.get_paginator(
+    #                 "list_entities_for_policy")
+    #             for user_page in user_paginator.paginate(PolicyArn=policy_arn, EntityFilter="User"):
+    #                 for user in user_page["PolicyUsers"]:
+    #                     user_name = user["UserName"]
+    #                     attachment_name = f"{policy_name}_to_{user_name}"
+    #                     attributes = {
+    #                         "id": attachment_name,
+    #                         "policy_arn": policy_arn,
+    #                         "users": [user_name],
+    #                     }
+    #                     self.hcl.process_resource(
+    #                         "aws_iam_policy_attachment", attachment_name, attributes)
 
     def aws_iam_role(self):
         print("Processing IAM Roles...")
@@ -455,10 +460,10 @@ class IAM:
             print(f"  Processing IAM User: {user_name}")
 
             attributes = {
-                "id": user["UserId"],
-                "name": user_name,
-                "path": user["Path"],
-                "arn": user["Arn"],
+                "id": user_name,
+                # "name": user_name,
+                # "path": user["Path"],
+                # "arn": user["Arn"],
             }
             self.hcl.process_resource("aws_iam_user", user_name, attributes)
 
@@ -473,13 +478,13 @@ class IAM:
 
             for group in groups_for_user:
                 group_name = group["GroupName"]
-                membership_id = f"{user_name}_{group_name}"
+                membership_id = f"{user_name}/{group_name}"
                 print(
                     f"  Processing IAM User Group Membership: {membership_id}")
 
                 attributes = {
                     "id": membership_id,
-                    "user_name": user_name,
+                    "user": user_name,
                     "groups": [group_name],
                 }
                 self.hcl.process_resource(
@@ -517,7 +522,7 @@ class IAM:
                 "PolicyNames"]
 
             for policy_name in user_policies:
-                policy_id = f"{user_name}_{policy_name}"
+                policy_id = f"{user_name}:{policy_name}"
                 print(f"  Processing IAM User Policy: {policy_id}")
 
                 policy_document = self.iam_client.get_user_policy(
@@ -551,7 +556,7 @@ class IAM:
 
                 attributes = {
                     "id": attachment_id,
-                    "user_name": user_name,
+                    "user": user_name,
                     "policy_arn": policy_arn,
                 }
                 self.hcl.process_resource(
@@ -588,11 +593,17 @@ class IAM:
         for mfa_device in mfa_devices:
             mfa_device_arn = mfa_device["SerialNumber"]
             mfa_device_id = mfa_device_arn.split("/")[-1]
+            if "User" in mfa_device and "Path" in mfa_device["User"]:
+                path = mfa_device["User"]["Path"]
+            else:
+                path = "/"
             print(f"  Processing IAM Virtual MFA Device: {mfa_device_id}")
 
             attributes = {
-                "id": mfa_device_id,
-                "arn": mfa_device_arn,
+                "id": mfa_device_arn,
+                "virtual_mfa_device_name": mfa_device_id,
+                "path": path,
+                # "arn": mfa_device_arn,
             }
 
             if "User" in mfa_device:
@@ -601,3 +612,51 @@ class IAM:
 
             self.hcl.process_resource(
                 "aws_iam_virtual_mfa_device", mfa_device_id, attributes)
+
+    def aws_iam_group_policy_attachment(self):
+        print("Processing IAM Group Policy Attachments...")
+        paginator = self.iam_client.get_paginator("list_groups")
+
+        for page in paginator.paginate():
+            for group in page["Groups"]:
+                group_name = group["GroupName"]
+                policy_paginator = self.iam_client.get_paginator(
+                    "list_attached_group_policies")
+
+                for policy_page in policy_paginator.paginate(GroupName=group_name):
+                    for policy in policy_page["AttachedPolicies"]:
+                        policy_arn = policy["PolicyArn"]
+                        print(
+                            f"  Processing IAM Group Policy Attachment: {group_name} - {policy_arn}")
+
+                        attributes = {
+                            "id": f"{group_name}/{policy_arn}",
+                            "group": group_name,
+                            "policy_arn": policy_arn,
+                        }
+                        self.hcl.process_resource(
+                            "aws_iam_group_policy_attachment", f"{group_name}_{policy_arn.split(':')[-1]}", attributes)
+
+    def aws_iam_role_policy_attachment(self):
+        print("Processing IAM Role Policy Attachments...")
+        paginator = self.iam_client.get_paginator("list_roles")
+
+        for page in paginator.paginate():
+            for role in page["Roles"]:
+                role_name = role["RoleName"]
+                policy_paginator = self.iam_client.get_paginator(
+                    "list_attached_role_policies")
+
+                for policy_page in policy_paginator.paginate(RoleName=role_name):
+                    for policy in policy_page["AttachedPolicies"]:
+                        policy_arn = policy["PolicyArn"]
+                        print(
+                            f"  Processing IAM Role Policy Attachment: {role_name} - {policy_arn}")
+
+                        attributes = {
+                            "id": f"{role_name}/{policy_arn}",
+                            "role": role_name,
+                            "policy_arn": policy_arn,
+                        }
+                        self.hcl.process_resource(
+                            "aws_iam_role_policy_attachment", f"{role_name}_{policy_arn.split(':')[-1]}", attributes)

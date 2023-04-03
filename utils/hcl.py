@@ -198,6 +198,12 @@ class HCL:
                             return_str += (
                                 f'{process_key(key, value, False)}')
                             is_transformed = True
+                    if 'hcl_prefix' in self.transform_rules[resource_type]:
+                        hcl_prefix = self.transform_rules[resource_type]['hcl_prefix']
+                        if key in hcl_prefix:
+                            return_str += (
+                                f'{quote_string(key)}="{hcl_prefix[key]}{value}"\n')
+                            is_transformed = True
                     if 'hcl_json_multiline' in self.transform_rules[resource_type]:
                         hcl_json_multiline = self.transform_rules[resource_type]['hcl_json_multiline']
                         if key in hcl_json_multiline:
@@ -207,10 +213,11 @@ class HCL:
                     if 'hcl_file_function' in self.transform_rules[resource_type]:
                         hcl_file_function = self.transform_rules[resource_type]['hcl_file_function']
                         if key in hcl_file_function:
-                            with open(f"{resource_name}.{hcl_file_function[key]['type']}", "w") as hcl_output:
+                            file_name = f"{resource_name}.{hcl_file_function[key]['type']}"
+                            with open(file_name, "w") as hcl_output:
                                 hcl_output.write(f'{value}')
                                 return_str += (
-                                    f'{quote_string(key)}=file("{resource_name}")\n')
+                                    f'{quote_string(key)}=file("{file_name}")\n')
                                 is_transformed = True
                     if 'hcl_transform_fields' in self.transform_rules[resource_type]:
                         hcl_transform_fields = self.transform_rules[resource_type]['hcl_transform_fields']
@@ -252,15 +259,28 @@ class HCL:
         output_string = re.sub(r'\s|-|\.|\W', '_', input_string)
         return output_string
 
+    def add_underscore(self, string):
+        if string[0].isdigit():
+            return '_' + string
+        else:
+            return string
+
     def process_resource(self, resource_type, resource_name, attributes):
         resource_id = attributes["id"]
-        resource_name = self.replace_special_chars(resource_name)
+        resource_name = self.add_underscore(
+            self.replace_special_chars(resource_name))
         # search if resource exists in the state
         if not self.search_state_file(resource_type, resource_name, resource_id):
             print("Importing resource...")
             self.create_state_file(resource_type, resource_name, attributes)
 
     def refresh_state(self):
+        # count resources in state file
+        print("Counting resources in state file...")
+        with open(self.terraform_state_file, "r") as state_file:
+            state_data = json.load(state_file)
+            prev_resources_count = len(state_data["resources"])
+
         print("Refreshing state...")
         subprocess.run(["terraform", "refresh"], check=True)
         try:
@@ -268,6 +288,18 @@ class HCL:
                 ["rm", self.terraform_state_file+".backup"], check=True)
         except:
             pass
+
+        print("Counting resources in state file...")
+        with open(self.terraform_state_file, "r") as state_file:
+            state_data = json.load(state_file)
+            resources_count = len(state_data["resources"])
+
+        if resources_count != prev_resources_count:
+            print(
+                f'ERROR: number of resources in state file has changed {prev_resources_count} -> {resources_count}')
+        else:
+            print(
+                f'State count {prev_resources_count} -> {resources_count}')
 
     def create_folder(self, folder):
         if os.path.exists(folder):
