@@ -39,58 +39,59 @@ class VPC:
     def vpc(self):
         self.hcl.prepare_folder(os.path.join("generated", "vpc"))
 
-        self.aws_vpc()  # OK
-        self.aws_subnet()  # OK
-        self.aws_default_network_acl()  # OK
-        self.aws_default_route_table()  # OK
-        self.aws_default_security_group()  # OK
+        self.aws_vpc()
+        self.aws_subnet()
+        self.aws_default_network_acl()
+        self.aws_default_route_table()
+        self.aws_default_security_group()
         self.aws_default_vpc()  # terraform drift in force destroy
-        self.aws_default_subnet()  # OK
+        self.aws_default_subnet()
         # self.aws_default_vpc_dhcp_options() # no boto3 filter
         # self.aws_ec2_managed_prefix_list() # Conflicts with aws_ec2_managed_prefix_list_entry
-        self.aws_ec2_network_insights_analysis()  # OK
-        self.aws_ec2_network_insights_path()  # OK
+        self.aws_ec2_network_insights_analysis()
+        self.aws_ec2_network_insights_path()
         self.aws_ec2_subnet_cidr_reservation()  # no records
-        self.aws_ec2_traffic_mirror_filter()  # OK
-        self.aws_ec2_traffic_mirror_filter_rule()  # OK
-        self.aws_ec2_traffic_mirror_session()  # OK
-        self.aws_ec2_traffic_mirror_target()  # OK
-        self.aws_egress_only_internet_gateway()  # OK
-        self.aws_flow_log()  # OK
-        self.aws_internet_gateway()  # OK
-        self.aws_internet_gateway_attachment()  # OK
-        self.aws_main_route_table_association()  # OK
-        self.aws_nat_gateway()  # OK
-        self.aws_network_acl()  # OK
-        self.aws_network_acl_association()  # OK
-        self.aws_network_acl_rule()  # OK
-        self.aws_network_interface()  # OK
-        self.aws_network_interface_attachment()  # OK
-        self.aws_network_interface_sg_attachment()  # OK
-        self.aws_route()  # OK
-        self.aws_route_table()  # OK
-        self.aws_route_table_association()  # OK
-        self.aws_security_group()  # OK
-        self.aws_security_group_rule()  # OK
-        self.aws_vpc_dhcp_options()  # OK
-        self.aws_vpc_dhcp_options_association()  # OK
-        self.aws_vpc_endpoint()  # OK
-        self.aws_vpc_endpoint_connection_accepter()  # OK
-        self.aws_vpc_endpoint_connection_notification()  # OK
-        self.aws_vpc_endpoint_policy()  # OK
-        self.aws_vpc_endpoint_route_table_association()  # OK
-        self.aws_vpc_endpoint_security_group_association()  # OK
-        self.aws_vpc_endpoint_service()  # OK
+        self.aws_ec2_traffic_mirror_filter()
+        self.aws_ec2_traffic_mirror_filter_rule()
+        self.aws_ec2_traffic_mirror_session()
+        self.aws_ec2_traffic_mirror_target()
+        self.aws_egress_only_internet_gateway()
+        self.aws_flow_log()
+        self.aws_internet_gateway()
+        self.aws_internet_gateway_attachment()
+        self.aws_main_route_table_association()
+        self.aws_nat_gateway()
+        self.aws_network_acl()
+        self.aws_network_acl_association()
+        self.aws_network_acl_rule()
+        self.aws_network_interface()
+        self.aws_network_interface_attachment()
+        self.aws_network_interface_sg_attachment()
+        self.aws_route()
+        self.aws_route_table()
+        self.aws_route_table_association()
+        self.aws_security_group()
+        # self.aws_security_group_rule() conflicts with aws_vpc_security_group_egress_rule, and aws_vpc_security_group_ingress_rule
+        self.aws_vpc_dhcp_options()
+        self.aws_vpc_dhcp_options_association()
+        self.aws_vpc_endpoint()
+        self.aws_vpc_endpoint_connection_accepter()
+        self.aws_vpc_endpoint_connection_notification()
+        self.aws_vpc_endpoint_policy()
+        self.aws_vpc_endpoint_route_table_association()
+        # terraform refresh comes empty with resources that are not found in amazon
+        self.aws_vpc_endpoint_security_group_association()
+        self.aws_vpc_endpoint_service()
         self.aws_vpc_endpoint_service_allowed_principal()  # no records
-        self.aws_vpc_endpoint_subnet_association()  # OK
-        self.aws_vpc_ipv4_cidr_block_association()  # OK
+        self.aws_vpc_endpoint_subnet_association()
+        self.aws_vpc_ipv4_cidr_block_association()
         self.aws_vpc_ipv6_cidr_block_association()  # no records
         # self.aws_vpc_network_performance_metric_subscription() #no boto3 lib
-        self.aws_vpc_peering_connection()  # OK
-        self.aws_vpc_peering_connection_accepter()  # OK
-        self.aws_vpc_peering_connection_options()  # OK
-        self.aws_vpc_security_group_egress_rule()  # OK
-        self.aws_vpc_security_group_ingress_rule()  # OK
+        self.aws_vpc_peering_connection()
+        self.aws_vpc_peering_connection_accepter()
+        self.aws_vpc_peering_connection_options()
+        self.aws_vpc_security_group_egress_rule()
+        self.aws_vpc_security_group_ingress_rule()
 
         self.hcl.refresh_state()
         self.hcl.generate_hcl_file()
@@ -798,55 +799,55 @@ class VPC:
             self.hcl.process_resource(
                 "aws_security_group", sg_id.replace("-", "_"), attributes)
 
-    def aws_security_group_rule(self):
-        print("Processing Security Group Rules...")
-        security_groups = self.ec2_client.describe_security_groups()[
-            "SecurityGroups"]
+    # def aws_security_group_rule(self):
+    #     print("Processing Security Group Rules...")
+    #     security_groups = self.ec2_client.describe_security_groups()[
+    #         "SecurityGroups"]
 
-        for sg in security_groups:
-            sg_id = sg["GroupId"]
+    #     for sg in security_groups:
+    #         sg_id = sg["GroupId"]
 
-            for rule in sg["IpPermissions"]:
-                ip_protocol = rule["IpProtocol"]
-                from_port = rule.get("FromPort", "")
-                to_port = rule.get("ToPort", "")
+    #         for rule in sg["IpPermissions"]:
+    #             ip_protocol = rule["IpProtocol"]
+    #             from_port = rule.get("FromPort", "")
+    #             to_port = rule.get("ToPort", "")
 
-                for ip_range in rule["IpRanges"]:
-                    cidr_ip = ip_range["CidrIp"]
-                    print(
-                        f"  Processing Security Group Rule: {sg_id} {ip_protocol} {from_port}-{to_port} {cidr_ip}")
+    #             for ip_range in rule["IpRanges"]:
+    #                 cidr_ip = ip_range["CidrIp"]
+    #                 print(
+    #                     f"  Processing Security Group Rule: {sg_id} {ip_protocol} {from_port}-{to_port} {cidr_ip}")
 
-                    rule_id = f"{sg_id}-{ip_protocol}-{from_port}-{to_port}-{cidr_ip.replace('/', '-')}"
-                    attributes = {
-                        "id": rule_id,
-                        "security_group_id": sg_id,
-                        "type": "ingress",
-                        "protocol": ip_protocol,
-                        "cidr_blocks": [cidr_ip],
-                    }
-                    self.hcl.process_resource(
-                        "aws_security_group_rule", rule_id.replace("-", "_"), attributes)
+    #                 rule_id = f"{sg_id}-{ip_protocol}-{from_port}-{to_port}-{cidr_ip.replace('/', '-')}"
+    #                 attributes = {
+    #                     "id": rule_id,
+    #                     "security_group_id": sg_id,
+    #                     "type": "ingress",
+    #                     "protocol": ip_protocol,
+    #                     "cidr_blocks": [cidr_ip],
+    #                 }
+    #                 self.hcl.process_resource(
+    #                     "aws_security_group_rule", rule_id.replace("-", "_"), attributes)
 
-            for rule in sg["IpPermissionsEgress"]:
-                ip_protocol = rule["IpProtocol"]
-                from_port = rule.get("FromPort", "")
-                to_port = rule.get("ToPort", "")
+    #         for rule in sg["IpPermissionsEgress"]:
+    #             ip_protocol = rule["IpProtocol"]
+    #             from_port = rule.get("FromPort", "")
+    #             to_port = rule.get("ToPort", "")
 
-                for ip_range in rule["IpRanges"]:
-                    cidr_ip = ip_range["CidrIp"]
-                    print(
-                        f"  Processing Security Group Rule: {sg_id} {ip_protocol} {from_port}-{to_port} {cidr_ip}")
+    #             for ip_range in rule["IpRanges"]:
+    #                 cidr_ip = ip_range["CidrIp"]
+    #                 print(
+    #                     f"  Processing Security Group Rule: {sg_id} {ip_protocol} {from_port}-{to_port} {cidr_ip}")
 
-                    rule_id = f"{sg_id}-{ip_protocol}-{from_port}-{to_port}-{cidr_ip.replace('/', '-')}"
-                    attributes = {
-                        "id": rule_id,
-                        "security_group_id": sg_id,
-                        "type": "egress",
-                        "protocol": ip_protocol,
-                        "cidr_blocks": [cidr_ip],
-                    }
-                    self.hcl.process_resource(
-                        "aws_security_group_rule", rule_id.replace("-", "_"), attributes)
+    #                 rule_id = f"{sg_id}-{ip_protocol}-{from_port}-{to_port}-{cidr_ip.replace('/', '-')}"
+    #                 attributes = {
+    #                     "id": rule_id,
+    #                     "security_group_id": sg_id,
+    #                     "type": "egress",
+    #                     "protocol": ip_protocol,
+    #                     "cidr_blocks": [cidr_ip],
+    #                 }
+    #                 self.hcl.process_resource(
+    #                     "aws_security_group_rule", rule_id.replace("-", "_"), attributes)
 
     def aws_vpc_dhcp_options(self):
         print("Processing VPC DHCP Options...")
@@ -880,7 +881,7 @@ class VPC:
                 print(
                     f"  Processing VPC DHCP Options Association: {dhcp_options_id} for VPC: {vpc_id}")
 
-                assoc_id = f"{vpc_id}-{dhcp_options_id}"
+                assoc_id = f"{dhcp_options_id}-{vpc_id}"
                 attributes = {
                     "id": assoc_id,
                     "vpc_id": vpc_id,
@@ -1033,7 +1034,8 @@ class VPC:
         for service in vpc_endpoint_services:
             service_id = service["ServiceId"]
             service_name = service["ServiceName"]
-            print(f"  Processing VPC Endpoint Service: {service_id}")
+            print(
+                f"  Processing VPC Endpoint Service: {service_id} {service_name}")
 
             attributes = {
                 "id": service_id,

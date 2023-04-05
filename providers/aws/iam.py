@@ -191,7 +191,7 @@ class IAM:
                     f"  Processing IAM Instance Profile: {instance_profile_name}")
 
                 attributes = {
-                    "id": instance_profile["InstanceProfileId"],
+                    "id": instance_profile_name,
                     "name": instance_profile_name,
                     "path": instance_profile["Path"],
                     "role": instance_profile["Roles"][0]["RoleName"] if instance_profile["Roles"] else None,

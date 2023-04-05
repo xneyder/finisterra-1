@@ -8,9 +8,9 @@ def main():
     print("Fetching AWS resources using boto3...")
 
     # provider.vpc()
-    # provider.route53()
+    provider.route53()
     # provider.s3()
-    provider.iam()
+    # provider.iam()
 
     print("Finished processing AWS resources.")
 

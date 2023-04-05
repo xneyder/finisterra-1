@@ -37,12 +37,12 @@ class HCL:
                 break
 
         # Check if the resource was found
-        if found:
-            print(
-                f'Resource "{resource_name}" of type "{resource_type}" with ID "{resource_id}" was found in the state.')
-        else:
-            print(
-                f'Resource "{resource_name}" of type "{resource_type}" with ID "{resource_id}" was not found in the state.')
+        # if found:
+        #     print(
+        #         f'Resource "{resource_name}" of type "{resource_type}" with ID "{resource_id}" was found in the state.')
+        # else:
+        #     print(
+        #         f'Resource "{resource_name}" of type "{resource_type}" with ID "{resource_id}" was not found in the state.')
 
         return found
 
@@ -90,6 +90,8 @@ class HCL:
             state_data = json.load(state_file)
 
         for resource in state_data["resources"]:
+            # print(
+            #     f'Processing resource "{resource["name"]}" of type "{resource["type"]}"...')
             attributes = resource["instances"][0]["attributes"]
             resource_type = resource["type"]
             resource_name = resource["name"]
@@ -121,11 +123,11 @@ class HCL:
                     if isinstance(value, list) and not value:
                         return ""
 
-                # Check if the field is in the transform rules
-                is_transformed, transform_str = check_transform_rules(
-                    key, value, resource_type)
-                if is_transformed:
-                    return(f'  {transform_str}')
+                    # Check if the field is in the transform rules
+                    is_transformed, transform_str = check_transform_rules(
+                        key, value, resource_type)
+                    if is_transformed:
+                        return(f'  {transform_str}')
 
                 return f'{quote_string(key)}={convert_value(value)}\n'
 
@@ -159,7 +161,7 @@ class HCL:
                         for block in value:
                             # validate if a field in the block is empty
                             if not validate_block(key, block, resource_type):
-                                return return_str
+                                return is_block, return_str
                             return_str += (f'  {quote_string(key)} {{\n')
                             for block_key, block_value in block.items():
                                 # Ignore is key is computed and handled the exception
@@ -202,7 +204,8 @@ class HCL:
                         hcl_prefix = self.transform_rules[resource_type]['hcl_prefix']
                         if key in hcl_prefix:
                             return_str += (
-                                f'{quote_string(key)}="{hcl_prefix[key]}{value}"\n')
+                                f'{process_key(key, hcl_prefix[key]+value, False)}')
+                            # f'{quote_string(key)}="{hcl_prefix[key]}{value}"\n')
                             is_transformed = True
                     if 'hcl_json_multiline' in self.transform_rules[resource_type]:
                         hcl_json_multiline = self.transform_rules[resource_type]['hcl_json_multiline']
@@ -234,7 +237,6 @@ class HCL:
                 hcl_output.write(
                     f'resource "{resource_type}" "{resource_name}" {{\n')
                 for key, value in attributes.items():
-
                     # Ignore is key is computed and handled the exception
                     try:
                         if schema_attributes[key]['computed']:
@@ -271,15 +273,23 @@ class HCL:
             self.replace_special_chars(resource_name))
         # search if resource exists in the state
         if not self.search_state_file(resource_type, resource_name, resource_id):
-            print("Importing resource...")
+            # print("Importing resource...")
             self.create_state_file(resource_type, resource_name, attributes)
+
+    def count_state(self):
+        resource_count = {}
+        with open(self.terraform_state_file, "r") as state_file:
+            state_data = json.load(state_file)
+            for resource in state_data["resources"]:
+                if resource["type"] in resource_count:
+                    resource_count[resource["type"]] += 1
+                else:
+                    resource_count[resource["type"]] = 1
+        return resource_count
 
     def refresh_state(self):
         # count resources in state file
-        print("Counting resources in state file...")
-        with open(self.terraform_state_file, "r") as state_file:
-            state_data = json.load(state_file)
-            prev_resources_count = len(state_data["resources"])
+        prev_resources_count = self.count_state()
 
         print("Refreshing state...")
         subprocess.run(["terraform", "refresh"], check=True)
@@ -294,12 +304,17 @@ class HCL:
             state_data = json.load(state_file)
             resources_count = len(state_data["resources"])
 
-        if resources_count != prev_resources_count:
-            print(
-                f'ERROR: number of resources in state file has changed {prev_resources_count} -> {resources_count}')
-        else:
-            print(
-                f'State count {prev_resources_count} -> {resources_count}')
+        resources_count = self.count_state()
+        for resource in prev_resources_count:
+            if resource not in resources_count:
+                print(
+                    f'ERROR: {resource} number of resources in state file has changed {prev_resources_count[resource]} -> 0')
+            elif prev_resources_count[resource] != resources_count[resource]:
+                print(
+                    f'ERROR: {resource} number of resources in state file has changed {prev_resources_count[resource]} -> {resources_count[resource]}')
+            else:
+                print(
+                    f'{resource} State count {prev_resources_count[resource]} -> {resources_count[resource]}')
 
     def create_folder(self, folder):
         if os.path.exists(folder):

@@ -38,11 +38,11 @@ class Route53:
         # self.aws_route53_traffic_policy() #Compilation errors
         # self.aws_route53_traffic_policy_instance() #Compilation errors
         self.aws_route53_vpc_association_authorization()
-        self.aws_route53_zone()
+        # self.aws_route53_zone()
         self.aws_route53_zone_association()
 
-        self.hcl.refresh_state()
-        self.hcl.generate_hcl_file()
+        # self.hcl.refresh_state()
+        # self.hcl.generate_hcl_file()
 
     def aws_route53_delegation_set(self):
         print("Processing Route53 Delegation Sets...")
