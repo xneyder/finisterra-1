@@ -7,10 +7,11 @@ from providers.aws.Aws import Aws
 def main():
     print("Fetching AWS resources using boto3...")
 
-    # provider.vpc()
-    provider.route53()
-    # provider.s3()
     # provider.iam()
+    # provider.vpc()
+    # provider.route53()
+    # provider.s3()
+    provider.acm()
 
     print("Finished processing AWS resources.")
 

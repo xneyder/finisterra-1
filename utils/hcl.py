@@ -129,6 +129,13 @@ class HCL:
                     if is_transformed:
                         return(f'  {transform_str}')
 
+                    # Ignore is key is computed and handled the exception
+                    try:
+                        if schema_attributes[key]['computed']:
+                            return ""
+                    except:
+                        pass
+
                 return f'{quote_string(key)}={convert_value(value)}\n'
 
             def quote_string(s):
@@ -237,12 +244,6 @@ class HCL:
                 hcl_output.write(
                     f'resource "{resource_type}" "{resource_name}" {{\n')
                 for key, value in attributes.items():
-                    # Ignore is key is computed and handled the exception
-                    try:
-                        if schema_attributes[key]['computed']:
-                            continue
-                    except:
-                        pass
 
                     is_block, block_str = process_block_type(
                         key, value, schema_block_types, resource_type)

@@ -38,11 +38,11 @@ class Route53:
         # self.aws_route53_traffic_policy() #Compilation errors
         # self.aws_route53_traffic_policy_instance() #Compilation errors
         self.aws_route53_vpc_association_authorization()
-        # self.aws_route53_zone()
+        self.aws_route53_zone()
         self.aws_route53_zone_association()
 
-        # self.hcl.refresh_state()
-        # self.hcl.generate_hcl_file()
+        self.hcl.refresh_state()
+        self.hcl.generate_hcl_file()
 
     def aws_route53_delegation_set(self):
         print("Processing Route53 Delegation Sets...")
@@ -206,7 +206,8 @@ class Route53:
                     record_sets = record_page["ResourceRecordSets"]
 
                     for record in record_sets:
-                        record_name = record["Name"].rsplit(".", 1)[0]
+                        record_name = record["Name"].rsplit(
+                            ".", 1)[0].replace("\\052", "*")
                         record_type = record["Type"]
 
                         record_id = f"{hosted_zone_id}-{record_name}-{record_type}"
