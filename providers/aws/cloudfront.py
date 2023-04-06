@@ -4,7 +4,7 @@ from utils.hcl import HCL
 
 class CloudFront:
     def __init__(self, cloudfront_client, script_dir, provider_name, schema_data, region):
-        self.cloudfront_client = self.cloudfront_client_client
+        self.cloudfront_client = cloudfront_client
         self.transform_rules = {}
         self.provider_name = provider_name
         self.script_dir = script_dir
@@ -16,15 +16,29 @@ class CloudFront:
     def cloudfront(self):
         self.hcl.prepare_folder(os.path.join("generated", "cloudfront"))
 
+        self.aws_cloudfront_cache_policy()
+        self.aws_cloudfront_distribution()
+        self.aws_cloudfront_field_level_encryption_config()
+        self.aws_cloudfront_field_level_encryption_profile()
+        self.aws_cloudfront_function()
+        self.aws_cloudfront_key_group()
+        self.aws_cloudfront_monitoring_subscription()
+        # self.aws_cloudfront_origin_access_control()  # No API from AWS
+        self.aws_cloudfront_origin_access_identity()
+        self.aws_cloudfront_origin_request_policy()
+        self.aws_cloudfront_public_key()
+        self.aws_cloudfront_realtime_log_config()
+        self.aws_cloudfront_response_headers_policy()
+
         self.hcl.refresh_state()
         self.hcl.generate_hcl_file()
 
     def aws_cloudfront_cache_policy(self):
         print("Processing CloudFront Cache Policies...")
 
-        paginator = self.cloudfront_client.get_paginator("list_cache_policies")
-        for page in paginator.paginate(Type="custom"):
-            for cache_policy_summary in page["CachePolicyList"]["Items"]:
+        response = self.cloudfront_client.list_cache_policies(Type="custom")
+        if "CachePolicyList" in response and "Items" in response["CachePolicyList"]:
+            for cache_policy_summary in response["CachePolicyList"]["Items"]:
                 cache_policy = cache_policy_summary["CachePolicy"]
                 cache_policy_id = cache_policy["Id"]
                 print(
@@ -60,10 +74,9 @@ class CloudFront:
     def aws_cloudfront_field_level_encryption_config(self):
         print("Processing CloudFront Field-Level Encryption Configs...")
 
-        paginator = self.cloudfront_client.get_paginator(
-            "list_field_level_encryption_configs")
-        for page in paginator.paginate():
-            for config_summary in page["FieldLevelEncryptionList"]["Items"]:
+        response = self.cloudfront_client.list_field_level_encryption_configs()
+        if "FieldLevelEncryptionList" in response and "Items" in response["FieldLevelEncryptionList"]:
+            for config_summary in response["FieldLevelEncryptionList"]["Items"]:
                 config_id = config_summary["Id"]
                 print(
                     f"  Processing CloudFront Field-Level Encryption Config: {config_id}")
@@ -78,10 +91,9 @@ class CloudFront:
     def aws_cloudfront_field_level_encryption_profile(self):
         print("Processing CloudFront Field-Level Encryption Profiles...")
 
-        paginator = self.cloudfront_client.get_paginator(
-            "list_field_level_encryption_profiles")
-        for page in paginator.paginate():
-            for profile_summary in page["FieldLevelEncryptionProfileList"]["Items"]:
+        response = self.cloudfront_client.list_field_level_encryption_profiles()
+        if "FieldLevelEncryptionProfileList" in response and "Items" in response["FieldLevelEncryptionProfileList"]:
+            for profile_summary in response["FieldLevelEncryptionProfileList"]["Items"]:
                 profile_id = profile_summary["Id"]
                 print(
                     f"  Processing CloudFront Field-Level Encryption Profile: {profile_id}")
@@ -92,6 +104,44 @@ class CloudFront:
 
                 self.hcl.process_resource(
                     "aws_cloudfront_field_level_encryption_profile", profile_id.replace("-", "_"), attributes)
+
+    def aws_cloudfront_function(self):
+        print("Processing CloudFront Functions...")
+
+        response = self.cloudfront_client.list_functions()
+        if "FunctionSummaryList" in response:
+            for function_summary in response["FunctionSummaryList"]:
+                function_arn = function_summary["FunctionMetadata"]["FunctionARN"]
+                function_name = function_summary["FunctionConfig"]["Name"]
+
+                print(f"  Processing CloudFront Function: {function_name}")
+
+                attributes = {
+                    "id": function_arn,
+                    "name": function_name,
+                }
+
+                self.hcl.process_resource(
+                    "aws_cloudfront_function", function_name.replace("-", "_"), attributes)
+
+    def aws_cloudfront_key_group(self):
+        print("Processing CloudFront Key Groups...")
+
+        response = self.cloudfront_client.list_key_groups()
+        if "KeyGroupList" in response and "Items" in response["KeyGroupList"]:
+            for key_group in response["KeyGroupList"]["Items"]:
+                key_group_id = key_group["KeyGroup"]["Id"]
+                key_group_name = key_group["KeyGroup"]["KeyGroupName"]
+
+                print(f"  Processing CloudFront Key Group: {key_group_name}")
+
+                attributes = {
+                    "id": key_group_id,
+                    "name": key_group_name,
+                }
+
+                self.hcl.process_resource(
+                    "aws_cloudfront_key_group", key_group_id.replace("-", "_"), attributes)
 
     def aws_cloudfront_monitoring_subscription(self):
         print("Processing CloudFront Monitoring Subscriptions...")
@@ -136,12 +186,6 @@ class CloudFront:
 
                 self.hcl.process_resource(
                     "aws_cloudfront_origin_access_identity", oai_id.replace("-", "_"), attributes)
-
-    # def aws_cloudfront_origin_access_control(self):
-    #     print("Processing CloudFront Origin Access Controls...")
-
-    #     # AWS CloudFront does not provide a specific API to describe Origin Access Controls,
-    #     # but you can extract the required information from the CloudFront distribution configuration.
 
     def aws_cloudfront_origin_request_policy(self):
         print("Processing CloudFront Origin Request Policies...")
