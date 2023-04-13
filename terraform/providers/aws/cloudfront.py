@@ -1,3 +1,4 @@
+import botocore
 import os
 from utils.hcl import HCL
 
@@ -152,20 +153,27 @@ class CloudFront:
                 distribution_id = distribution_summary["Id"]
                 distribution_arn = distribution_summary["ARN"]
 
-                monitoring_subscription = self.cloudfront_client.get_monitoring_subscription(
-                    DistributionId=distribution_id)["MonitoringSubscription"]
+                try:
+                    monitoring_subscription = self.cloudfront_client.get_monitoring_subscription(
+                        DistributionId=distribution_id)["MonitoringSubscription"]
 
-                if monitoring_subscription.get("RealtimeMetricsSubscriptionConfig"):
-                    print(
-                        f"  Processing CloudFront Monitoring Subscription: {distribution_id}")
+                    if monitoring_subscription.get("RealtimeMetricsSubscriptionConfig"):
+                        print(
+                            f"  Processing CloudFront Monitoring Subscription: {distribution_id}")
 
-                    attributes = {
-                        "id": distribution_id,
-                        "distribution_arn": distribution_arn,
-                    }
+                        attributes = {
+                            "id": distribution_id,
+                            "distribution_arn": distribution_arn,
+                        }
 
-                    self.hcl.process_resource(
-                        "aws_cloudfront_monitoring_subscription", distribution_id.replace("-", "_"), attributes)
+                        self.hcl.process_resource(
+                            "aws_cloudfront_monitoring_subscription", distribution_id.replace("-", "_"), attributes)
+                except botocore.exceptions.ClientError as e:
+                    if e.response['Error']['Code'] == 'NoSuchMonitoringSubscription':
+                        print(
+                            f"No monitoring subscription found for distribution: {distribution_id}")
+                    else:
+                        raise
 
     def aws_cloudfront_origin_access_identity(self):
         print("Processing CloudFront Origin Access Identities...")
