@@ -219,7 +219,7 @@ class Aws:
            self.schema_data, self.region).es()
 
     def elasticache(self):
-        elasticache_client = self.selasticachesion.client(
+        elasticache_client = self.session.client(
             "elasticache", region_name=self.region)
 
         Elasticache(elasticache_client, self.script_dir, self.provider_name,

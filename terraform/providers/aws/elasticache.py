@@ -5,7 +5,21 @@ from utils.hcl import HCL
 class Elasticache:
     def __init__(self, elasticache_client, script_dir, provider_name, schema_data, region):
         self.elasticache_client = elasticache_client
-        self.transform_rules = {}
+        self.transform_rules = {
+            "aws_elasticache_replication_group": {
+                "hcl_keep_fields": {"description": True},
+            },
+            "aws_elasticache_cluster": {
+                "hcl_keep_fields": {"engine": True},
+            },
+            "aws_elasticache_user": {
+                "hcl_transform_fields": {
+                    "engine": {'source': 'redis', 'target': 'REDIS'},
+                },
+                "hcl_drop_blocks": {"authentication_mode": {"type": "no-password"}},
+
+            },
+        }
         self.provider_name = provider_name
         self.script_dir = script_dir
         self.schema_data = schema_data
@@ -20,7 +34,8 @@ class Elasticache:
         self.aws_elasticache_global_replication_group()
         self.aws_elasticache_parameter_group()
         self.aws_elasticache_replication_group()
-        self.aws_elasticache_security_group()
+        if "gov" not in self.region:
+            self.aws_elasticache_security_group()
         self.aws_elasticache_subnet_group()
         self.aws_elasticache_user()
         self.aws_elasticache_user_group()
@@ -208,15 +223,19 @@ class Elasticache:
             for replication_group in page["ReplicationGroups"]:
                 replication_group_id = replication_group["ReplicationGroupId"]
 
-                for user_group_id in replication_group["UserGroupIds"]:
+                if "UserGroupIds" in replication_group:
+                    for user_group_id in replication_group["UserGroupIds"]:
+                        print(
+                            f"  Processing ElastiCache User Group Association: {replication_group_id} - {user_group_id}")
+
+                        attributes = {
+                            "id": f"{replication_group_id}:{user_group_id}",
+                            "replication_group_id": replication_group_id,
+                            "user_group_id": user_group_id,
+                        }
+
+                        self.hcl.process_resource(
+                            "aws_elasticache_user_group_association", f"{replication_group_id}_{user_group_id}", attributes)
+                else:
                     print(
-                        f"  Processing ElastiCache User Group Association: {replication_group_id} - {user_group_id}")
-
-                    attributes = {
-                        "id": f"{replication_group_id}:{user_group_id}",
-                        "replication_group_id": replication_group_id,
-                        "user_group_id": user_group_id,
-                    }
-
-                    self.hcl.process_resource(
-                        "aws_elasticache_user_group_association", f"{replication_group_id}_{user_group_id}", attributes)
+                        f"  No User Group Associations found for ElastiCache Replication Group: {replication_group_id}")
