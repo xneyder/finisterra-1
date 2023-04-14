@@ -22,11 +22,13 @@ class S3:
         self.hcl.prepare_folder(os.path.join("generated", "s3"))
 
         self.aws_s3_bucket()
-        self.aws_s3_bucket_accelerate_configuration()
+        if "gov" not in self.region:
+            self.aws_s3_bucket_accelerate_configuration()
+            self.aws_s3_bucket_intelligent_tiering_configuration()
+
         self.aws_s3_bucket_acl()
         self.aws_s3_bucket_analytics_configuration()
         self.aws_s3_bucket_cors_configuration()
-        self.aws_s3_bucket_intelligent_tiering_configuration()
         self.aws_s3_bucket_inventory()
         self.aws_s3_bucket_lifecycle_configuration()
         self.aws_s3_bucket_logging()
@@ -617,24 +619,24 @@ class S3:
 
                 attributes = {
                     "id": bucket_name,
-                    "bucket": bucket_name,
+                    # "bucket": bucket_name,
                 }
 
-                if "IndexDocument" in website_config:
-                    attributes["index_document"] = website_config["IndexDocument"]["Suffix"]
+                # if "IndexDocument" in website_config:
+                #     attributes["index_document"] = website_config["IndexDocument"]["Suffix"]
 
-                if "ErrorDocument" in website_config:
-                    attributes["error_document"] = website_config["ErrorDocument"]["Key"]
+                # if "ErrorDocument" in website_config:
+                #     attributes["error_document"] = website_config["ErrorDocument"]["Key"]
 
-                if "RedirectAllRequestsTo" in website_config:
-                    attributes["redirect_all_requests_to"] = {
-                        "hostname": website_config["RedirectAllRequestsTo"]["HostName"],
-                        "protocol": website_config["RedirectAllRequestsTo"]["Protocol"],
-                    }
+                # if "RedirectAllRequestsTo" in website_config:
+                #     attributes["redirect_all_requests_to"] = {
+                #         "hostname": website_config["RedirectAllRequestsTo"]["HostName"],
+                #         "protocol": website_config["RedirectAllRequestsTo"]["Protocol"],
+                #     }
 
-                if "RoutingRules" in website_config:
-                    attributes["routing_rules"] = json.dumps(
-                        website_config["RoutingRules"])
+                # if "RoutingRules" in website_config:
+                #     attributes["routing_rules"] = json.dumps(
+                #         website_config["RoutingRules"])
 
                 self.hcl.process_resource(
                     "aws_s3_bucket_website_configuration", bucket_name.replace("-", "_"), attributes)

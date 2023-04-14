@@ -17,19 +17,20 @@ class CloudFront:
     def cloudfront(self):
         self.hcl.prepare_folder(os.path.join("generated", "cloudfront"))
 
-        self.aws_cloudfront_cache_policy()
-        self.aws_cloudfront_distribution()
-        self.aws_cloudfront_field_level_encryption_config()
-        self.aws_cloudfront_field_level_encryption_profile()
-        self.aws_cloudfront_function()
-        self.aws_cloudfront_key_group()
-        self.aws_cloudfront_monitoring_subscription()
-        # self.aws_cloudfront_origin_access_control()  # No API from AWS
-        self.aws_cloudfront_origin_access_identity()
-        self.aws_cloudfront_origin_request_policy()
-        self.aws_cloudfront_public_key()
-        self.aws_cloudfront_realtime_log_config()
-        self.aws_cloudfront_response_headers_policy()
+        if "gov" not in self.region:
+            self.aws_cloudfront_cache_policy()
+            self.aws_cloudfront_distribution()
+            self.aws_cloudfront_field_level_encryption_config()
+            self.aws_cloudfront_field_level_encryption_profile()
+            self.aws_cloudfront_function()
+            self.aws_cloudfront_key_group()
+            self.aws_cloudfront_monitoring_subscription()
+            # self.aws_cloudfront_origin_access_control()  # No API from AWS
+            self.aws_cloudfront_origin_access_identity()
+            self.aws_cloudfront_origin_request_policy()
+            self.aws_cloudfront_public_key()
+            self.aws_cloudfront_realtime_log_config()
+            self.aws_cloudfront_response_headers_policy()
 
         self.hcl.refresh_state()
         self.hcl.generate_hcl_file()
@@ -197,25 +198,24 @@ class CloudFront:
 
     def aws_cloudfront_origin_request_policy(self):
         print("Processing CloudFront Origin Request Policies...")
-        paginator = self.cloudfront_client.get_paginator(
-            "list_origin_request_policies")
 
-        for page in paginator.paginate():
-            for policy_summary in page["OriginRequestPolicies"]["Items"]:
-                policy_id = policy_summary["Id"]
-                print(
-                    f"  Processing CloudFront Origin Request Policy: {policy_id}")
+        response = self.cloudfront_client.list_origin_request_policies()
 
-                policy = self.cloudfront_client.get_origin_request_policy(
-                    Id=policy_id)["OriginRequestPolicy"]
-                attributes = {
-                    "id": policy_id,
-                    "name": policy["OriginRequestPolicyConfig"]["Name"],
-                    "comment": policy["OriginRequestPolicyConfig"].get("Comment", ""),
-                    # Add other required attributes as needed
-                }
-                self.hcl.process_resource(
-                    "aws_cloudfront_origin_request_policy", policy_id.replace("-", "_"), attributes)
+        for policy_summary in response["OriginRequestPolicies"]["Items"]:
+            policy_id = policy_summary["Id"]
+            print(
+                f"  Processing CloudFront Origin Request Policy: {policy_id}")
+
+            policy = self.cloudfront_client.get_origin_request_policy(
+                Id=policy_id)["OriginRequestPolicy"]
+            attributes = {
+                "id": policy_id,
+                "name": policy["OriginRequestPolicyConfig"]["Name"],
+                "comment": policy["OriginRequestPolicyConfig"].get("Comment", ""),
+                # Add other required attributes as needed
+            }
+            self.hcl.process_resource(
+                "aws_cloudfront_origin_request_policy", policy_id.replace("-", "_"), attributes)
 
     def aws_cloudfront_public_key(self):
         print("Processing CloudFront Public Keys...")

@@ -1,254 +1,392 @@
-resource "aws_s3_bucket_acl" "config_bucket_169684386827" {
+resource "aws_s3_bucket_acl" "allogy_gov_bundles" {
   access_control_policy {
     grant {
       grantee {
-        id   = "56f15421f68015754caba7955d10de3c12682d1085cc26698243bc8771fd62f0"
         type = "CanonicalUser"
       }
       permission = "FULL_CONTROL"
     }
     owner {
-      id = "56f15421f68015754caba7955d10de3c12682d1085cc26698243bc8771fd62f0"
     }
   }
-  bucket = "config-bucket-169684386827"
+  bucket = "allogy-gov-bundles"
 }
 
-resource "aws_s3_bucket_acl" "databeach_hackathon" {
+resource "aws_s3_bucket_acl" "allogy_gov_cloudformation_files" {
   access_control_policy {
     grant {
       grantee {
-        id   = "56f15421f68015754caba7955d10de3c12682d1085cc26698243bc8771fd62f0"
         type = "CanonicalUser"
       }
       permission = "FULL_CONTROL"
     }
     owner {
-      id = "56f15421f68015754caba7955d10de3c12682d1085cc26698243bc8771fd62f0"
     }
   }
-  bucket = "databeach-hackathon"
+  bucket = "allogy-gov-cloudformation-files"
 }
 
-resource "aws_s3_bucket_acl" "dev_posthog_lambda_edge" {
+resource "aws_s3_bucket_acl" "allogy_gov_contents" {
   access_control_policy {
     grant {
       grantee {
-        id   = "56f15421f68015754caba7955d10de3c12682d1085cc26698243bc8771fd62f0"
         type = "CanonicalUser"
       }
       permission = "FULL_CONTROL"
     }
     owner {
-      id = "56f15421f68015754caba7955d10de3c12682d1085cc26698243bc8771fd62f0"
     }
   }
-  bucket = "dev-posthog-lambda-edge"
+  bucket = "allogy-gov-contents"
 }
 
-resource "aws_s3_bucket_acl" "posthog_cloud_billing_dev_us_east_1_cdn_logs" {
+resource "aws_s3_bucket_acl" "allogy_gov_creator_web_ui" {
   access_control_policy {
     grant {
       grantee {
-        id   = "56f15421f68015754caba7955d10de3c12682d1085cc26698243bc8771fd62f0"
-        type = "CanonicalUser"
-      }
-      permission = "FULL_CONTROL"
-    }
-    grant {
-      grantee {
-        id   = "c4c1ede66af53448b93c283ce9448c4ba468c9432aa01d700d3878632f77d2d0"
         type = "CanonicalUser"
       }
       permission = "FULL_CONTROL"
     }
     owner {
-      id = "56f15421f68015754caba7955d10de3c12682d1085cc26698243bc8771fd62f0"
     }
   }
-  bucket = "posthog-cloud-billing-dev-us-east-1-cdn-logs"
+  bucket = "allogy-gov-creator-web-ui"
 }
 
-resource "aws_s3_bucket_acl" "posthog_cloud_dev_us_east_1_app_assets" {
+resource "aws_s3_bucket_acl" "allogy_gov_email" {
   access_control_policy {
     grant {
       grantee {
-        id   = "56f15421f68015754caba7955d10de3c12682d1085cc26698243bc8771fd62f0"
         type = "CanonicalUser"
       }
       permission = "FULL_CONTROL"
     }
     owner {
-      id = "56f15421f68015754caba7955d10de3c12682d1085cc26698243bc8771fd62f0"
     }
   }
-  bucket = "posthog-cloud-dev-us-east-1-app-assets"
+  bucket = "allogy-gov-email"
 }
 
-resource "aws_s3_bucket_acl" "posthog_cloud_dev_us_east_1_cdn_logs" {
+resource "aws_s3_bucket_acl" "allogy_gov_instructor_web_ui" {
   access_control_policy {
     grant {
       grantee {
-        id   = "56f15421f68015754caba7955d10de3c12682d1085cc26698243bc8771fd62f0"
-        type = "CanonicalUser"
-      }
-      permission = "FULL_CONTROL"
-    }
-    grant {
-      grantee {
-        id   = "c4c1ede66af53448b93c283ce9448c4ba468c9432aa01d700d3878632f77d2d0"
         type = "CanonicalUser"
       }
       permission = "FULL_CONTROL"
     }
     owner {
-      id = "56f15421f68015754caba7955d10de3c12682d1085cc26698243bc8771fd62f0"
     }
   }
-  bucket = "posthog-cloud-dev-us-east-1-cdn-logs"
+  bucket = "allogy-gov-instructor-web-ui"
 }
 
-resource "aws_s3_bucket_acl" "posthog_cloud_dev_us_east_1_flow_logs" {
+resource "aws_s3_bucket_acl" "allogy_gov_integration_test" {
   access_control_policy {
     grant {
       grantee {
-        id   = "56f15421f68015754caba7955d10de3c12682d1085cc26698243bc8771fd62f0"
         type = "CanonicalUser"
       }
       permission = "FULL_CONTROL"
     }
     owner {
-      id = "56f15421f68015754caba7955d10de3c12682d1085cc26698243bc8771fd62f0"
     }
   }
-  bucket = "posthog-cloud-dev-us-east-1-flow-logs"
+  bucket = "allogy-gov-integration-test"
 }
 
-resource "aws_s3_bucket_acl" "posthog_cloud_dev_us_east_1_lb_logs" {
+resource "aws_s3_bucket_acl" "allogy_gov_integration_test_public" {
   access_control_policy {
     grant {
       grantee {
-        id   = "56f15421f68015754caba7955d10de3c12682d1085cc26698243bc8771fd62f0"
         type = "CanonicalUser"
       }
       permission = "FULL_CONTROL"
     }
     owner {
-      id = "56f15421f68015754caba7955d10de3c12682d1085cc26698243bc8771fd62f0"
     }
   }
-  bucket = "posthog-cloud-dev-us-east-1-lb-logs"
+  bucket = "allogy-gov-integration-test-public"
 }
 
-resource "aws_s3_bucket_acl" "posthog_cloud_dev_us_east_1_loki" {
+resource "aws_s3_bucket_acl" "allogy_gov_learner_web_ui" {
   access_control_policy {
     grant {
       grantee {
-        id   = "56f15421f68015754caba7955d10de3c12682d1085cc26698243bc8771fd62f0"
         type = "CanonicalUser"
       }
       permission = "FULL_CONTROL"
     }
     owner {
-      id = "56f15421f68015754caba7955d10de3c12682d1085cc26698243bc8771fd62f0"
     }
   }
-  bucket = "posthog-cloud-dev-us-east-1-loki"
+  bucket = "allogy-gov-learner-web-ui"
 }
 
-resource "aws_s3_bucket_acl" "posthog_cloud_dev_us_east_1_msk_logs" {
+resource "aws_s3_bucket_acl" "allogy_gov_learning_image" {
   access_control_policy {
     grant {
       grantee {
-        id   = "56f15421f68015754caba7955d10de3c12682d1085cc26698243bc8771fd62f0"
         type = "CanonicalUser"
       }
       permission = "FULL_CONTROL"
     }
     owner {
-      id = "56f15421f68015754caba7955d10de3c12682d1085cc26698243bc8771fd62f0"
     }
   }
-  bucket = "posthog-cloud-dev-us-east-1-msk-logs"
+  bucket = "allogy-gov-learning-image"
 }
 
-resource "aws_s3_bucket_acl" "posthog_cloud_dev_us_east_1_static_assets" {
+resource "aws_s3_bucket_acl" "allogy_gov_learning_image_distribution" {
   access_control_policy {
     grant {
       grantee {
-        id   = "56f15421f68015754caba7955d10de3c12682d1085cc26698243bc8771fd62f0"
         type = "CanonicalUser"
       }
       permission = "FULL_CONTROL"
     }
     owner {
-      id = "56f15421f68015754caba7955d10de3c12682d1085cc26698243bc8771fd62f0"
     }
   }
-  bucket = "posthog-cloud-dev-us-east-1-static-assets"
+  bucket = "allogy-gov-learning-image-distribution"
 }
 
-resource "aws_s3_bucket_acl" "posthog_cloud_terraform_dev_us_east_1" {
+resource "aws_s3_bucket_acl" "allogy_gov_learning_media" {
   access_control_policy {
     grant {
       grantee {
-        id   = "56f15421f68015754caba7955d10de3c12682d1085cc26698243bc8771fd62f0"
         type = "CanonicalUser"
       }
       permission = "FULL_CONTROL"
     }
     owner {
-      id = "56f15421f68015754caba7955d10de3c12682d1085cc26698243bc8771fd62f0"
     }
   }
-  bucket = "posthog-cloud-terraform-dev-us-east-1"
+  bucket = "allogy-gov-learning-media"
 }
 
-resource "aws_s3_bucket_acl" "posthog_s3disk" {
+resource "aws_s3_bucket_acl" "allogy_gov_learning_media_distribution" {
   access_control_policy {
     grant {
       grantee {
-        id   = "56f15421f68015754caba7955d10de3c12682d1085cc26698243bc8771fd62f0"
         type = "CanonicalUser"
       }
       permission = "FULL_CONTROL"
     }
     owner {
-      id = "56f15421f68015754caba7955d10de3c12682d1085cc26698243bc8771fd62f0"
     }
   }
-  bucket = "posthog-s3disk"
+  bucket = "allogy-gov-learning-media-distribution"
 }
 
-resource "aws_s3_bucket_acl" "test_vpc_pr_1378_flow_logs" {
+resource "aws_s3_bucket_acl" "allogy_gov_learning_pdf" {
   access_control_policy {
     grant {
       grantee {
-        id   = "56f15421f68015754caba7955d10de3c12682d1085cc26698243bc8771fd62f0"
         type = "CanonicalUser"
       }
       permission = "FULL_CONTROL"
     }
     owner {
-      id = "56f15421f68015754caba7955d10de3c12682d1085cc26698243bc8771fd62f0"
     }
   }
-  bucket = "test-vpc-pr-1378-flow-logs"
+  bucket = "allogy-gov-learning-pdf"
 }
 
-resource "aws_s3_bucket_acl" "xvello_export_test" {
+resource "aws_s3_bucket_acl" "allogy_gov_market_service" {
   access_control_policy {
     grant {
       grantee {
-        id   = "56f15421f68015754caba7955d10de3c12682d1085cc26698243bc8771fd62f0"
         type = "CanonicalUser"
       }
       permission = "FULL_CONTROL"
     }
     owner {
-      id = "56f15421f68015754caba7955d10de3c12682d1085cc26698243bc8771fd62f0"
     }
   }
-  bucket = "xvello-export-test"
+  bucket = "allogy-gov-market-service"
+}
+
+resource "aws_s3_bucket_acl" "allogy_gov_person_images_scaled" {
+  access_control_policy {
+    grant {
+      grantee {
+        type = "CanonicalUser"
+      }
+      permission = "FULL_CONTROL"
+    }
+    owner {
+    }
+  }
+  bucket = "allogy-gov-person-images-scaled"
+}
+
+resource "aws_s3_bucket_acl" "allogy_gov_person_images_upload" {
+  access_control_policy {
+    grant {
+      grantee {
+        type = "CanonicalUser"
+      }
+      permission = "FULL_CONTROL"
+    }
+    owner {
+    }
+  }
+  bucket = "allogy-gov-person-images-upload"
+}
+
+resource "aws_s3_bucket_acl" "allogy_gov_tenant_admin_web_ui" {
+  access_control_policy {
+    grant {
+      grantee {
+        type = "CanonicalUser"
+      }
+      permission = "FULL_CONTROL"
+    }
+    owner {
+    }
+  }
+  bucket = "allogy-gov-tenant-admin-web-ui"
+}
+
+resource "aws_s3_bucket_acl" "allogy_gov_tenant_configurations" {
+  access_control_policy {
+    grant {
+      grantee {
+        type = "CanonicalUser"
+      }
+      permission = "FULL_CONTROL"
+    }
+    owner {
+    }
+  }
+  bucket = "allogy-gov-tenant-configurations"
+}
+
+resource "aws_s3_bucket_acl" "allogy_gov_web_services" {
+  access_control_policy {
+    grant {
+      grantee {
+        type = "CanonicalUser"
+      }
+      permission = "FULL_CONTROL"
+    }
+    owner {
+    }
+  }
+  bucket = "allogy-gov-web-services"
+}
+
+resource "aws_s3_bucket_acl" "allogy_govcloud_import" {
+  access_control_policy {
+    grant {
+      grantee {
+        type = "CanonicalUser"
+      }
+      permission = "FULL_CONTROL"
+    }
+    owner {
+    }
+  }
+  bucket = "allogy-govcloud-import"
+}
+
+resource "aws_s3_bucket_acl" "aws_glue_assets_050779347855_us_gov_west_1" {
+  access_control_policy {
+    grant {
+      grantee {
+        type = "CanonicalUser"
+      }
+      permission = "FULL_CONTROL"
+    }
+    owner {
+    }
+  }
+  bucket = "aws-glue-assets-050779347855-us-gov-west-1"
+}
+
+resource "aws_s3_bucket_acl" "aws_glue_scripts_050779347855_us_gov_west_1" {
+  access_control_policy {
+    grant {
+      grantee {
+        type = "CanonicalUser"
+      }
+      permission = "FULL_CONTROL"
+    }
+    owner {
+    }
+  }
+  bucket = "aws-glue-scripts-050779347855-us-gov-west-1"
+}
+
+resource "aws_s3_bucket_acl" "aws_glue_temporary_050779347855_us_gov_west_1" {
+  access_control_policy {
+    grant {
+      grantee {
+        type = "CanonicalUser"
+      }
+      permission = "FULL_CONTROL"
+    }
+    owner {
+    }
+  }
+  bucket = "aws-glue-temporary-050779347855-us-gov-west-1"
+}
+
+resource "aws_s3_bucket_acl" "cf_templates_1bohskxf0k9l4_us_gov_west_1" {
+  access_control_policy {
+    grant {
+      grantee {
+        type = "CanonicalUser"
+      }
+      permission = "FULL_CONTROL"
+    }
+    owner {
+    }
+  }
+  bucket = "cf-templates-1bohskxf0k9l4-us-gov-west-1"
+}
+
+resource "aws_s3_bucket_acl" "elasticbeanstalk_us_gov_west_1_050779347855" {
+  access_control_policy {
+    grant {
+      grantee {
+        type = "CanonicalUser"
+      }
+      permission = "FULL_CONTROL"
+    }
+    owner {
+    }
+  }
+  bucket = "elasticbeanstalk-us-gov-west-1-050779347855"
+}
+
+resource "aws_s3_bucket_acl" "vpc_flowlogs_050779347855_vpc_0bd9acb7990b4154d" {
+  access_control_policy {
+    grant {
+      grantee {
+        type = "CanonicalUser"
+      }
+      permission = "FULL_CONTROL"
+    }
+    owner {
+    }
+  }
+  bucket = "vpc-flowlogs-050779347855-vpc-0bd9acb7990b4154d"
+}
+
+resource "aws_s3_bucket_acl" "vpc_flowlogs_050779347855_vpc_0f662451df9954b4c" {
+  access_control_policy {
+    grant {
+      grantee {
+        type = "CanonicalUser"
+      }
+      permission = "FULL_CONTROL"
+    }
+    owner {
+    }
+  }
+  bucket = "vpc-flowlogs-050779347855-vpc-0f662451df9954b4c"
 }
 

@@ -107,6 +107,7 @@ class HCL:
                 if isinstance(value, (int, float)):
                     return str(value)
                 if isinstance(value, str):
+                    value = value.replace('\n', '')
                     return f'"{value}"'
                 if isinstance(value, list):
                     return "[\n" + ", ".join([convert_value(v) for v in value]) + "\n]"

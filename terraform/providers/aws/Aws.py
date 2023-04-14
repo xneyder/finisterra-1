@@ -12,6 +12,7 @@ from providers.aws.acm import ACM
 from providers.aws.cloudfront import CloudFront
 from providers.aws.s3 import S3
 from providers.aws.iam import IAM
+from providers.aws.ec2 import EC2
 
 
 class Aws:
@@ -123,3 +124,11 @@ class Aws:
             "cloudfront", region_name=self.region)
         CloudFront(cloudfront_client, self.script_dir, self.provider_name,
                    self.schema_data, self.region).cloudfront()
+
+    def ec2(self):
+        ec2_client = self.session.client(
+            "ec2", region_name=self.region)
+        autoscaling_client = self.session.client(
+            "autoscaling", region_name=self.region)
+        EC2(ec2_client, autoscaling_client, self.script_dir, self.provider_name,
+            self.schema_data, self.region).ec2()

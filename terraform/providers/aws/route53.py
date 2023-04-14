@@ -31,12 +31,14 @@ class Route53:
 
         self.aws_route53_delegation_set()
         self.aws_route53_health_check()
-        # self.aws_route53_hosted_zone_dnssec() #Compilation errors
-        # self.aws_route53_key_signing_key() #Compilation errors
-        self.aws_route53_query_log()
+        # self.aws_route53_key_signing_key()  # no list_key_signing_keys boto3 api
+        if "gov" not in self.region:
+            self.aws_route53_hosted_zone_dnssec()
+            self.aws_route53_query_log()
+            self.aws_route53_traffic_policy()  # Compilation errors
+            self.aws_route53_traffic_policy_instance()  # Compilation errors
+
         self.aws_route53_record()
-        # self.aws_route53_traffic_policy() #Compilation errors
-        # self.aws_route53_traffic_policy_instance() #Compilation errors
         self.aws_route53_vpc_association_authorization()
         self.aws_route53_zone()
         self.aws_route53_zone_association()
@@ -102,7 +104,8 @@ class Route53:
             hosted_zones = page["HostedZones"]
             for hosted_zone in hosted_zones:
                 hosted_zone_id = hosted_zone["Id"]
-                dnssec_resp = self.route53_client.get_dnssec(hosted_zone_id)
+                dnssec_resp = self.route53_client.get_dnssec(
+                    HostedZoneId=hosted_zone_id)
                 dnssec = dnssec_resp["DNSSEC"]
 
                 if dnssec["Status"] != "DISABLED":
@@ -124,40 +127,50 @@ class Route53:
                     self.hcl.process_resource(
                         "aws_route53_hosted_zone_dnssec", hosted_zone_id.replace("/", "_"), attributes)
 
-    def aws_route53_key_signing_key(self):
-        print("Processing Route53 Key Signing Key...")
+    # def aws_route53_key_signing_key(self):
+    #     print("Processing Route53 Key Signing Key...")
 
-        paginator = self.route53_client.get_paginator("list_hosted_zones")
-        for page in paginator.paginate():
-            hosted_zones = page["HostedZones"]
-            for hosted_zone in hosted_zones:
-                hosted_zone_id = hosted_zone["Id"]
-                paginator_ksk = self.route53_client.get_paginator(
-                    "list_key_signing_keys")
+    #     paginator = self.route53_client.get_paginator("list_hosted_zones")
+    #     for page in paginator.paginate():
+    #         hosted_zones = page["HostedZones"]
+    #         for hosted_zone in hosted_zones:
+    #             hosted_zone_id = hosted_zone["Id"]
+    #             next_token = None
 
-                for ksk_page in paginator_ksk.paginate(HostedZoneId=hosted_zone_id):
-                    key_signing_keys = ksk_page["KeySigningKeys"]
-                    for ksk in key_signing_keys:
-                        ksk_id = ksk["KeySigningKeyId"]
-                        print(
-                            f"  Processing Route53 Key Signing Key: {ksk_id} for Hosted Zone: {hosted_zone_id}")
+    #             while True:
+    #                 ksk_params = {"HostedZoneId": hosted_zone_id}
+    #                 if next_token:
+    #                     ksk_params["NextToken"] = next_token
 
-                        attributes = {
-                            "id": ksk_id,
-                            "hosted_zone_id": hosted_zone_id,
-                            "name": ksk["Name"],
-                            "status": ksk["Status"],
-                            "key_management_service_arn": ksk["KmsArn"],
-                            "digest_algorithm_mnemonic": ksk["DigestAlgorithmMnemonic"],
-                            "digest_algorithm_type": ksk["DigestAlgorithmType"],
-                            "key_tag": ksk["KeyTag"],
-                            "public_key": ksk["PublicKey"],
-                            "signing_algorithm_mnemonic": ksk["SigningAlgorithmMnemonic"],
-                            "signing_algorithm_type": ksk["SigningAlgorithmType"],
-                        }
+    #                 ksk_response = self.route53_client.list_key_signing_keys(
+    #                     **ksk_params)
+    #                 key_signing_keys = ksk_response["KeySigningKeys"]
 
-                        self.hcl.process_resource(
-                            "aws_route53_key_signing_key", ksk_id.replace("-", "_"), attributes)
+    #                 for ksk in key_signing_keys:
+    #                     ksk_id = ksk["KeySigningKeyId"]
+    #                     print(
+    #                         f"  Processing Route53 Key Signing Key: {ksk_id} for Hosted Zone: {hosted_zone_id}")
+
+    #                     attributes = {
+    #                         "id": ksk_id,
+    #                         "hosted_zone_id": hosted_zone_id,
+    #                         "name": ksk["Name"],
+    #                         "status": ksk["Status"],
+    #                         "key_management_service_arn": ksk["KmsArn"],
+    #                         "digest_algorithm_mnemonic": ksk["DigestAlgorithmMnemonic"],
+    #                         "digest_algorithm_type": ksk["DigestAlgorithmType"],
+    #                         "key_tag": ksk["KeyTag"],
+    #                         "public_key": ksk["PublicKey"],
+    #                         "signing_algorithm_mnemonic": ksk["SigningAlgorithmMnemonic"],
+    #                         "signing_algorithm_type": ksk["SigningAlgorithmType"],
+    #                     }
+
+    #                     self.hcl.process_resource(
+    #                         "aws_route53_key_signing_key", ksk_id.replace("-", "_"), attributes)
+
+    #                 next_token = ksk_response.get("NextToken")
+    #                 if not next_token:
+    #                     break
 
     def aws_route53_query_log(self):
         print("Processing Route53 Query Logs...")
@@ -167,29 +180,30 @@ class Route53:
             hosted_zones = page["HostedZones"]
             for hosted_zone in hosted_zones:
                 hosted_zone_id = hosted_zone["Id"]
-
                 try:
                     query_logging_config = self.route53_client.list_query_logging_configs(
                         HostedZoneId=hosted_zone_id)
                     configs = query_logging_config["QueryLoggingConfigs"]
 
                     for config in configs:
-                        config_id = config["Id"]
-                        print(
-                            f"  Processing Route53 Query Log: {config_id} for Hosted Zone: {hosted_zone_id}")
+                        if config["HostedZoneId"] == hosted_zone_id:
+                            config_id = config["Id"]
+                            print(
+                                f"  Processing Route53 Query Log: {config_id} for Hosted Zone: {hosted_zone_id}")
 
-                        attributes = {
-                            "id": config_id,
-                            "zone_id": hosted_zone_id,
-                            "cloudwatch_log_group_arn": config["CloudWatchLogsLogGroupArn"],
-                        }
+                            attributes = {
+                                "id": config_id,
+                                "zone_id": hosted_zone_id,
+                                "cloudwatch_log_group_arn": config["CloudWatchLogsLogGroupArn"],
+                            }
 
-                        self.hcl.process_resource(
-                            "aws_route53_query_log", config_id.replace("-", "_"), attributes)
+                            self.hcl.process_resource(
+                                "aws_route53_query_log", config_id.replace("-", "_"), attributes)
 
-                except route53.exceptions.NoSuchQueryLoggingConfig:
+                except self.route53_client.exceptions.NoSuchQueryLoggingConfig:
                     print(
                         f"  No Route53 Query Log found for Hosted Zone: {hosted_zone_id}")
+                    break
 
     def aws_route53_record(self):
         print("Processing Route53 Records...")
@@ -229,9 +243,17 @@ class Route53:
     def aws_route53_traffic_policy(self):
         print("Processing Route53 Traffic Policies...")
 
-        paginator = self.route53_client.get_paginator("list_traffic_policies")
-        for page in paginator.paginate():
-            traffic_policies = page["TrafficPolicySummaries"]
+        next_token = None
+
+        while True:
+            traffic_policy_params = {}
+            if next_token:
+                traffic_policy_params["TrafficPolicyIdMarker"] = next_token
+
+            traffic_policies_response = self.route53_client.list_traffic_policies(
+                **traffic_policy_params)
+            traffic_policies = traffic_policies_response["TrafficPolicySummaries"]
+
             for traffic_policy in traffic_policies:
                 traffic_policy_id = traffic_policy["Id"]
                 traffic_policy_version = traffic_policy["LatestVersion"]
@@ -254,13 +276,27 @@ class Route53:
                 self.hcl.process_resource(
                     "aws_route53_traffic_policy", traffic_policy_id.replace("-", "_"), attributes)
 
+            next_token = traffic_policies_response.get("TrafficPolicyIdMarker")
+            if not next_token:
+                break
+
     def aws_route53_traffic_policy_instance(self):
         print("Processing Route53 Traffic Policy Instances...")
 
-        paginator = self.route53_client.get_paginator(
-            "list_traffic_policy_instances")
-        for page in paginator.paginate():
-            traffic_policy_instances = page["TrafficPolicyInstances"]
+        next_type_token = None
+        next_name_token = None
+
+        while True:
+            traffic_policy_instance_params = {}
+            if next_type_token:
+                traffic_policy_instance_params["TrafficPolicyInstanceTypeMarker"] = next_type_token
+            if next_name_token:
+                traffic_policy_instance_params["TrafficPolicyInstanceNameMarker"] = next_name_token
+
+            traffic_policy_instances_response = self.route53_client.list_traffic_policy_instances(
+                **traffic_policy_instance_params)
+            traffic_policy_instances = traffic_policy_instances_response["TrafficPolicyInstances"]
+
             for instance in traffic_policy_instances:
                 instance_id = instance["Id"]
                 policy_id = instance["TrafficPolicyId"]
@@ -280,6 +316,13 @@ class Route53:
 
                 self.hcl.process_resource(
                     "aws_route53_traffic_policy_instance", instance_id.replace("-", "_"), attributes)
+
+            next_type_token = traffic_policy_instances_response.get(
+                "TrafficPolicyInstanceTypeMarker")
+            next_name_token = traffic_policy_instances_response.get(
+                "TrafficPolicyInstanceNameMarker")
+            if not next_type_token and not next_name_token:
+                break
 
     def aws_route53_vpc_association_authorization(self):
         print("Processing Route53 VPC Association Authorizations...")

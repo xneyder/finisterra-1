@@ -48,9 +48,12 @@ class VPC:
         self.aws_default_subnet()
         # self.aws_default_vpc_dhcp_options() # no boto3 filter
         # self.aws_ec2_managed_prefix_list() # Conflicts with aws_ec2_managed_prefix_list_entry
-        self.aws_ec2_network_insights_analysis()
-        self.aws_ec2_network_insights_path()
-        self.aws_ec2_subnet_cidr_reservation()  # no records
+
+        if "gov" not in self.region:
+            self.aws_ec2_network_insights_analysis()  # Not available in GOV
+            self.aws_ec2_network_insights_path()  # Not available in GOV
+            self.aws_ec2_subnet_cidr_reservation()  # No permissions
+
         self.aws_ec2_traffic_mirror_filter()
         self.aws_ec2_traffic_mirror_filter_rule()
         self.aws_ec2_traffic_mirror_session()
@@ -485,9 +488,9 @@ class VPC:
             attributes = {
                 "id": flow_log_id,
                 "resource_id": flow_log["ResourceId"],
-                "traffic_type": flow_log["TrafficType"],
-                "log_destination_type": flow_log["LogDestinationType"],
-                "log_destination": flow_log["LogDestination"],
+                "traffic_type": flow_log.get("TrafficType", ""),
+                "log_destination_type": flow_log.get("LogDestinationType", ""),
+                "log_destination": flow_log.get("LogDestination", ""),
                 "log_group_name": flow_log.get("LogGroupName", ""),
                 "iam_role_arn": flow_log.get("DeliverLogsPermissionArn", ""),
                 "max_aggregation_interval": flow_log.get("MaxAggregationInterval", ""),

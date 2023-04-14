@@ -415,8 +415,9 @@ class IAM:
                 "ServiceSpecificCredentials"]
 
             for credential in service_credentials:
-                credential_id = credential["ServiceSpecificCredentialId"]
                 service_name = credential["ServiceName"]
+                credential_id = service_name+":"+user_name + \
+                    ":"+credential["ServiceSpecificCredentialId"]
                 print(
                     f"  Processing IAM Service Specific Credential: {credential_id} for user: {user_name}")
 

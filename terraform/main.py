@@ -12,7 +12,8 @@ def main():
     # provider.route53()
     # provider.s3()
     # provider.acm()
-    provider.cloudfront()
+    # provider.cloudfront()
+    provider.ec2()
 
     print("Finished processing AWS resources.")
 

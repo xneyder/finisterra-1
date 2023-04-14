@@ -3,8 +3,9 @@ from utils.hcl import HCL
 
 
 class EC2:
-    def __init__(self, ec2_client, script_dir, provider_name, schema_data, region):
+    def __init__(self, ec2_client, autoscaling_client,  script_dir, provider_name, schema_data, region):
         self.ec2_client = ec2_client
+        self.autoscaling_client = autoscaling_client
         self.transform_rules = {}
         self.provider_name = provider_name
         self.script_dir = script_dir
@@ -15,6 +16,23 @@ class EC2:
 
     def ec2(self):
         self.hcl.prepare_folder(os.path.join("generated", "ec2"))
+
+        # self.aws_ami()
+        # self.aws_ami_launch_permission()
+        # self.aws_ec2_capacity_reservation()
+        # self.aws_ec2_host()
+        # # self.aws_ec2_serial_console_access() # no api in boto3
+        # self.aws_ec2_tag()
+        # self.aws_eip()
+        # self.aws_eip_association()
+        # self.aws_instance()
+        self.aws_key_pair()
+        # self.aws_launch_template()
+        # self.aws_placement_group()
+        # if "gov" not in self.region:
+        #     self.aws_spot_datafeed_subscription()
+        # self.aws_spot_fleet_request()
+        # self.aws_spot_instance_request()
 
         self.hcl.refresh_state()
         self.hcl.generate_hcl_file()
@@ -113,19 +131,19 @@ class EC2:
                 "aws_ec2_host", host_id.replace("-", "_"), attributes
             )
 
-    def aws_ec2_serial_console_access(self):
-        print("Processing EC2 Serial Console Access...")
+    # def aws_ec2_serial_console_access(self):
+    #     print("Processing EC2 Serial Console Access...")
 
-        serial_console_access = self.ec2_client.describe_serial_console_access()
-        status = serial_console_access["SerialConsoleAccess"]["Status"]
+    #     serial_console_access = self.ec2_client.describe_serial_console_access()
+    #     status = serial_console_access["SerialConsoleAccess"]["Status"]
 
-        attributes = {
-            "status": status,
-        }
+    #     attributes = {
+    #         "status": status,
+    #     }
 
-        self.hcl.process_resource(
-            "aws_ec2_serial_console_access", "serial_console_access", attributes
-        )
+    #     self.hcl.process_resource(
+    #         "aws_ec2_serial_console_access", "serial_console_access", attributes
+    #     )
 
     def aws_ec2_tag(self):
         print("Processing EC2 Tags...")
@@ -137,7 +155,7 @@ class EC2:
             key = resource["Key"]
             value = resource["Value"]
 
-            tag_id = f"{resource_id}-{key}"
+            tag_id = f"{resource_id},{key}"
             print(f"  Processing EC2 Tag: {tag_id}")
 
             attributes = {
@@ -200,6 +218,11 @@ class EC2:
                 self.hcl.process_resource(
                     "aws_eip_association", association_id.replace("-", "_"), attributes)
 
+    def is_managed_by_auto_scaling_group(self, instance_id):
+        response = self.autoscaling_client.describe_auto_scaling_instances(InstanceIds=[
+                                                                           instance_id])
+        return bool(response["AutoScalingInstances"])
+
     def aws_instance(self):
         print("Processing EC2 Instances...")
 
@@ -207,15 +230,21 @@ class EC2:
         for reservation in instances["Reservations"]:
             for instance in reservation["Instances"]:
                 instance_id = instance["InstanceId"]
+
+                if self.is_managed_by_auto_scaling_group(instance_id):
+                    print(
+                        f"  Skipping EC2 Instance (managed by Auto Scaling group): {instance_id}")
+                    continue
+
                 print(f"  Processing EC2 Instance: {instance_id}")
 
                 attributes = {
                     "id": instance_id,
-                    "ami": instance["ImageId"],
-                    "instance_type": instance["InstanceType"],
-                    "availability_zone": instance["Placement"]["AvailabilityZone"],
-                    "key_name": instance["KeyName"] if "KeyName" in instance else None,
-                    "subnet_id": instance["SubnetId"],
+                    "ami": instance.get("ImageId", None),
+                    "instance_type": instance.get("InstanceType", None),
+                    "availability_zone": instance.get("Placement", None).get("AvailabilityZone", None),
+                    "key_name": instance.get("KeyName", None),
+                    "subnet_id": instance.get("SubnetId", None),
                     "vpc_security_group_ids": [sg["GroupId"] for sg in instance["SecurityGroups"]],
                 }
 
@@ -238,8 +267,8 @@ class EC2:
 
             attributes = {
                 "id": key_pair["KeyPairId"],
-                "key_name": key_pair_name,
-                "fingerprint": key_pair["KeyFingerprint"],
+                # "key_name": key_pair_name,
+                # "fingerprint": key_pair["KeyFingerprint"],
             }
             self.hcl.process_resource(
                 "aws_key_pair", key_pair_name.replace("-", "_"), attributes)
@@ -255,10 +284,10 @@ class EC2:
 
             attributes = {
                 "id": launch_template_id,
-                "name": launch_template["LaunchTemplateName"],
-                "arn": launch_template["LaunchTemplateArn"],
-                "default_version": launch_template["DefaultVersionNumber"],
-                "latest_version": launch_template["LatestVersionNumber"],
+                "name": launch_template.get("LaunchTemplateName", None),
+                "arn": launch_template.get("LaunchTemplateArn", None),
+                "default_version": launch_template.get("DefaultVersionNumber", None),
+                "latest_version": launch_template.get("LatestVersionNumber", None),
             }
             self.hcl.process_resource(
                 "aws_launch_template", launch_template_id.replace("-", "_"), attributes)
@@ -297,7 +326,7 @@ class EC2:
             }
             self.hcl.process_resource(
                 "aws_spot_datafeed_subscription", bucket_id.replace("-", "_"), attributes)
-        except ec2.exceptions.ClientError as e:
+        except self.ec2_client.exceptions.ClientError as e:
             if e.response["Error"]["Code"] == "InvalidSpotDatafeed.NotFound":
                 print("  No Spot Datafeed Subscriptions found")
             else:
