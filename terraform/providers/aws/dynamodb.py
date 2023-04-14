@@ -2,7 +2,7 @@ import os
 from utils.hcl import HCL
 
 
-class Dyanamodb:
+class Dynamodb:
     def __init__(self, dynamodb_client, script_dir, provider_name, schema_data, region):
         self.dynamodb_client = dynamodb_client
         self.transform_rules = {}
@@ -15,6 +15,12 @@ class Dyanamodb:
 
     def dynamodb(self):
         self.hcl.prepare_folder(os.path.join("generated", "dynamodb"))
+
+        if "gov" not in self.region:
+            self.aws_dynamodb_contributor_insights()
+            self.aws_dynamodb_kinesis_streaming_destination()
+
+        self.aws_dynamodb_global_table()
 
         self.hcl.refresh_state()
         self.hcl.generate_hcl_file()
@@ -48,53 +54,52 @@ class Dyanamodb:
     def aws_dynamodb_global_table(self):
         print("Processing DynamoDB Global Tables...")
 
-        paginator = self.dynamodb_client.get_paginator("list_global_tables")
-        for page in paginator.paginate():
-            for global_table in page["GlobalTables"]:
-                global_table_name = global_table["GlobalTableName"]
+        global_tables = self.dynamodb_client.list_global_tables()[
+            "GlobalTables"]
+        for global_table in global_tables:
+            global_table_name = global_table["GlobalTableName"]
 
-                global_table_description = self.dynamodb_client.describe_global_table(
-                    GlobalTableName=global_table_name)["GlobalTableDescription"]
+            global_table_description = self.dynamodb_client.describe_global_table(
+                GlobalTableName=global_table_name)["GlobalTableDescription"]
 
-                print(
-                    f"  Processing DynamoDB Global Table: {global_table_name}")
+            print(
+                f"  Processing DynamoDB Global Table: {global_table_name}")
 
-                attributes = {
-                    "id": global_table_name,
-                    "name": global_table_name,
-                    "replica": [{"region_name": replica["RegionName"]} for replica in global_table_description["ReplicaDescriptions"]],
-                }
+            attributes = {
+                "id": global_table_name,
+                "name": global_table_name,
+                "replica": [{"region_name": replica["RegionName"]} for replica in global_table_description["ReplicaDescriptions"]],
+            }
 
-                self.hcl.process_resource(
-                    "aws_dynamodb_global_table", global_table_name.replace("-", "_"), attributes)
+            self.hcl.process_resource(
+                "aws_dynamodb_global_table", global_table_name.replace("-", "_"), attributes)
 
     def aws_dynamodb_kinesis_streaming_destination(self):
         print("Processing DynamoDB Kinesis Streaming Destinations...")
 
-        paginator = self.dynamodb_client.get_paginator("list_tables")
-        for page in paginator.paginate():
-            for table_name in page["TableNames"]:
-                try:
-                    streaming_destination = self.dynamodb_client.describe_kinesis_streaming_destination(
-                        TableName=table_name)
-                    destinations = streaming_destination["KinesisDataStreamDestinations"]
+        table_names = self.dynamodb_client.list_tables()["TableNames"]
+        for table_name in table_names:
+            try:
+                streaming_destination = self.dynamodb_client.describe_kinesis_streaming_destination(
+                    TableName=table_name)
+                destinations = streaming_destination["KinesisDataStreamDestinations"]
 
-                    for destination in destinations:
-                        print(
-                            f"  Processing DynamoDB Kinesis Streaming Destination: {table_name}")
-
-                        attributes = {
-                            "id": destination["StreamArn"],
-                            "table_name": table_name,
-                            "stream_arn": destination["StreamArn"],
-                            "destination_status": destination["DestinationStatus"],
-                        }
-
-                        self.hcl.process_resource(
-                            "aws_dynamodb_kinesis_streaming_destination", table_name.replace("-", "_"), attributes)
-                except self.dynamodb_client.exceptions.ResourceNotFoundException:
+                for destination in destinations:
                     print(
-                        f"  No Kinesis Streaming Destination found for DynamoDB Table: {table_name}")
+                        f"  Processing DynamoDB Kinesis Streaming Destination: {table_name}")
+
+                    attributes = {
+                        "id": destination["StreamArn"],
+                        "table_name": table_name,
+                        "stream_arn": destination["StreamArn"],
+                        "destination_status": destination["DestinationStatus"],
+                    }
+
+                    self.hcl.process_resource(
+                        "aws_dynamodb_kinesis_streaming_destination", table_name.replace("-", "_"), attributes)
+            except self.dynamodb_client.exceptions.ResourceNotFoundException:
+                print(
+                    f"  No Kinesis Streaming Destination found for DynamoDB Table: {table_name}")
 
     def aws_dynamodb_table(self):
         print("Processing DynamoDB Tables...")

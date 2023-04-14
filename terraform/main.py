@@ -25,7 +25,8 @@ def main():
     # provider.docdb()
     # provider.opensearch()
     # provider.es()
-    provider.elasticache()
+    # provider.elasticache()
+    provider.dynamodb()
 
     print("Finished processing AWS resources.")
 

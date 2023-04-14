@@ -25,6 +25,7 @@ from providers.aws.docdb import DocDb
 from providers.aws.opensearch import Opensearch
 from providers.aws.es import ES
 from providers.aws.elasticache import Elasticache
+from providers.aws.dynamodb import Dynamodb
 
 
 class Aws:
@@ -224,3 +225,10 @@ class Aws:
 
         Elasticache(elasticache_client, self.script_dir, self.provider_name,
                     self.schema_data, self.region).elasticache()
+
+    def dynamodb(self):
+        dynamodb_client = self.session.client(
+            "dynamodb", region_name=self.region)
+
+        Dynamodb(dynamodb_client, self.script_dir, self.provider_name,
+                 self.schema_data, self.region).dynamodb()
