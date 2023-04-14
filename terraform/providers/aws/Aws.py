@@ -26,6 +26,7 @@ from providers.aws.opensearch import Opensearch
 from providers.aws.es import ES
 from providers.aws.elasticache import Elasticache
 from providers.aws.dynamodb import Dynamodb
+from providers.aws.cognito_identity import CognitoIdentity
 
 
 class Aws:
@@ -232,3 +233,10 @@ class Aws:
 
         Dynamodb(dynamodb_client, self.script_dir, self.provider_name,
                  self.schema_data, self.region).dynamodb()
+
+    def cognito_identity(self):
+        cognito_identity_client = self.session.client(
+            "cognito-identity", region_name=self.region)
+
+        CognitoIdentity(cognito_identity_client, self.script_dir, self.provider_name,
+                        self.schema_data, self.region).cognito_identity()

@@ -16,6 +16,11 @@ class CognitoIdentity:
     def cognito_identity(self):
         self.hcl.prepare_folder(os.path.join("generated", "cognito_identity"))
 
+        if "gov" not in self.region:
+            self.aws_cognito_identity_pool()
+            self.aws_cognito_identity_pool_provider_principal_tag()
+            self.aws_cognito_identity_pool_roles_attachment()
+
         self.hcl.refresh_state()
         self.hcl.generate_hcl_file()
 
@@ -48,8 +53,11 @@ class CognitoIdentity:
         for page in paginator.paginate(MaxResults=60):
             for pool in page["IdentityPools"]:
                 pool_id = pool["IdentityPoolId"]
+                pool_details = self.cognito_identity_client.describe_identity_pool(
+                    IdentityPoolId=pool_id)
+                identity_pool_arn = pool_details["IdentityPoolArn"]
                 tags = self.cognito_identity_client.list_tags_for_resource(
-                    ResourceArn=pool["IdentityPoolArn"])["Tags"]
+                    ResourceArn=identity_pool_arn)["Tags"]
 
                 if tags:
                     for tag_key, tag_value in tags.items():

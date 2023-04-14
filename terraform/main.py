@@ -26,7 +26,8 @@ def main():
     # provider.opensearch()
     # provider.es()
     # provider.elasticache()
-    provider.dynamodb()
+    # provider.dynamodb()
+    provider.cognito_identity()
 
     print("Finished processing AWS resources.")
 
