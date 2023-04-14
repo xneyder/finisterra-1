@@ -26,7 +26,7 @@ class Opensearch:
 
         self.aws_opensearch_domain()
         self.aws_opensearch_domain_policy()
-        self.aws_opensearch_domain_saml_options()
+        # self.aws_opensearch_domain_saml_options() # Currently, there's no direct way to list or describe outbound connections using boto3.
         # self.aws_opensearch_outbound_connection() # Currently, there's no direct way to list or describe outbound connections using boto3.
 
         self.hcl.refresh_state()
@@ -35,7 +35,8 @@ class Opensearch:
     def aws_opensearch_domain(self):
         print("Processing OpenSearch Domain...")
 
-        domains = self.opensearch_client.list_domain_names()["DomainNames"]
+        domains = self.opensearch_client.list_domain_names(
+            EngineType='OpenSearch')["DomainNames"]
         for domain in domains:
             domain_name = domain["DomainName"]
             domain_info = self.opensearch_client.describe_domain(DomainName=domain_name)[
@@ -55,7 +56,8 @@ class Opensearch:
     def aws_opensearch_domain_policy(self):
         print("Processing OpenSearch Domain Policy...")
 
-        domains = self.opensearch_client.list_domain_names()["DomainNames"]
+        domains = self.opensearch_client.list_domain_names(
+            EngineType='OpenSearch')["DomainNames"]
         for domain in domains:
             domain_name = domain["DomainName"]
             domain_info = self.opensearch_client.describe_domain(
@@ -73,29 +75,30 @@ class Opensearch:
             self.hcl.process_resource(
                 "aws_opensearch_domain_policy", domain_name.replace("-", "_"), attributes)
 
-    def aws_opensearch_domain_saml_options(self):
-        print("Processing OpenSearch Domain SAML Options...")
+    # def aws_opensearch_domain_saml_options(self):
+    #     print("Processing OpenSearch Domain SAML Options...")
 
-        domains = self.opensearch_client.list_domain_names()["DomainNames"]
-        for domain in domains:
-            domain_name = domain["DomainName"]
-            domain_status = self.opensearch_client.describe_domain(DomainName=domain_name)[
-                "DomainStatus"]
-            arn = domain_status["ARN"]
-            saml_options = domain_status.get("SamlOptions", None)
+    #     domains = self.opensearch_client.list_domain_names(
+    #         EngineType='OpenSearch')["DomainNames"]
+    #     for domain in domains:
+    #         domain_name = domain["DomainName"]
+    #         domain_status = self.opensearch_client.describe_domain(DomainName=domain_name)[
+    #             "DomainStatus"]
+    #         arn = domain_status["ARN"]
+    #         saml_options = domain_status.get("SamlOptions", None)
 
-            if saml_options is not None:
-                print(
-                    f"  Processing OpenSearch Domain SAML Options: {domain_name}")
+    #         if saml_options is not None:
+    #             print(
+    #                 f"  Processing OpenSearch Domain SAML Options: {domain_name}")
 
-                attributes = {
-                    "id": arn,
-                    "domain_name": domain_name,
-                    "saml_options": saml_options,
-                }
+    #             attributes = {
+    #                 "id": arn,
+    #                 "domain_name": domain_name,
+    #                 "saml_options": saml_options,
+    #             }
 
-                self.hcl.process_resource(
-                    "aws_opensearch_domain_saml_options", domain_name.replace("-", "_"), attributes)
+    #             self.hcl.process_resource(
+    #                 "aws_opensearch_domain_saml_options", domain_name.replace("-", "_"), attributes)
 
     # def aws_opensearch_outbound_connection(self):
     #     print("Processing OpenSearch Outbound Connection...")

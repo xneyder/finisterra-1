@@ -2,7 +2,7 @@ import os
 from utils.hcl import HCL
 
 
-class Elasticcache:
+class Elasticache:
     def __init__(self, elasticache_client, script_dir, provider_name, schema_data, region):
         self.elasticache_client = elasticache_client
         self.transform_rules = {}
@@ -15,6 +15,16 @@ class Elasticcache:
 
     def elasticache(self):
         self.hcl.prepare_folder(os.path.join("generated", "elasticache"))
+
+        self.aws_elasticache_cluster()
+        self.aws_elasticache_global_replication_group()
+        self.aws_elasticache_parameter_group()
+        self.aws_elasticache_replication_group()
+        self.aws_elasticache_security_group()
+        self.aws_elasticache_subnet_group()
+        self.aws_elasticache_user()
+        self.aws_elasticache_user_group()
+        self.aws_elasticache_user_group_association()
 
         self.hcl.refresh_state()
         self.hcl.generate_hcl_file()

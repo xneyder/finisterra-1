@@ -23,6 +23,8 @@ from providers.aws.autoscaling import AutoScaling
 from providers.aws.vpn_client import VpnClient
 from providers.aws.docdb import DocDb
 from providers.aws.opensearch import Opensearch
+from providers.aws.es import ES
+from providers.aws.elasticache import Elasticache
 
 
 class Aws:
@@ -208,3 +210,17 @@ class Aws:
 
         Opensearch(opensearch_client, self.script_dir, self.provider_name,
                    self.schema_data, self.region).opensearch()
+
+    def es(self):
+        es_client = self.session.client(
+            "es", region_name=self.region)
+
+        ES(es_client, self.script_dir, self.provider_name,
+           self.schema_data, self.region).es()
+
+    def elasticache(self):
+        elasticache_client = self.selasticachesion.client(
+            "elasticache", region_name=self.region)
+
+        Elasticache(elasticache_client, self.script_dir, self.provider_name,
+                    self.schema_data, self.region).elasticache()

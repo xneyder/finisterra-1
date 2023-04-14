@@ -1,4 +1,4 @@
-resource "aws_opensearch_domain_policy" "shared_01" {
+resource "aws_elasticsearch_domain_policy" "shared_01" {
   access_policies = <<EOF
 {
   "Statement": [
@@ -25,7 +25,7 @@ EOF
   domain_name     = "shared-01"
 }
 
-resource "aws_opensearch_domain_policy" "shared_02" {
+resource "aws_elasticsearch_domain_policy" "shared_02" {
   access_policies = <<EOF
 {
   "Statement": [

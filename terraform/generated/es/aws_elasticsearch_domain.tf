@@ -1,4 +1,8 @@
-resource "aws_opensearch_domain" "shared_01" {
+resource "aws_elasticsearch_domain" "shared_01" {
+  advanced_security_options {
+    enabled                        = false
+    internal_user_database_enabled = false
+  }
   auto_tune_options {
     desired_state = "ENABLED"
     maintenance_schedule {
@@ -16,7 +20,7 @@ resource "aws_opensearch_domain" "shared_01" {
     dedicated_master_count   = 0
     dedicated_master_enabled = false
     instance_count           = 2
-    instance_type            = "t2.small.search"
+    instance_type            = "t2.small.elasticsearch"
     warm_enabled             = false
     zone_awareness_config {
       availability_zone_count = 2
@@ -32,10 +36,10 @@ resource "aws_opensearch_domain" "shared_01" {
     ebs_enabled = true
     volume_size = 20
   }
+  elasticsearch_version = "6.8"
   encrypt_at_rest {
     enabled = false
   }
-  engine_version = "Elasticsearch_6.8"
   log_publishing_options {
     cloudwatch_log_group_arn = "arn:aws-us-gov:logs:us-gov-west-1:050779347855:log-group:/aws/OpenSearchService/domains/shared-01/application-logs"
     enabled                  = true
@@ -63,7 +67,11 @@ resource "aws_opensearch_domain" "shared_01" {
   }
 }
 
-resource "aws_opensearch_domain" "shared_02" {
+resource "aws_elasticsearch_domain" "shared_02" {
+  advanced_security_options {
+    enabled                        = false
+    internal_user_database_enabled = false
+  }
   auto_tune_options {
     desired_state = "ENABLED"
     maintenance_schedule {
@@ -80,9 +88,9 @@ resource "aws_opensearch_domain" "shared_02" {
     }
     dedicated_master_count   = 3
     dedicated_master_enabled = true
-    dedicated_master_type    = "t3.medium.search"
+    dedicated_master_type    = "t3.medium.elasticsearch"
     instance_count           = 3
-    instance_type            = "t3.small.search"
+    instance_type            = "t3.small.elasticsearch"
     warm_enabled             = false
     zone_awareness_config {
       availability_zone_count = 3
@@ -98,10 +106,10 @@ resource "aws_opensearch_domain" "shared_02" {
     ebs_enabled = true
     volume_size = 20
   }
+  elasticsearch_version = "6.8"
   encrypt_at_rest {
     enabled = true
   }
-  engine_version = "Elasticsearch_6.8"
   node_to_node_encryption {
     enabled = true
   }

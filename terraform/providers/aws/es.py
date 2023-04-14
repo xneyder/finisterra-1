@@ -5,7 +5,15 @@ from utils.hcl import HCL
 class ES:
     def __init__(self, es_client, script_dir, provider_name, schema_data, region):
         self.es_client = es_client
-        self.transform_rules = {}
+        self.transform_rules = {
+            "aws_elasticsearch_domain_policy": {
+                "hcl_json_multiline": {"access_policies": True},
+            },
+            "aws_elasticsearch_domain": {
+                "hcl_drop_blocks": {"cognito_options": {"enabled": False}},
+                "hcl_drop_fields": {"warm_count": 0},
+            }
+        }
         self.provider_name = provider_name
         self.script_dir = script_dir
         self.schema_data = schema_data
@@ -16,68 +24,55 @@ class ES:
     def es(self):
         self.hcl.prepare_folder(os.path.join("generated", "es"))
 
+        self.aws_elasticsearch_domain()
+        self.aws_elasticsearch_domain_policy()
+        # self.aws_elasticsearch_domain_saml_options() # Currently, there's no direct way to list or describe outbound connections using boto3.
+
         self.hcl.refresh_state()
         self.hcl.generate_hcl_file()
 
     def aws_elasticsearch_domain(self):
         print("Processing Elasticsearch Domains...")
 
-        paginator = self.es_client.get_paginator("list_domain_names")
-        for page in paginator.paginate():
-            for domain in page["DomainNames"]:
-                domain_name = domain["DomainName"]
-                domain_info = self.es_client.describe_elasticsearch_domain(
-                    DomainName=domain_name)["DomainStatus"]
-                print(f"  Processing Elasticsearch Domain: {domain_name}")
+        domains = self.es_client.list_domain_names(
+            EngineType='Elasticsearch')["DomainNames"]
+        for domain in domains:
+            domain_name = domain["DomainName"]
+            domain_info = self.es_client.describe_elasticsearch_domain(
+                DomainName=domain_name)["DomainStatus"]
 
-                attributes = {
-                    "id": domain_info["DomainId"],
-                    "domain_name": domain_name,
-                    "arn": domain_info["ARN"],
-                    # Add more attributes as needed
-                }
+            print(f"  Processing Elasticsearch Domain: {domain_name}")
 
-                self.hcl.process_resource(
-                    "aws_elasticsearch_domain", domain_name.replace("-", "_"), attributes)
+            attributes = {
+                "id": domain_info["ARN"],
+                "domain_name": domain_name,
+                "arn": domain_info["ARN"],
+                # Add more attributes as needed
+            }
+
+            self.hcl.process_resource(
+                "aws_elasticsearch_domain", domain_name.replace("-", "_"), attributes)
 
     def aws_elasticsearch_domain_policy(self):
         print("Processing Elasticsearch Domain Policies...")
 
-        paginator = self.es_client.get_paginator("list_domain_names")
-        for page in paginator.paginate():
-            for domain in page["DomainNames"]:
-                domain_name = domain["DomainName"]
-                policy = self.es_client.describe_elasticsearch_domain_config(
-                    DomainName=domain_name)["DomainConfig"]["AccessPolicies"]
-                print(
-                    f"  Processing Elasticsearch Domain Policy: {domain_name}")
+        domains = self.es_client.list_domain_names(
+            EngineType='Elasticsearch')["DomainNames"]
+        for domain in domains:
+            domain_name = domain["DomainName"]
+            domain_info = self.es_client.describe_elasticsearch_domain(
+                DomainName=domain_name)["DomainStatus"]
+            arn = domain_info["ARN"]
+            # access_policy = self.es_client.describe_elasticsearch_domain_config(
+            #     DomainName=domain_name)["DomainConfig"]["AccessPolicies"]
 
-                attributes = {
-                    "id": domain_name,
-                    "domain_name": domain_name,
-                    "access_policies": policy["Options"],
-                }
+            print(f"  Processing Elasticsearch Domain Policy: {domain_name}")
 
-                self.hcl.process_resource(
-                    "aws_elasticsearch_domain_policy", domain_name.replace("-", "_"), attributes)
+            attributes = {
+                "id": arn,
+                "domain_name": domain_name,
+                # "access_policies": access_policy,
+            }
 
-    def aws_elasticsearch_domain_saml_options(self):
-        print("Processing Elasticsearch Domain SAML Options...")
-
-        paginator = self.es_client.get_paginator("list_domain_names")
-        for page in paginator.paginate():
-            for domain in page["DomainNames"]:
-                domain_name = domain["DomainName"]
-                saml_options = self.es_client.describe_elasticsearch_domain_config(
-                    DomainName=domain_name)["DomainConfig"]["SAMLOptions"]
-                print(
-                    f"  Processing Elasticsearch Domain SAML Options: {domain_name}")
-
-                attributes = {
-                    "id": domain_name,
-                    "domain_name": domain_name,
-                    "saml_options": saml_options["Options"],
-                }
-
-                self.hcl.process_resource(
-                    "aws_elasticsearch_domain_saml_options", domain_name.replace("-", "_"), attributes)
+            self.hcl.process_resource(
+                "aws_elasticsearch_domain_policy", domain_name.replace("-", "_"), attributes)
