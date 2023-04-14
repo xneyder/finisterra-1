@@ -2,7 +2,7 @@ import os
 from utils.hcl import HCL
 
 
-class CognitIDP:
+class CognitoIDP:
     def __init__(self, cognito_idp_client, script_dir, provider_name, schema_data, region):
         self.cognito_idp_client = cognito_idp_client
         self.transform_rules = {}
@@ -15,6 +15,21 @@ class CognitIDP:
 
     def cognito_idp(self):
         self.hcl.prepare_folder(os.path.join("generated", "cognito_idp"))
+
+        self.aws_cognito_identity_provider()
+        self.aws_cognito_managed_user_pool_client()
+        self.aws_cognito_resource_server()
+
+        if "gov" not in self.region:
+            self.aws_cognito_risk_configuration()
+            self.aws_cognito_user_pool_ui_customization()
+
+        self.aws_cognito_user()
+        self.aws_cognito_user_group()
+        self.aws_cognito_user_in_group()
+        self.aws_cognito_user_pool()
+        self.aws_cognito_user_pool_client()
+        self.aws_cognito_user_pool_domain()
 
         self.hcl.refresh_state()
         self.hcl.generate_hcl_file()
@@ -65,7 +80,7 @@ class CognitIDP:
             for pool in page["UserPools"]:
                 pool_id = pool["Id"]
                 resource_servers = self.cognito_idp_client.list_resource_servers(
-                    UserPoolId=pool_id)["ResourceServers"]
+                    UserPoolId=pool_id, MaxResults=50)["ResourceServers"]
                 for server in resource_servers:
                     attributes = {
                         "id": server["Identifier"],
@@ -178,15 +193,15 @@ class CognitIDP:
                 attributes = {
                     "id": pool_id,
                     "name": user_pool["Name"],
-                    "admin_create_user_config": user_pool["AdminCreateUserConfig"],
-                    "auto_verified_attributes": user_pool["AutoVerifiedAttributes"],
-                    "email_verification_message": user_pool["EmailVerificationMessage"],
-                    "email_verification_subject": user_pool["EmailVerificationSubject"],
-                    "sms_authentication_message": user_pool["SmsAuthenticationMessage"],
-                    "sms_verification_message": user_pool["SmsVerificationMessage"],
-                    "verification_message_template": user_pool["VerificationMessageTemplate"],
-                    "mfa_configuration": user_pool["MfaConfiguration"],
-                    "password_policy": user_pool["Policies"]["PasswordPolicy"],
+                    # "admin_create_user_config": user_pool["AdminCreateUserConfig"],
+                    # "auto_verified_attributes": user_pool["AutoVerifiedAttributes"],
+                    # "email_verification_message": user_pool["EmailVerificationMessage"],
+                    # "email_verification_subject": user_pool["EmailVerificationSubject"],
+                    # "sms_authentication_message": user_pool["SmsAuthenticationMessage"],
+                    # "sms_verification_message": user_pool["SmsVerificationMessage"],
+                    # "verification_message_template": user_pool["VerificationMessageTemplate"],
+                    # "mfa_configuration": user_pool["MfaConfiguration"],
+                    # "password_policy": user_pool["Policies"]["PasswordPolicy"],
                 }
                 self.hcl.process_resource(
                     "aws_cognito_user_pool", user_pool["Name"].replace("-", "_"), attributes)
@@ -221,19 +236,20 @@ class CognitIDP:
         for page in paginator.paginate(MaxResults=60):
             for pool in page["UserPools"]:
                 pool_id = pool["Id"]
-                domain_paginator = self.cognito_idp_client.get_paginator(
-                    "list_user_pool_domains")
-                for domain_page in domain_paginator.paginate(UserPoolId=pool_id, MaxResults=60):
-                    for domain in domain_page["Domains"]:
-                        domain_description = self.cognito_idp_client.describe_user_pool_domain(
-                            Domain=domain["Domain"], UserPoolId=pool_id)["DomainDescription"]
-                        attributes = {
-                            "id": domain_description["Domain"],
-                            "domain": domain_description["Domain"],
-                            "user_pool_id": pool_id,
-                        }
-                        self.hcl.process_resource(
-                            "aws_cognito_user_pool_domain", domain_description["Domain"].replace("-", "_"), attributes)
+                user_pool = self.cognito_idp_client.describe_user_pool(
+                    UserPoolId=pool_id)["UserPool"]
+
+                if "Domain" in user_pool:
+                    domain = user_pool["Domain"]
+                    domain_description = self.cognito_idp_client.describe_user_pool_domain(
+                        Domain=domain)["DomainDescription"]
+                    attributes = {
+                        "id": domain_description["Domain"],
+                        "domain": domain_description["Domain"],
+                        "user_pool_id": pool_id,
+                    }
+                    self.hcl.process_resource(
+                        "aws_cognito_user_pool_domain", domain_description["Domain"].replace("-", "_"), attributes)
 
     def aws_cognito_user_pool_ui_customization(self):
         print("Processing Cognito User Pool UI Customizations...")

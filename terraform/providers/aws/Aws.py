@@ -27,6 +27,7 @@ from providers.aws.es import ES
 from providers.aws.elasticache import Elasticache
 from providers.aws.dynamodb import Dynamodb
 from providers.aws.cognito_identity import CognitoIdentity
+from providers.aws.cognito_idp import CognitoIDP
 
 
 class Aws:
@@ -240,3 +241,10 @@ class Aws:
 
         CognitoIdentity(cognito_identity_client, self.script_dir, self.provider_name,
                         self.schema_data, self.region).cognito_identity()
+
+    def cognito_idp(self):
+        cognito_idp_client = self.session.client(
+            "cognito-idp", region_name=self.region)
+
+        CognitoIDP(cognito_idp_client, self.script_dir, self.provider_name,
+                   self.schema_data, self.region).cognito_idp()
