@@ -16,6 +16,13 @@ class EFS:
     def efs(self):
         self.hcl.prepare_folder(os.path.join("generated", "efs"))
 
+        self.aws_efs_access_point()
+        self.aws_efs_backup_policy()
+        self.aws_efs_file_system()
+        self.aws_efs_file_system_policy()
+        self.aws_efs_mount_target()
+        self.aws_efs_replication_configuration()
+
         self.hcl.refresh_state()
         self.hcl.generate_hcl_file()
 
@@ -56,7 +63,7 @@ class EFS:
                     f"  Processing EFS Backup Policy for FileSystem: {file_system_id}")
 
                 attributes = {
-                    "file_system_id": file_system_id,
+                    "id": file_system_id,
                     "status": status,
                 }
                 self.hcl.process_resource(
@@ -94,7 +101,7 @@ class EFS:
                     f"  Processing EFS File System Policy for FileSystem: {file_system_id}")
 
                 attributes = {
-                    "file_system_id": file_system_id,
+                    "id": file_system_id,
                     "policy": policy,
                 }
                 self.hcl.process_resource(
@@ -143,7 +150,7 @@ class EFS:
                         f"  Processing EFS Replication Configuration Rule: {rule_id} for FileSystem: {file_system_id}")
 
                     attributes = {
-                        "file_system_id": file_system_id,
+                        "id": file_system_id,
                         "rule": {
                             "priority": config["Priority"],
                             "destination": {

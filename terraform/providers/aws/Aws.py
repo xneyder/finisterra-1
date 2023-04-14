@@ -13,6 +13,15 @@ from providers.aws.cloudfront import CloudFront
 from providers.aws.s3 import S3
 from providers.aws.iam import IAM
 from providers.aws.ec2 import EC2
+from providers.aws.ebs import EBS
+from providers.aws.ecr import ECR
+from providers.aws.ecr_public import ECR_PUBLIC
+from providers.aws.ecs import ECS
+from providers.aws.efs import EFS
+from providers.aws.eks import EKS
+from providers.aws.autoscaling import AutoScaling
+from providers.aws.vpn_client import VpnClient
+from providers.aws.docdb import DocDb
 
 
 class Aws:
@@ -132,3 +141,62 @@ class Aws:
             "autoscaling", region_name=self.region)
         EC2(ec2_client, autoscaling_client, self.script_dir, self.provider_name,
             self.schema_data, self.region).ec2()
+
+    def ebs(self):
+        ec2_client = self.session.client(
+            "ec2", region_name=self.region)
+        autoscaling_client = self.session.client(
+            "autoscaling", region_name=self.region)
+        EBS(ec2_client, autoscaling_client, self.script_dir, self.provider_name,
+            self.schema_data, self.region).ebs()
+
+    def ecr(self):
+        ecr_client = self.session.client(
+            "ecr", region_name=self.region)
+        ECR(ecr_client, self.script_dir, self.provider_name,
+            self.schema_data, self.region).ecr()
+
+    def ecr_public(self):
+        ecr_public_client = self.session.client(
+            "ecr-public", region_name=self.region)
+        ECR_PUBLIC(ecr_public_client, self.script_dir, self.provider_name,
+                   self.schema_data, self.region).ecr_public()
+
+    def ecs(self):
+        ecs_client = self.session.client(
+            "ecs", region_name=self.region)
+        ECS(ecs_client, self.script_dir, self.provider_name,
+            self.schema_data, self.region).ecs()
+
+    def efs(self):
+        efs_client = self.session.client(
+            "efs", region_name=self.region)
+        EFS(efs_client, self.script_dir, self.provider_name,
+            self.schema_data, self.region).efs()
+
+    def eks(self):
+        eks_client = self.session.client(
+            "eks", region_name=self.region)
+        EKS(eks_client, self.script_dir, self.provider_name,
+            self.schema_data, self.region).eks()
+
+    def autoscaling(self):
+        autoscaling_client = self.session.client(
+            "autoscaling", region_name=self.region)
+
+        AutoScaling(autoscaling_client, self.script_dir, self.provider_name,
+                    self.schema_data, self.region).autoscaling()
+
+    def vpn_client(self):
+        ec2_client = self.session.client(
+            "ec2", region_name=self.region)
+
+        VpnClient(ec2_client, self.script_dir, self.provider_name,
+                  self.schema_data, self.region).vpn_client()
+
+    def docdb(self):
+        docdb_client = self.session.client(
+            "docdb", region_name=self.region)
+
+        DocDb(docdb_client, self.script_dir, self.provider_name,
+              self.schema_data, self.region).docdb()

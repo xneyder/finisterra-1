@@ -280,13 +280,16 @@ class HCL:
 
     def count_state(self):
         resource_count = {}
-        with open(self.terraform_state_file, "r") as state_file:
-            state_data = json.load(state_file)
-            for resource in state_data["resources"]:
-                if resource["type"] in resource_count:
-                    resource_count[resource["type"]] += 1
-                else:
-                    resource_count[resource["type"]] = 1
+        try:
+            with open(self.terraform_state_file, "r") as state_file:
+                state_data = json.load(state_file)
+                for resource in state_data["resources"]:
+                    if resource["type"] in resource_count:
+                        resource_count[resource["type"]] += 1
+                    else:
+                        resource_count[resource["type"]] = 1
+        except:
+            pass
         return resource_count
 
     def refresh_state(self):

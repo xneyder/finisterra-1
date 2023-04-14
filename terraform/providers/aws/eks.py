@@ -16,6 +16,12 @@ class EKS:
     def eks(self):
         self.hcl.prepare_folder(os.path.join("generated", "eks"))
 
+        self.aws_eks_addon()
+        self.aws_eks_cluster()
+        self.aws_eks_fargate_profile()
+        self.aws_eks_identity_provider_config()
+        self.aws_eks_node_group()
+
         self.hcl.refresh_state()
         self.hcl.generate_hcl_file()
 

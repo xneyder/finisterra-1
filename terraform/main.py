@@ -13,7 +13,16 @@ def main():
     # provider.s3()
     # provider.acm()
     # provider.cloudfront()
-    provider.ec2()
+    # provider.ec2()
+    # provider.ebs()
+    # provider.ecr()
+    # provider.ecr_public()
+    # provider.ecs()
+    # provider.efs()
+    # provider.eks()
+    # provider.autoscaling()
+    # provider.vpn_client()
+    provider.docdb()
 
     print("Finished processing AWS resources.")
 

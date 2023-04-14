@@ -2,7 +2,7 @@ import os
 from utils.hcl import HCL
 
 
-class Docdb:
+class DocDb:
     def __init__(self, docdb_client, script_dir, provider_name, schema_data, region):
         self.docdb_client = docdb_client
         self.transform_rules = {}
@@ -15,6 +15,14 @@ class Docdb:
 
     def docdb(self):
         self.hcl.prepare_folder(os.path.join("generated", "docdb"))
+
+        self.aws_docdb_cluster()
+        self.aws_docdb_cluster_instance()
+        self.aws_docdb_cluster_parameter_group()
+        self.aws_docdb_cluster_snapshot()
+        self.aws_docdb_event_subscription()
+        self.aws_docdb_global_cluster()
+        self.aws_docdb_subnet_group()
 
         self.hcl.refresh_state()
         self.hcl.generate_hcl_file()
@@ -30,17 +38,17 @@ class Docdb:
 
                 attributes = {
                     "id": db_cluster["DBClusterIdentifier"],
-                    "cluster_identifier": db_cluster["DBClusterIdentifier"],
-                    "engine": db_cluster["Engine"],
-                    "engine_version": db_cluster["EngineVersion"],
-                    "status": db_cluster["Status"],
-                    "db_subnet_group": db_cluster["DBSubnetGroup"],
-                    "vpc_security_group_ids": db_cluster["VpcSecurityGroups"],
-                    "storage_encrypted": db_cluster["StorageEncrypted"],
-                    "kms_key_id": db_cluster["KmsKeyId"],
-                    "availability_zones": db_cluster["AvailabilityZones"],
-                    "port": db_cluster["Port"],
-                    "master_username": db_cluster["MasterUsername"],
+                    # "cluster_identifier": db_cluster["DBClusterIdentifier"],
+                    # "engine": db_cluster["Engine"],
+                    # "engine_version": db_cluster["EngineVersion"],
+                    # "status": db_cluster["Status"],
+                    # "db_subnet_group": db_cluster["DBSubnetGroup"],
+                    # "vpc_security_group_ids": db_cluster["VpcSecurityGroups"],
+                    # "storage_encrypted": db_cluster["StorageEncrypted"],
+                    # "kms_key_id": db_cluster["KmsKeyId"],
+                    # "availability_zones": db_cluster["AvailabilityZones"],
+                    # "port": db_cluster["Port"],
+                    # "master_username": db_cluster["MasterUsername"],
                 }
                 self.hcl.process_resource(
                     "aws_docdb_cluster", db_cluster["DBClusterIdentifier"].replace("-", "_"), attributes)
@@ -57,14 +65,14 @@ class Docdb:
 
                     attributes = {
                         "id": db_instance["DBInstanceIdentifier"],
-                        "instance_identifier": db_instance["DBInstanceIdentifier"],
-                        "cluster_identifier": db_instance["DBClusterIdentifier"],
-                        "instance_class": db_instance["DBInstanceClass"],
-                        "availability_zone": db_instance["AvailabilityZone"],
-                        "engine": db_instance["Engine"],
-                        "engine_version": db_instance["EngineVersion"],
-                        "status": db_instance["DBInstanceStatus"],
-                        "port": db_instance["DbInstancePort"],
+                        "instance_identifier": db_instance.get("DBInstanceIdentifier", None),
+                        "cluster_identifier": db_instance.get("DBClusterIdentifier", None),
+                        "instance_class": db_instance.get("DBInstanceClass", None),
+                        "availability_zone": db_instance.get("AvailabilityZone", None),
+                        "engine": db_instance.get("Engine", None),
+                        "engine_version": db_instance.get("EngineVersion", None),
+                        "status": db_instance.get("DBInstanceStatus", None),
+                        "port": db_instance.get("DbInstancePort", None),
                     }
                     self.hcl.process_resource(
                         "aws_docdb_cluster_instance", db_instance["DBInstanceIdentifier"].replace("-", "_"), attributes)
@@ -100,14 +108,14 @@ class Docdb:
 
                 attributes = {
                     "id": snapshot["DBClusterSnapshotIdentifier"],
-                    "snapshot_identifier": snapshot["DBClusterSnapshotIdentifier"],
-                    "cluster_identifier": snapshot["DBClusterIdentifier"],
-                    "snapshot_type": snapshot["SnapshotType"],
-                    "engine": snapshot["Engine"],
-                    "engine_version": snapshot["EngineVersion"],
-                    "port": snapshot["Port"],
-                    "status": snapshot["Status"],
-                    "availability_zone": snapshot["AvailabilityZone"],
+                    "snapshot_identifier": snapshot.get("DBClusterSnapshotIdentifier", None),
+                    "cluster_identifier": snapshot.get("DBClusterIdentifier", None),
+                    "snapshot_type": snapshot.get("SnapshotType", None),
+                    "engine": snapshot.get("Engine", None),
+                    "engine_version": snapshot.get("EngineVersion", None),
+                    "port": snapshot.get("Port", None),
+                    "status": snapshot.get("Status", None),
+                    "availability_zone": snapshot.get("AvailabilityZone", None),
                 }
                 self.hcl.process_resource(
                     "aws_docdb_cluster_snapshot", snapshot["DBClusterSnapshotIdentifier"].replace("-", "_"), attributes)
@@ -124,11 +132,11 @@ class Docdb:
 
                 attributes = {
                     "id": subscription["CustSubscriptionId"],
-                    "name": subscription["CustSubscriptionId"],
-                    "sns_topic_arn": subscription["CustomerAwsId"],
-                    "source_type": subscription["SourceType"],
-                    "event_categories": subscription["EventCategoriesList"],
-                    "enabled": subscription["Enabled"],
+                    "name": subscription.get("CustSubscriptionId", None),
+                    "sns_topic_arn": subscription.get("CustomerAwsId", None),
+                    "source_type": subscription.get("SourceType", None),
+                    "event_categories": subscription.get("EventCategoriesList", None),
+                    "enabled": subscription.get("Enabled", None),
                 }
                 self.hcl.process_resource(
                     "aws_docdb_event_subscription", subscription["CustSubscriptionId"].replace("-", "_"), attributes)
@@ -145,11 +153,11 @@ class Docdb:
 
                     attributes = {
                         "id": cluster["GlobalClusterIdentifier"],
-                        "global_cluster_identifier": cluster["GlobalClusterIdentifier"],
-                        "source_db_cluster_identifier": cluster["DBClusterIdentifier"],
-                        "engine": cluster["Engine"],
-                        "engine_version": cluster["EngineVersion"],
-                        "deletion_protection": cluster["DeletionProtection"],
+                        "global_cluster_identifier": cluster.get("GlobalClusterIdentifier", None),
+                        "source_db_cluster_identifier": cluster.get("DBClusterIdentifier", None),
+                        "engine": cluster.get("Engine", None),
+                        "engine_version": cluster.get("EngineVersion", None),
+                        "deletion_protection": cluster.get("DeletionProtection", None),
                     }
                     self.hcl.process_resource(
                         "aws_docdb_global_cluster", cluster["GlobalClusterIdentifier"].replace("-", "_"), attributes)
@@ -165,9 +173,9 @@ class Docdb:
                     f"  Processing DocumentDB Subnet Group: {subnet_group['DBSubnetGroupName']}")
 
                 attributes = {
-                    "id": subnet_group["DBSubnetGroupArn"],
-                    "name": subnet_group["DBSubnetGroupName"],
-                    "description": subnet_group["DBSubnetGroupDescription"],
+                    "id": subnet_group["DBSubnetGroupName"],
+                    "name": subnet_group.get("DBSubnetGroupName", None),
+                    "description": subnet_group.get("DBSubnetGroupDescription", None),
                     "subnet_ids": [subnet["SubnetIdentifier"] for subnet in subnet_group["Subnets"]],
                 }
 

@@ -17,6 +17,10 @@ class ECR_PUBLIC:
     def ecr_public(self):
         self.hcl.prepare_folder(os.path.join("generated", "ecr_public"))
 
+        if "gov" not in self.region:
+            self.aws_ecrpublic_repository()
+            self.aws_ecrpublic_repository_policy()
+
         self.hcl.refresh_state()
         self.hcl.generate_hcl_file()
 
@@ -32,7 +36,7 @@ class ECR_PUBLIC:
             print(f"  Processing ECR Public Repository: {repository_name}")
 
             attributes = {
-                "repository_name": repository_name,
+                "id": repository_name,
             }
             self.hcl.process_resource(
                 "aws_ecrpublic_repository", repository_name.replace("-", "_"), attributes)
@@ -58,7 +62,7 @@ class ECR_PUBLIC:
                 f"  Processing ECR Public Repository Policy for: {repository_name}")
 
             attributes = {
-                "repository": repository_name,
+                "id": repository_name,
                 "policy": json.dumps(policy_text, indent=2),
             }
             self.hcl.process_resource("aws_ecrpublic_repository_policy",

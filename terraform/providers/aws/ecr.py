@@ -17,6 +17,16 @@ class ECR:
     def ecr(self):
         self.hcl.prepare_folder(os.path.join("generated", "ecr"))
 
+        if "gov" not in self.region:
+            self.aws_ecr_lifecycle_policy()
+            self.aws_ecr_registry_policy()
+            self.aws_ecr_pull_through_cache_rule()
+            self.aws_ecr_replication_configuration()
+            self.aws_ecr_registry_scanning_configuration()
+
+        self.aws_ecr_repository()
+        self.aws_ecr_repository_policy()
+
         self.hcl.refresh_state()
         self.hcl.generate_hcl_file()
 
@@ -36,7 +46,7 @@ class ECR:
                 f"  Processing ECR Lifecycle Policy for repository: {repository_name}")
 
             attributes = {
-                "repository": repository_name,
+                "id": repository_name,
                 "policy": json.dumps(json.loads(lifecycle_policy), indent=2),
             }
             self.hcl.process_resource(
@@ -60,7 +70,7 @@ class ECR:
                     print(
                         f"  Processing ECR Pull Through Cache Rule for repository: {repository_name}")
                     attributes = {
-                        "repository_name": repository_name,
+                        "id": repository_name,
                         "action": rule["action"],
                         "rule_priority": rule["rulePriority"],
                     }
@@ -96,7 +106,7 @@ class ECR:
                 f"  Processing ECR Registry Scanning Configuration for repository: {repository_name}")
 
             attributes = {
-                "repository_name": repository_name,
+                "id": repository_name,
                 "scan_on_push": image_scanning_config["scanOnPush"],
             }
             self.hcl.process_resource(
@@ -106,7 +116,9 @@ class ECR:
         print("Processing ECR Replication Configurations...")
 
         try:
-            replication_configuration = self.ecr_client.describe_registry()[
+            registry = self.ecr_client.describe_registry()
+            registryId = registry["registryId"]
+            replication_configuration = registry[
                 "replicationConfiguration"]
         except KeyError:
             return
@@ -124,6 +136,7 @@ class ECR:
             })
 
         attributes = {
+            "id": registryId,
             "rule": formatted_rules,
         }
         self.hcl.process_resource(
@@ -140,7 +153,7 @@ class ECR:
             print(f"  Processing ECR Repository: {repository_name}")
 
             attributes = {
-                "name": repository_name,
+                "id": repository_name,
                 "arn": repository_arn,
             }
             self.hcl.process_resource(
@@ -165,7 +178,7 @@ class ECR:
             print(f"  Processing ECR Repository Policy for: {repository_name}")
 
             attributes = {
-                "repository": repository_name,
+                "id": repository_name,
                 "policy": json.dumps(policy_text, indent=2),
             }
             self.hcl.process_resource(

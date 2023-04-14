@@ -2,7 +2,7 @@ import os
 from utils.hcl import HCL
 
 
-class Vpnclient:
+class VpnClient:
     def __init__(self, ec2_client, script_dir, provider_name, schema_data, region):
         self.ec2_client = ec2_client
         self.transform_rules = {}
@@ -15,6 +15,11 @@ class Vpnclient:
 
     def vpn_client(self):
         self.hcl.prepare_folder(os.path.join("generated", "vpn_client"))
+
+        self.aws_ec2_client_vpn_authorization_rule()
+        self.aws_ec2_client_vpn_endpoint()
+        self.aws_ec2_client_vpn_network_association()
+        self.aws_ec2_client_vpn_route()
 
         self.hcl.refresh_state()
         self.hcl.generate_hcl_file()

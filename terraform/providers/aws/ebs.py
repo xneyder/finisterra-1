@@ -3,8 +3,9 @@ from utils.hcl import HCL
 
 
 class EBS:
-    def __init__(self, ec2_client, script_dir, provider_name, schema_data, region):
+    def __init__(self, ec2_client, autoscaling_client, script_dir, provider_name, schema_data, region):
         self.ec2_client = ec2_client
+        self.autoscaling_client = autoscaling_client
         self.transform_rules = {}
         self.provider_name = provider_name
         self.script_dir = script_dir
@@ -13,8 +14,16 @@ class EBS:
                        self.script_dir, self.transform_rules)
         self.region = region
 
-    def acm(self):
-        self.hcl.prepare_folder(os.path.join("generated", "acm"))
+    def ebs(self):
+        self.hcl.prepare_folder(os.path.join("generated", "ebs"))
+
+        if "gov" not in self.region:
+            self.aws_ebs_default_kms_key()
+            self.aws_ebs_encryption_by_default()
+        self.aws_ebs_snapshot()
+        self.aws_ebs_volume()
+        self.aws_snapshot_create_volume_permission()
+        self.aws_volume_attachment()
 
         self.hcl.refresh_state()
         self.hcl.generate_hcl_file()
@@ -63,6 +72,11 @@ class EBS:
             self.hcl.process_resource(
                 "aws_ebs_snapshot", snapshot_id.replace("-", "_"), attributes)
 
+    def is_managed_by_auto_scaling_group(self, instance_id):
+        response = self.autoscaling_client.describe_auto_scaling_instances(InstanceIds=[
+                                                                           instance_id])
+        return bool(response["AutoScalingInstances"])
+
     def aws_ebs_volume(self):
         print("Processing EBS Volumes...")
 
@@ -70,6 +84,15 @@ class EBS:
 
         for volume in volumes:
             volume_id = volume["VolumeId"]
+
+            # Check if the volume is attached to an instance managed by an Auto Scaling group
+            if "Attachments" in volume and volume["Attachments"]:
+                instance_id = volume["Attachments"][0]["InstanceId"]
+                if self.is_managed_by_auto_scaling_group(instance_id):
+                    print(
+                        f"  Skipping EBS Volume (attached to Auto Scaling group instance): {volume_id}")
+                    continue
+
             print(f"  Processing EBS Volume: {volume_id}")
 
             attributes = {
@@ -122,6 +145,13 @@ class EBS:
             if "Attachments" in volume:
                 for attachment in volume["Attachments"]:
                     instance_id = attachment["InstanceId"]
+
+                    # Check if the instance is managed by an Auto Scaling group
+                    if self.is_managed_by_auto_scaling_group(instance_id):
+                        print(
+                            f"  Skipping Volume Attachment (instance in Auto Scaling group): {volume_id} -> Instance: {instance_id}")
+                        continue
+
                     device_name = attachment["Device"]
 
                     print(

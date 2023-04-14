@@ -5,7 +5,11 @@ from utils.hcl import HCL
 class ECS:
     def __init__(self, ecs_client, script_dir, provider_name, schema_data, region):
         self.ecs_client = ecs_client
-        self.transform_rules = {}
+        self.transform_rules = {
+            "aws_ecs_task_definition": {
+                "hcl_json_multiline": {"container_definitions": True}
+            },
+        }
         self.provider_name = provider_name
         self.script_dir = script_dir
         self.schema_data = schema_data
@@ -15,6 +19,16 @@ class ECS:
 
     def ecs(self):
         self.hcl.prepare_folder(os.path.join("generated", "ecs"))
+
+        self.aws_ecs_account_setting_default()
+        self.aws_ecs_capacity_provider()
+        self.aws_ecs_cluster()
+        self.aws_ecs_cluster_capacity_providers()
+        self.aws_ecs_service()
+        self.aws_ecs_tag()
+        self.aws_ecs_task_definition()
+        if "gov" not in self.region:
+            self.aws_ecs_task_set()
 
         self.hcl.refresh_state()
         self.hcl.generate_hcl_file()
@@ -30,7 +44,7 @@ class ECS:
             print(f"  Processing ECS Account Setting Default: {name}")
 
             attributes = {
-                "name": name,
+                "id": name,
                 "value": value,
             }
             self.hcl.process_resource(
@@ -48,7 +62,7 @@ class ECS:
             print(f"  Processing ECS Capacity Provider: {provider_name}")
 
             attributes = {
-                "name": provider_name,
+                "id": provider_name,
             }
             self.hcl.process_resource(
                 "aws_ecs_capacity_provider", provider_name.replace("-", "_"), attributes)
@@ -67,7 +81,7 @@ class ECS:
             print(f"  Processing ECS Cluster: {cluster_name}")
 
             attributes = {
-                "arn": cluster_arn,
+                "id": cluster_name,
                 "name": cluster_name,
             }
             self.hcl.process_resource(
@@ -91,7 +105,7 @@ class ECS:
 
                 resource_name = f"{cluster_name}-{provider}"
                 attributes = {
-                    "cluster": cluster_name,
+                    "id": cluster_name,
                     "capacity_provider": provider,
                 }
                 self.hcl.process_resource(
@@ -110,10 +124,12 @@ class ECS:
             for service in services:
                 service_name = service["serviceName"]
                 service_arn = service["serviceArn"]
+                id = cluster_arn.split("/")[1] + "/" + service_name
 
                 print(f"  Processing ECS Service: {service_name}")
 
                 attributes = {
+                    "id": id,
                     "arn": service_arn,
                     "name": service_name,
                     "cluster": cluster_arn,
@@ -124,51 +140,81 @@ class ECS:
     def aws_ecs_tag(self):
         print("Processing ECS Tags...")
 
+        # Process tags for ECS clusters
         clusters_arns = self.ecs_client.list_clusters()["clusterArns"]
         for cluster_arn in clusters_arns:
+            cluster = self.ecs_client.describe_clusters(
+                clusters=[cluster_arn])["clusters"][0]
+            cluster_name = cluster["clusterName"]
+            self.process_tags_for_resource(
+                cluster_name, cluster_arn, "aws_ecs_tag")
+
+            # Process tags for ECS services
             services_arns = self.ecs_client.list_services(
                 cluster=cluster_arn)["serviceArns"]
             services = self.ecs_client.describe_services(
                 cluster=cluster_arn, services=services_arns)["services"]
-
             for service in services:
                 service_name = service["serviceName"]
                 service_arn = service["serviceArn"]
-                tags = service["tags"]
+                self.process_tags_for_resource(
+                    service_name, service_arn, "aws_ecs_tag")
 
-                for tag in tags:
-                    key = tag["key"]
-                    value = tag["value"]
+            # Process tags for ECS tasks and task definitions
+            tasks_arns = self.ecs_client.list_tasks(
+                cluster=cluster_arn)["taskArns"]
+            tasks = self.ecs_client.describe_tasks(
+                cluster=cluster_arn, tasks=tasks_arns)["tasks"]
+            for task in tasks:
+                task_arn = task["taskArn"]
+                task_definition_arn = task["taskDefinitionArn"]
+                self.process_tags_for_resource(
+                    task_arn.split("/")[-1], task_arn, "aws_ecs_tag")
+                self.process_tags_for_resource(task_definition_arn.split(
+                    "/")[-1], task_definition_arn, "aws_ecs_tag")
 
-                    print(
-                        f"  Processing ECS Tag: {key}={value} for Service: {service_name}")
+    def process_tags_for_resource(self, resource_name, resource_arn, resource_type):
+        tags = self.ecs_client.list_tags_for_resource(
+            resourceArn=resource_arn)["tags"]
+        for tag in tags:
+            key = tag["key"]
+            value = tag["value"]
 
-                    resource_name = f"{service_name}-tag-{key}"
-                    attributes = {
-                        "resource_arn": service_arn,
-                        "key": key,
-                        "value": value,
-                    }
-                    self.hcl.process_resource(
-                        "aws_ecs_tag", resource_name.replace("-", "_"), attributes)
+            print(
+                f"  Processing ECS Tag: {key}={value} for {resource_type}: {resource_name}")
+
+            hcl_resource_name = f"{resource_name}-tag-{key}"
+            id = resource_arn + "," + key
+            attributes = {
+                "id": id,
+                "resource_arn": resource_arn,
+                "key": key,
+                "value": value,
+            }
+            self.hcl.process_resource(
+                resource_type, hcl_resource_name.replace("-", "_"), attributes)
 
     def aws_ecs_task_definition(self):
         print("Processing ECS Task Definitions...")
 
-        paginator = self.ecs_client.get_paginator("list_task_definitions")
+        paginator = self.ecs_client.get_paginator(
+            "list_task_definition_families")
         for page in paginator.paginate():
-            task_definition_arns = page["taskDefinitionArns"]
-            task_definitions = self.ecs_client.describe_task_definitions(
-                taskDefinitionArns=task_definition_arns)["taskDefinitions"]
+            task_definition_families = page["families"]
+            for family in task_definition_families:
+                latest_task_definition_arn = self.ecs_client.list_task_definitions(
+                    familyPrefix=family, sort="DESC", maxResults=1
+                )["taskDefinitionArns"][0]
 
-            for task_definition in task_definitions:
-                task_definition_arn = task_definition["taskDefinitionArn"]
-                family = task_definition["family"]
+                task_definition = self.ecs_client.describe_task_definition(
+                    taskDefinition=latest_task_definition_arn)["taskDefinition"]
 
-                print(f"  Processing ECS Task Definition: {family}")
+                print(
+                    f"  Processing ECS Task Definition: {latest_task_definition_arn}")
 
                 attributes = {
-                    "arn": task_definition_arn,
+                    "id": latest_task_definition_arn,
+                    "arn": latest_task_definition_arn,
                     "family": family,
                 }
                 self.hcl.process_resource(

@@ -17,22 +17,22 @@ class EC2:
     def ec2(self):
         self.hcl.prepare_folder(os.path.join("generated", "ec2"))
 
-        # self.aws_ami()
-        # self.aws_ami_launch_permission()
-        # self.aws_ec2_capacity_reservation()
-        # self.aws_ec2_host()
-        # # self.aws_ec2_serial_console_access() # no api in boto3
-        # self.aws_ec2_tag()
-        # self.aws_eip()
-        # self.aws_eip_association()
-        # self.aws_instance()
+        self.aws_ami()
+        self.aws_ami_launch_permission()
+        self.aws_ec2_capacity_reservation()
+        self.aws_ec2_host()
+        # self.aws_ec2_serial_console_access() # no api in boto3
+        self.aws_ec2_tag()
+        self.aws_eip()
+        self.aws_eip_association()
+        self.aws_instance()
         self.aws_key_pair()
-        # self.aws_launch_template()
-        # self.aws_placement_group()
-        # if "gov" not in self.region:
-        #     self.aws_spot_datafeed_subscription()
-        # self.aws_spot_fleet_request()
-        # self.aws_spot_instance_request()
+        self.aws_launch_template()
+        self.aws_placement_group()
+        if "gov" not in self.region:
+            self.aws_spot_datafeed_subscription()
+        self.aws_spot_fleet_request()
+        self.aws_spot_instance_request()
 
         self.hcl.refresh_state()
         self.hcl.generate_hcl_file()
@@ -260,13 +260,15 @@ class EC2:
     def aws_key_pair(self):
         print("Processing EC2 Key Pairs...")
 
-        key_pairs = self.ec2_client.describe_key_pairs()["KeyPairs"]
+        key_pairs = self.ec2_client.describe_key_pairs(
+            IncludePublicKey=True)["KeyPairs"]
         for key_pair in key_pairs:
             key_pair_name = key_pair["KeyName"]
             print(f"  Processing Key Pair: {key_pair_name}")
 
             attributes = {
-                "id": key_pair["KeyPairId"],
+                "id": key_pair_name,
+                "public_key": key_pair["PublicKey"],
                 # "key_name": key_pair_name,
                 # "fingerprint": key_pair["KeyFingerprint"],
             }
