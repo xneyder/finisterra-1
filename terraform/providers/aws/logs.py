@@ -5,7 +5,11 @@ from utils.hcl import HCL
 class Logs:
     def __init__(self, logs_client, script_dir, provider_name, schema_data, region):
         self.logs_client = logs_client
-        self.transform_rules = {}
+        self.transform_rules = {
+            "aws_cloudwatch_log_resource_policy": {
+                "hcl_json_multiline": {"policy_document": True}
+            },
+        }
         self.provider_name = provider_name
         self.script_dir = script_dir
         self.schema_data = schema_data
@@ -15,6 +19,18 @@ class Logs:
 
     def logs(self):
         self.hcl.prepare_folder(os.path.join("generated", "logs"))
+
+        self.aws_cloudwatch_log_destination()
+        self.aws_cloudwatch_log_destination_policy()
+        self.aws_cloudwatch_log_group()
+        self.aws_cloudwatch_log_metric_filter()
+        if "gov" not in self.region:
+            self.aws_cloudwatch_log_data_protection_policy()
+
+        self.aws_cloudwatch_log_resource_policy()
+        # self.aws_cloudwatch_log_stream() #could be a lot of data
+        self.aws_cloudwatch_log_subscription_filter()
+        self.aws_cloudwatch_query_definition()
 
         self.hcl.refresh_state()
         self.hcl.generate_hcl_file()
@@ -152,7 +168,7 @@ class Logs:
 
                 attributes = {
                     "id": policy_name,
-                    "name": policy_name,
+                    "policy_name": policy_name,
                     "policy_document": resource_policy["policyDocument"],
                 }
 
@@ -215,22 +231,21 @@ class Logs:
     def aws_cloudwatch_query_definition(self):
         print("Processing CloudWatch Query Definitions...")
 
-        paginator = self.logs_client.get_paginator(
-            "describe_query_definitions")
-        for page in paginator.paginate():
-            for query_definition in page["queryDefinitions"]:
-                query_definition_id = query_definition["queryDefinitionId"]
-                print(
-                    f"  Processing CloudWatch Query Definition: {query_definition_id}")
+        query_definitions_response = self.logs_client.describe_query_definitions()
 
-                attributes = {
-                    "id": query_definition_id,
-                    "name": query_definition["name"],
-                    "query_string": query_definition["queryString"],
-                }
+        for query_definition in query_definitions_response["queryDefinitions"]:
+            query_definition_id = query_definition["queryDefinitionId"]
+            print(
+                f"  Processing CloudWatch Query Definition: {query_definition_id}")
 
-                if "logGroupNames" in query_definition:
-                    attributes["log_group_names"] = query_definition["logGroupNames"]
+            attributes = {
+                "id": query_definition_id,
+                "name": query_definition["name"],
+                "query_string": query_definition["queryString"],
+            }
 
-                self.hcl.process_resource(
-                    "aws_cloudwatch_query_definition", query_definition_id.replace("-", "_"), attributes)
+            if "logGroupNames" in query_definition:
+                attributes["log_group_names"] = query_definition["logGroupNames"]
+
+            self.hcl.process_resource(
+                "aws_cloudwatch_query_definition", query_definition_id.replace("-", "_"), attributes)

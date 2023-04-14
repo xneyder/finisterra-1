@@ -28,6 +28,8 @@ from providers.aws.elasticache import Elasticache
 from providers.aws.dynamodb import Dynamodb
 from providers.aws.cognito_identity import CognitoIdentity
 from providers.aws.cognito_idp import CognitoIDP
+from providers.aws.logs import Logs
+from providers.aws.cloudwatch import Cloudwatch
 
 
 class Aws:
@@ -248,3 +250,17 @@ class Aws:
 
         CognitoIDP(cognito_idp_client, self.script_dir, self.provider_name,
                    self.schema_data, self.region).cognito_idp()
+
+    def logs(self):
+        logs_client = self.session.client(
+            "logs", region_name=self.region)
+
+        Logs(logs_client, self.script_dir, self.provider_name,
+             self.schema_data, self.region).logs()
+
+    def cloudwatch(self):
+        cloudwatch_client = self.session.client(
+            "cloudwatch", region_name=self.region)
+
+        Cloudwatch(cloudwatch_client, self.script_dir, self.provider_name,
+                   self.schema_data, self.region).cloudwatch()

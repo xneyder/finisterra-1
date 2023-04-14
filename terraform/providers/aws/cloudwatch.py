@@ -16,6 +16,11 @@ class Cloudwatch:
     def cloudwatch(self):
         self.hcl.prepare_folder(os.path.join("generated", "cloudwatch"))
 
+        self.aws_cloudwatch_composite_alarm()
+        self.aws_cloudwatch_dashboard()
+        self.aws_cloudwatch_metric_alarm()
+        self.aws_cloudwatch_metric_stream()
+
         self.hcl.refresh_state()
         self.hcl.generate_hcl_file()
 
