@@ -22,6 +22,7 @@ from providers.aws.eks import EKS
 from providers.aws.autoscaling import AutoScaling
 from providers.aws.vpn_client import VpnClient
 from providers.aws.docdb import DocDb
+from providers.aws.opensearch import Opensearch
 
 
 class Aws:
@@ -200,3 +201,10 @@ class Aws:
 
         DocDb(docdb_client, self.script_dir, self.provider_name,
               self.schema_data, self.region).docdb()
+
+    def opensearch(self):
+        opensearch_client = self.session.client(
+            "opensearch", region_name=self.region)
+
+        Opensearch(opensearch_client, self.script_dir, self.provider_name,
+                   self.schema_data, self.region).opensearch()

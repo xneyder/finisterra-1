@@ -22,7 +22,8 @@ def main():
     # provider.eks()
     # provider.autoscaling()
     # provider.vpn_client()
-    provider.docdb()
+    # provider.docdb()
+    provider.opensearch()
 
     print("Finished processing AWS resources.")
 
