@@ -29,8 +29,8 @@ def main():
     # provider.dynamodb()
     # provider.cognito_identity()
     # provider.cognito_idp()
-    provider.logs()
-    # provider.cloudwatch()
+    # provider.logs()
+    provider.cloudwatch()
 
     print("Finished processing AWS resources.")
 

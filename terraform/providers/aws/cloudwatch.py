@@ -5,7 +5,11 @@ from utils.hcl import HCL
 class Cloudwatch:
     def __init__(self, cloudwatch_client, script_dir, provider_name, schema_data, region):
         self.cloudwatch_client = cloudwatch_client
-        self.transform_rules = {}
+        self.transform_rules = {
+            "aws_cloudwatch_metric_alarm": {
+                "hcl_drop_fields": {"datapoints_to_alarm": 0},
+            },
+        }
         self.provider_name = provider_name
         self.script_dir = script_dir
         self.schema_data = schema_data
@@ -19,7 +23,8 @@ class Cloudwatch:
         self.aws_cloudwatch_composite_alarm()
         self.aws_cloudwatch_dashboard()
         self.aws_cloudwatch_metric_alarm()
-        self.aws_cloudwatch_metric_stream()
+        if "gov" not in self.region:
+            self.aws_cloudwatch_metric_stream()
 
         self.hcl.refresh_state()
         self.hcl.generate_hcl_file()
@@ -104,27 +109,26 @@ class Cloudwatch:
     def aws_cloudwatch_metric_stream(self):
         print("Processing CloudWatch Metric Streams...")
 
-        paginator = self.cloudwatch_client.get_paginator(
-            "describe_metric_streams")
-        for page in paginator.paginate():
-            for metric_stream in page["Entries"]:
-                stream_name = metric_stream["Name"]
-                print(f"  Processing CloudWatch Metric Stream: {stream_name}")
+        metric_streams = self.cloudwatch_client.list_metric_streams()[
+            "Entries"]
+        for metric_stream in metric_streams:
+            stream_name = metric_stream["Name"]
+            print(f"  Processing CloudWatch Metric Stream: {stream_name}")
 
-                attributes = {
-                    "id": stream_name,
-                    "name": stream_name,
-                    "arn": metric_stream["Arn"],
-                    "firehose_arn": metric_stream["FirehoseArn"],
-                    "role_arn": metric_stream["RoleArn"],
-                    "output_format": metric_stream["OutputFormat"],
-                }
+            attributes = {
+                "id": stream_name,
+                "name": stream_name,
+                "arn": metric_stream["Arn"],
+                "firehose_arn": metric_stream["FirehoseArn"],
+                # "role_arn": metric_stream["RoleArn"],
+                "output_format": metric_stream["OutputFormat"],
+            }
 
-                if "IncludeFilters" in metric_stream:
-                    attributes["include_filters"] = metric_stream["IncludeFilters"]
+            if "IncludeFilters" in metric_stream:
+                attributes["include_filters"] = metric_stream["IncludeFilters"]
 
-                if "ExcludeFilters" in metric_stream:
-                    attributes["exclude_filters"] = metric_stream["ExcludeFilters"]
+            if "ExcludeFilters" in metric_stream:
+                attributes["exclude_filters"] = metric_stream["ExcludeFilters"]
 
-                self.hcl.process_resource(
-                    "aws_cloudwatch_metric_stream", stream_name.replace("-", "_"), attributes)
+            self.hcl.process_resource(
+                "aws_cloudwatch_metric_stream", stream_name.replace("-", "_"), attributes)
