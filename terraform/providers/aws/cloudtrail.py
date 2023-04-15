@@ -1,5 +1,6 @@
 import os
 from utils.hcl import HCL
+from botocore.exceptions import ClientError
 
 
 class Cloudtrail:
@@ -16,52 +17,72 @@ class Cloudtrail:
     def cloudtrail(self):
         self.hcl.prepare_folder(os.path.join("generated", "cloudtrail"))
 
+        self.aws_cloudtrail()  # Import fails
+        self.aws_cloudtrail_event_data_store()
+
         self.hcl.refresh_state()
         self.hcl.generate_hcl_file()
 
     def aws_cloudtrail(self):
         print("Processing AWS CloudTrail...")
 
-        paginator = self.cloudtrail_client.get_paginator("describe_trails")
-        for page in paginator.paginate():
-            for trail in page["trailList"]:
-                trail_arn = trail["TrailARN"]
-                trail_name = trail["Name"]
-                print(f"  Processing AWS CloudTrail: {trail_name}")
+        trails = self.cloudtrail_client.describe_trails()["trailList"]
+        for trail in trails:
+            trail_arn = trail["TrailARN"]
+            trail_name = trail["Name"]
+            trail_region = trail["HomeRegion"]
 
-                attributes = {
-                    "id": trail_name,
-                    "arn": trail_arn,
-                    "name": trail_name,
-                    "s3_bucket_name": trail["S3BucketName"],
-                    "s3_key_prefix": trail.get("S3KeyPrefix", ""),
-                    "cloud_watch_logs_role_arn": trail.get("CloudWatchLogsRoleArn", ""),
-                    "cloud_watch_logs_group_arn": trail.get("CloudWatchLogsLogGroupArn", ""),
-                    "sns_topic_name": trail.get("SnsTopicName", ""),
-                }
+            # Ignore the trail if it's not in the specified region
+            if trail_region != self.region:
+                continue
 
-                self.hcl.process_resource(
-                    "aws_cloudtrail", trail_name.replace("-", "_"), attributes)
+            print(f"  Processing AWS CloudTrail: {trail_name}")
+
+            attributes = {
+                "id": trail_name,
+                "arn": trail_arn,
+                "name": trail_name,
+                "s3_bucket_name": trail["S3BucketName"],
+                "s3_key_prefix": trail.get("S3KeyPrefix", ""),
+                "cloud_watch_logs_role_arn": trail.get("CloudWatchLogsRoleArn", ""),
+                "cloud_watch_logs_group_arn": trail.get("CloudWatchLogsLogGroupArn", ""),
+                "sns_topic_name": trail.get("SnsTopicName", ""),
+            }
+
+            self.hcl.process_resource(
+                "aws_cloudtrail", trail_name.replace("-", "_"), attributes)
 
     def aws_cloudtrail_event_data_store(self):
         print("Processing AWS CloudTrail Event Data Store...")
 
-        response = self.cloudtrail_client.list_event_selectors(
-            TrailName=self.trail_name)
-        event_selectors = response["EventSelectors"]
+        trails = self.cloudtrail_client.describe_trails()["trailList"]
 
-        for event_selector in event_selectors:
-            for data_resource in event_selector["DataResources"]:
-                if data_resource["Type"] == "AWS::S3::Object":
-                    print(
-                        f"  Processing AWS CloudTrail Event Data Store: {data_resource['Values'][0]}")
+        for trail in trails:
+            trail_name = trail["Name"]
+            trail_arn = trail["TrailARN"]
 
-                    attributes = {
-                        "id": data_resource["Values"][0],
-                        "trail_arn": self.trail_arn,
-                        "type": data_resource["Type"],
-                        "values": data_resource["Values"],
-                    }
+            try:
+                response = self.cloudtrail_client.get_event_selectors(
+                    TrailName=trail_name)
+                event_selectors = response["EventSelectors"]
 
-                    self.hcl.process_resource(
-                        "aws_cloudtrail_event_data_store", data_resource["Values"][0].replace("/", "_"), attributes)
+                for event_selector in event_selectors:
+                    for data_resource in event_selector["DataResources"]:
+                        if data_resource["Type"] == "AWS::S3::Object":
+                            print(
+                                f"  Processing AWS CloudTrail Event Data Store: {data_resource['Values'][0]}")
+
+                            attributes = {
+                                "id": data_resource["Values"][0],
+                                "trail_arn": trail_arn,
+                                "type": data_resource["Type"],
+                                "values": data_resource["Values"],
+                            }
+
+                            self.hcl.process_resource(
+                                "aws_cloudtrail_event_data_store", data_resource["Values"][0].replace("/", "_"), attributes)
+            except ClientError as e:
+                if e.response['Error']['Code'] == 'TrailNotFoundException':
+                    print(f"  Trail not found: {trail_arn}")
+                else:
+                    raise

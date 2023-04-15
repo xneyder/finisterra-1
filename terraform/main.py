@@ -30,7 +30,8 @@ def main():
     # provider.cognito_identity()
     # provider.cognito_idp()
     # provider.logs()
-    provider.cloudwatch()
+    # provider.cloudwatch()
+    provider.cloudtrail()
 
     print("Finished processing AWS resources.")
 

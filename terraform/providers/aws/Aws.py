@@ -30,6 +30,7 @@ from providers.aws.cognito_identity import CognitoIdentity
 from providers.aws.cognito_idp import CognitoIDP
 from providers.aws.logs import Logs
 from providers.aws.cloudwatch import Cloudwatch
+from providers.aws.cloudtrail import Cloudtrail
 
 
 class Aws:
@@ -264,3 +265,10 @@ class Aws:
 
         Cloudwatch(cloudwatch_client, self.script_dir, self.provider_name,
                    self.schema_data, self.region).cloudwatch()
+
+    def cloudtrail(self):
+        cloudtrail_client = self.session.client(
+            "cloudtrail", region_name=self.region)
+
+        Cloudtrail(cloudtrail_client, self.script_dir, self.provider_name,
+                   self.schema_data, self.region).cloudtrail()
