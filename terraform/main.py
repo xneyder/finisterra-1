@@ -32,8 +32,8 @@ def main():
     # provider.logs()
     # provider.cloudwatch()
     # provider.cloudtrail()
-    provider.cloudmap()
-    # provider.backup() #Waiting for permissions
+    # provider.cloudmap()
+    # provider.backup()
     # provider.guardduty()
     # provider.apigateway() #Waiting for permissions
     # provider.apigatewayv2()
@@ -43,7 +43,7 @@ def main():
     # provider.sqs()
     # provider.sns()
     # provider.rds()
-    # provider.aws_lambda() #Permission errors
+    # provider.aws_lambda() #Waiting for permissions
     # provider.kms()  # tf refresh errors
     # provider.elasticbeanstalk()
     # provider.elb()
