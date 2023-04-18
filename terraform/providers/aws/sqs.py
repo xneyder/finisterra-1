@@ -4,8 +4,12 @@ from utils.hcl import HCL
 
 class SQS:
     def __init__(self, sqs_client, script_dir, provider_name, schema_data, region):
-        self.sqs_client = self.sqs_client_client
-        self.transform_rules = {}
+        self.sqs_client = sqs_client
+        self.transform_rules = {
+            "aws_sqs_queue_policy": {
+                "hcl_json_multiline": {"policy": True}
+            }
+        }
         self.provider_name = provider_name
         self.script_dir = script_dir
         self.schema_data = schema_data
@@ -15,6 +19,9 @@ class SQS:
 
     def sqs(self):
         self.hcl.prepare_folder(os.path.join("generated", "sqs"))
+
+        self.aws_sqs_queue()
+        self.aws_sqs_queue_policy()
 
         self.hcl.refresh_state()
         self.hcl.generate_hcl_file()
@@ -29,7 +36,7 @@ class SQS:
                 print(f"  Processing SQS Queue: {queue_name}")
 
                 attributes = {
-                    "id": queue_name,
+                    "id": queue_url,  # Update this line
                 }
                 self.hcl.process_resource(
                     "aws_sqs_queue", queue_name.replace("-", "_"), attributes)
@@ -41,20 +48,19 @@ class SQS:
         for page in paginator.paginate():
             for queue_url in page.get("QueueUrls", []):
                 queue_name = queue_url.split("/")[-1]
-                try:
-                    policy = self.sqs_client.get_queue_attributes(
-                        QueueUrl=queue_url, AttributeNames=["Policy"])["Attributes"]["Policy"]
-                except Exception as e:
-                    print(
-                        f"Error retrieving SQS Queue Policy for {queue_name}: {str(e)}")
-                    continue
+                response = self.sqs_client.get_queue_attributes(
+                    QueueUrl=queue_url, AttributeNames=["Policy"])
 
-                print(f"  Processing SQS Queue Policy: {queue_name}")
+                if "Attributes" in response and "Policy" in response["Attributes"]:
+                    policy = response["Attributes"]["Policy"]
 
-                attributes = {
-                    "id": queue_name,
-                    "queue_url": queue_url,
-                    "policy": policy,
-                }
-                self.hcl.process_resource(
-                    "aws_sqs_queue_policy", queue_name.replace("-", "_"), attributes)
+                    print(f"  Processing SQS Queue Policy: {queue_name}")
+
+                    attributes = {
+                        "id": queue_url,
+                        "policy": policy,
+                    }
+                    self.hcl.process_resource(
+                        "aws_sqs_queue_policy", queue_name.replace("-", "_"), attributes)
+                else:
+                    print(f"  No policy found for SQS Queue: {queue_name}")

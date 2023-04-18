@@ -202,25 +202,28 @@ class HCL:
                             if hcl_drop_fields[key] == 'ALL' or hcl_drop_fields[key] == value:
                                 return_str = ""
                                 is_transformed = True
+                                return is_transformed, return_str
                     if 'hcl_keep_fields' in self.transform_rules[resource_type]:
                         hcl_keep_fields = self.transform_rules[resource_type]['hcl_keep_fields']
                         if key in hcl_keep_fields:
                             return_str += (
                                 f'{process_key(key, value, False)}')
                             is_transformed = True
+                            return is_transformed, return_str
                     if 'hcl_prefix' in self.transform_rules[resource_type]:
                         hcl_prefix = self.transform_rules[resource_type]['hcl_prefix']
                         if key in hcl_prefix:
                             return_str += (
                                 f'{process_key(key, hcl_prefix[key]+value, False)}')
-                            # f'{quote_string(key)}="{hcl_prefix[key]}{value}"\n')
                             is_transformed = True
+                            return is_transformed, return_str
                     if 'hcl_json_multiline' in self.transform_rules[resource_type]:
                         hcl_json_multiline = self.transform_rules[resource_type]['hcl_json_multiline']
                         if key in hcl_json_multiline:
                             return_str += (
                                 f'{quote_string(key)}=<<EOF\n{multiline_json(value)}\nEOF\n')
                             is_transformed = True
+                            return is_transformed, return_str
                     if 'hcl_file_function' in self.transform_rules[resource_type]:
                         hcl_file_function = self.transform_rules[resource_type]['hcl_file_function']
                         if key in hcl_file_function:
@@ -230,6 +233,7 @@ class HCL:
                                 return_str += (
                                     f'{quote_string(key)}=file("{file_name}")\n')
                                 is_transformed = True
+                                return is_transformed, return_str
                     if 'hcl_transform_fields' in self.transform_rules[resource_type]:
                         hcl_transform_fields = self.transform_rules[resource_type]['hcl_transform_fields']
                         if key in hcl_transform_fields:
@@ -238,6 +242,7 @@ class HCL:
                                 return_str += (
                                     f' {process_key(key, target, False)}')
                                 is_transformed = True
+                                return is_transformed, return_str
 
                 return is_transformed, return_str
 

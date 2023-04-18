@@ -16,6 +16,19 @@ class SSM:
     def ssm(self):
         self.hcl.prepare_folder(os.path.join("generated", "ssm"))
 
+        self.aws_ssm_activation()
+        self.aws_ssm_association()
+        # self.aws_ssm_default_patch_baseline() # Permission error
+        # self.aws_ssm_document()  # Permission error
+        self.aws_ssm_maintenance_window()
+        self.aws_ssm_maintenance_window_target()
+        self.aws_ssm_maintenance_window_task()
+        self.aws_ssm_parameter()
+        # self.aws_ssm_patch_baseline() # Permission error
+        self.aws_ssm_patch_group()
+        self.aws_ssm_resource_data_sync()
+        self.aws_ssm_service_setting()
+
         self.hcl.refresh_state()
         self.hcl.generate_hcl_file()
 
@@ -50,9 +63,9 @@ class SSM:
         paginator = self.ssm_client.get_paginator("list_associations")
         for page in paginator.paginate():
             for association in page["Associations"]:
-                association_id = association["AssociationId"]
-                instance_id = association["InstanceId"]
-                name = association["Name"]
+                association_id = association.get("AssociationId")
+                instance_id = association.get("InstanceId")
+                name = association.get("Name")
 
                 print(f"  Processing SSM Association: {association_id}")
 
@@ -69,20 +82,21 @@ class SSM:
         print("Processing SSM Default Patch Baselines...")
 
         paginator = self.ssm_client.get_paginator("describe_patch_baselines")
-        for page in paginator.paginate(Filters=[{"Key": "DEFAULT_BASELINE", "Values": ["true"]}]):
+        for page in paginator.paginate(Filters=[{"Key": "OWNER", "Values": ["Self"]}]):
             for baseline in page["BaselineIdentities"]:
-                baseline_id = baseline["BaselineId"]
-                print(
-                    f"  Processing SSM Default Patch Baseline: {baseline_id}")
+                if baseline.get("DefaultBaseline"):
+                    baseline_id = baseline["BaselineId"]
+                    print(
+                        f"  Processing SSM Default Patch Baseline: {baseline_id}")
 
-                attributes = {
-                    "id": baseline_id,
-                    "name": baseline["BaselineName"],
-                    "description": baseline.get("BaselineDescription"),
-                    "operating_system": baseline["OperatingSystem"],
-                }
-                self.hcl.process_resource(
-                    "aws_ssm_patch_baseline", baseline_id.replace("-", "_"), attributes)
+                    attributes = {
+                        "id": baseline_id,
+                        "name": baseline["BaselineName"],
+                        "description": baseline.get("BaselineDescription"),
+                        "operating_system": baseline["OperatingSystem"],
+                    }
+                    self.hcl.process_resource(
+                        "aws_ssm_patch_baseline", baseline_id.replace("-", "_"), attributes)
 
     def aws_ssm_document(self):
         print("Processing SSM Documents...")
@@ -256,14 +270,20 @@ class SSM:
     def aws_ssm_service_setting(self):
         print("Processing SSM Service Settings...")
 
-        paginator = self.ssm_client.get_paginator("get_service_setting")
-        for page in paginator.paginate():
-            for service_setting in page["ServiceSettings"]:
-                setting_id = service_setting["SettingId"]
-                print(f"  Processing SSM Service Setting: {setting_id}")
+        setting_ids = [
+            # Add the SettingId values you want to process
+            "/ssm/parameter-store/default-parameter-tier",
+            "/ssm/parameter-store/high-throughput-enabled",
+            "/ssm/parameter-store/throughput-limit",
+        ]
 
-                attributes = {
-                    "id": setting_id,
-                }
-                self.hcl.process_resource(
-                    "aws_ssm_service_setting", setting_id.replace("-", "_"), attributes)
+        for setting_id in setting_ids:
+            service_setting = self.ssm_client.get_service_setting(
+                SettingId=setting_id)["ServiceSetting"]
+            print(f"  Processing SSM Service Setting: {setting_id}")
+
+            attributes = {
+                "id": setting_id,
+            }
+            self.hcl.process_resource(
+                "aws_ssm_service_setting", setting_id.replace("/", "_"), attributes)

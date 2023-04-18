@@ -5,7 +5,11 @@ from utils.hcl import HCL
 class SNS:
     def __init__(self, sns_client, script_dir, provider_name, schema_data, region):
         self.sns_client = sns_client
-        self.transform_rules = {}
+        self.transform_rules = {
+            "aws_sns_topic_policy": {
+                "hcl_json_multiline": {"policy": True}
+            }
+        }
         self.provider_name = provider_name
         self.script_dir = script_dir
         self.schema_data = schema_data
@@ -15,6 +19,12 @@ class SNS:
 
     def sns(self):
         self.hcl.prepare_folder(os.path.join("generated", "sns"))
+
+        self.aws_sns_platform_application()
+        self.aws_sns_sms_preferences()
+        self.aws_sns_topic()
+        self.aws_sns_topic_policy()
+        # self.aws_sns_topic_subscription() #permissions error
 
         self.hcl.refresh_state()
         self.hcl.generate_hcl_file()

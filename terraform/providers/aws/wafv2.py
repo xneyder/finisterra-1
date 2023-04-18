@@ -2,9 +2,10 @@ import os
 from utils.hcl import HCL
 
 
-class WAFV2:
-    def __init__(self, wafv2_client, script_dir, provider_name, schema_data, region):
+class Wafv2:
+    def __init__(self, wafv2_client, elbv2_client, script_dir, provider_name, schema_data, region):
         self.wafv2_client = wafv2_client
+        self.elbv2_client = elbv2_client
         self.transform_rules = {}
         self.provider_name = provider_name
         self.script_dir = script_dir
@@ -15,6 +16,13 @@ class WAFV2:
 
     def wafv2(self):
         self.hcl.prepare_folder(os.path.join("generated", "wafv2"))
+
+        self.aws_wafv2_ip_set()
+        self.aws_wafv2_regex_pattern_set()
+        self.aws_wafv2_rule_group()
+        self.aws_wafv2_web_acl()
+        self.aws_wafv2_web_acl_association()  # Wait for perrmissions
+        self.aws_wafv2_web_acl_logging_configuration()  # Wait for perrmissions
 
         self.hcl.refresh_state()
         self.hcl.generate_hcl_file()
@@ -93,10 +101,11 @@ class WAFV2:
 
         for web_acl in web_acls:
             web_acl_id = web_acl["Id"]
+            web_acl_name = web_acl["Name"]
             print(f"  Processing WAFv2 Web ACL: {web_acl_id}")
 
             web_acl_info = self.wafv2_client.get_web_acl(
-                Id=web_acl_id, Scope=scope)["WebACL"]
+                Id=web_acl_id, Name=web_acl_name, Scope=scope)["WebACL"]
             attributes = {
                 "id": web_acl_id,
                 "name": web_acl_info["Name"],
@@ -114,22 +123,36 @@ class WAFV2:
 
         for web_acl in web_acls:
             web_acl_id = web_acl["Id"]
-            associations = self.wafv2_client.list_associations(
-                Scope=scope, WebAclId=web_acl_id)["Associations"]
 
-            for association in associations:
-                resource_arn = association["ResourceArn"]
-                association_id = f"{web_acl_id}-{resource_arn}"
-                print(
-                    f"  Processing WAFv2 Web ACL Association: {association_id}")
+            # Iterate over Application Load Balancers (ALBs)
+            alb_paginator = self.elbv2_client.get_paginator(
+                'describe_load_balancers')
+            alb_iterator = alb_paginator.paginate()
 
-                attributes = {
-                    "id": association_id,
-                    "web_acl_id": web_acl_id,
-                    "resource_arn": resource_arn,
-                }
-                self.hcl.process_resource(
-                    "aws_wafv2_web_acl_association", association_id.replace("-", "_"), attributes)
+            for alb_page in alb_iterator:
+                for alb in alb_page['LoadBalancers']:
+                    resource_arn = alb['LoadBalancerArn']
+                    try:
+                        association = self.wafv2_client.get_web_acl_for_resource(
+                            ResourceArn=resource_arn
+                        )
+                        if association['WebACL']['Id'] == web_acl_id:
+                            association_id = f"{web_acl_id}-{resource_arn}"
+                            print(
+                                f"  Processing WAFv2 Web ACL Association: {association_id}")
+
+                            attributes = {
+                                "id": association_id,
+                                "web_acl_id": web_acl_id,
+                                "resource_arn": resource_arn,
+                            }
+                            self.hcl.process_resource(
+                                "aws_wafv2_web_acl_association", association_id.replace("-", "_"), attributes)
+                    except Exception as e:
+                        if e.response['Error']['Code'] == 'WAFNonexistentItemException':
+                            pass
+                        else:
+                            raise e
 
     def aws_wafv2_web_acl_logging_configuration(self):
         print("Processing WAFv2 Web ACL Logging Configurations...")

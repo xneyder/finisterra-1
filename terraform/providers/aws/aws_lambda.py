@@ -1,8 +1,10 @@
 import os
 from utils.hcl import HCL
+import botocore
+import json
 
 
-class Lambda:
+class AwsLambda:
     def __init__(self, lambda_client, script_dir, provider_name, schema_data, region):
         self.lambda_client = lambda_client
         self.transform_rules = {}
@@ -13,8 +15,20 @@ class Lambda:
                        self.script_dir, self.transform_rules)
         self.region = region
 
-    def lambda_r(self):
+    def aws_lambda(self):
         self.hcl.prepare_folder(os.path.join("generated", "lambda"))
+
+        self.aws_lambda_alias()
+        if "gov" not in self.region:
+            self.aws_lambda_code_signing_config()
+        self.aws_lambda_event_source_mapping()
+        self.aws_lambda_function()
+        self.aws_lambda_function_event_invoke_config()
+        self.aws_lambda_function_url()
+        self.aws_lambda_layer_version()
+        # self.aws_lambda_layer_version_permission()
+        self.aws_lambda_permission()
+        self.aws_lambda_provisioned_concurrency_config()
 
         self.hcl.refresh_state()
         self.hcl.generate_hcl_file()
@@ -117,19 +131,26 @@ class Lambda:
 
         for function in functions:
             function_name = function["FunctionName"]
-            event_invoke_config = self.lambda_client.get_function_event_invoke_config(
-                FunctionName=function_name)
-            print(
-                f"  Processing Event Invoke Config for Lambda Function: {function_name}")
+            try:
+                event_invoke_config = self.lambda_client.get_function_event_invoke_config(
+                    FunctionName=function_name)
+                print(
+                    f"  Processing Event Invoke Config for Lambda Function: {function_name}")
 
-            attributes = {
-                "id": f"{function_name}:$LATEST",
-                "function_name": function_name,
-                "maximum_event_age_in_seconds": event_invoke_config.get("MaximumEventAgeInSeconds", ""),
-                "maximum_retry_attempts": event_invoke_config.get("MaximumRetryAttempts", ""),
-            }
-            self.hcl.process_resource(
-                "aws_lambda_function_event_invoke_config", function_name.replace("-", "_"), attributes)
+                attributes = {
+                    "id": f"{function_name}:$LATEST",
+                    "function_name": function_name,
+                    "maximum_event_age_in_seconds": event_invoke_config.get("MaximumEventAgeInSeconds", ""),
+                    "maximum_retry_attempts": event_invoke_config.get("MaximumRetryAttempts", ""),
+                }
+                self.hcl.process_resource(
+                    "aws_lambda_function_event_invoke_config", function_name.replace("-", "_"), attributes)
+            except botocore.exceptions.ClientError as e:
+                if e.response['Error']['Code'] == 'ResourceNotFoundException':
+                    print(
+                        f"  Lambda Function {function_name} doesn't have an EventInvokeConfig")
+                else:
+                    raise e
 
     def aws_lambda_function_url(self):
         print("Processing Lambda Function URLs...")
@@ -139,15 +160,16 @@ class Lambda:
         for function in functions:
             function_name = function["FunctionName"]
             qualifier = "$LATEST"
-            url = self.lambda_client.get_function_url(
-                FunctionName=function_name, Qualifier=qualifier)
+            region = self.region
+            arn = function["FunctionArn"]
+            url = f"https://{arn.split(':')[4]}.lambda.{region}.amazonaws.com/2015-03-31/functions/{arn}/invocations"
             print(f"  Processing URL for Lambda Function: {function_name}")
 
             attributes = {
                 "id": f"{function_name}:$LATEST",
                 "function_name": function_name,
                 "qualifier": qualifier,
-                "url": url["url"],
+                "url": url,
             }
             self.hcl.process_resource(
                 "aws_lambda_function_url", function_name.replace("-", "_"), attributes)
@@ -173,27 +195,35 @@ class Lambda:
                     "version": version,
                     "compatible_runtimes": layer_version.get("CompatibleRuntimes", []),
                 }
+
+                layer_version_permission_arns = []
+                policy = self.lambda_client.get_layer_version_policy(
+                    LayerName=layer_name, VersionNumber=version)["Policy"]
+
+                for statement in policy["Statement"]:
+                    if statement["Effect"] == "Allow":
+                        layer_version_permission_arns.extend(
+                            statement["Principal"]["AWS"])
+
                 self.hcl.process_resource(
                     "aws_lambda_layer_version", f"{layer_name.replace('-', '_')}_version_{version}", attributes)
+                self.aws_lambda_layer_version_permission(
+                    f"{layer_name}:{version}", layer_version_permission_arns)
 
-    def aws_lambda_layer_version_permission(self, layer_version_permission_arns):
-        print("Processing Lambda Layer Version Permissions...")
-
+    def aws_lambda_layer_version_permission(self, layer_version_arn, layer_version_permission_arns):
+        print(
+            f"Processing Layer Version Permissions for Layer Version: {layer_version_arn}")
         for permission_arn in layer_version_permission_arns:
-            layer_name, version, statement_id = permission_arn.split(
-                ':')[-1].split('/')[1:]
-
-            print(
-                f"  Processing Permission {statement_id} for Lambda Layer: {layer_name}, Version: {version}")
-
+            id = f"{layer_version_arn}-{permission_arn}"
             attributes = {
-                "id": permission_arn,
-                "layer_name": layer_name,
-                "version_number": version,
-                "statement_id": statement_id,
+                "id": id,
+                "layer_version_arn": layer_version_arn,
+                "statement_id": permission_arn,
+                "action": "lambda:GetLayerVersion",
+                "principal": permission_arn,
             }
-            self.hcl.process_resource("aws_lambda_layer_version_permission",
-                                      f"{layer_name.replace('-', '_')}_version_{version}_permission_{statement_id}", attributes)
+            self.hcl.process_resource(
+                "aws_lambda_layer_version_permission", id.replace("-", "_"), attributes)
 
     def aws_lambda_permission(self):
         print("Processing Lambda Permissions...")
@@ -202,28 +232,34 @@ class Lambda:
 
         for function in functions:
             function_name = function["FunctionName"]
-            policy_response = self.lambda_client.get_policy(
-                FunctionName=function_name)
-            policy = json.loads(policy_response["Policy"])
+            try:
+                policy_response = self.lambda_client.get_policy(
+                    FunctionName=function_name)
+                policy = json.loads(policy_response["Policy"])
 
-            for statement in policy["Statement"]:
-                statement_id = statement["Sid"]
+                for statement in policy["Statement"]:
+                    statement_id = statement["Sid"]
+                    print(
+                        f"  Processing Permission {statement_id} for Lambda Function: {function_name}")
+
+                    attributes = {
+                        "id": f"{function_name}-{statement_id}",
+                        "function_name": function_name,
+                        "statement_id": statement_id,
+                    }
+                    self.hcl.process_resource(
+                        "aws_lambda_permission", f"{function_name.replace('-', '_')}_permission_{statement_id}", attributes)
+            except self.lambda_client.exceptions.ResourceNotFoundException:
                 print(
-                    f"  Processing Permission {statement_id} for Lambda Function: {function_name}")
+                    f"  Skipping Lambda Function: {function_name} because no resource policy found")
 
-                attributes = {
-                    "id": f"{function_name}-{statement_id}",
-                    "function_name": function_name,
-                    "statement_id": statement_id,
-                }
-                self.hcl.process_resource(
-                    "aws_lambda_permission", f"{function_name.replace('-', '_')}_permission_{statement_id}", attributes)
-
-    def aws_lambda_provisioned_concurrency_config(self, function_arns):
+    def aws_lambda_provisioned_concurrency_config(self):
         print("Processing Lambda Provisioned Concurrency Configurations...")
 
-        for function_arn in function_arns:
-            function_name = function_arn.split(':')[-1].split('/')[-1]
+        functions = self.lambda_client.list_functions()["Functions"]
+
+        for function in functions:
+            function_name = function["FunctionName"]
             try:
                 concurrency_configs = self.lambda_client.list_provisioned_concurrency_configs(
                     FunctionName=function_name)["ProvisionedConcurrencyConfigs"]

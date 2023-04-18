@@ -31,7 +31,23 @@ def main():
     # provider.cognito_idp()
     # provider.logs()
     # provider.cloudwatch()
-    provider.cloudtrail()
+    # provider.cloudtrail()
+    provider.cloudmap()
+    # provider.backup() #Waiting for permissions
+    # provider.guardduty()
+    # provider.apigateway() #Waiting for permissions
+    # provider.apigatewayv2()
+    # provider.wafv2()
+    # provider.secretsmanager()
+    # provider.ssm()
+    # provider.sqs()
+    # provider.sns()
+    # provider.rds()
+    # provider.aws_lambda() #Permission errors
+    # provider.kms()  # tf refresh errors
+    # provider.elasticbeanstalk()
+    # provider.elb()
+    # provider.elbv2()
 
     print("Finished processing AWS resources.")
 

@@ -3,9 +3,15 @@ from utils.hcl import HCL
 
 
 class Cloudmap:
-    def __init__(self, cloudmap_client, script_dir, provider_name, schema_data, region):
+    def __init__(self, cloudmap_client, route53_client, script_dir, provider_name, schema_data, region):
         self.cloudmap_client = cloudmap_client
-        self.transform_rules = {}
+        self.route53_client = route53_client
+        self.transform_rules = {
+            "aws_service_discovery_service": {
+                "hcl_keep_fields": {"type": "ALL", "namespace_id": "ALL"},
+                "hcl_drop_fields": {"type": "DNS_HTTP"},
+            },
+        }
         self.provider_name = provider_name
         self.script_dir = script_dir
         self.schema_data = schema_data
@@ -15,6 +21,12 @@ class Cloudmap:
 
     def cloudmap(self):
         self.hcl.prepare_folder(os.path.join("generated", "cloudmap"))
+
+        self.aws_service_discovery_http_namespace()
+        self.aws_service_discovery_instance()
+        self.aws_service_discovery_private_dns_namespace()
+        self.aws_service_discovery_public_dns_namespace()
+        self.aws_service_discovery_service()
 
         self.hcl.refresh_state()
         self.hcl.generate_hcl_file()
@@ -81,11 +93,19 @@ class Cloudmap:
                     print(
                         f"  Processing AWS Service Discovery Private DNS Namespace: {namespace_id}")
 
+                    # Get the hosted zone ID of the namespace
+                    hosted_zone_id = private_dns_namespace["Properties"]["DnsProperties"]["HostedZoneId"]
+
+                    # Get the VPC ID from the hosted zone
+                    hosted_zone = self.route53_client.get_hosted_zone(
+                        Id=hosted_zone_id)
+                    vpc_id = hosted_zone["VPCs"][0]["VPCId"]
+
                     attributes = {
                         "id": namespace_id,
                         "name": private_dns_namespace["Name"],
                         "arn": private_dns_namespace["Arn"],
-                        "vpc": private_dns_namespace["Properties"]["DnsProperties"]["VpcId"],
+                        "vpc": vpc_id,
                     }
 
                     self.hcl.process_resource(
@@ -127,19 +147,19 @@ class Cloudmap:
 
                 attributes = {
                     "id": service_id,
-                    "arn": sd_service["Arn"],
-                    "name": sd_service["Name"],
-                    "namespace_id": sd_service["NamespaceId"],
+                    # "arn": sd_service["Arn"],
+                    # "name": sd_service["Name"],
+                    # "namespace_id": sd_service["NamespaceId"],
                 }
 
-                if "DnsConfig" in sd_service:
-                    attributes["dns_config"] = sd_service["DnsConfig"]
+                # if "DnsConfig" in sd_service:
+                #     attributes["dns_config"] = sd_service["DnsConfig"]
 
-                if "HealthCheckConfig" in sd_service:
-                    attributes["health_check_config"] = sd_service["HealthCheckConfig"]
+                # if "HealthCheckConfig" in sd_service:
+                #     attributes["health_check_config"] = sd_service["HealthCheckConfig"]
 
-                if "HealthCheckCustomConfig" in sd_service:
-                    attributes["health_check_custom_config"] = sd_service["HealthCheckCustomConfig"]
+                # if "HealthCheckCustomConfig" in sd_service:
+                #     attributes["health_check_custom_config"] = sd_service["HealthCheckCustomConfig"]
 
                 self.hcl.process_resource(
                     "aws_service_discovery_service", service_id.replace("-", "_"), attributes)

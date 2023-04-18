@@ -16,6 +16,34 @@ class RDS:
     def rds(self):
         self.hcl.prepare_folder(os.path.join("generated", "rds"))
 
+        self.aws_db_cluster_snapshot()
+        self.aws_db_event_subscription()
+        self.aws_db_instance()
+        self.aws_db_instance_automated_backups_replication()
+        self.aws_db_instance_role_association()
+        self.aws_db_option_group()
+        self.aws_db_parameter_group()
+
+        if "gov" not in self.region:
+            self.aws_db_proxy()
+            self.aws_db_proxy_default_target_group()
+            self.aws_db_proxy_endpoint()
+            self.aws_db_proxy_target()
+            self.aws_rds_export_task()
+
+        self.aws_db_security_group()
+        self.aws_db_snapshot()
+        self.aws_db_snapshot_copy()
+        self.aws_db_subnet_group()
+        self.aws_rds_cluster()
+        self.aws_rds_cluster_activity_stream()
+        self.aws_rds_cluster_endpoint()
+        self.aws_rds_cluster_instance()
+        self.aws_rds_cluster_parameter_group()
+        self.aws_rds_cluster_role_association()
+        self.aws_rds_global_cluster()
+        self.aws_rds_reserved_instance()
+
         self.hcl.refresh_state()
         self.hcl.generate_hcl_file()
 
@@ -26,16 +54,15 @@ class RDS:
             "describe_db_cluster_snapshots")
         for page in paginator.paginate():
             for snapshot in page.get("DBClusterSnapshots", []):
-                snapshot_id = snapshot["DBClusterSnapshotIdentifier"]
-                print(f"  Processing DB Cluster Snapshot: {snapshot_id}")
+                if snapshot["Engine"] in ["mysql", "postgres"]:
+                    snapshot_id = snapshot["DBClusterSnapshotIdentifier"]
+                    print(f"  Processing DB Cluster Snapshot: {snapshot_id}")
 
-                attributes = {
-                    "id": snapshot_id,
-                    "db_cluster_identifier": snapshot["DBClusterIdentifier"],
-                    "db_cluster_snapshot_identifier": snapshot_id,
-                }
-                self.hcl.process_resource(
-                    "aws_db_cluster_snapshot", snapshot_id.replace("-", "_"), attributes)
+                    attributes = {
+                        "id": snapshot_id,
+                    }
+                    self.hcl.process_resource(
+                        "aws_db_cluster_snapshot", snapshot_id.replace("-", "_"), attributes)
 
     def aws_db_event_subscription(self):
         print("Processing DB Event Subscriptions...")
@@ -64,19 +91,21 @@ class RDS:
         paginator = self.rds_client.get_paginator("describe_db_instances")
         for page in paginator.paginate():
             for instance in page.get("DBInstances", []):
+                if instance.get("Engine", None) not in ["mysql", "postgres"]:
+                    continue
                 instance_id = instance["DBInstanceIdentifier"]
                 print(f"  Processing DB Instance: {instance_id}")
 
                 attributes = {
                     "id": instance_id,
                     "identifier": instance_id,
-                    "allocated_storage": instance["AllocatedStorage"],
-                    "engine": instance["Engine"],
-                    "engine_version": instance["EngineVersion"],
-                    "instance_class": instance["DBInstanceClass"],
-                    "name": instance["DBName"],
-                    "username": instance["MasterUsername"],
-                    "vpc_security_group_ids": [sg["VpcSecurityGroupId"] for sg in instance["VpcSecurityGroups"]],
+                    "allocated_storage": instance.get("AllocatedStorage", None),
+                    "engine": instance.get("Engine", None),
+                    "engine_version": instance.get("EngineVersion", None),
+                    "instance_class": instance.get("DBInstanceClass", None),
+                    "name": instance.get("DBName", None),
+                    "username": instance.get("MasterUsername", None),
+                    "vpc_security_group_ids": [sg["VpcSecurityGroupId"] for sg in instance.get("VpcSecurityGroups", None)],
                     "db_subnet_group_name": instance["DBSubnetGroup"]["DBSubnetGroupName"] if instance.get("DBSubnetGroup") else None,
                 }
                 self.hcl.process_resource(
@@ -89,6 +118,8 @@ class RDS:
         for page in paginator.paginate():
             for instance in page.get("DBInstances", []):
                 if instance.get("ReadReplicaDBInstanceIdentifiers"):
+                    if instance.get("Engine", None) not in ["mysql", "postgres"]:
+                        continue
                     source_instance_id = instance["DBInstanceIdentifier"]
                     for replica_id in instance["ReadReplicaDBInstanceIdentifiers"]:
                         print(
@@ -107,6 +138,8 @@ class RDS:
         paginator = self.rds_client.get_paginator("describe_db_instances")
         for page in paginator.paginate():
             for instance in page.get("DBInstances", []):
+                if instance.get("Engine", None) not in ["mysql", "postgres"]:
+                    continue
                 instance_id = instance["DBInstanceIdentifier"]
                 associated_roles = instance.get("AssociatedRoles", [])
                 for role in associated_roles:
@@ -131,7 +164,7 @@ class RDS:
                 option_group_name = option_group["OptionGroupName"]
                 print(f"  Processing DB Option Group: {option_group_name}")
                 attributes = {
-                    "id": option_group["OptionGroupArn"],
+                    "id": option_group_name,
                     "name": option_group_name,
                     "engine_name": option_group["EngineName"],
                     "major_engine_version": option_group["MajorEngineVersion"],
@@ -151,7 +184,7 @@ class RDS:
                 print(
                     f"  Processing DB Parameter Group: {parameter_group_name}")
                 attributes = {
-                    "id": parameter_group["DBParameterGroupArn"],
+                    "id": parameter_group_name,
                     "name": parameter_group_name,
                     "family": parameter_group["DBParameterGroupFamily"],
                     "description": parameter_group["Description"],
@@ -270,18 +303,19 @@ class RDS:
         print("Processing DB Snapshot Copies...")
 
         paginator = self.rds_client.get_paginator("describe_db_snapshots")
-        for page in paginator.paginate(SnapshotType="copy"):
+        for page in paginator.paginate():
             for db_snapshot in page.get("DBSnapshots", []):
-                db_snapshot_id = db_snapshot["DBSnapshotIdentifier"]
-                print(f"  Processing DB Snapshot Copy: {db_snapshot_id}")
-                attributes = {
-                    "id": db_snapshot["DBSnapshotArn"],
-                    "snapshot_identifier": db_snapshot_id,
-                    "source_db_snapshot_identifier": db_snapshot["SourceDBSnapshotIdentifier"],
-                    "source_region": db_snapshot["SourceRegion"],
-                }
-                self.hcl.process_resource(
-                    "aws_db_snapshot_copy", db_snapshot_id.replace("-", "_"), attributes)
+                if "SourceRegion" in db_snapshot:
+                    db_snapshot_id = db_snapshot["DBSnapshotIdentifier"]
+                    print(f"  Processing DB Snapshot Copy: {db_snapshot_id}")
+                    attributes = {
+                        "id": db_snapshot["DBSnapshotArn"],
+                        "snapshot_identifier": db_snapshot_id,
+                        "source_db_snapshot_identifier": db_snapshot["SourceDBSnapshotIdentifier"],
+                        "source_region": db_snapshot["SourceRegion"],
+                    }
+                    self.hcl.process_resource(
+                        "aws_db_snapshot_copy", db_snapshot_id.replace("-", "_"), attributes)
 
     def aws_db_subnet_group(self):
         print("Processing DB Subnet Groups...")
@@ -306,12 +340,15 @@ class RDS:
         paginator = self.rds_client.get_paginator("describe_db_clusters")
         for page in paginator.paginate():
             for rds_cluster in page.get("DBClusters", []):
+                engine = rds_cluster.get("Engine", "")
+                if engine not in ["mysql", "postgres"]:
+                    continue
                 rds_cluster_id = rds_cluster["DBClusterIdentifier"]
                 print(f"  Processing RDS Cluster: {rds_cluster_id}")
                 attributes = {
                     "id": rds_cluster["DBClusterArn"],
                     "cluster_identifier": rds_cluster_id,
-                    "engine": rds_cluster["Engine"],
+                    "engine": engine,
                     "engine_version": rds_cluster["EngineVersion"],
                     "master_username": rds_cluster["MasterUsername"],
                     "database_name": rds_cluster.get("DatabaseName"),
@@ -326,14 +363,20 @@ class RDS:
         paginator = self.rds_client.get_paginator("describe_db_clusters")
         for page in paginator.paginate():
             for rds_cluster in page.get("DBClusters", []):
+                engine = rds_cluster.get("Engine", "")
+                if engine not in ["mysql", "postgres"]:
+                    continue
+
                 rds_cluster_id = rds_cluster["DBClusterIdentifier"]
-                if rds_cluster["ActivityStreamMode"] != "disabled":
+                activity_stream_mode = rds_cluster.get(
+                    "ActivityStreamMode", "disabled")
+                if activity_stream_mode != "disabled":
                     print(
                         f"  Processing RDS Cluster Activity Stream: {rds_cluster_id}")
                     attributes = {
                         "id": rds_cluster["DBClusterArn"],
                         "cluster_identifier": rds_cluster_id,
-                        "activity_stream_mode": rds_cluster["ActivityStreamMode"],
+                        "activity_stream_mode": activity_stream_mode,
                         "activity_stream_kms_key_id": rds_cluster["ActivityStreamKmsKeyId"],
                     }
                     self.hcl.process_resource(
@@ -346,17 +389,18 @@ class RDS:
             "describe_db_cluster_endpoints")
         for page in paginator.paginate():
             for rds_cluster_endpoint in page.get("DBClusterEndpoints", []):
-                endpoint_id = rds_cluster_endpoint["DBClusterEndpointIdentifier"]
-                print(f"  Processing RDS Cluster Endpoint: {endpoint_id}")
-                attributes = {
-                    "id": rds_cluster_endpoint["DBClusterEndpointArn"],
-                    "endpoint_identifier": endpoint_id,
-                    "cluster_identifier": rds_cluster_endpoint["DBClusterIdentifier"],
-                    "endpoint_type": rds_cluster_endpoint["EndpointType"],
-                    "custom_endpoint_type": rds_cluster_endpoint.get("CustomEndpointType"),
-                }
-                self.hcl.process_resource(
-                    "aws_rds_cluster_endpoint", endpoint_id.replace("-", "_"), attributes)
+                if "DBClusterEndpointIdentifier" in rds_cluster_endpoint:
+                    endpoint_id = rds_cluster_endpoint["DBClusterEndpointIdentifier"]
+                    print(f"  Processing RDS Cluster Endpoint: {endpoint_id}")
+                    attributes = {
+                        "id": rds_cluster_endpoint["DBClusterEndpointArn"],
+                        "endpoint_identifier": endpoint_id,
+                        "cluster_identifier": rds_cluster_endpoint["DBClusterIdentifier"],
+                        "endpoint_type": rds_cluster_endpoint["EndpointType"],
+                        "custom_endpoint_type": rds_cluster_endpoint.get("CustomEndpointType"),
+                    }
+                    self.hcl.process_resource(
+                        "aws_rds_cluster_endpoint", endpoint_id.replace("-", "_"), attributes)
 
     def aws_rds_cluster_instance(self):
         print("Processing RDS Cluster Instances...")
@@ -364,7 +408,7 @@ class RDS:
         paginator = self.rds_client.get_paginator("describe_db_instances")
         for page in paginator.paginate():
             for rds_instance in page.get("DBInstances", []):
-                if "DBClusterIdentifier" in rds_instance:
+                if "DBClusterIdentifier" in rds_instance and rds_instance["Engine"] in ["mysql", "postgres"]:
                     instance_id = rds_instance["DBInstanceIdentifier"]
                     print(f"  Processing RDS Cluster Instance: {instance_id}")
                     attributes = {
@@ -402,6 +446,10 @@ class RDS:
         paginator = self.rds_client.get_paginator("describe_db_clusters")
         for page in paginator.paginate():
             for rds_cluster in page.get("DBClusters", []):
+                engine = rds_cluster.get("Engine", "")
+                if engine not in ["mysql", "postgres"]:
+                    continue
+
                 cluster_id = rds_cluster["DBClusterIdentifier"]
                 for associated_role in rds_cluster.get("AssociatedRoles", []):
                     role_arn = associated_role["RoleArn"]

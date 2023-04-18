@@ -31,6 +31,22 @@ from providers.aws.cognito_idp import CognitoIDP
 from providers.aws.logs import Logs
 from providers.aws.cloudwatch import Cloudwatch
 from providers.aws.cloudtrail import Cloudtrail
+from providers.aws.cloudmap import Cloudmap
+from providers.aws.backup import Backup
+from providers.aws.guardduty import Guardduty
+from providers.aws.apigateway import Apigateway
+from providers.aws.apigatewayv2 import Apigatewayv2
+from providers.aws.wafv2 import Wafv2
+from providers.aws.secretsmanager import Secretsmanager
+from providers.aws.ssm import SSM
+from providers.aws.sqs import SQS
+from providers.aws.sns import SNS
+from providers.aws.rds import RDS
+from providers.aws.aws_lambda import AwsLambda
+from providers.aws.kms import KMS
+from providers.aws.elasticbeanstalk import ElasticBeanstalk
+from providers.aws.elb import ELB
+from providers.aws.elbv2 import ELBV2
 
 
 class Aws:
@@ -272,3 +288,121 @@ class Aws:
 
         Cloudtrail(cloudtrail_client, self.script_dir, self.provider_name,
                    self.schema_data, self.region).cloudtrail()
+
+    def cloudmap(self):
+        cloudmap_client = self.session.client(
+            "servicediscovery", region_name=self.region)
+
+        route53_client = self.session.client(
+            "route53", region_name=self.region)
+
+        Cloudmap(cloudmap_client, route53_client, self.script_dir, self.provider_name,
+                 self.schema_data, self.region).cloudmap()
+
+    def backup(self):
+        backup_client = self.session.client(
+            "backup", region_name=self.region)
+
+        Backup(backup_client, self.script_dir, self.provider_name,
+               self.schema_data, self.region).backup()
+
+    def guardduty(self):
+        guardduty_client = self.session.client(
+            "guardduty", region_name=self.region)
+
+        Guardduty(guardduty_client, self.script_dir, self.provider_name,
+                  self.schema_data, self.region).guardduty()
+
+    def apigateway(self):
+        apigateway_client = self.session.client(
+            "apigateway", region_name=self.region)
+
+        Apigateway(apigateway_client, self.script_dir, self.provider_name,
+                   self.schema_data, self.region).apigateway()
+
+    def apigatewayv2(self):
+        apigatewayv2_client = self.session.client(
+            "apigatewayv2", region_name=self.region)
+
+        Apigatewayv2(apigatewayv2_client, self.script_dir, self.provider_name,
+                     self.schema_data, self.region).apigatewayv2()
+
+    def wafv2(self):
+        wafv2_client = self.session.client(
+            "wafv2", region_name=self.region)
+
+        elbv2_client = self.session.client(
+            "elbv2", region_name=self.region)
+
+        Wafv2(wafv2_client, elbv2_client, self.script_dir, self.provider_name,
+              self.schema_data, self.region).wafv2()
+
+    def secretsmanager(self):
+        secretsmanager_client = self.session.client(
+            "secretsmanager", region_name=self.region)
+
+        Secretsmanager(secretsmanager_client, self.script_dir, self.provider_name,
+                       self.schema_data, self.region).secretsmanager()
+
+    def ssm(self):
+        ssm_client = self.session.client(
+            "ssm", region_name=self.region)
+
+        SSM(ssm_client, self.script_dir, self.provider_name,
+            self.schema_data, self.region).ssm()
+
+    def sqs(self):
+        sqs_client = self.session.client(
+            "sqs", region_name=self.region)
+
+        SQS(sqs_client, self.script_dir, self.provider_name,
+            self.schema_data, self.region).sqs()
+
+    def sns(self):
+        sns_client = self.session.client(
+            "sns", region_name=self.region)
+
+        SNS(sns_client, self.script_dir, self.provider_name,
+            self.schema_data, self.region).sns()
+
+    def rds(self):
+        rds_client = self.session.client(
+            "rds", region_name=self.region)
+
+        RDS(rds_client, self.script_dir, self.provider_name,
+            self.schema_data, self.region).rds()
+
+    def aws_lambda(self):
+        lambda_client = self.session.client(
+            "lambda", region_name=self.region)
+
+        AwsLambda(lambda_client, self.script_dir, self.provider_name,
+                  self.schema_data, self.region).aws_lambda()
+
+    def kms(self):
+        kms_client = self.session.client(
+            "kms", region_name=self.region)
+
+        KMS(kms_client, self.script_dir, self.provider_name,
+            self.schema_data, self.region).kms()
+
+    def elasticbeanstalk(self):
+        elasticbeanstalk_client = self.session.client(
+            "elasticbeanstalk", region_name=self.region)
+
+        ElasticBeanstalk(elasticbeanstalk_client, self.script_dir, self.provider_name,
+                         self.schema_data, self.region).elasticbeanstalk()
+
+    def elb(self):
+        elb_client = self.session.client(
+            "elb", region_name=self.region)
+
+        ELB(elb_client, self.script_dir, self.provider_name,
+            self.schema_data, self.region).elb()
+
+    def elbv2(self):
+        elbv2_client = self.session.client(
+            "elbv2", region_name=self.region)
+
+        ELBV2(elbv2_client, self.script_dir, self.provider_name,
+              self.schema_data, self.region).elbv2()

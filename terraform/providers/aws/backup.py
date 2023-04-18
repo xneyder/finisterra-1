@@ -16,6 +16,9 @@ class Backup:
     def backup(self):
         self.hcl.prepare_folder(os.path.join("generated", "backup"))
 
+        self.aws_backup_plan()
+        self.aws_backup_vault()
+
         self.hcl.refresh_state()
         self.hcl.generate_hcl_file()
 

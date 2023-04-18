@@ -16,6 +16,19 @@ class Apigatewayv2:
     def apigatewayv2(self):
         self.hcl.prepare_folder(os.path.join("generated", "apigatewayv2"))
 
+        self.aws_apigatewayv2_api()
+        self.aws_apigatewayv2_api_mapping()
+        self.aws_apigatewayv2_authorizer()
+        self.aws_apigatewayv2_deployment()
+        # self.aws_apigatewayv2_domain_name() #Need permissions
+        self.aws_apigatewayv2_integration()
+        self.aws_apigatewayv2_integration_response()
+        self.aws_apigatewayv2_model()
+        self.aws_apigatewayv2_route()
+        self.aws_apigatewayv2_route_response()
+        self.aws_apigatewayv2_stage()
+        self.aws_apigatewayv2_vpc_link()
+
         self.hcl.refresh_state()
         self.hcl.generate_hcl_file()
 
@@ -45,75 +58,94 @@ class Apigatewayv2:
                 self.hcl.process_resource(
                     "aws_apigatewayv2_api", api["ApiId"], attributes)
 
-                self.aws_apigatewayv2_api_mapping(api["ApiId"])
+    def aws_apigatewayv2_api_mapping(self):
+        print("Processing API Gateway v2 API Mappings...")
 
-    def aws_apigatewayv2_api_mapping(self, api_id):
-        print(f"  Processing API Gateway v2 API Mappings for API ID: {api_id}")
+        apis = self.apigatewayv2_client.get_apis()["Items"]
+        for api in apis:
+            api_id = api["ApiId"]
+            print(
+                f"  Processing API Gateway v2 API Mappings for API ID: {api_id}")
 
-        paginator = self.apigatewayv2_client.get_paginator("get_api_mappings")
-        page_iterator = paginator.paginate(ApiId=api_id)
+            paginator = self.apigatewayv2_client.get_paginator(
+                "get_api_mappings")
+            page_iterator = paginator.paginate(ApiId=api_id)
 
-        for page in page_iterator:
-            for mapping in page["Items"]:
-                print(
-                    f"    Processing API Gateway v2 API Mapping: {mapping['ApiMappingId']}")
+            for page in page_iterator:
+                for mapping in page["Items"]:
+                    print(
+                        f"    Processing API Gateway v2 API Mapping: {mapping['ApiMappingId']}")
 
-                attributes = {
-                    "api_id": api_id,
-                    "domain_name": mapping["ApiMappingCustomDomainName"],
-                    "stage": mapping["Stage"],
-                }
-                if "ApiMappingKey" in mapping:
-                    attributes["api_mapping_key"] = mapping["ApiMappingKey"]
+                    attributes = {
+                        "api_id": api_id,
+                        "domain_name": mapping["ApiMappingCustomDomainName"],
+                        "stage": mapping["Stage"],
+                    }
+                    if "ApiMappingKey" in mapping:
+                        attributes["api_mapping_key"] = mapping["ApiMappingKey"]
 
-                self.hcl.process_resource(
-                    "aws_apigatewayv2_api_mapping", mapping["ApiMappingId"], attributes)
+                    self.hcl.process_resource(
+                        "aws_apigatewayv2_api_mapping", mapping["ApiMappingId"], attributes)
 
-    def aws_apigatewayv2_authorizer(self, api_id):
-        print(f"  Processing API Gateway v2 Authorizers for API ID: {api_id}")
+    def aws_apigatewayv2_authorizer(self):
+        print("Processing API Gateway v2 Authorizers...")
 
-        paginator = self.apigatewayv2_client.get_paginator("get_authorizers")
-        page_iterator = paginator.paginate(ApiId=api_id)
+        apis = self.apigatewayv2_client.get_apis()["Items"]
+        for api in apis:
+            api_id = api["ApiId"]
+            print(
+                f"  Processing API Gateway v2 Authorizers for API ID: {api_id}")
 
-        for page in page_iterator:
-            for authorizer in page["Items"]:
-                print(
-                    f"    Processing API Gateway v2 Authorizer: {authorizer['AuthorizerId']}")
+            paginator = self.apigatewayv2_client.get_paginator(
+                "get_authorizers")
+            page_iterator = paginator.paginate(ApiId=api_id)
 
-                attributes = {
-                    "api_id": api_id,
-                    "authorizer_type": authorizer["AuthorizerType"],
-                    "name": authorizer["Name"],
-                }
-                if "IdentitySource" in authorizer:
-                    attributes["identity_source"] = authorizer["IdentitySource"]
-                if "JwtConfiguration" in authorizer:
-                    attributes["jwt_configuration"] = authorizer["JwtConfiguration"]
-                if "AuthorizerResultTtlInSeconds" in authorizer:
-                    attributes["authorizer_result_ttl_in_seconds"] = authorizer["AuthorizerResultTtlInSeconds"]
+            for page in page_iterator:
+                for authorizer in page["Items"]:
+                    print(
+                        f"    Processing API Gateway v2 Authorizer: {authorizer['AuthorizerId']}")
 
-                self.hcl.process_resource(
-                    "aws_apigatewayv2_authorizer", authorizer["AuthorizerId"], attributes)
+                    attributes = {
+                        "api_id": api_id,
+                        "authorizer_type": authorizer["AuthorizerType"],
+                        "name": authorizer["Name"],
+                    }
+                    if "IdentitySource" in authorizer:
+                        attributes["identity_source"] = authorizer["IdentitySource"]
+                    if "JwtConfiguration" in authorizer:
+                        attributes["jwt_configuration"] = authorizer["JwtConfiguration"]
+                    if "AuthorizerResultTtlInSeconds" in authorizer:
+                        attributes["authorizer_result_ttl_in_seconds"] = authorizer["AuthorizerResultTtlInSeconds"]
 
-    def aws_apigatewayv2_deployment(self, api_id):
-        print(f"  Processing API Gateway v2 Deployments for API ID: {api_id}")
+                    self.hcl.process_resource(
+                        "aws_apigatewayv2_authorizer", authorizer["AuthorizerId"], attributes)
 
-        paginator = self.apigatewayv2_client.get_paginator("get_deployments")
-        page_iterator = paginator.paginate(ApiId=api_id)
+    def aws_apigatewayv2_deployment(self):
+        print("Processing API Gateway v2 Deployments...")
 
-        for page in page_iterator:
-            for deployment in page["Items"]:
-                print(
-                    f"    Processing API Gateway v2 Deployment: {deployment['DeploymentId']}")
+        apis = self.apigatewayv2_client.get_apis()["Items"]
+        for api in apis:
+            api_id = api["ApiId"]
+            print(
+                f"  Processing API Gateway v2 Deployments for API ID: {api_id}")
 
-                attributes = {
-                    "api_id": api_id,
-                }
-                if "Description" in deployment:
-                    attributes["description"] = deployment["Description"]
+            paginator = self.apigatewayv2_client.get_paginator(
+                "get_deployments")
+            page_iterator = paginator.paginate(ApiId=api_id)
 
-                self.hcl.process_resource(
-                    "aws_apigatewayv2_deployment", deployment["DeploymentId"], attributes)
+            for page in page_iterator:
+                for deployment in page["Items"]:
+                    print(
+                        f"    Processing API Gateway v2 Deployment: {deployment['DeploymentId']}")
+
+                    attributes = {
+                        "api_id": api_id,
+                    }
+                    if "Description" in deployment:
+                        attributes["description"] = deployment["Description"]
+
+                    self.hcl.process_resource(
+                        "aws_apigatewayv2_deployment", deployment["DeploymentId"], attributes)
 
     def aws_apigatewayv2_domain_name(self):
         print("  Processing API Gateway v2 Domain Names")
@@ -134,167 +166,213 @@ class Apigatewayv2:
                 self.hcl.process_resource(
                     "aws_apigatewayv2_domain_name", domain_name["DomainName"], attributes)
 
-    def aws_apigatewayv2_integration(self, api_id):
-        print(f"  Processing API Gateway v2 Integrations for API ID: {api_id}")
+    def aws_apigatewayv2_integration(self):
+        print("Processing API Gateway v2 Integrations...")
 
-        paginator = self.apigatewayv2_client.get_paginator("get_integrations")
-        page_iterator = paginator.paginate(ApiId=api_id)
+        apis = self.apigatewayv2_client.get_apis()["Items"]
+        for api in apis:
+            api_id = api["ApiId"]
+            print(
+                f"  Processing API Gateway v2 Integrations for API ID: {api_id}")
 
-        for page in page_iterator:
-            for integration in page["Items"]:
+            paginator = self.apigatewayv2_client.get_paginator(
+                "get_integrations")
+            page_iterator = paginator.paginate(ApiId=api_id)
+
+            for page in page_iterator:
+                for integration in page["Items"]:
+                    print(
+                        f"    Processing API Gateway v2 Integration: {integration['IntegrationId']}")
+
+                    attributes = {
+                        "api_id": api_id,
+                        "integration_type": integration["IntegrationType"],
+                    }
+                    if "IntegrationMethod" in integration:
+                        attributes["integration_method"] = integration["IntegrationMethod"]
+                    if "IntegrationUri" in integration:
+                        attributes["integration_uri"] = integration["IntegrationUri"]
+                    if "ConnectionType" in integration:
+                        attributes["connection_type"] = integration["ConnectionType"]
+                    if "ConnectionId" in integration:
+                        attributes["connection_id"] = integration["ConnectionId"]
+                    if "TimeoutInMillis" in integration:
+                        attributes["timeout_in_millis"] = integration["TimeoutInMillis"]
+
+                    self.hcl.process_resource(
+                        "aws_apigatewayv2_integration", integration["IntegrationId"], attributes)
+
+    def aws_apigatewayv2_integration_response(self):
+        print("Processing API Gateway v2 Integration Responses...")
+
+        apis = self.apigatewayv2_client.get_apis()["Items"]
+        for api in apis:
+            api_id = api["ApiId"]
+            print(
+                f"  Processing API Gateway v2 Integration Responses for API ID: {api_id}")
+
+            integrations = self.apigatewayv2_client.get_integrations(ApiId=api_id)[
+                "Items"]
+            for integration in integrations:
+                integration_id = integration["IntegrationId"]
                 print(
-                    f"    Processing API Gateway v2 Integration: {integration['IntegrationId']}")
+                    f"    Processing API Gateway v2 Integration Responses for Integration ID: {integration_id}")
 
-                attributes = {
-                    "api_id": api_id,
-                    "integration_type": integration["IntegrationType"],
-                }
-                if "IntegrationMethod" in integration:
-                    attributes["integration_method"] = integration["IntegrationMethod"]
-                if "IntegrationUri" in integration:
-                    attributes["integration_uri"] = integration["IntegrationUri"]
-                if "ConnectionType" in integration:
-                    attributes["connection_type"] = integration["ConnectionType"]
-                if "ConnectionId" in integration:
-                    attributes["connection_id"] = integration["ConnectionId"]
-                if "TimeoutInMillis" in integration:
-                    attributes["timeout_in_millis"] = integration["TimeoutInMillis"]
+                paginator = self.apigatewayv2_client.get_paginator(
+                    "get_integration_responses")
+                page_iterator = paginator.paginate(
+                    ApiId=api_id, IntegrationId=integration_id)
 
-                self.hcl.process_resource(
-                    "aws_apigatewayv2_integration", integration["IntegrationId"], attributes)
+                for page in page_iterator:
+                    for integration_response in page["Items"]:
+                        print(
+                            f"      Processing API Gateway v2 Integration Response: {integration_response['IntegrationResponseId']}")
 
-    def aws_apigatewayv2_integration_response(self, api_id, integration_id):
-        print(
-            f"    Processing API Gateway v2 Integration Responses for Integration ID: {integration_id}")
+                        attributes = {
+                            "api_id": api_id,
+                            "integration_id": integration_id,
+                            "integration_response_key": integration_response["IntegrationResponseKey"],
+                        }
 
-        paginator = self.apigatewayv2_client.get_paginator(
-            "get_integration_responses")
-        page_iterator = paginator.paginate(
-            ApiId=api_id, IntegrationId=integration_id)
+                        self.hcl.process_resource("aws_apigatewayv2_integration_response",
+                                                  integration_response["IntegrationResponseId"], attributes)
 
-        for page in page_iterator:
-            for integration_response in page["Items"]:
+    def aws_apigatewayv2_model(self):
+        print("Processing API Gateway v2 Models...")
+
+        apis = self.apigatewayv2_client.get_apis()["Items"]
+        for api in apis:
+            api_id = api["ApiId"]
+            print(f"  Processing API Gateway v2 Models for API ID: {api_id}")
+
+            paginator = self.apigatewayv2_client.get_paginator("get_models")
+            page_iterator = paginator.paginate(ApiId=api_id)
+
+            for page in page_iterator:
+                for model in page["Items"]:
+                    print(
+                        f"    Processing API Gateway v2 Model: {model['Name']}")
+
+                    attributes = {
+                        "api_id": api_id,
+                        "name": model["Name"],
+                        "content_type": model["ContentType"],
+                        "schema": model["Schema"],
+                    }
+
+                    self.hcl.process_resource(
+                        "aws_apigatewayv2_model", model["Name"], attributes)
+
+    def aws_apigatewayv2_route(self):
+        print("Processing API Gateway v2 Routes...")
+
+        api_ids = self.apigatewayv2_client.get_apis()["Items"]
+
+        for api in api_ids:
+            api_id = api["ApiId"]
+            print(f"  Processing API Gateway v2 Routes for API ID: {api_id}")
+
+            paginator = self.apigatewayv2_client.get_paginator("get_routes")
+            page_iterator = paginator.paginate(ApiId=api_id)
+
+            for page in page_iterator:
+                for route in page["Items"]:
+                    print(
+                        f"    Processing API Gateway v2 Route: {route['RouteId']}")
+
+                    attributes = {
+                        "api_id": api_id,
+                        "route_key": route["RouteKey"],
+                    }
+
+                    if "Target" in route:
+                        attributes["target"] = route["Target"]
+
+                    self.hcl.process_resource(
+                        "aws_apigatewayv2_route", route["RouteId"], attributes)
+
+    def aws_apigatewayv2_route_response(self):
+        print("Processing API Gateway v2 Route Responses...")
+
+        api_ids = self.apigatewayv2_client.get_apis()["Items"]
+
+        for api in api_ids:
+            api_id = api["ApiId"]
+            print(f"  Processing Route Responses for API ID: {api_id}")
+
+            routes = self.apigatewayv2_client.get_routes(ApiId=api_id)["Items"]
+
+            for route in routes:
+                route_id = route["RouteId"]
                 print(
-                    f"      Processing API Gateway v2 Integration Response: {integration_response['IntegrationResponseId']}")
+                    f"    Processing API Gateway v2 Route Responses for Route ID: {route_id}")
 
-                attributes = {
-                    "api_id": api_id,
-                    "integration_id": integration_id,
-                    "integration_response_key": integration_response["IntegrationResponseKey"],
-                }
+                paginator = self.apigatewayv2_client.get_paginator(
+                    "get_route_responses")
+                page_iterator = paginator.paginate(
+                    ApiId=api_id, RouteId=route_id)
 
-                self.hcl.process_resource("aws_apigatewayv2_integration_response",
-                                          integration_response["IntegrationResponseId"], attributes)
+                for page in page_iterator:
+                    for route_response in page["Items"]:
+                        print(
+                            f"      Processing API Gateway v2 Route Response: {route_response['RouteResponseId']}")
 
-    def aws_apigatewayv2_model(self, api_id):
-        print(f"  Processing API Gateway v2 Models for API ID: {api_id}")
+                        attributes = {
+                            "api_id": api_id,
+                            "route_id": route_id,
+                            "route_response_key": route_response["RouteResponseKey"],
+                        }
 
-        paginator = self.apigatewayv2_client.get_paginator("get_models")
-        page_iterator = paginator.paginate(ApiId=api_id)
+                        self.hcl.process_resource(
+                            "aws_apigatewayv2_route_response", route_response["RouteResponseId"], attributes)
 
-        for page in page_iterator:
-            for model in page["Items"]:
-                print(f"    Processing API Gateway v2 Model: {model['Name']}")
+    def aws_apigatewayv2_stage(self):
+        print("Processing API Gateway v2 Stages...")
 
-                attributes = {
-                    "api_id": api_id,
-                    "name": model["Name"],
-                    "content_type": model["ContentType"],
-                    "schema": model["Schema"],
-                }
+        api_ids = self.apigatewayv2_client.get_apis()["Items"]
 
-                self.hcl.process_resource(
-                    "aws_apigatewayv2_model", model["Name"], attributes)
+        for api in api_ids:
+            api_id = api["ApiId"]
+            print(f"  Processing API Gateway v2 Stages for API ID: {api_id}")
 
-    def aws_apigatewayv2_route(self, api_id):
-        print(f"  Processing API Gateway v2 Routes for API ID: {api_id}")
+            paginator = self.apigatewayv2_client.get_paginator("get_stages")
+            page_iterator = paginator.paginate(ApiId=api_id)
 
-        paginator = self.apigatewayv2_client.get_paginator("get_routes")
-        page_iterator = paginator.paginate(ApiId=api_id)
+            for page in page_iterator:
+                for stage in page["Items"]:
+                    print(
+                        f"    Processing API Gateway v2 Stage: {stage['StageName']}")
 
-        for page in page_iterator:
-            for route in page["Items"]:
-                print(
-                    f"    Processing API Gateway v2 Route: {route['RouteId']}")
+                    attributes = {
+                        "api_id": api_id,
+                        "name": stage["StageName"],
+                    }
 
-                attributes = {
-                    "api_id": api_id,
-                    "route_key": route["RouteKey"],
-                }
+                    if "AutoDeploy" in stage:
+                        attributes["auto_deploy"] = stage["AutoDeploy"]
 
-                if "Target" in route:
-                    attributes["target"] = route["Target"]
+                    if "DeploymentId" in stage:
+                        attributes["deployment_id"] = stage["DeploymentId"]
 
-                self.hcl.process_resource(
-                    "aws_apigatewayv2_route", route["RouteId"], attributes)
-
-                self.aws_apigatewayv2_route_response(api_id, route["RouteId"])
-
-    def aws_apigatewayv2_route_response(self, api_id, route_id):
-        print(
-            f"    Processing API Gateway v2 Route Responses for Route ID: {route_id}")
-
-        paginator = self.apigatewayv2_client.get_paginator(
-            "get_route_responses")
-        page_iterator = paginator.paginate(ApiId=api_id, RouteId=route_id)
-
-        for page in page_iterator:
-            for route_response in page["Items"]:
-                print(
-                    f"      Processing API Gateway v2 Route Response: {route_response['RouteResponseId']}")
-
-                attributes = {
-                    "api_id": api_id,
-                    "route_id": route_id,
-                    "route_response_key": route_response["RouteResponseKey"],
-                }
-
-                self.hcl.process_resource(
-                    "aws_apigatewayv2_route_response", route_response["RouteResponseId"], attributes)
-
-    def aws_apigatewayv2_stage(self, api_id):
-        print(f"  Processing API Gateway v2 Stages for API ID: {api_id}")
-
-        paginator = self.apigatewayv2_client.get_paginator("get_stages")
-        page_iterator = paginator.paginate(ApiId=api_id)
-
-        for page in page_iterator:
-            for stage in page["Items"]:
-                print(
-                    f"    Processing API Gateway v2 Stage: {stage['StageName']}")
-
-                attributes = {
-                    "api_id": api_id,
-                    "name": stage["StageName"],
-                }
-
-                if "AutoDeploy" in stage:
-                    attributes["auto_deploy"] = stage["AutoDeploy"]
-
-                if "DeploymentId" in stage:
-                    attributes["deployment_id"] = stage["DeploymentId"]
-
-                self.hcl.process_resource(
-                    "aws_apigatewayv2_stage", stage["StageName"], attributes)
+                    self.hcl.process_resource(
+                        "aws_apigatewayv2_stage", stage["StageName"], attributes)
 
     def aws_apigatewayv2_vpc_link(self):
         print("Processing API Gateway v2 VPC Links...")
 
-        paginator = self.apigatewayv2_client.get_paginator("get_vpc_links")
-        page_iterator = paginator.paginate()
+        vpc_links = self.apigatewayv2_client.get_vpc_links()["Items"]
 
-        for page in page_iterator:
-            for vpc_link in page["Items"]:
-                print(
-                    f"  Processing API Gateway v2 VPC Link: {vpc_link['VpcLinkId']}")
+        for vpc_link in vpc_links:
+            print(
+                f"  Processing API Gateway v2 VPC Link: {vpc_link['VpcLinkId']}")
 
-                attributes = {
-                    "name": vpc_link["Name"],
-                    "subnet_ids": vpc_link["SubnetIds"],
-                }
+            attributes = {
+                "name": vpc_link["Name"],
+                "subnet_ids": vpc_link["SubnetIds"],
+            }
 
-                if "SecurityGroupIds" in vpc_link:
-                    attributes["security_group_ids"] = vpc_link["SecurityGroupIds"]
+            if "SecurityGroupIds" in vpc_link:
+                attributes["security_group_ids"] = vpc_link["SecurityGroupIds"]
 
-                self.hcl.process_resource(
-                    "aws_apigatewayv2_vpc_link", vpc_link["VpcLinkId"], attributes)
+            self.hcl.process_resource(
+                "aws_apigatewayv2_vpc_link", vpc_link["VpcLinkId"], attributes)

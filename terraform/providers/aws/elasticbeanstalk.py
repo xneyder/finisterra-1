@@ -1,5 +1,6 @@
 import os
 from utils.hcl import HCL
+import botocore
 
 
 class ElasticBeanstalk:
@@ -15,6 +16,11 @@ class ElasticBeanstalk:
 
     def elasticbeanstalk(self):
         self.hcl.prepare_folder(os.path.join("generated", "elasticbeanstalk"))
+
+        self.aws_elastic_beanstalk_application()
+        self.aws_elastic_beanstalk_application_version()
+        self.aws_elastic_beanstalk_configuration_template()
+        self.aws_elastic_beanstalk_environment()
 
         self.hcl.refresh_state()
         self.hcl.generate_hcl_file()
@@ -71,21 +77,46 @@ class ElasticBeanstalk:
 
         for app in applications:
             app_name = app["ApplicationName"]
-            templates = self.elasticbeanstalk_client.describe_configuration_templates(
-                ApplicationName=app_name)["ConfigurationTemplates"]
+            environments = self.elasticbeanstalk_client.describe_environments(
+                ApplicationName=app_name)["Environments"]
+            templates = {}
 
-            for template_name in templates:
-                template_id = f"{app_name}-{template_name}"
-                print(
-                    f"  Processing Elastic Beanstalk Configuration Template: {template_id}")
+            for env in environments:
+                try:
+                    env_name = env["EnvironmentName"]
+                    options = self.elasticbeanstalk_client.describe_configuration_options(
+                        ApplicationName=app_name, EnvironmentName=env_name)["Options"]
 
-                attributes = {
-                    "id": template_id,
-                    "application": app_name,
-                    "name": template_name,
-                }
-                self.hcl.process_resource(
-                    "aws_elastic_beanstalk_configuration_template", template_id, attributes)
+                    for option in options:
+                        namespace = option["Namespace"]
+                        name = option["OptionName"]
+                        value = option.get("Value")
+                        if namespace.startswith("aws:elasticbeanstalk:"):
+                            template_name = namespace.split(":")[-1]
+                            if template_name not in templates:
+                                templates[template_name] = {
+                                    "id": f"{app_name}-{template_name}",
+                                    "application": app_name,
+                                    "name": template_name,
+                                    "options": {},
+                                }
+                            templates[template_name]["options"][name] = value
+                except botocore.exceptions.ClientError as e:
+                    print(f"  Error processing KMS Grant: {e}")
+
+                for template_name, template in templates.items():
+                    template_id = template["id"]
+                    print(
+                        f"  Processing Elastic Beanstalk Configuration Template: {template_id}")
+
+                    attributes = {
+                        "id": template_id,
+                        "application": app_name,
+                        "name": template_name,
+                        "options": template["options"],
+                    }
+                    self.hcl.process_resource(
+                        "aws_elastic_beanstalk_configuration_template", template_id, attributes)
 
     def aws_elastic_beanstalk_environment(self):
         print("Processing Elastic Beanstalk Environments...")

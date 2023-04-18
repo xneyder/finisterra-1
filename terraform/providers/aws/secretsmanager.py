@@ -2,7 +2,7 @@ import os
 from utils.hcl import HCL
 
 
-class SECRETSMANAGER:
+class Secretsmanager:
     def __init__(self, secretsmanager_client, script_dir, provider_name, schema_data, region):
         self.secretsmanager_client = secretsmanager_client
         self.transform_rules = {}
@@ -15,6 +15,11 @@ class SECRETSMANAGER:
 
     def secretsmanager(self):
         self.hcl.prepare_folder(os.path.join("generated", "secretsmanager"))
+
+        self.aws_secretsmanager_secret()
+        self.aws_secretsmanager_secret_policy()
+        self.aws_secretsmanager_secret_rotation()
+        self.aws_secretsmanager_secret_version()
 
         self.hcl.refresh_state()
         self.hcl.generate_hcl_file()
