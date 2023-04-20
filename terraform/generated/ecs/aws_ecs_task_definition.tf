@@ -1432,14 +1432,14 @@ resource "aws_ecs_task_definition" "instructor_graphql_api" {
       }
     ],
     "essential": true,
-    "image": "050779347855.dkr.ecr.us-gov-west-1.amazonaws.com/instructor-graphql-api:1.0-119",
+    "image": "050779347855.dkr.ecr.us-gov-west-1.amazonaws.com/instructor-graphql-api:1.0-120",
     "logConfiguration": {
       "logDriver": "awslogs",
       "options": {
         "awslogs-group": "instructor-graphql-api",
         "awslogs-multiline-pattern": "^[0-9]{4}[^\\s]",
         "awslogs-region": "us-gov-west-1",
-        "awslogs-stream-prefix": "1.0-119"
+        "awslogs-stream-prefix": "1.0-120"
       }
     },
     "memoryReservation": 416,
@@ -1464,7 +1464,7 @@ resource "aws_ecs_task_definition" "instructor_graphql_api" {
 EOF
   family                = "instructor-graphql-api"
   tags = {
-    Version = "1.0-119"
+    Version = "1.0-120"
 
   }
   task_role_arn = "arn:aws-us-gov:iam::050779347855:role/web-app-instructor-graphql-api"

@@ -34,8 +34,7 @@ class Elasticache:
         self.aws_elasticache_global_replication_group()
         self.aws_elasticache_parameter_group()
         self.aws_elasticache_replication_group()
-        if "gov" not in self.region:
-            self.aws_elasticache_security_group()
+        # self.aws_elasticache_security_group() #deprecated
         self.aws_elasticache_subnet_group()
         self.aws_elasticache_user()
         self.aws_elasticache_user_group()
@@ -134,24 +133,24 @@ class Elasticache:
                 self.hcl.process_resource(
                     "aws_elasticache_replication_group", replication_group["ReplicationGroupId"].replace("-", "_"), attributes)
 
-    def aws_elasticache_security_group(self):
-        print("Processing ElastiCache Security Groups...")
+    # def aws_elasticache_security_group(self):
+    #     print("Processing ElastiCache Security Groups...")
 
-        paginator = self.elasticache_client.get_paginator(
-            "describe_cache_security_groups")
-        for page in paginator.paginate():
-            for security_group in page["CacheSecurityGroups"]:
-                print(
-                    f"  Processing ElastiCache Security Group: {security_group['CacheSecurityGroupName']}")
+    #     paginator = self.elasticache_client.get_paginator(
+    #         "describe_cache_security_groups")
+    #     for page in paginator.paginate():
+    #         for security_group in page["CacheSecurityGroups"]:
+    #             print(
+    #                 f"  Processing ElastiCache Security Group: {security_group['CacheSecurityGroupName']}")
 
-                attributes = {
-                    "id": security_group["CacheSecurityGroupName"],
-                    "name": security_group["CacheSecurityGroupName"],
-                    "description": security_group["Description"],
-                }
+    #             attributes = {
+    #                 "id": security_group["CacheSecurityGroupName"],
+    #                 "name": security_group["CacheSecurityGroupName"],
+    #                 "description": security_group["Description"],
+    #             }
 
-                self.hcl.process_resource(
-                    "aws_elasticache_security_group", security_group["CacheSecurityGroupName"].replace("-", "_"), attributes)
+    #             self.hcl.process_resource(
+    #                 "aws_elasticache_security_group", security_group["CacheSecurityGroupName"].replace("-", "_"), attributes)
 
     def aws_elasticache_subnet_group(self):
         print("Processing ElastiCache Subnet Groups...")

@@ -18,11 +18,11 @@ class ElasticBeanstalk:
         self.hcl.prepare_folder(os.path.join("generated", "elasticbeanstalk"))
 
         self.aws_elastic_beanstalk_application()
-        self.aws_elastic_beanstalk_application_version()
-        self.aws_elastic_beanstalk_configuration_template()
+        # self.aws_elastic_beanstalk_application_version() #There is not terraform import for this resource
+        # self.aws_elastic_beanstalk_configuration_template() #There is not terraform import for this resource
         self.aws_elastic_beanstalk_environment()
 
-        self.hcl.refresh_state()
+        # self.hcl.refresh_state()
         self.hcl.generate_hcl_file()
 
     def aws_elastic_beanstalk_application(self):
@@ -60,14 +60,25 @@ class ElasticBeanstalk:
                 print(
                     f"  Processing Elastic Beanstalk Application Version: {version_id}")
 
+                source_bundle = version.get("SourceBundle")
+                bucket = ""
+                bucket_key = ""
+
+                if source_bundle:
+                    bucket = source_bundle.get("S3Bucket", "")
+                    key = source_bundle.get("S3Key", "")
+
                 attributes = {
                     "id": version_id,
                     "application": app_name,
                     "name": version_label,
                     "description": version.get("Description", ""),
+                    "bucket": bucket,
+                    "key": key
                 }
                 self.hcl.process_resource(
                     "aws_elastic_beanstalk_application_version", version_id, attributes)
+
 
     def aws_elastic_beanstalk_configuration_template(self):
         print("Processing Elastic Beanstalk Configuration Templates...")
@@ -89,7 +100,7 @@ class ElasticBeanstalk:
 
                     for option in options:
                         namespace = option["Namespace"]
-                        name = option["OptionName"]
+                        name = option.get("OptionName")
                         value = option.get("Value")
                         if namespace.startswith("aws:elasticbeanstalk:"):
                             template_name = namespace.split(":")[-1]

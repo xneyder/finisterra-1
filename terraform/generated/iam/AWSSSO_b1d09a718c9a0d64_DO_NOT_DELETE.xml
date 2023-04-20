@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?><md:EntityDescriptor xmlns:md="urn:oasis:names:tc:SAML:2.0:metadata" entityID="https://portal.sso.us-gov-west-1.amazonaws.com/saml/assertion/MDQzOTgwNTUxODk5X2lucy0yNWVlM2FhMzY3MTkyYmY3">
+    <md:IDPSSODescriptor WantAuthnRequestsSigned="false" protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol">
+        <md:KeyDescriptor use="signing">
+            <ds:KeyInfo xmlns:ds="http://www.w3.org/2000/09/xmldsig#">
+                <ds:X509Data>
+                    <ds:X509Certificate>MIIDAzCCAeugAwIBAgIBATANBgkqhkiG9w0BAQsFADBFMRYwFAYDVQQDDA1hbWF6b25hd3MuY29tMQ0wCwYDVQQLDARJREFTMQ8wDQYDVQQKDAZBbWF6b24xCzAJBgNVBAYTAlVTMB4XDTIyMDUxMDAyMDMwN1oXDTI3MDUxMDAyMDMwN1owRTEWMBQGA1UEAwwNYW1hem9uYXdzLmNvbTENMAsGA1UECwwESURBUzEPMA0GA1UECgwGQW1hem9uMQswCQYDVQQGEwJVUzCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBAMRy0XzHotxrfbbhEZi22jeuGByBDDxfut7pYmT68OZkRqm8TUBC3T2SIORvQ9PM8C9RmfufGdrUVOumc/k6WJ1oFmZNDVCwANuXajg3wDVQiq+VLN3DLOmNvwnyz/aT8a6Z6vStyQ/tMKkS/WstuAp+G/xxuQy9Qe2SOI6BI4nZmPeJb25BvfkJu/8Vdsy4l65Dg7ikNidesFa/hj2w+AeRqYlher5NENVuy/X47SSX+TwxRoCYPjSYg0YXXgWXIPVEC05irDm2ds3sCTFle/gaNM8HbQEWN9hUDMnh4XQDgrfmx9tezMp5Xj7XQwxeA1CccyMAPJ0Elo+M7Ir2xXMCAwEAATANBgkqhkiG9w0BAQsFAAOCAQEALonlup4kYv2+NLMh2jaxAwnEyggdmuIzSkkrFMg1BbRL/tAWqpUc3Uv4i2f4ecPtkENldwmsCdLf9KnygTmHi8bdv+GkHk2Ea1zbJBk86uwZM0Jo452H6Xufxe0pV7rV6MDEyUUOgiOjmFAVWKPyxX3nkk/GU8L6epGgeU+RhTL2wFffw38iKhnVoTABP+DPkDKYhxPbn64bm97CExrVE5haBURlZ3+GWCfgXx3surqA2b9xQ9vQfeEzKm6eHR7nUHlKQ/Upq5M1aTOdklsOyWtbruFCLN8eYlWxkVmlnj/swHTalWdk4D1Ioy169e1mdRIBnJ1RH9Wzm8pwd2NW+A==</ds:X509Certificate>
+                </ds:X509Data>
+            </ds:KeyInfo>
+        </md:KeyDescriptor>
+        <md:SingleLogoutService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST" Location="https://portal.sso.us-gov-west-1.amazonaws.com/saml/logout/MDQzOTgwNTUxODk5X2lucy0yNWVlM2FhMzY3MTkyYmY3"/>
+        <md:SingleLogoutService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect" Location="https://portal.sso.us-gov-west-1.amazonaws.com/saml/logout/MDQzOTgwNTUxODk5X2lucy0yNWVlM2FhMzY3MTkyYmY3"/>
+        <md:NameIDFormat>urn:oasis:names:tc:SAML:2.0:nameid-format:persistent</md:NameIDFormat>
+        <md:SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST" Location="https://portal.sso.us-gov-west-1.amazonaws.com/saml/assertion/MDQzOTgwNTUxODk5X2lucy0yNWVlM2FhMzY3MTkyYmY3"/>
+        <md:SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect" Location="https://portal.sso.us-gov-west-1.amazonaws.com/saml/assertion/MDQzOTgwNTUxODk5X2lucy0yNWVlM2FhMzY3MTkyYmY3"/>
+    </md:IDPSSODescriptor>
+</md:EntityDescriptor>

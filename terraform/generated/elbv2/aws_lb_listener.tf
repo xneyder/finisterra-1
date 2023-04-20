@@ -1,12 +1,3 @@
-resource "aws_lb_listener" "_0b3b8aa3a964c1a0" {
-  default_action {
-    target_group_arn = "arn:aws-us-gov:elasticloadbalancing:us-gov-west-1:050779347855:targetgroup/awseb-AWSEB-TL79QFVI7V3/043977142a0dbf1d"
-    type             = "forward"
-  }
-  load_balancer_arn = "arn:aws-us-gov:elasticloadbalancing:us-gov-west-1:050779347855:loadbalancer/app/awseb-AWSEB-XSOHODKYO0N7/76e4011fa2a24353"
-  port              = 80
-}
-
 resource "aws_lb_listener" "_14c0114a3d45de8b" {
   certificate_arn = "arn:aws-us-gov:acm:us-gov-west-1:050779347855:certificate/0ba5a0ce-3752-4631-8422-28ca164d70bc"
   default_action {
@@ -14,6 +5,16 @@ resource "aws_lb_listener" "_14c0114a3d45de8b" {
     type             = "forward"
   }
   load_balancer_arn = "arn:aws-us-gov:elasticloadbalancing:us-gov-west-1:050779347855:loadbalancer/app/awseb-AWSEB-XZ6JUMA8IEE/24c9cf558cf46ee7"
+  port              = 443
+}
+
+resource "aws_lb_listener" "_15e411137d96e1a3" {
+  certificate_arn = "arn:aws-us-gov:acm:us-gov-west-1:050779347855:certificate/0ba5a0ce-3752-4631-8422-28ca164d70bc"
+  default_action {
+    target_group_arn = "arn:aws-us-gov:elasticloadbalancing:us-gov-west-1:050779347855:targetgroup/awseb-https-1I8ECBRH1HY3/5476cd11d9b77634"
+    type             = "forward"
+  }
+  load_balancer_arn = "arn:aws-us-gov:elasticloadbalancing:us-gov-west-1:050779347855:loadbalancer/app/awseb-AWSEB-61URVRH00UCZ/e8a05fbdccebe16e"
   port              = 443
 }
 
@@ -48,16 +49,6 @@ resource "aws_lb_listener" "_1c78dd4e0c675aee" {
   port              = 80
 }
 
-resource "aws_lb_listener" "_1e87bbb1eb7aaf83" {
-  certificate_arn = "arn:aws-us-gov:acm:us-gov-west-1:050779347855:certificate/0ba5a0ce-3752-4631-8422-28ca164d70bc"
-  default_action {
-    target_group_arn = "arn:aws-us-gov:elasticloadbalancing:us-gov-west-1:050779347855:targetgroup/awseb-https-FWBN6663VT5N/060e7dbf6250d62e"
-    type             = "forward"
-  }
-  load_balancer_arn = "arn:aws-us-gov:elasticloadbalancing:us-gov-west-1:050779347855:loadbalancer/app/awseb-AWSEB-XSOHODKYO0N7/76e4011fa2a24353"
-  port              = 443
-}
-
 resource "aws_lb_listener" "_1f6ffe97489c5a76" {
   certificate_arn = "arn:aws-us-gov:acm:us-gov-west-1:050779347855:certificate/0ba5a0ce-3752-4631-8422-28ca164d70bc"
   default_action {
@@ -66,6 +57,15 @@ resource "aws_lb_listener" "_1f6ffe97489c5a76" {
   }
   load_balancer_arn = "arn:aws-us-gov:elasticloadbalancing:us-gov-west-1:050779347855:loadbalancer/app/awseb-AWSEB-15X3QV41KCHP8/1084d67b6e605d54"
   port              = 443
+}
+
+resource "aws_lb_listener" "_5366a3b91d42e28e" {
+  default_action {
+    target_group_arn = "arn:aws-us-gov:elasticloadbalancing:us-gov-west-1:050779347855:targetgroup/awseb-AWSEB-FTDGG6JAIAVU/cd8ebc5a66ec9fa8"
+    type             = "forward"
+  }
+  load_balancer_arn = "arn:aws-us-gov:elasticloadbalancing:us-gov-west-1:050779347855:loadbalancer/app/awseb-AWSEB-ZRMNV8V7XEA5/1acfb34e22719e99"
+  port              = 80
 }
 
 resource "aws_lb_listener" "_56c1eea262d27409" {
@@ -152,6 +152,30 @@ resource "aws_lb_listener" "_841aefae8e67ee68" {
   port              = 80
 }
 
+resource "aws_lb_listener" "_8e6395d818020d2b" {
+  default_action {
+    redirect {
+      host        = "#{host}"
+      path        = "/#{path}"
+      port        = "443"
+      query       = "#{query}"
+      status_code = "HTTP_301"
+    }
+    type = "redirect"
+  }
+  load_balancer_arn = "arn:aws-us-gov:elasticloadbalancing:us-gov-west-1:050779347855:loadbalancer/app/awseb-AWSEB-61URVRH00UCZ/e8a05fbdccebe16e"
+  port              = 80
+}
+
+resource "aws_lb_listener" "_955eb75fe737ac88" {
+  default_action {
+    target_group_arn = "arn:aws-us-gov:elasticloadbalancing:us-gov-west-1:050779347855:targetgroup/awseb-AWSEB-YEZA6U1KVPDV/4d9eece4d84a3833"
+    type             = "forward"
+  }
+  load_balancer_arn = "arn:aws-us-gov:elasticloadbalancing:us-gov-west-1:050779347855:loadbalancer/app/awseb-AWSEB-1SO91UM91RWQI/cbdd962b7a7db8ab"
+  port              = 80
+}
+
 resource "aws_lb_listener" "_95ed8559e141ce1a" {
   certificate_arn = "arn:aws-us-gov:acm:us-gov-west-1:050779347855:certificate/0ba5a0ce-3752-4631-8422-28ca164d70bc"
   default_action {
@@ -208,20 +232,26 @@ resource "aws_lb_listener" "_9c5a11f18f8c74cd" {
 
 resource "aws_lb_listener" "aadc45173b01ef09" {
   default_action {
-    target_group_arn = "arn:aws-us-gov:elasticloadbalancing:us-gov-west-1:050779347855:targetgroup/awseb-AWSEB-2K3XZ04E4CGX/ea85e2af213f03dc"
-    type             = "forward"
+    redirect {
+      host        = "#{host}"
+      path        = "/#{path}"
+      port        = "443"
+      query       = "#{query}"
+      status_code = "HTTP_301"
+    }
+    type = "redirect"
   }
   load_balancer_arn = "arn:aws-us-gov:elasticloadbalancing:us-gov-west-1:050779347855:loadbalancer/app/awseb-AWSEB-15X3QV41KCHP8/1084d67b6e605d54"
   port              = 80
 }
 
-resource "aws_lb_listener" "b62eb75287221bfb" {
+resource "aws_lb_listener" "b0ef3844f0dbc17a" {
   certificate_arn = "arn:aws-us-gov:acm:us-gov-west-1:050779347855:certificate/0ba5a0ce-3752-4631-8422-28ca164d70bc"
   default_action {
-    target_group_arn = "arn:aws-us-gov:elasticloadbalancing:us-gov-west-1:050779347855:targetgroup/awseb-https-ABQH2Z86TMP8/483f042e79cc7972"
+    target_group_arn = "arn:aws-us-gov:elasticloadbalancing:us-gov-west-1:050779347855:targetgroup/awseb-https-OX0BXIAFNYGI/8edb5baf518da618"
     type             = "forward"
   }
-  load_balancer_arn = "arn:aws-us-gov:elasticloadbalancing:us-gov-west-1:050779347855:loadbalancer/app/awseb-AWSEB-WCBXFBCA34C9/28d3e2c26d09e522"
+  load_balancer_arn = "arn:aws-us-gov:elasticloadbalancing:us-gov-west-1:050779347855:loadbalancer/app/awseb-AWSEB-ZRMNV8V7XEA5/1acfb34e22719e99"
   port              = 443
 }
 
@@ -303,15 +333,6 @@ resource "aws_lb_listener" "edaa83fbe82e0dca" {
   port              = 443
 }
 
-resource "aws_lb_listener" "f202fab3f7cc017c" {
-  default_action {
-    target_group_arn = "arn:aws-us-gov:elasticloadbalancing:us-gov-west-1:050779347855:targetgroup/awseb-AWSEB-85FZMWFW80KB/e81c3f994726fc24"
-    type             = "forward"
-  }
-  load_balancer_arn = "arn:aws-us-gov:elasticloadbalancing:us-gov-west-1:050779347855:loadbalancer/app/awseb-AWSEB-WCBXFBCA34C9/28d3e2c26d09e522"
-  port              = 80
-}
-
 resource "aws_lb_listener" "f586a2cd7d62bf67" {
   default_action {
     redirect {
@@ -325,5 +346,15 @@ resource "aws_lb_listener" "f586a2cd7d62bf67" {
   }
   load_balancer_arn = "arn:aws-us-gov:elasticloadbalancing:us-gov-west-1:050779347855:loadbalancer/app/awseb-AWSEB-DJD83A7DQHVI/b5d8f12b4fe75607"
   port              = 80
+}
+
+resource "aws_lb_listener" "ffdbeb6581ddfaff" {
+  certificate_arn = "arn:aws-us-gov:acm:us-gov-west-1:050779347855:certificate/0ba5a0ce-3752-4631-8422-28ca164d70bc"
+  default_action {
+    target_group_arn = "arn:aws-us-gov:elasticloadbalancing:us-gov-west-1:050779347855:targetgroup/awseb-https-1A18UEWA4D63L/44a8ba5d74ed6f99"
+    type             = "forward"
+  }
+  load_balancer_arn = "arn:aws-us-gov:elasticloadbalancing:us-gov-west-1:050779347855:loadbalancer/app/awseb-AWSEB-1SO91UM91RWQI/cbdd962b7a7db8ab"
+  port              = 443
 }
 

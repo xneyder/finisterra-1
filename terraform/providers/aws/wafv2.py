@@ -21,8 +21,8 @@ class Wafv2:
         self.aws_wafv2_regex_pattern_set()
         self.aws_wafv2_rule_group()
         self.aws_wafv2_web_acl()
-        self.aws_wafv2_web_acl_association()  # Wait for perrmissions
-        self.aws_wafv2_web_acl_logging_configuration()  # Wait for perrmissions
+        self.aws_wafv2_web_acl_association()
+        self.aws_wafv2_web_acl_logging_configuration()
 
         self.hcl.refresh_state()
         self.hcl.generate_hcl_file()
@@ -136,8 +136,8 @@ class Wafv2:
                         association = self.wafv2_client.get_web_acl_for_resource(
                             ResourceArn=resource_arn
                         )
-                        if association['WebACL']['Id'] == web_acl_id:
-                            association_id = f"{web_acl_id}-{resource_arn}"
+                        if 'WebACL' in association and association['WebACL']['Id'] == web_acl_id:
+                            association_id = f"{web_acl_id},{resource_arn}"
                             print(
                                 f"  Processing WAFv2 Web ACL Association: {association_id}")
 
@@ -153,6 +153,8 @@ class Wafv2:
                             pass
                         else:
                             raise e
+
+
 
     def aws_wafv2_web_acl_logging_configuration(self):
         print("Processing WAFv2 Web ACL Logging Configurations...")

@@ -84,6 +84,44 @@ class Aws:
         self.script_dir = script_dir
         self.schema_data = self.load_provider_schema()
 
+    def extract_arns_from_state_file(self, file_path):
+        with open(file_path, 'r') as file:
+            state_data = json.load(file)
+
+        arn_mapping = {}
+        resources = state_data.get('resources', [])
+
+        for resource in resources:
+            resource_name = resource.get('name', '')
+            instances = resource.get('instances', [])
+
+            for instance in instances:
+                attributes = instance.get('attributes', {})
+                arn = attributes.get('arn', '')
+
+                if arn:
+                    arn_mapping[arn] = resource_name
+
+        return arn_mapping
+
+    def process_terraform_state_files(self, folder_path):
+        arn_to_resource_name = {}
+
+        for root, _, files in os.walk(folder_path):
+            for file_name in files:
+                if file_name.endswith('.tfstate'):
+                    file_path = os.path.join(root, file_name)
+                    arn_mapping = self.extract_arns_from_state_file(file_path)
+                    arn_to_resource_name.update(arn_mapping)
+
+        return arn_to_resource_name
+
+    def relations(self):
+        arn_to_resource_name = self.process_terraform_state_files("generated")
+        print("ARN to Resource Name mapping:")
+        print(json.dumps(arn_to_resource_name, indent=2))
+
+
     def create_folder(self, folder):
         if not os.path.exists(folder):
             os.makedirs(folder)
@@ -251,7 +289,12 @@ class Aws:
         dynamodb_client = self.session.client(
             "dynamodb", region_name=self.region)
 
-        Dynamodb(dynamodb_client, self.script_dir, self.provider_name,
+        sts_client = self.session.client(
+            "sts", region_name=self.region)
+        
+        account_id = sts_client.get_caller_identity()['Account']
+
+        Dynamodb(dynamodb_client, account_id, self.script_dir, self.provider_name,
                  self.schema_data, self.region).dynamodb()
 
     def cognito_identity(self):

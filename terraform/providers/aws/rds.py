@@ -31,7 +31,7 @@ class RDS:
             self.aws_db_proxy_target()
             self.aws_rds_export_task()
 
-        self.aws_db_security_group()
+        # self.aws_db_security_group() #deprecated
         self.aws_db_snapshot()
         self.aws_db_snapshot_copy()
         self.aws_db_subnet_group()
@@ -264,23 +264,23 @@ class RDS:
                 self.hcl.process_resource("aws_db_proxy_target", target_arn.replace(
                     ":", "_").replace("-", "_"), attributes)
 
-    def aws_db_security_group(self):
-        print("Processing DB Security Groups...")
+    # def aws_db_security_group(self):
+    #     print("Processing DB Security Groups...")
 
-        paginator = self.rds_client.get_paginator(
-            "describe_db_security_groups")
-        for page in paginator.paginate():
-            for db_security_group in page.get("DBSecurityGroups", []):
-                db_security_group_name = db_security_group["DBSecurityGroupName"]
-                print(
-                    f"  Processing DB Security Group: {db_security_group_name}")
-                attributes = {
-                    "id": db_security_group["DBSecurityGroupArn"],
-                    "name": db_security_group_name,
-                    "description": db_security_group["DBSecurityGroupDescription"],
-                }
-                self.hcl.process_resource(
-                    "aws_db_security_group", db_security_group_name.replace("-", "_"), attributes)
+    #     paginator = self.rds_client.get_paginator(
+    #         "describe_db_security_groups")
+    #     for page in paginator.paginate():
+    #         for db_security_group in page.get("DBSecurityGroups", []):
+    #             db_security_group_name = db_security_group["DBSecurityGroupName"]
+    #             print(
+    #                 f"  Processing DB Security Group: {db_security_group_name}")
+    #             attributes = {
+    #                 "id": db_security_group["DBSecurityGroupArn"],
+    #                 "name": db_security_group_name,
+    #                 "description": db_security_group["DBSecurityGroupDescription"],
+    #             }
+    #             self.hcl.process_resource(
+    #                 "aws_db_security_group", db_security_group_name.replace("-", "_"), attributes)
 
     def aws_db_snapshot(self):
         print("Processing DB Snapshots...")

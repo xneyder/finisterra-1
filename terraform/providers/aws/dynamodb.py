@@ -3,8 +3,9 @@ from utils.hcl import HCL
 
 
 class Dynamodb:
-    def __init__(self, dynamodb_client, script_dir, provider_name, schema_data, region):
+    def __init__(self, dynamodb_client, account_id, script_dir, provider_name, schema_data, region):
         self.dynamodb_client = dynamodb_client
+        self.account_id = account_id
         self.transform_rules = {}
         self.provider_name = provider_name
         self.script_dir = script_dir
@@ -16,11 +17,13 @@ class Dynamodb:
     def dynamodb(self):
         self.hcl.prepare_folder(os.path.join("generated", "dynamodb"))
 
-        if "gov" not in self.region:
-            self.aws_dynamodb_contributor_insights()
-            self.aws_dynamodb_kinesis_streaming_destination()
-
+        # self.aws_dynamodb_contributor_insights() #import error
+        self.aws_dynamodb_kinesis_streaming_destination()
         self.aws_dynamodb_global_table()
+        self.aws_dynamodb_global_table()
+        self.aws_dynamodb_table()
+        self.aws_dynamodb_table_replica()
+        self.aws_dynamodb_tag()
 
         self.hcl.refresh_state()
         self.hcl.generate_hcl_file()
@@ -38,9 +41,10 @@ class Dynamodb:
 
                     print(
                         f"  Processing DynamoDB Contributor Insights: {table_name}")
+                    
 
                     attributes = {
-                        "id": table_name,
+                        "id": table_name+"/"+self.account_id,
                         "table_name": table_name,
                         "contributor_insights_status": status,
                     }

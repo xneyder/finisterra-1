@@ -183,6 +183,43 @@ resource "aws_lb" "awseb_AWSEB_1MDXACYOB2IRQ" {
   xff_header_processing_mode = "append"
 }
 
+resource "aws_lb" "awseb_AWSEB_1SO91UM91RWQI" {
+  access_logs {
+    bucket  = "allogy-elb-logs-prod"
+    enabled = true
+    prefix  = "identity-service-blue"
+  }
+  desync_mitigation_mode                      = "defensive"
+  drop_invalid_header_fields                  = false
+  enable_cross_zone_load_balancing            = true
+  enable_deletion_protection                  = false
+  enable_http2                                = true
+  enable_tls_version_and_cipher_suite_headers = false
+  enable_waf_fail_open                        = false
+  enable_xff_client_port                      = false
+  idle_timeout                                = 60
+  load_balancer_type                          = "application"
+  preserve_host_header                        = false
+  subnet_mapping {
+    subnet_id = "subnet-0680aa96bc65f072d"
+  }
+  subnet_mapping {
+    subnet_id = "subnet-07402e5b661b23bec"
+  }
+  subnet_mapping {
+    subnet_id = "subnet-076f8b852c6b60060"
+  }
+  tags = {
+    Name = "identity-service-blue"
+
+    "elasticbeanstalk:environment-id" = "e-fbj96npvkw"
+
+    "elasticbeanstalk:environment-name" = "identity-service-blue"
+
+  }
+  xff_header_processing_mode = "append"
+}
+
 resource "aws_lb" "awseb_AWSEB_1T7NB5B3Y3A7K" {
   access_logs {
     bucket  = "allogy-elb-logs-prod"
@@ -252,6 +289,43 @@ resource "aws_lb" "awseb_AWSEB_1W0ZV84FILDNY" {
     "elasticbeanstalk:environment-id" = "e-xmec4epg3c"
 
     "elasticbeanstalk:environment-name" = "book-service-green"
+
+  }
+  xff_header_processing_mode = "append"
+}
+
+resource "aws_lb" "awseb_AWSEB_61URVRH00UCZ" {
+  access_logs {
+    bucket  = "allogy-elb-logs-prod"
+    enabled = true
+    prefix  = "identity-service-green"
+  }
+  desync_mitigation_mode                      = "defensive"
+  drop_invalid_header_fields                  = false
+  enable_cross_zone_load_balancing            = true
+  enable_deletion_protection                  = false
+  enable_http2                                = true
+  enable_tls_version_and_cipher_suite_headers = false
+  enable_waf_fail_open                        = false
+  enable_xff_client_port                      = false
+  idle_timeout                                = 60
+  load_balancer_type                          = "application"
+  preserve_host_header                        = false
+  subnet_mapping {
+    subnet_id = "subnet-0680aa96bc65f072d"
+  }
+  subnet_mapping {
+    subnet_id = "subnet-07402e5b661b23bec"
+  }
+  subnet_mapping {
+    subnet_id = "subnet-076f8b852c6b60060"
+  }
+  tags = {
+    Name = "identity-service-green"
+
+    "elasticbeanstalk:environment-id" = "e-tx62adwg2k"
+
+    "elasticbeanstalk:environment-name" = "identity-service-green"
 
   }
   xff_header_processing_mode = "append"
@@ -405,80 +479,6 @@ resource "aws_lb" "awseb_AWSEB_NDZP2R5I5BRY" {
   xff_header_processing_mode = "append"
 }
 
-resource "aws_lb" "awseb_AWSEB_WCBXFBCA34C9" {
-  access_logs {
-    bucket  = "allogy-elb-logs-prod"
-    enabled = true
-    prefix  = "identity-service-blue"
-  }
-  desync_mitigation_mode                      = "defensive"
-  drop_invalid_header_fields                  = false
-  enable_cross_zone_load_balancing            = true
-  enable_deletion_protection                  = false
-  enable_http2                                = true
-  enable_tls_version_and_cipher_suite_headers = false
-  enable_waf_fail_open                        = false
-  enable_xff_client_port                      = false
-  idle_timeout                                = 60
-  load_balancer_type                          = "application"
-  preserve_host_header                        = false
-  subnet_mapping {
-    subnet_id = "subnet-0680aa96bc65f072d"
-  }
-  subnet_mapping {
-    subnet_id = "subnet-07402e5b661b23bec"
-  }
-  subnet_mapping {
-    subnet_id = "subnet-076f8b852c6b60060"
-  }
-  tags = {
-    Name = "identity-service-blue"
-
-    "elasticbeanstalk:environment-id" = "e-udanqbam3f"
-
-    "elasticbeanstalk:environment-name" = "identity-service-blue"
-
-  }
-  xff_header_processing_mode = "append"
-}
-
-resource "aws_lb" "awseb_AWSEB_XSOHODKYO0N7" {
-  access_logs {
-    bucket  = "allogy-elb-logs-prod"
-    enabled = true
-    prefix  = "capillary-web-ui-gateway-green"
-  }
-  desync_mitigation_mode                      = "defensive"
-  drop_invalid_header_fields                  = false
-  enable_cross_zone_load_balancing            = true
-  enable_deletion_protection                  = false
-  enable_http2                                = true
-  enable_tls_version_and_cipher_suite_headers = false
-  enable_waf_fail_open                        = false
-  enable_xff_client_port                      = false
-  idle_timeout                                = 60
-  load_balancer_type                          = "application"
-  preserve_host_header                        = false
-  subnet_mapping {
-    subnet_id = "subnet-0680aa96bc65f072d"
-  }
-  subnet_mapping {
-    subnet_id = "subnet-07402e5b661b23bec"
-  }
-  subnet_mapping {
-    subnet_id = "subnet-076f8b852c6b60060"
-  }
-  tags = {
-    Name = "capillary-web-ui-gateway-green"
-
-    "elasticbeanstalk:environment-id" = "e-ipfavj64xz"
-
-    "elasticbeanstalk:environment-name" = "capillary-web-ui-gateway-green"
-
-  }
-  xff_header_processing_mode = "append"
-}
-
 resource "aws_lb" "awseb_AWSEB_XZ6JUMA8IEE" {
   access_logs {
     bucket  = "allogy-elb-logs-prod"
@@ -511,6 +511,43 @@ resource "aws_lb" "awseb_AWSEB_XZ6JUMA8IEE" {
     "elasticbeanstalk:environment-id" = "e-rwv222b3qp"
 
     "elasticbeanstalk:environment-name" = "learner-web-ui-gateway-green"
+
+  }
+  xff_header_processing_mode = "append"
+}
+
+resource "aws_lb" "awseb_AWSEB_ZRMNV8V7XEA5" {
+  access_logs {
+    bucket  = "allogy-elb-logs-prod"
+    enabled = true
+    prefix  = "capillary-web-ui-gateway-green"
+  }
+  desync_mitigation_mode                      = "defensive"
+  drop_invalid_header_fields                  = false
+  enable_cross_zone_load_balancing            = true
+  enable_deletion_protection                  = false
+  enable_http2                                = true
+  enable_tls_version_and_cipher_suite_headers = false
+  enable_waf_fail_open                        = false
+  enable_xff_client_port                      = false
+  idle_timeout                                = 60
+  load_balancer_type                          = "application"
+  preserve_host_header                        = false
+  subnet_mapping {
+    subnet_id = "subnet-0680aa96bc65f072d"
+  }
+  subnet_mapping {
+    subnet_id = "subnet-07402e5b661b23bec"
+  }
+  subnet_mapping {
+    subnet_id = "subnet-076f8b852c6b60060"
+  }
+  tags = {
+    Name = "capillary-web-ui-gateway-green"
+
+    "elasticbeanstalk:environment-id" = "e-p6bifdmp7h"
+
+    "elasticbeanstalk:environment-name" = "capillary-web-ui-gateway-green"
 
   }
   xff_header_processing_mode = "append"

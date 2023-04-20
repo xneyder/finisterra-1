@@ -208,36 +208,6 @@ resource "aws_lb_target_group" "awseb_AWSEB_5I5BPHGEKZZU" {
   vpc_id      = "vpc-0bd9acb7990b4154d"
 }
 
-resource "aws_lb_target_group" "awseb_AWSEB_85FZMWFW80KB" {
-  deregistration_delay = "20"
-  health_check {
-    enabled             = true
-    healthy_threshold   = 3
-    interval            = 15
-    port                = "traffic-port"
-    protocol            = "HTTP"
-    unhealthy_threshold = 5
-  }
-  port       = 80
-  protocol   = "HTTP"
-  slow_start = 0
-  stickiness {
-    cookie_duration = 86400
-    enabled         = true
-    type            = "lb_cookie"
-  }
-  tags = {
-    Name = "identity-service-blue"
-
-    "elasticbeanstalk:environment-id" = "e-udanqbam3f"
-
-    "elasticbeanstalk:environment-name" = "identity-service-blue"
-
-  }
-  target_type = "instance"
-  vpc_id      = "vpc-0bd9acb7990b4154d"
-}
-
 resource "aws_lb_target_group" "awseb_AWSEB_AAEU0KCESEZW" {
   deregistration_delay = "20"
   health_check {
@@ -268,6 +238,36 @@ resource "aws_lb_target_group" "awseb_AWSEB_AAEU0KCESEZW" {
   vpc_id      = "vpc-0bd9acb7990b4154d"
 }
 
+resource "aws_lb_target_group" "awseb_AWSEB_D0FRZWTV84JA" {
+  deregistration_delay = "20"
+  health_check {
+    enabled             = true
+    healthy_threshold   = 3
+    interval            = 15
+    port                = "traffic-port"
+    protocol            = "HTTP"
+    unhealthy_threshold = 5
+  }
+  port       = 80
+  protocol   = "HTTP"
+  slow_start = 0
+  stickiness {
+    cookie_duration = 86400
+    enabled         = true
+    type            = "lb_cookie"
+  }
+  tags = {
+    Name = "identity-service-green"
+
+    "elasticbeanstalk:environment-id" = "e-tx62adwg2k"
+
+    "elasticbeanstalk:environment-name" = "identity-service-green"
+
+  }
+  target_type = "instance"
+  vpc_id      = "vpc-0bd9acb7990b4154d"
+}
+
 resource "aws_lb_target_group" "awseb_AWSEB_DRJX2I75DDGD" {
   deregistration_delay = "20"
   health_check {
@@ -292,6 +292,36 @@ resource "aws_lb_target_group" "awseb_AWSEB_DRJX2I75DDGD" {
     "elasticbeanstalk:environment-id" = "e-59p3bpnwec"
 
     "elasticbeanstalk:environment-name" = "learner-web-ui-gateway-blue"
+
+  }
+  target_type = "instance"
+  vpc_id      = "vpc-0bd9acb7990b4154d"
+}
+
+resource "aws_lb_target_group" "awseb_AWSEB_FTDGG6JAIAVU" {
+  deregistration_delay = "20"
+  health_check {
+    enabled             = true
+    healthy_threshold   = 3
+    interval            = 15
+    port                = "traffic-port"
+    protocol            = "HTTP"
+    unhealthy_threshold = 5
+  }
+  port       = 80
+  protocol   = "HTTP"
+  slow_start = 0
+  stickiness {
+    cookie_duration = 86400
+    enabled         = true
+    type            = "lb_cookie"
+  }
+  tags = {
+    Name = "capillary-web-ui-gateway-green"
+
+    "elasticbeanstalk:environment-id" = "e-p6bifdmp7h"
+
+    "elasticbeanstalk:environment-name" = "capillary-web-ui-gateway-green"
 
   }
   target_type = "instance"
@@ -358,7 +388,7 @@ resource "aws_lb_target_group" "awseb_AWSEB_SEX4C054MM4S" {
   vpc_id      = "vpc-0bd9acb7990b4154d"
 }
 
-resource "aws_lb_target_group" "awseb_AWSEB_TL79QFVI7V3" {
+resource "aws_lb_target_group" "awseb_AWSEB_YEZA6U1KVPDV" {
   deregistration_delay = "20"
   health_check {
     enabled             = true
@@ -377,11 +407,11 @@ resource "aws_lb_target_group" "awseb_AWSEB_TL79QFVI7V3" {
     type            = "lb_cookie"
   }
   tags = {
-    Name = "capillary-web-ui-gateway-green"
+    Name = "identity-service-blue"
 
-    "elasticbeanstalk:environment-id" = "e-ipfavj64xz"
+    "elasticbeanstalk:environment-id" = "e-fbj96npvkw"
 
-    "elasticbeanstalk:environment-name" = "capillary-web-ui-gateway-green"
+    "elasticbeanstalk:environment-name" = "identity-service-blue"
 
   }
   target_type = "instance"
@@ -442,6 +472,66 @@ resource "aws_lb_target_group" "awseb_https_13BRWX43RBRKL" {
     "elasticbeanstalk:environment-id" = "e-yd9s5vvfgp"
 
     "elasticbeanstalk:environment-name" = "internal-services-gateway-green"
+
+  }
+  target_type = "instance"
+  vpc_id      = "vpc-0bd9acb7990b4154d"
+}
+
+resource "aws_lb_target_group" "awseb_https_1A18UEWA4D63L" {
+  deregistration_delay = "20"
+  health_check {
+    enabled             = true
+    healthy_threshold   = 3
+    interval            = 15
+    port                = "traffic-port"
+    protocol            = "HTTPS"
+    unhealthy_threshold = 5
+  }
+  port       = 443
+  protocol   = "HTTPS"
+  slow_start = 0
+  stickiness {
+    cookie_duration = 86400
+    enabled         = true
+    type            = "lb_cookie"
+  }
+  tags = {
+    Name = "identity-service-blue"
+
+    "elasticbeanstalk:environment-id" = "e-fbj96npvkw"
+
+    "elasticbeanstalk:environment-name" = "identity-service-blue"
+
+  }
+  target_type = "instance"
+  vpc_id      = "vpc-0bd9acb7990b4154d"
+}
+
+resource "aws_lb_target_group" "awseb_https_1I8ECBRH1HY3" {
+  deregistration_delay = "20"
+  health_check {
+    enabled             = true
+    healthy_threshold   = 3
+    interval            = 15
+    port                = "traffic-port"
+    protocol            = "HTTPS"
+    unhealthy_threshold = 5
+  }
+  port       = 443
+  protocol   = "HTTPS"
+  slow_start = 0
+  stickiness {
+    cookie_duration = 86400
+    enabled         = true
+    type            = "lb_cookie"
+  }
+  tags = {
+    Name = "identity-service-green"
+
+    "elasticbeanstalk:environment-id" = "e-tx62adwg2k"
+
+    "elasticbeanstalk:environment-name" = "identity-service-green"
 
   }
   target_type = "instance"
@@ -568,36 +658,6 @@ resource "aws_lb_target_group" "awseb_https_95M35U10HKO6" {
   vpc_id      = "vpc-0bd9acb7990b4154d"
 }
 
-resource "aws_lb_target_group" "awseb_https_ABQH2Z86TMP8" {
-  deregistration_delay = "20"
-  health_check {
-    enabled             = true
-    healthy_threshold   = 3
-    interval            = 15
-    port                = "traffic-port"
-    protocol            = "HTTPS"
-    unhealthy_threshold = 5
-  }
-  port       = 443
-  protocol   = "HTTPS"
-  slow_start = 0
-  stickiness {
-    cookie_duration = 86400
-    enabled         = true
-    type            = "lb_cookie"
-  }
-  tags = {
-    Name = "identity-service-blue"
-
-    "elasticbeanstalk:environment-id" = "e-udanqbam3f"
-
-    "elasticbeanstalk:environment-name" = "identity-service-blue"
-
-  }
-  target_type = "instance"
-  vpc_id      = "vpc-0bd9acb7990b4154d"
-}
-
 resource "aws_lb_target_group" "awseb_https_AUSQVE5FNNDF" {
   deregistration_delay = "20"
   health_check {
@@ -652,36 +712,6 @@ resource "aws_lb_target_group" "awseb_https_BA13PDTGN3G" {
     "elasticbeanstalk:environment-id" = "e-pcw37ypdme"
 
     "elasticbeanstalk:environment-name" = "mobile-client-gateway-blue"
-
-  }
-  target_type = "instance"
-  vpc_id      = "vpc-0bd9acb7990b4154d"
-}
-
-resource "aws_lb_target_group" "awseb_https_FWBN6663VT5N" {
-  deregistration_delay = "20"
-  health_check {
-    enabled             = true
-    healthy_threshold   = 3
-    interval            = 15
-    port                = "traffic-port"
-    protocol            = "HTTPS"
-    unhealthy_threshold = 5
-  }
-  port       = 443
-  protocol   = "HTTPS"
-  slow_start = 0
-  stickiness {
-    cookie_duration = 86400
-    enabled         = true
-    type            = "lb_cookie"
-  }
-  tags = {
-    Name = "capillary-web-ui-gateway-green"
-
-    "elasticbeanstalk:environment-id" = "e-ipfavj64xz"
-
-    "elasticbeanstalk:environment-name" = "capillary-web-ui-gateway-green"
 
   }
   target_type = "instance"
@@ -772,6 +802,36 @@ resource "aws_lb_target_group" "awseb_https_KDPXFWOISYA9" {
     "elasticbeanstalk:environment-id" = "e-bmqqxwyjst"
 
     "elasticbeanstalk:environment-name" = "form-service-blue"
+
+  }
+  target_type = "instance"
+  vpc_id      = "vpc-0bd9acb7990b4154d"
+}
+
+resource "aws_lb_target_group" "awseb_https_OX0BXIAFNYGI" {
+  deregistration_delay = "20"
+  health_check {
+    enabled             = true
+    healthy_threshold   = 3
+    interval            = 15
+    port                = "traffic-port"
+    protocol            = "HTTPS"
+    unhealthy_threshold = 5
+  }
+  port       = 443
+  protocol   = "HTTPS"
+  slow_start = 0
+  stickiness {
+    cookie_duration = 86400
+    enabled         = true
+    type            = "lb_cookie"
+  }
+  tags = {
+    Name = "capillary-web-ui-gateway-green"
+
+    "elasticbeanstalk:environment-id" = "e-p6bifdmp7h"
+
+    "elasticbeanstalk:environment-name" = "capillary-web-ui-gateway-green"
 
   }
   target_type = "instance"

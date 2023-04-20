@@ -44,10 +44,11 @@ def main():
     # provider.sns()
     # provider.rds()
     # provider.aws_lambda() #Waiting for permissions
-    # provider.kms()  # tf refresh errors
+    # # provider.kms()  # tf refresh errors
     # provider.elasticbeanstalk()
     # provider.elb()
     # provider.elbv2()
+    provider.relations()
 
     print("Finished processing AWS resources.")
 

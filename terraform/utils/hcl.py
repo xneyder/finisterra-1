@@ -163,6 +163,8 @@ class HCL:
             def process_block_type(key, value, schema_block_types, resource_type):
                 return_str = ""
                 is_block = False
+                if not value:
+                    return is_block, return_str
                 if key in schema_block_types:
                     is_block = True
                     if schema_block_types[key]['nesting_mode'] == 'list' or schema_block_types[key]['nesting_mode'] == 'set':

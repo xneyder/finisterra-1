@@ -278,12 +278,21 @@ class SSM:
         ]
 
         for setting_id in setting_ids:
-            service_setting = self.ssm_client.get_service_setting(
-                SettingId=setting_id)["ServiceSetting"]
-            print(f"  Processing SSM Service Setting: {setting_id}")
+            try:
+                service_setting = self.ssm_client.get_service_setting(
+                    SettingId=setting_id)["ServiceSetting"]
+                print(f"  Processing SSM Service Setting: {setting_id}")
 
-            attributes = {
-                "id": setting_id,
-            }
-            self.hcl.process_resource(
-                "aws_ssm_service_setting", setting_id.replace("/", "_"), attributes)
+                attributes = {
+                    "id": setting_id,
+                }
+                self.hcl.process_resource(
+                    "aws_ssm_service_setting", setting_id.replace("/", "_"), attributes)
+            except self.ssm_client.exceptions.ServiceSettingNotFound:
+                print(f"  SSM Service Setting not found: {setting_id}")
+                continue
+            except Exception as e:
+                print(f"  An error occurred while processing SSM Service Setting: {setting_id}")
+                print(e)
+                continue
+

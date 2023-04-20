@@ -523,13 +523,13 @@ resource "aws_cloudwatch_metric_alarm" "TargetTracking_table_learning_Book_Alarm
   treat_missing_data = "missing"
 }
 
-resource "aws_cloudwatch_metric_alarm" "TargetTracking_table_learning_Book_AlarmHigh_3448557f_0a52_4bfb_b116_ad34715df146" {
+resource "aws_cloudwatch_metric_alarm" "TargetTracking_table_learning_Book_AlarmHigh_8a8288e5_7592_4cac_86eb_e5135b7dcf68" {
   actions_enabled = true
   alarm_actions = [
     "arn:aws-us-gov:autoscaling:us-gov-west-1:050779347855:scalingPolicy:84b6f583-6338-472d-92e6-bf7f80726018:resource/dynamodb/table/learning.Book:policyName/$learning.Book-scaling-policy:createdBy/d7b7025a-b7a8-418a-9764-e0d5ddc856d5"
   ]
   alarm_description   = "DO NOT EDIT OR DELETE. For TargetTrackingScaling policy arn:aws-us-gov:autoscaling:us-gov-west-1:050779347855:scalingPolicy:84b6f583-6338-472d-92e6-bf7f80726018:resource/dynamodb/table/learning.Book:policyName/$learning.Book-scaling-policy:createdBy/d7b7025a-b7a8-418a-9764-e0d5ddc856d5."
-  alarm_name          = "TargetTracking-table/learning.Book-AlarmHigh-3448557f-0a52-4bfb-b116-ad34715df146"
+  alarm_name          = "TargetTracking-table/learning.Book-AlarmHigh-8a8288e5-7592-4cac-86eb-e5135b7dcf68"
   comparison_operator = "GreaterThanThreshold"
   dimensions = {
     TableName = "learning.Book"
@@ -540,7 +540,28 @@ resource "aws_cloudwatch_metric_alarm" "TargetTracking_table_learning_Book_Alarm
   namespace          = "AWS/DynamoDB"
   period             = 60
   statistic          = "Sum"
-  threshold          = 168
+  threshold          = 378
+  treat_missing_data = "missing"
+}
+
+resource "aws_cloudwatch_metric_alarm" "TargetTracking_table_learning_Book_AlarmLow_125123fd_7da8_46bf_a180_09b36aac74c9" {
+  actions_enabled = true
+  alarm_actions = [
+    "arn:aws-us-gov:autoscaling:us-gov-west-1:050779347855:scalingPolicy:84b6f583-6338-472d-92e6-bf7f80726018:resource/dynamodb/table/learning.Book:policyName/$learning.Book-scaling-policy:createdBy/d7b7025a-b7a8-418a-9764-e0d5ddc856d5"
+  ]
+  alarm_description   = "DO NOT EDIT OR DELETE. For TargetTrackingScaling policy arn:aws-us-gov:autoscaling:us-gov-west-1:050779347855:scalingPolicy:84b6f583-6338-472d-92e6-bf7f80726018:resource/dynamodb/table/learning.Book:policyName/$learning.Book-scaling-policy:createdBy/d7b7025a-b7a8-418a-9764-e0d5ddc856d5."
+  alarm_name          = "TargetTracking-table/learning.Book-AlarmLow-125123fd-7da8-46bf-a180-09b36aac74c9"
+  comparison_operator = "LessThanThreshold"
+  dimensions = {
+    TableName = "learning.Book"
+
+  }
+  evaluation_periods = 15
+  metric_name        = "ConsumedReadCapacityUnits"
+  namespace          = "AWS/DynamoDB"
+  period             = 60
+  statistic          = "Sum"
+  threshold          = 270
   treat_missing_data = "missing"
 }
 
@@ -562,27 +583,6 @@ resource "aws_cloudwatch_metric_alarm" "TargetTracking_table_learning_Book_Alarm
   period             = 60
   statistic          = "Sum"
   threshold          = 30
-  treat_missing_data = "missing"
-}
-
-resource "aws_cloudwatch_metric_alarm" "TargetTracking_table_learning_Book_AlarmLow_f286a43a_0002_4b69_aeea_4930e9a537a6" {
-  actions_enabled = true
-  alarm_actions = [
-    "arn:aws-us-gov:autoscaling:us-gov-west-1:050779347855:scalingPolicy:84b6f583-6338-472d-92e6-bf7f80726018:resource/dynamodb/table/learning.Book:policyName/$learning.Book-scaling-policy:createdBy/d7b7025a-b7a8-418a-9764-e0d5ddc856d5"
-  ]
-  alarm_description   = "DO NOT EDIT OR DELETE. For TargetTrackingScaling policy arn:aws-us-gov:autoscaling:us-gov-west-1:050779347855:scalingPolicy:84b6f583-6338-472d-92e6-bf7f80726018:resource/dynamodb/table/learning.Book:policyName/$learning.Book-scaling-policy:createdBy/d7b7025a-b7a8-418a-9764-e0d5ddc856d5."
-  alarm_name          = "TargetTracking-table/learning.Book-AlarmLow-f286a43a-0002-4b69-aeea-4930e9a537a6"
-  comparison_operator = "LessThanThreshold"
-  dimensions = {
-    TableName = "learning.Book"
-
-  }
-  evaluation_periods = 15
-  metric_name        = "ConsumedReadCapacityUnits"
-  namespace          = "AWS/DynamoDB"
-  period             = 60
-  statistic          = "Sum"
-  threshold          = 120
   treat_missing_data = "missing"
 }
 
@@ -922,13 +922,13 @@ resource "aws_cloudwatch_metric_alarm" "TargetTracking_table_learning_Book_Integ
   treat_missing_data = "missing"
 }
 
-resource "aws_cloudwatch_metric_alarm" "TargetTracking_table_learning_Book_ProvisionedCapacityHigh_02d34ae5_3ea9_4bd0_a1b5_ddc8abec0d43" {
+resource "aws_cloudwatch_metric_alarm" "TargetTracking_table_learning_Book_ProvisionedCapacityHigh_bcb11f95_e7e8_42fa_8975_e771a66242c4" {
   actions_enabled = true
   alarm_actions = [
     "arn:aws-us-gov:autoscaling:us-gov-west-1:050779347855:scalingPolicy:84b6f583-6338-472d-92e6-bf7f80726018:resource/dynamodb/table/learning.Book:policyName/$learning.Book-scaling-policy:createdBy/d7b7025a-b7a8-418a-9764-e0d5ddc856d5"
   ]
   alarm_description   = "DO NOT EDIT OR DELETE. For TargetTrackingScaling policy arn:aws-us-gov:autoscaling:us-gov-west-1:050779347855:scalingPolicy:84b6f583-6338-472d-92e6-bf7f80726018:resource/dynamodb/table/learning.Book:policyName/$learning.Book-scaling-policy:createdBy/d7b7025a-b7a8-418a-9764-e0d5ddc856d5."
-  alarm_name          = "TargetTracking-table/learning.Book-ProvisionedCapacityHigh-02d34ae5-3ea9-4bd0-a1b5-ddc8abec0d43"
+  alarm_name          = "TargetTracking-table/learning.Book-ProvisionedCapacityHigh-bcb11f95-e7e8-42fa-8975-e771a66242c4"
   comparison_operator = "GreaterThanThreshold"
   dimensions = {
     TableName = "learning.Book"
@@ -939,7 +939,7 @@ resource "aws_cloudwatch_metric_alarm" "TargetTracking_table_learning_Book_Provi
   namespace          = "AWS/DynamoDB"
   period             = 300
   statistic          = "Average"
-  threshold          = 4
+  threshold          = 9
   treat_missing_data = "missing"
 }
 
@@ -964,13 +964,13 @@ resource "aws_cloudwatch_metric_alarm" "TargetTracking_table_learning_Book_Provi
   treat_missing_data = "missing"
 }
 
-resource "aws_cloudwatch_metric_alarm" "TargetTracking_table_learning_Book_ProvisionedCapacityLow_c45e091b_5d31_4782_bf2d_9a97920e28be" {
+resource "aws_cloudwatch_metric_alarm" "TargetTracking_table_learning_Book_ProvisionedCapacityLow_4366ab74_ab51_454e_84bf_47db42413a6d" {
   actions_enabled = true
   alarm_actions = [
     "arn:aws-us-gov:autoscaling:us-gov-west-1:050779347855:scalingPolicy:84b6f583-6338-472d-92e6-bf7f80726018:resource/dynamodb/table/learning.Book:policyName/$learning.Book-scaling-policy:createdBy/d7b7025a-b7a8-418a-9764-e0d5ddc856d5"
   ]
   alarm_description   = "DO NOT EDIT OR DELETE. For TargetTrackingScaling policy arn:aws-us-gov:autoscaling:us-gov-west-1:050779347855:scalingPolicy:84b6f583-6338-472d-92e6-bf7f80726018:resource/dynamodb/table/learning.Book:policyName/$learning.Book-scaling-policy:createdBy/d7b7025a-b7a8-418a-9764-e0d5ddc856d5."
-  alarm_name          = "TargetTracking-table/learning.Book-ProvisionedCapacityLow-c45e091b-5d31-4782-bf2d-9a97920e28be"
+  alarm_name          = "TargetTracking-table/learning.Book-ProvisionedCapacityLow-4366ab74-ab51-454e-84bf-47db42413a6d"
   comparison_operator = "LessThanThreshold"
   dimensions = {
     TableName = "learning.Book"
@@ -981,7 +981,7 @@ resource "aws_cloudwatch_metric_alarm" "TargetTracking_table_learning_Book_Provi
   namespace          = "AWS/DynamoDB"
   period             = 300
   statistic          = "Average"
-  threshold          = 4
+  threshold          = 9
   treat_missing_data = "missing"
 }
 

@@ -24,6 +24,7 @@ class SNS:
         self.aws_sns_sms_preferences()
         self.aws_sns_topic()
         self.aws_sns_topic_policy()
+        # self.aws_sns_topic_data_protection_policy() #Still to implment
         # self.aws_sns_topic_subscription() #permissions error
 
         self.hcl.refresh_state()
