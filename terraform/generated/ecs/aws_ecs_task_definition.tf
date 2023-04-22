@@ -306,14 +306,14 @@ resource "aws_ecs_task_definition" "builder_service" {
       }
     ],
     "essential": true,
-    "image": "050779347855.dkr.ecr.us-gov-west-1.amazonaws.com/builder-service:1.0-815",
+    "image": "050779347855.dkr.ecr.us-gov-west-1.amazonaws.com/builder-service:1.0-816",
     "logConfiguration": {
       "logDriver": "awslogs",
       "options": {
         "awslogs-group": "builder-service",
         "awslogs-multiline-pattern": "^[0-9]{4}[^\\s]",
         "awslogs-region": "us-gov-west-1",
-        "awslogs-stream-prefix": "1.0-815"
+        "awslogs-stream-prefix": "1.0-816"
       }
     },
     "memoryReservation": 896,
@@ -338,7 +338,7 @@ resource "aws_ecs_task_definition" "builder_service" {
 EOF
   family                = "builder-service"
   tags = {
-    Version = "1.0-815"
+    Version = "1.0-816"
 
   }
   task_role_arn = "arn:aws-us-gov:iam::050779347855:role/web-app-builder-service"
@@ -2384,14 +2384,14 @@ resource "aws_ecs_task_definition" "survey_form_service" {
       }
     ],
     "essential": true,
-    "image": "050779347855.dkr.ecr.us-gov-west-1.amazonaws.com/survey-form-service:1.0-6",
+    "image": "050779347855.dkr.ecr.us-gov-west-1.amazonaws.com/survey-form-service:1.0-8",
     "logConfiguration": {
       "logDriver": "awslogs",
       "options": {
         "awslogs-group": "survey-form-service",
         "awslogs-multiline-pattern": "^[0-9]{4}[^\\s]",
         "awslogs-region": "us-gov-west-1",
-        "awslogs-stream-prefix": "1.0-6"
+        "awslogs-stream-prefix": "1.0-8"
       }
     },
     "memoryReservation": 416,
@@ -2416,7 +2416,7 @@ resource "aws_ecs_task_definition" "survey_form_service" {
 EOF
   family                = "survey-form-service"
   tags = {
-    Version = "1.0-6"
+    Version = "1.0-8"
 
   }
   task_role_arn = "arn:aws-us-gov:iam::050779347855:role/web-app-survey-form-service"

@@ -12,12 +12,6 @@ resource "aws_vpc_security_group_egress_rule" "sgr_0017480b9d0a8fb45" {
   security_group_id = "sg-0d799b653c4043218"
 }
 
-resource "aws_vpc_security_group_egress_rule" "sgr_003bfac3b886ad7fe" {
-  cidr_ipv4         = "0.0.0.0/0"
-  ip_protocol       = "-1"
-  security_group_id = "sg-06c73378f62490b36"
-}
-
 resource "aws_vpc_security_group_egress_rule" "sgr_00ae39d5c8abf5269" {
   cidr_ipv4         = "0.0.0.0/0"
   ip_protocol       = "-1"
@@ -48,20 +42,6 @@ resource "aws_vpc_security_group_egress_rule" "sgr_00f573912af4a201e" {
   security_group_id = "sg-091b35fd5feaac3d0"
 }
 
-resource "aws_vpc_security_group_egress_rule" "sgr_01343b3cea8e65e5f" {
-  cidr_ipv4         = "0.0.0.0/0"
-  from_port         = 443
-  ip_protocol       = "tcp"
-  security_group_id = "sg-01ca32fbea5e7abce"
-  to_port           = 443
-}
-
-resource "aws_vpc_security_group_egress_rule" "sgr_016b165e0812e6a1c" {
-  cidr_ipv4         = "0.0.0.0/0"
-  ip_protocol       = "-1"
-  security_group_id = "sg-085fe27725f7793ba"
-}
-
 resource "aws_vpc_security_group_egress_rule" "sgr_0173b147b50765e76" {
   cidr_ipv4         = "0.0.0.0/0"
   from_port         = 80
@@ -86,6 +66,12 @@ resource "aws_vpc_security_group_egress_rule" "sgr_02284d6bf4aab35fd" {
   cidr_ipv4         = "0.0.0.0/0"
   ip_protocol       = "-1"
   security_group_id = "sg-06d03510b3f32b683"
+}
+
+resource "aws_vpc_security_group_egress_rule" "sgr_0238f572b04d058bb" {
+  cidr_ipv4         = "0.0.0.0/0"
+  ip_protocol       = "-1"
+  security_group_id = "sg-08a68e02fea2591df"
 }
 
 resource "aws_vpc_security_group_egress_rule" "sgr_02544415dc8392be4" {
@@ -144,14 +130,6 @@ resource "aws_vpc_security_group_egress_rule" "sgr_0302aeda750cf2745" {
   security_group_id = "sg-01d6cae62e5454846"
 }
 
-resource "aws_vpc_security_group_egress_rule" "sgr_034c36956af975dd8" {
-  cidr_ipv4         = "0.0.0.0/0"
-  from_port         = 80
-  ip_protocol       = "tcp"
-  security_group_id = "sg-01ca32fbea5e7abce"
-  to_port           = 80
-}
-
 resource "aws_vpc_security_group_egress_rule" "sgr_036c871c20caa0573" {
   cidr_ipv4         = "0.0.0.0/0"
   ip_protocol       = "-1"
@@ -164,6 +142,14 @@ resource "aws_vpc_security_group_egress_rule" "sgr_03ba7972ef148c26c" {
   ip_protocol       = "tcp"
   security_group_id = "sg-0ab678abfaabcacf3"
   to_port           = 80
+}
+
+resource "aws_vpc_security_group_egress_rule" "sgr_04317c4550dbcd126" {
+  cidr_ipv4         = "0.0.0.0/0"
+  from_port         = 443
+  ip_protocol       = "tcp"
+  security_group_id = "sg-0e3da0334f6f1024d"
+  to_port           = 443
 }
 
 resource "aws_vpc_security_group_egress_rule" "sgr_0445ec08807fdae91" {
@@ -186,6 +172,14 @@ resource "aws_vpc_security_group_egress_rule" "sgr_048b89db062be0b99" {
   ip_protocol       = "tcp"
   security_group_id = "sg-0e3e058433a4793a7"
   to_port           = 443
+}
+
+resource "aws_vpc_security_group_egress_rule" "sgr_04b4dab305abe13b7" {
+  cidr_ipv4         = "0.0.0.0/0"
+  from_port         = 80
+  ip_protocol       = "tcp"
+  security_group_id = "sg-05b689cdd90002026"
+  to_port           = 80
 }
 
 resource "aws_vpc_security_group_egress_rule" "sgr_04bd2d72d3a7f38b5" {
@@ -222,10 +216,24 @@ resource "aws_vpc_security_group_egress_rule" "sgr_05617bf71391cb065" {
   security_group_id = "sg-0313ffdf68606e618"
 }
 
+resource "aws_vpc_security_group_egress_rule" "sgr_056e010f2ff919e84" {
+  cidr_ipv4         = "0.0.0.0/0"
+  from_port         = 443
+  ip_protocol       = "tcp"
+  security_group_id = "sg-05b689cdd90002026"
+  to_port           = 443
+}
+
 resource "aws_vpc_security_group_egress_rule" "sgr_0584c953a9a7102e9" {
   cidr_ipv4         = "0.0.0.0/0"
   ip_protocol       = "-1"
   security_group_id = "sg-05ec1afb8e4b24a12"
+}
+
+resource "aws_vpc_security_group_egress_rule" "sgr_05a5dab52e7d9d5cc" {
+  cidr_ipv4         = "0.0.0.0/0"
+  ip_protocol       = "-1"
+  security_group_id = "sg-0abf393744a38edb1"
 }
 
 resource "aws_vpc_security_group_egress_rule" "sgr_05ced2598080e8119" {
@@ -322,12 +330,12 @@ resource "aws_vpc_security_group_egress_rule" "sgr_0913d999589beb7ad" {
   security_group_id = "sg-081ba48ae3370758b"
 }
 
-resource "aws_vpc_security_group_egress_rule" "sgr_09b1b9c1f71210f56" {
+resource "aws_vpc_security_group_egress_rule" "sgr_09d4f7be5f2a5bda6" {
   cidr_ipv4         = "0.0.0.0/0"
-  from_port         = 80
+  from_port         = 443
   ip_protocol       = "tcp"
-  security_group_id = "sg-0e163ba7aac633501"
-  to_port           = 80
+  security_group_id = "sg-0e07dcad269bc9148"
+  to_port           = 443
 }
 
 resource "aws_vpc_security_group_egress_rule" "sgr_0a30c3226e0682bba" {
@@ -366,6 +374,20 @@ resource "aws_vpc_security_group_egress_rule" "sgr_0bc6bf34c1ae7aa65" {
   to_port           = 80
 }
 
+resource "aws_vpc_security_group_egress_rule" "sgr_0c3ae4d4614b56d99" {
+  cidr_ipv4         = "0.0.0.0/0"
+  ip_protocol       = "-1"
+  security_group_id = "sg-034a6ff43d0aa2770"
+}
+
+resource "aws_vpc_security_group_egress_rule" "sgr_0cf22048adacbab61" {
+  cidr_ipv4         = "0.0.0.0/0"
+  from_port         = 80
+  ip_protocol       = "tcp"
+  security_group_id = "sg-0e3da0334f6f1024d"
+  to_port           = 80
+}
+
 resource "aws_vpc_security_group_egress_rule" "sgr_0d28474801e11128c" {
   cidr_ipv4         = "0.0.0.0/0"
   from_port         = 443
@@ -389,14 +411,6 @@ resource "aws_vpc_security_group_egress_rule" "sgr_0dce4108a0749e6cf" {
   ip_protocol       = "tcp"
   security_group_id = "sg-09ec086d4a18f2267"
   to_port           = 65535
-}
-
-resource "aws_vpc_security_group_egress_rule" "sgr_0e2aab3cc97623e5d" {
-  cidr_ipv4         = "0.0.0.0/0"
-  from_port         = 443
-  ip_protocol       = "tcp"
-  security_group_id = "sg-0e163ba7aac633501"
-  to_port           = 443
 }
 
 resource "aws_vpc_security_group_egress_rule" "sgr_0edc4fc15746b7386" {
@@ -426,6 +440,14 @@ resource "aws_vpc_security_group_egress_rule" "sgr_0fd1341f5d1a6804d" {
   from_port         = 80
   ip_protocol       = "tcp"
   security_group_id = "sg-0848e0e98be81d011"
+  to_port           = 80
+}
+
+resource "aws_vpc_security_group_egress_rule" "sgr_0ffadf9f6b9e5982f" {
+  cidr_ipv4         = "0.0.0.0/0"
+  from_port         = 80
+  ip_protocol       = "tcp"
+  security_group_id = "sg-0e07dcad269bc9148"
   to_port           = 80
 }
 

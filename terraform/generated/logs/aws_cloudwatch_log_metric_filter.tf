@@ -20,6 +20,17 @@ resource "aws_cloudwatch_log_metric_filter" "AWSEBCWLErrorMetricFilter_4NuaSx6FH
   pattern = "[date, time, level=ERROR, ...]"
 }
 
+resource "aws_cloudwatch_log_metric_filter" "AWSEBCWLErrorMetricFilter_MVnipvWBcpgX" {
+  log_group_name = "capillary-web-ui-spring"
+  metric_transformation {
+    name      = "CWLServiceError"
+    namespace = "ElasticBeanstalk/capillary-web-ui-gateway-green"
+    value     = "1"
+  }
+  name    = "AWSEBCWLErrorMetricFilter-MVnipvWBcpgX"
+  pattern = "[date, time, level=ERROR, ...]"
+}
+
 resource "aws_cloudwatch_log_metric_filter" "AWSEBCWLErrorMetricFilter_PhUeIl5XUY6Z" {
   log_group_name = "capillary-web-ui-spring"
   metric_transformation {
@@ -42,15 +53,48 @@ resource "aws_cloudwatch_log_metric_filter" "AWSEBCWLErrorMetricFilter_TBfnSfXMn
   pattern = "[date, time, level=ERROR, ...]"
 }
 
-resource "aws_cloudwatch_log_metric_filter" "AWSEBCWLErrorMetricFilter_rdkQySic1jBi" {
-  log_group_name = "capillary-web-ui-spring"
+resource "aws_cloudwatch_log_metric_filter" "AWSEBCWLErrorMetricFilter_l0gn2hl1b1G3" {
+  log_group_name = "identity-production-spring"
   metric_transformation {
     name      = "CWLServiceError"
-    namespace = "ElasticBeanstalk/capillary-web-ui-gateway-green"
+    namespace = "ElasticBeanstalk/identity-service-green"
     value     = "1"
   }
-  name    = "AWSEBCWLErrorMetricFilter-rdkQySic1jBi"
+  name    = "AWSEBCWLErrorMetricFilter-l0gn2hl1b1G3"
   pattern = "[date, time, level=ERROR, ...]"
+}
+
+resource "aws_cloudwatch_log_metric_filter" "AWSEBCWLErrorMetricFilter_wSzIz2NGPtKU" {
+  log_group_name = "identity-production-spring"
+  metric_transformation {
+    name      = "CWLServiceError"
+    namespace = "ElasticBeanstalk/identity-service-blue"
+    value     = "1"
+  }
+  name    = "AWSEBCWLErrorMetricFilter-wSzIz2NGPtKU"
+  pattern = "[date, time, level=ERROR, ...]"
+}
+
+resource "aws_cloudwatch_log_metric_filter" "AWSEBCWLHttp4xxMetricFilter_Ad6r4SQCxsPd" {
+  log_group_name = "identity-production-webrequests"
+  metric_transformation {
+    name      = "CWLHttp4xx"
+    namespace = "ElasticBeanstalk/identity-service-blue"
+    value     = "1"
+  }
+  name    = "AWSEBCWLHttp4xxMetricFilter-Ad6r4SQCxsPd"
+  pattern = "[..., status=4*, size, trace, referer, agent]"
+}
+
+resource "aws_cloudwatch_log_metric_filter" "AWSEBCWLHttp4xxMetricFilter_Svv7I8tYic6r" {
+  log_group_name = "identity-production-webrequests"
+  metric_transformation {
+    name      = "CWLHttp4xx"
+    namespace = "ElasticBeanstalk/identity-service-green"
+    value     = "1"
+  }
+  name    = "AWSEBCWLHttp4xxMetricFilter-Svv7I8tYic6r"
+  pattern = "[..., status=4*, size, trace, referer, agent]"
 }
 
 resource "aws_cloudwatch_log_metric_filter" "AWSEBCWLHttp4xxMetricFilter_T5mvihQ0iDKn" {
@@ -61,17 +105,6 @@ resource "aws_cloudwatch_log_metric_filter" "AWSEBCWLHttp4xxMetricFilter_T5mvihQ
     value     = "1"
   }
   name    = "AWSEBCWLHttp4xxMetricFilter-T5mvihQ0iDKn"
-  pattern = "[..., status=4*, size, trace, referer, agent]"
-}
-
-resource "aws_cloudwatch_log_metric_filter" "AWSEBCWLHttp4xxMetricFilter_UzGRtRCKRi3L" {
-  log_group_name = "capillary-web-ui-webrequests"
-  metric_transformation {
-    name      = "CWLHttp4xx"
-    namespace = "ElasticBeanstalk/capillary-web-ui-gateway-green"
-    value     = "1"
-  }
-  name    = "AWSEBCWLHttp4xxMetricFilter-UzGRtRCKRi3L"
   pattern = "[..., status=4*, size, trace, referer, agent]"
 }
 
@@ -97,6 +130,17 @@ resource "aws_cloudwatch_log_metric_filter" "AWSEBCWLHttp4xxMetricFilter_dD1OIbj
   pattern = "[..., status=4*, size, trace, referer, agent]"
 }
 
+resource "aws_cloudwatch_log_metric_filter" "AWSEBCWLHttp4xxMetricFilter_u9DFiYaRIFGC" {
+  log_group_name = "capillary-web-ui-webrequests"
+  metric_transformation {
+    name      = "CWLHttp4xx"
+    namespace = "ElasticBeanstalk/capillary-web-ui-gateway-green"
+    value     = "1"
+  }
+  name    = "AWSEBCWLHttp4xxMetricFilter-u9DFiYaRIFGC"
+  pattern = "[..., status=4*, size, trace, referer, agent]"
+}
+
 resource "aws_cloudwatch_log_metric_filter" "AWSEBCWLHttp4xxMetricFilter_zKArt4iru2GW" {
   log_group_name = "capillary-web-ui-webrequests"
   metric_transformation {
@@ -106,6 +150,17 @@ resource "aws_cloudwatch_log_metric_filter" "AWSEBCWLHttp4xxMetricFilter_zKArt4i
   }
   name    = "AWSEBCWLHttp4xxMetricFilter-zKArt4iru2GW"
   pattern = "[..., status=4*, size, trace, referer, agent]"
+}
+
+resource "aws_cloudwatch_log_metric_filter" "AWSEBCWLHttp5xxMetricFilter_9lPknxoAC2jo" {
+  log_group_name = "capillary-web-ui-webrequests"
+  metric_transformation {
+    name      = "CWLHttp5xx"
+    namespace = "ElasticBeanstalk/capillary-web-ui-gateway-green"
+    value     = "1"
+  }
+  name    = "AWSEBCWLHttp5xxMetricFilter-9lPknxoAC2jo"
+  pattern = "[..., status=5*, size, trace, referer, agent]"
 }
 
 resource "aws_cloudwatch_log_metric_filter" "AWSEBCWLHttp5xxMetricFilter_DPQOHOSTsOxf" {
@@ -130,14 +185,14 @@ resource "aws_cloudwatch_log_metric_filter" "AWSEBCWLHttp5xxMetricFilter_QVnfk45
   pattern = "[..., status=5*, size, trace, referer, agent]"
 }
 
-resource "aws_cloudwatch_log_metric_filter" "AWSEBCWLHttp5xxMetricFilter_dSlic4j85G17" {
-  log_group_name = "capillary-web-ui-webrequests"
+resource "aws_cloudwatch_log_metric_filter" "AWSEBCWLHttp5xxMetricFilter_fN4dz8hKcp1G" {
+  log_group_name = "identity-production-webrequests"
   metric_transformation {
     name      = "CWLHttp5xx"
-    namespace = "ElasticBeanstalk/capillary-web-ui-gateway-green"
+    namespace = "ElasticBeanstalk/identity-service-blue"
     value     = "1"
   }
-  name    = "AWSEBCWLHttp5xxMetricFilter-dSlic4j85G17"
+  name    = "AWSEBCWLHttp5xxMetricFilter-fN4dz8hKcp1G"
   pattern = "[..., status=5*, size, trace, referer, agent]"
 }
 
@@ -163,6 +218,28 @@ resource "aws_cloudwatch_log_metric_filter" "AWSEBCWLHttp5xxMetricFilter_w3mgHeL
   pattern = "[..., status=5*, size, trace, referer, agent]"
 }
 
+resource "aws_cloudwatch_log_metric_filter" "AWSEBCWLHttp5xxMetricFilter_wAoJ7XOz62Gb" {
+  log_group_name = "identity-production-webrequests"
+  metric_transformation {
+    name      = "CWLHttp5xx"
+    namespace = "ElasticBeanstalk/identity-service-green"
+    value     = "1"
+  }
+  name    = "AWSEBCWLHttp5xxMetricFilter-wAoJ7XOz62Gb"
+  pattern = "[..., status=5*, size, trace, referer, agent]"
+}
+
+resource "aws_cloudwatch_log_metric_filter" "AWSEBCWLHttpNon4xxMetricFilter_37ODGEaIjpcI" {
+  log_group_name = "identity-production-webrequests"
+  metric_transformation {
+    name      = "CWLHttp4xx"
+    namespace = "ElasticBeanstalk/identity-service-green"
+    value     = "0"
+  }
+  name    = "AWSEBCWLHttpNon4xxMetricFilter-37ODGEaIjpcI"
+  pattern = "[..., status!=4*, size, trace, referer, agent]"
+}
+
 resource "aws_cloudwatch_log_metric_filter" "AWSEBCWLHttpNon4xxMetricFilter_4mHcIQYBIaF7" {
   log_group_name = "market-production-webrequests"
   metric_transformation {
@@ -185,6 +262,17 @@ resource "aws_cloudwatch_log_metric_filter" "AWSEBCWLHttpNon4xxMetricFilter_WeTk
   pattern = "[..., status!=4*, size, trace, referer, agent]"
 }
 
+resource "aws_cloudwatch_log_metric_filter" "AWSEBCWLHttpNon4xxMetricFilter_iukq5jBoiMDe" {
+  log_group_name = "identity-production-webrequests"
+  metric_transformation {
+    name      = "CWLHttp4xx"
+    namespace = "ElasticBeanstalk/identity-service-blue"
+    value     = "0"
+  }
+  name    = "AWSEBCWLHttpNon4xxMetricFilter-iukq5jBoiMDe"
+  pattern = "[..., status!=4*, size, trace, referer, agent]"
+}
+
 resource "aws_cloudwatch_log_metric_filter" "AWSEBCWLHttpNon4xxMetricFilter_kRavSX9K2wpx" {
   log_group_name = "mobile-client-gateway-webrequests"
   metric_transformation {
@@ -193,6 +281,17 @@ resource "aws_cloudwatch_log_metric_filter" "AWSEBCWLHttpNon4xxMetricFilter_kRav
     value     = "0"
   }
   name    = "AWSEBCWLHttpNon4xxMetricFilter-kRavSX9K2wpx"
+  pattern = "[..., status!=4*, size, trace, referer, agent]"
+}
+
+resource "aws_cloudwatch_log_metric_filter" "AWSEBCWLHttpNon4xxMetricFilter_l8RCTbXersZn" {
+  log_group_name = "capillary-web-ui-webrequests"
+  metric_transformation {
+    name      = "CWLHttp4xx"
+    namespace = "ElasticBeanstalk/capillary-web-ui-gateway-green"
+    value     = "0"
+  }
+  name    = "AWSEBCWLHttpNon4xxMetricFilter-l8RCTbXersZn"
   pattern = "[..., status!=4*, size, trace, referer, agent]"
 }
 
@@ -207,15 +306,15 @@ resource "aws_cloudwatch_log_metric_filter" "AWSEBCWLHttpNon4xxMetricFilter_oWu3
   pattern = "[..., status!=4*, size, trace, referer, agent]"
 }
 
-resource "aws_cloudwatch_log_metric_filter" "AWSEBCWLHttpNon4xxMetricFilter_sidFMi47449l" {
-  log_group_name = "capillary-web-ui-webrequests"
+resource "aws_cloudwatch_log_metric_filter" "AWSEBCWLHttpNon5xxMetricFilter_2lr1Qss68vfR" {
+  log_group_name = "identity-production-webrequests"
   metric_transformation {
-    name      = "CWLHttp4xx"
-    namespace = "ElasticBeanstalk/capillary-web-ui-gateway-green"
+    name      = "CWLHttp5xx"
+    namespace = "ElasticBeanstalk/identity-service-blue"
     value     = "0"
   }
-  name    = "AWSEBCWLHttpNon4xxMetricFilter-sidFMi47449l"
-  pattern = "[..., status!=4*, size, trace, referer, agent]"
+  name    = "AWSEBCWLHttpNon5xxMetricFilter-2lr1Qss68vfR"
+  pattern = "[..., status!=5*, size, trace, referer, agent]"
 }
 
 resource "aws_cloudwatch_log_metric_filter" "AWSEBCWLHttpNon5xxMetricFilter_K2Pz0aMNNEn6" {
@@ -226,6 +325,17 @@ resource "aws_cloudwatch_log_metric_filter" "AWSEBCWLHttpNon5xxMetricFilter_K2Pz
     value     = "0"
   }
   name    = "AWSEBCWLHttpNon5xxMetricFilter-K2Pz0aMNNEn6"
+  pattern = "[..., status!=5*, size, trace, referer, agent]"
+}
+
+resource "aws_cloudwatch_log_metric_filter" "AWSEBCWLHttpNon5xxMetricFilter_NxlXeDyPZ4dW" {
+  log_group_name = "capillary-web-ui-webrequests"
+  metric_transformation {
+    name      = "CWLHttp5xx"
+    namespace = "ElasticBeanstalk/capillary-web-ui-gateway-green"
+    value     = "0"
+  }
+  name    = "AWSEBCWLHttpNon5xxMetricFilter-NxlXeDyPZ4dW"
   pattern = "[..., status!=5*, size, trace, referer, agent]"
 }
 
@@ -251,14 +361,14 @@ resource "aws_cloudwatch_log_metric_filter" "AWSEBCWLHttpNon5xxMetricFilter_Ow3h
   pattern = "[..., status!=5*, size, trace, referer, agent]"
 }
 
-resource "aws_cloudwatch_log_metric_filter" "AWSEBCWLHttpNon5xxMetricFilter_dzdArjRLtQvX" {
-  log_group_name = "capillary-web-ui-webrequests"
+resource "aws_cloudwatch_log_metric_filter" "AWSEBCWLHttpNon5xxMetricFilter_ca5sCYK8nhuS" {
+  log_group_name = "identity-production-webrequests"
   metric_transformation {
     name      = "CWLHttp5xx"
-    namespace = "ElasticBeanstalk/capillary-web-ui-gateway-green"
+    namespace = "ElasticBeanstalk/identity-service-green"
     value     = "0"
   }
-  name    = "AWSEBCWLHttpNon5xxMetricFilter-dzdArjRLtQvX"
+  name    = "AWSEBCWLHttpNon5xxMetricFilter-ca5sCYK8nhuS"
   pattern = "[..., status!=5*, size, trace, referer, agent]"
 }
 
@@ -273,6 +383,17 @@ resource "aws_cloudwatch_log_metric_filter" "AWSEBCWLHttpNon5xxMetricFilter_yOQl
   pattern = "[..., status!=5*, size, trace, referer, agent]"
 }
 
+resource "aws_cloudwatch_log_metric_filter" "AWSEBCWLServiceNonErrorMetricFilter_4O8NVRKK4agY" {
+  log_group_name = "capillary-web-ui-spring"
+  metric_transformation {
+    name      = "CWLServiceError"
+    namespace = "ElasticBeanstalk/capillary-web-ui-gateway-green"
+    value     = "0"
+  }
+  name    = "AWSEBCWLServiceNonErrorMetricFilter-4O8NVRKK4agY"
+  pattern = "[date, time, level!=ERROR, ...]"
+}
+
 resource "aws_cloudwatch_log_metric_filter" "AWSEBCWLServiceNonErrorMetricFilter_DPGuCTweX125" {
   log_group_name = "market-production-spring"
   metric_transformation {
@@ -281,6 +402,17 @@ resource "aws_cloudwatch_log_metric_filter" "AWSEBCWLServiceNonErrorMetricFilter
     value     = "0"
   }
   name    = "AWSEBCWLServiceNonErrorMetricFilter-DPGuCTweX125"
+  pattern = "[date, time, level!=ERROR, ...]"
+}
+
+resource "aws_cloudwatch_log_metric_filter" "AWSEBCWLServiceNonErrorMetricFilter_DuGFqwwW79g2" {
+  log_group_name = "identity-production-spring"
+  metric_transformation {
+    name      = "CWLServiceError"
+    namespace = "ElasticBeanstalk/identity-service-blue"
+    value     = "0"
+  }
+  name    = "AWSEBCWLServiceNonErrorMetricFilter-DuGFqwwW79g2"
   pattern = "[date, time, level!=ERROR, ...]"
 }
 
@@ -306,17 +438,6 @@ resource "aws_cloudwatch_log_metric_filter" "AWSEBCWLServiceNonErrorMetricFilter
   pattern = "[date, time, level!=ERROR, ...]"
 }
 
-resource "aws_cloudwatch_log_metric_filter" "AWSEBCWLServiceNonErrorMetricFilter_sNEZCD40H0mc" {
-  log_group_name = "capillary-web-ui-spring"
-  metric_transformation {
-    name      = "CWLServiceError"
-    namespace = "ElasticBeanstalk/capillary-web-ui-gateway-green"
-    value     = "0"
-  }
-  name    = "AWSEBCWLServiceNonErrorMetricFilter-sNEZCD40H0mc"
-  pattern = "[date, time, level!=ERROR, ...]"
-}
-
 resource "aws_cloudwatch_log_metric_filter" "AWSEBCWLServiceNonErrorMetricFilter_uWBa5At50FOm" {
   log_group_name = "book-service-spring"
   metric_transformation {
@@ -325,6 +446,17 @@ resource "aws_cloudwatch_log_metric_filter" "AWSEBCWLServiceNonErrorMetricFilter
     value     = "0"
   }
   name    = "AWSEBCWLServiceNonErrorMetricFilter-uWBa5At50FOm"
+  pattern = "[date, time, level!=ERROR, ...]"
+}
+
+resource "aws_cloudwatch_log_metric_filter" "AWSEBCWLServiceNonErrorMetricFilter_wxSJeUcWUpKY" {
+  log_group_name = "identity-production-spring"
+  metric_transformation {
+    name      = "CWLServiceError"
+    namespace = "ElasticBeanstalk/identity-service-green"
+    value     = "0"
+  }
+  name    = "AWSEBCWLServiceNonErrorMetricFilter-wxSJeUcWUpKY"
   pattern = "[date, time, level!=ERROR, ...]"
 }
 
@@ -765,72 +897,6 @@ resource "aws_cloudwatch_log_metric_filter" "awseb_e_rwv222b3qp_stack_AWSEBCWLSe
     value     = "0"
   }
   name    = "awseb-e-rwv222b3qp-stack-AWSEBCWLServiceNonErrorMetricFilter-OC6AYYMGMF9N"
-  pattern = "[date, time, level!=ERROR, ...]"
-}
-
-resource "aws_cloudwatch_log_metric_filter" "awseb_e_udanqbam3f_stack_AWSEBCWLErrorMetricFilter_1GWIVI0UU1FMP" {
-  log_group_name = "identity-production-spring"
-  metric_transformation {
-    name      = "CWLServiceError"
-    namespace = "ElasticBeanstalk/identity-service-blue"
-    value     = "1"
-  }
-  name    = "awseb-e-udanqbam3f-stack-AWSEBCWLErrorMetricFilter-1GWIVI0UU1FMP"
-  pattern = "[date, time, level=ERROR, ...]"
-}
-
-resource "aws_cloudwatch_log_metric_filter" "awseb_e_udanqbam3f_stack_AWSEBCWLHttp4xxMetricFilter_79VJ3467HT89" {
-  log_group_name = "identity-production-webrequests"
-  metric_transformation {
-    name      = "CWLHttp4xx"
-    namespace = "ElasticBeanstalk/identity-service-blue"
-    value     = "1"
-  }
-  name    = "awseb-e-udanqbam3f-stack-AWSEBCWLHttp4xxMetricFilter-79VJ3467HT89"
-  pattern = "[..., status=4*, size, trace, referer, agent]"
-}
-
-resource "aws_cloudwatch_log_metric_filter" "awseb_e_udanqbam3f_stack_AWSEBCWLHttp5xxMetricFilter_1VG6368M5C7ZA" {
-  log_group_name = "identity-production-webrequests"
-  metric_transformation {
-    name      = "CWLHttp5xx"
-    namespace = "ElasticBeanstalk/identity-service-blue"
-    value     = "1"
-  }
-  name    = "awseb-e-udanqbam3f-stack-AWSEBCWLHttp5xxMetricFilter-1VG6368M5C7ZA"
-  pattern = "[..., status=5*, size, trace, referer, agent]"
-}
-
-resource "aws_cloudwatch_log_metric_filter" "awseb_e_udanqbam3f_stack_AWSEBCWLHttpNon4xxMetricFilter_1OQEC7KH7FDI6" {
-  log_group_name = "identity-production-webrequests"
-  metric_transformation {
-    name      = "CWLHttp4xx"
-    namespace = "ElasticBeanstalk/identity-service-blue"
-    value     = "0"
-  }
-  name    = "awseb-e-udanqbam3f-stack-AWSEBCWLHttpNon4xxMetricFilter-1OQEC7KH7FDI6"
-  pattern = "[..., status!=4*, size, trace, referer, agent]"
-}
-
-resource "aws_cloudwatch_log_metric_filter" "awseb_e_udanqbam3f_stack_AWSEBCWLHttpNon5xxMetricFilter_M8IKJYJXSPGL" {
-  log_group_name = "identity-production-webrequests"
-  metric_transformation {
-    name      = "CWLHttp5xx"
-    namespace = "ElasticBeanstalk/identity-service-blue"
-    value     = "0"
-  }
-  name    = "awseb-e-udanqbam3f-stack-AWSEBCWLHttpNon5xxMetricFilter-M8IKJYJXSPGL"
-  pattern = "[..., status!=5*, size, trace, referer, agent]"
-}
-
-resource "aws_cloudwatch_log_metric_filter" "awseb_e_udanqbam3f_stack_AWSEBCWLServiceNonErrorMetricFilter_1QFEC1BS3D65R" {
-  log_group_name = "identity-production-spring"
-  metric_transformation {
-    name      = "CWLServiceError"
-    namespace = "ElasticBeanstalk/identity-service-blue"
-    value     = "0"
-  }
-  name    = "awseb-e-udanqbam3f-stack-AWSEBCWLServiceNonErrorMetricFilter-1QFEC1BS3D65R"
   pattern = "[date, time, level!=ERROR, ...]"
 }
 

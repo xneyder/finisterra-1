@@ -63,13 +63,13 @@ resource "aws_wafv2_web_acl_association" "a8aed78a_de24_456a_8fc4_394e54ddb293_a
   web_acl_arn  = "arn:aws-us-gov:wafv2:us-gov-west-1:050779347855:regional/webacl/AllogyGatewayDefault/a8aed78a-de24-456a-8fc4-394e54ddb293"
 }
 
-resource "aws_wafv2_web_acl_association" "a8aed78a_de24_456a_8fc4_394e54ddb293_arn_aws_us_gov_elasticloadbalancing_us_gov_west_1_050779347855_loadbalancer_app_awseb_AWSEB_XSOHODKYO0N7_76e4011fa2a24353" {
-  resource_arn = "arn:aws-us-gov:elasticloadbalancing:us-gov-west-1:050779347855:loadbalancer/app/awseb-AWSEB-XSOHODKYO0N7/76e4011fa2a24353"
+resource "aws_wafv2_web_acl_association" "a8aed78a_de24_456a_8fc4_394e54ddb293_arn_aws_us_gov_elasticloadbalancing_us_gov_west_1_050779347855_loadbalancer_app_awseb_AWSEB_XZ6JUMA8IEE_24c9cf558cf46ee7" {
+  resource_arn = "arn:aws-us-gov:elasticloadbalancing:us-gov-west-1:050779347855:loadbalancer/app/awseb-AWSEB-XZ6JUMA8IEE/24c9cf558cf46ee7"
   web_acl_arn  = "arn:aws-us-gov:wafv2:us-gov-west-1:050779347855:regional/webacl/AllogyGatewayDefault/a8aed78a-de24-456a-8fc4-394e54ddb293"
 }
 
-resource "aws_wafv2_web_acl_association" "a8aed78a_de24_456a_8fc4_394e54ddb293_arn_aws_us_gov_elasticloadbalancing_us_gov_west_1_050779347855_loadbalancer_app_awseb_AWSEB_XZ6JUMA8IEE_24c9cf558cf46ee7" {
-  resource_arn = "arn:aws-us-gov:elasticloadbalancing:us-gov-west-1:050779347855:loadbalancer/app/awseb-AWSEB-XZ6JUMA8IEE/24c9cf558cf46ee7"
+resource "aws_wafv2_web_acl_association" "a8aed78a_de24_456a_8fc4_394e54ddb293_arn_aws_us_gov_elasticloadbalancing_us_gov_west_1_050779347855_loadbalancer_app_awseb_AWSEB_ZRMNV8V7XEA5_1acfb34e22719e99" {
+  resource_arn = "arn:aws-us-gov:elasticloadbalancing:us-gov-west-1:050779347855:loadbalancer/app/awseb-AWSEB-ZRMNV8V7XEA5/1acfb34e22719e99"
   web_acl_arn  = "arn:aws-us-gov:wafv2:us-gov-west-1:050779347855:regional/webacl/AllogyGatewayDefault/a8aed78a-de24-456a-8fc4-394e54ddb293"
 }
 

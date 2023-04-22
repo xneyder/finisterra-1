@@ -1184,8 +1184,8 @@ resource "aws_iam_role" "MediaConvertRole" {
       "Effect": "Allow",
       "Principal": {
         "Service": [
-          "lambda.amazonaws.com",
-          "mediaconvert.amazonaws.com"
+          "mediaconvert.amazonaws.com",
+          "lambda.amazonaws.com"
         ]
       },
       "Action": "sts:AssumeRole"
@@ -1236,8 +1236,8 @@ resource "aws_iam_role" "MediaStepsLambdaRole" {
       "Effect": "Allow",
       "Principal": {
         "Service": [
-          "lambda.amazonaws.com",
-          "mediaconvert.amazonaws.com"
+          "mediaconvert.amazonaws.com",
+          "lambda.amazonaws.com"
         ]
       },
       "Action": "sts:AssumeRole"

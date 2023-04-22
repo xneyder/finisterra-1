@@ -124,9 +124,9 @@ resource "aws_autoscaling_group" "awseb_e_bner7vhrif_stack_AWSEBAutoScalingGroup
   health_check_grace_period = 300
   launch_configuration      = "awseb-e-bner7vhrif-stack-AWSEBAutoScalingLaunchConfiguration-VKFYC1C3V9J0"
   max_instance_lifetime     = 0
-  max_size                  = 4
+  max_size                  = 0
   metrics_granularity       = "1Minute"
-  min_size                  = 1
+  min_size                  = 0
   protect_from_scale_in     = false
   tag {
     key                 = "Name"
@@ -145,6 +145,36 @@ resource "aws_autoscaling_group" "awseb_e_bner7vhrif_stack_AWSEBAutoScalingGroup
   }
   target_group_arns = [
     "arn:aws-us-gov:elasticloadbalancing:us-gov-west-1:050779347855:targetgroup/awseb-AWSEB-2K3XZ04E4CGX/ea85e2af213f03dc", "arn:aws-us-gov:elasticloadbalancing:us-gov-west-1:050779347855:targetgroup/awseb-https-1NPG7X2RFJRCW/5947b105fe89ccde"
+  ]
+}
+
+resource "aws_autoscaling_group" "awseb_e_fbj96npvkw_stack_AWSEBAutoScalingGroup_1MV2WEQG4C74B" {
+  capacity_rebalance        = false
+  default_instance_warmup   = 0
+  health_check_grace_period = 300
+  launch_configuration      = "awseb-e-fbj96npvkw-stack-AWSEBAutoScalingLaunchConfiguration-NTZB83ZL82PC"
+  max_instance_lifetime     = 0
+  max_size                  = 4
+  metrics_granularity       = "1Minute"
+  min_size                  = 1
+  protect_from_scale_in     = false
+  tag {
+    key                 = "Name"
+    propagate_at_launch = true
+    value               = "identity-service-blue"
+  }
+  tag {
+    key                 = "elasticbeanstalk:environment-id"
+    propagate_at_launch = true
+    value               = "e-fbj96npvkw"
+  }
+  tag {
+    key                 = "elasticbeanstalk:environment-name"
+    propagate_at_launch = true
+    value               = "identity-service-blue"
+  }
+  target_group_arns = [
+    "arn:aws-us-gov:elasticloadbalancing:us-gov-west-1:050779347855:targetgroup/awseb-AWSEB-YEZA6U1KVPDV/4d9eece4d84a3833", "arn:aws-us-gov:elasticloadbalancing:us-gov-west-1:050779347855:targetgroup/awseb-https-1A18UEWA4D63L/44a8ba5d74ed6f99"
   ]
 }
 
@@ -175,36 +205,6 @@ resource "aws_autoscaling_group" "awseb_e_fmzgrfkcqp_stack_AWSEBAutoScalingGroup
   }
   target_group_arns = [
     "arn:aws-us-gov:elasticloadbalancing:us-gov-west-1:050779347855:targetgroup/awseb-AWSEB-YQXP658RVKNN/71cd584aa7eea690", "arn:aws-us-gov:elasticloadbalancing:us-gov-west-1:050779347855:targetgroup/awseb-https-1ITBSVWM72LY7/4d250918fe6c03ff"
-  ]
-}
-
-resource "aws_autoscaling_group" "awseb_e_ipfavj64xz_stack_AWSEBAutoScalingGroup_10EZHY36C0W3Z" {
-  capacity_rebalance        = false
-  default_instance_warmup   = 0
-  health_check_grace_period = 300
-  launch_configuration      = "awseb-e-ipfavj64xz-stack-AWSEBAutoScalingLaunchConfiguration-1GO4LR28F9S60"
-  max_instance_lifetime     = 0
-  max_size                  = 4
-  metrics_granularity       = "1Minute"
-  min_size                  = 1
-  protect_from_scale_in     = false
-  tag {
-    key                 = "Name"
-    propagate_at_launch = true
-    value               = "capillary-web-ui-gateway-green"
-  }
-  tag {
-    key                 = "elasticbeanstalk:environment-id"
-    propagate_at_launch = true
-    value               = "e-ipfavj64xz"
-  }
-  tag {
-    key                 = "elasticbeanstalk:environment-name"
-    propagate_at_launch = true
-    value               = "capillary-web-ui-gateway-green"
-  }
-  target_group_arns = [
-    "arn:aws-us-gov:elasticloadbalancing:us-gov-west-1:050779347855:targetgroup/awseb-AWSEB-TL79QFVI7V3/043977142a0dbf1d", "arn:aws-us-gov:elasticloadbalancing:us-gov-west-1:050779347855:targetgroup/awseb-https-FWBN6663VT5N/060e7dbf6250d62e"
   ]
 }
 
@@ -268,6 +268,36 @@ resource "aws_autoscaling_group" "awseb_e_jhagz8maay_stack_AWSEBAutoScalingGroup
   ]
 }
 
+resource "aws_autoscaling_group" "awseb_e_p6bifdmp7h_stack_AWSEBAutoScalingGroup_1V4A0JOX0NVPA" {
+  capacity_rebalance        = false
+  default_instance_warmup   = 0
+  health_check_grace_period = 300
+  launch_configuration      = "awseb-e-p6bifdmp7h-stack-AWSEBAutoScalingLaunchConfiguration-5ZGXBP8856K5"
+  max_instance_lifetime     = 0
+  max_size                  = 4
+  metrics_granularity       = "1Minute"
+  min_size                  = 1
+  protect_from_scale_in     = false
+  tag {
+    key                 = "Name"
+    propagate_at_launch = true
+    value               = "capillary-web-ui-gateway-green"
+  }
+  tag {
+    key                 = "elasticbeanstalk:environment-id"
+    propagate_at_launch = true
+    value               = "e-p6bifdmp7h"
+  }
+  tag {
+    key                 = "elasticbeanstalk:environment-name"
+    propagate_at_launch = true
+    value               = "capillary-web-ui-gateway-green"
+  }
+  target_group_arns = [
+    "arn:aws-us-gov:elasticloadbalancing:us-gov-west-1:050779347855:targetgroup/awseb-AWSEB-FTDGG6JAIAVU/cd8ebc5a66ec9fa8", "arn:aws-us-gov:elasticloadbalancing:us-gov-west-1:050779347855:targetgroup/awseb-https-OX0BXIAFNYGI/8edb5baf518da618"
+  ]
+}
+
 resource "aws_autoscaling_group" "awseb_e_pcw37ypdme_stack_AWSEBAutoScalingGroup_165D32JDYUA6O" {
   capacity_rebalance        = false
   default_instance_warmup   = 0
@@ -328,33 +358,33 @@ resource "aws_autoscaling_group" "awseb_e_rwv222b3qp_stack_AWSEBAutoScalingGroup
   ]
 }
 
-resource "aws_autoscaling_group" "awseb_e_udanqbam3f_stack_AWSEBAutoScalingGroup_1PJGCX54MJZVZ" {
+resource "aws_autoscaling_group" "awseb_e_tx62adwg2k_stack_AWSEBAutoScalingGroup_WZUPJM6LCB0K" {
   capacity_rebalance        = false
   default_instance_warmup   = 0
   health_check_grace_period = 300
-  launch_configuration      = "awseb-e-udanqbam3f-stack-AWSEBAutoScalingLaunchConfiguration-13URLATTKMNZ3"
+  launch_configuration      = "awseb-e-tx62adwg2k-stack-AWSEBAutoScalingLaunchConfiguration-KWTPTGQG6K0F"
   max_instance_lifetime     = 0
-  max_size                  = 4
+  max_size                  = 0
   metrics_granularity       = "1Minute"
-  min_size                  = 1
+  min_size                  = 0
   protect_from_scale_in     = false
   tag {
     key                 = "Name"
     propagate_at_launch = true
-    value               = "identity-service-blue"
+    value               = "identity-service-green"
   }
   tag {
     key                 = "elasticbeanstalk:environment-id"
     propagate_at_launch = true
-    value               = "e-udanqbam3f"
+    value               = "e-tx62adwg2k"
   }
   tag {
     key                 = "elasticbeanstalk:environment-name"
     propagate_at_launch = true
-    value               = "identity-service-blue"
+    value               = "identity-service-green"
   }
   target_group_arns = [
-    "arn:aws-us-gov:elasticloadbalancing:us-gov-west-1:050779347855:targetgroup/awseb-AWSEB-85FZMWFW80KB/e81c3f994726fc24", "arn:aws-us-gov:elasticloadbalancing:us-gov-west-1:050779347855:targetgroup/awseb-https-ABQH2Z86TMP8/483f042e79cc7972"
+    "arn:aws-us-gov:elasticloadbalancing:us-gov-west-1:050779347855:targetgroup/awseb-AWSEB-D0FRZWTV84JA/944fb2dc581af886", "arn:aws-us-gov:elasticloadbalancing:us-gov-west-1:050779347855:targetgroup/awseb-https-1I8ECBRH1HY3/5476cd11d9b77634"
   ]
 }
 

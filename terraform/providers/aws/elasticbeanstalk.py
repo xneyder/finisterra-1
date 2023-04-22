@@ -3,6 +3,8 @@ from utils.hcl import HCL
 import botocore
 
 
+
+
 class ElasticBeanstalk:
     def __init__(self, elasticbeanstalk_client, script_dir, provider_name, schema_data, region):
         self.elasticbeanstalk_client = elasticbeanstalk_client

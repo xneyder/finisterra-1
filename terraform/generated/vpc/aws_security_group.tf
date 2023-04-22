@@ -68,18 +68,6 @@ resource "aws_security_group" "sg_01c091d8d9e740817" {
   }
 }
 
-resource "aws_security_group" "sg_01ca32fbea5e7abce" {
-  description = "Load Balancer Security Group"
-  tags = {
-    Name = "identity-service-blue"
-
-    "elasticbeanstalk:environment-id" = "e-udanqbam3f"
-
-    "elasticbeanstalk:environment-name" = "identity-service-blue"
-
-  }
-}
-
 resource "aws_security_group" "sg_01d6cae62e5454846" {
   description = "A security group allowing SSH access from Allogy users locations. Use the AWS console or CLI to update your IP address. Also include your name in the Rule description."
   tags = {
@@ -152,6 +140,18 @@ resource "aws_security_group" "sg_03365a1e4d5ef869d" {
   }
 }
 
+resource "aws_security_group" "sg_034a6ff43d0aa2770" {
+  description = "VPC Security Group"
+  tags = {
+    Name = "identity-service-blue"
+
+    "elasticbeanstalk:environment-id" = "e-fbj96npvkw"
+
+    "elasticbeanstalk:environment-name" = "identity-service-blue"
+
+  }
+}
+
 resource "aws_security_group" "sg_03769d92c81a37e14" {
   description = "service-infrastructure-internal"
 }
@@ -168,6 +168,18 @@ resource "aws_security_group" "sg_057a681c0afce6d70" {
     "elasticbeanstalk:environment-id" = "e-xmec4epg3c"
 
     "elasticbeanstalk:environment-name" = "book-service-green"
+
+  }
+}
+
+resource "aws_security_group" "sg_05b689cdd90002026" {
+  description = "Load Balancer Security Group"
+  tags = {
+    Name = "capillary-web-ui-gateway-green"
+
+    "elasticbeanstalk:environment-id" = "e-p6bifdmp7h"
+
+    "elasticbeanstalk:environment-name" = "capillary-web-ui-gateway-green"
 
   }
 }
@@ -204,18 +216,6 @@ resource "aws_security_group" "sg_0664cb51cf00919ed" {
     DeploymentEnvironment = "production"
 
     Name = "production-InternalSSH"
-
-  }
-}
-
-resource "aws_security_group" "sg_06c73378f62490b36" {
-  description = "VPC Security Group"
-  tags = {
-    Name = "capillary-web-ui-gateway-green"
-
-    "elasticbeanstalk:environment-id" = "e-ipfavj64xz"
-
-    "elasticbeanstalk:environment-name" = "capillary-web-ui-gateway-green"
 
   }
 }
@@ -278,14 +278,14 @@ resource "aws_security_group" "sg_085eb8e3a0fba2f92" {
   description = "core-rds-proxy"
 }
 
-resource "aws_security_group" "sg_085fe27725f7793ba" {
+resource "aws_security_group" "sg_08a68e02fea2591df" {
   description = "VPC Security Group"
   tags = {
-    Name = "identity-service-blue"
+    Name = "capillary-web-ui-gateway-green"
 
-    "elasticbeanstalk:environment-id" = "e-udanqbam3f"
+    "elasticbeanstalk:environment-id" = "e-p6bifdmp7h"
 
-    "elasticbeanstalk:environment-name" = "identity-service-blue"
+    "elasticbeanstalk:environment-name" = "capillary-web-ui-gateway-green"
 
   }
 }
@@ -370,6 +370,18 @@ resource "aws_security_group" "sg_0ab678abfaabcacf3" {
     "elasticbeanstalk:environment-id" = "e-bner7vhrif"
 
     "elasticbeanstalk:environment-name" = "capillary-web-ui-gateway-blue"
+
+  }
+}
+
+resource "aws_security_group" "sg_0abf393744a38edb1" {
+  description = "VPC Security Group"
+  tags = {
+    Name = "identity-service-green"
+
+    "elasticbeanstalk:environment-id" = "e-tx62adwg2k"
+
+    "elasticbeanstalk:environment-name" = "identity-service-green"
 
   }
 }
@@ -488,14 +500,26 @@ resource "aws_security_group" "sg_0d799b653c4043218" {
   }
 }
 
-resource "aws_security_group" "sg_0e163ba7aac633501" {
+resource "aws_security_group" "sg_0e07dcad269bc9148" {
   description = "Load Balancer Security Group"
   tags = {
-    Name = "capillary-web-ui-gateway-green"
+    Name = "identity-service-green"
 
-    "elasticbeanstalk:environment-id" = "e-ipfavj64xz"
+    "elasticbeanstalk:environment-id" = "e-tx62adwg2k"
 
-    "elasticbeanstalk:environment-name" = "capillary-web-ui-gateway-green"
+    "elasticbeanstalk:environment-name" = "identity-service-green"
+
+  }
+}
+
+resource "aws_security_group" "sg_0e3da0334f6f1024d" {
+  description = "Load Balancer Security Group"
+  tags = {
+    Name = "identity-service-blue"
+
+    "elasticbeanstalk:environment-id" = "e-fbj96npvkw"
+
+    "elasticbeanstalk:environment-name" = "identity-service-blue"
 
   }
 }

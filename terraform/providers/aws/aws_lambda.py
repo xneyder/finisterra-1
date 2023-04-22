@@ -19,14 +19,13 @@ class AwsLambda:
         self.hcl.prepare_folder(os.path.join("generated", "lambda"))
 
         self.aws_lambda_alias()
-        if "gov" not in self.region:
-            self.aws_lambda_code_signing_config()
+        # self.aws_lambda_code_signing_config()  #Permission error
         self.aws_lambda_event_source_mapping()
         self.aws_lambda_function()
         self.aws_lambda_function_event_invoke_config()
-        self.aws_lambda_function_url()
+        # self.aws_lambda_function_url() #Permission error
         self.aws_lambda_layer_version()
-        # self.aws_lambda_layer_version_permission()
+        self.aws_lambda_layer_version_permission()
         self.aws_lambda_permission()
         self.aws_lambda_provisioned_concurrency_config()
 
@@ -207,23 +206,31 @@ class AwsLambda:
 
                 self.hcl.process_resource(
                     "aws_lambda_layer_version", f"{layer_name.replace('-', '_')}_version_{version}", attributes)
-                self.aws_lambda_layer_version_permission(
-                    f"{layer_name}:{version}", layer_version_permission_arns)
 
-    def aws_lambda_layer_version_permission(self, layer_version_arn, layer_version_permission_arns):
-        print(
-            f"Processing Layer Version Permissions for Layer Version: {layer_version_arn}")
-        for permission_arn in layer_version_permission_arns:
-            id = f"{layer_version_arn}-{permission_arn}"
-            attributes = {
-                "id": id,
-                "layer_version_arn": layer_version_arn,
-                "statement_id": permission_arn,
-                "action": "lambda:GetLayerVersion",
-                "principal": permission_arn,
-            }
-            self.hcl.process_resource(
-                "aws_lambda_layer_version_permission", id.replace("-", "_"), attributes)
+    def aws_lambda_layer_version_permission(self):
+        print("Processing Lambda Layer Version Permissions...")
+        paginator = self.lambda_client.get_paginator("list_layers")
+        page_iterator = paginator.paginate()
+        for page in page_iterator:
+            for layer in page["Layers"]:
+                layer_version_arn = layer["LatestMatchingVersion"]["LayerVersionArn"]
+                layer_version_permission_arns = [p["Principal"] for p in self.lambda_client.get_layer_version_policy(
+                    LayerName=layer["LayerName"],
+                    VersionNumber=layer["LatestMatchingVersion"]["Version"],
+                )["Policy"]["Statement"]]
+                for permission_arn in layer_version_permission_arns:
+                    id = f"{layer_version_arn}-{permission_arn}"
+                    attributes = {
+                        "id": id,
+                        "layer_version_arn": layer_version_arn,
+                        "statement_id": permission_arn,
+                        "action": "lambda:GetLayerVersion",
+                        "principal": permission_arn,
+                    }
+                    self.hcl.process_resource(
+                        "aws_lambda_layer_version_permission", id.replace("-", "_"), attributes)
+
+
 
     def aws_lambda_permission(self):
         print("Processing Lambda Permissions...")

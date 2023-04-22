@@ -136,7 +136,6 @@ class HCL:
                             return ""
                     except:
                         pass
-
                 return f'{quote_string(key)}={convert_value(value)}\n'
 
             def quote_string(s):
@@ -236,6 +235,24 @@ class HCL:
                                     f'{quote_string(key)}=file("{file_name}")\n')
                                 is_transformed = True
                                 return is_transformed, return_str
+                    if 'hcl_apply_function' in self.transform_rules[resource_type]:
+                        hcl_apply_function = self.transform_rules[resource_type]['hcl_apply_function']
+                        if key in hcl_apply_function:
+                            for function in hcl_apply_function[key]["function"]:
+                                value=function(value)
+                            return_str += (
+                                f'{quote_string(key)}="{value}"\n')
+                            is_transformed = True
+                            return is_transformed, return_str
+                    if 'hcl_apply_function_dict' in self.transform_rules[resource_type]:
+                        hcl_apply_function_dict = self.transform_rules[resource_type]['hcl_apply_function_dict']
+                        if key in hcl_apply_function_dict:
+                            for function in hcl_apply_function_dict[key]["function"]:
+                                value=function(value)
+                            return_str += (
+                                f'{quote_string(key)}={value}\n')
+                            is_transformed = True
+                            return is_transformed, return_str
                     if 'hcl_transform_fields' in self.transform_rules[resource_type]:
                         hcl_transform_fields = self.transform_rules[resource_type]['hcl_transform_fields']
                         if key in hcl_transform_fields:

@@ -1,28 +1,3 @@
-resource "aws_service_discovery_instance" "_0db8dbd2185c4c0184e80f58fee8ba1d" {
-  attributes = {
-    AVAILABILITY_ZONE = "us-gov-west-1b"
-
-    AWS_INIT_HEALTH_STATUS = "HEALTHY"
-
-    AWS_INSTANCE_IPV4 = "10.21.34.210"
-
-    AWS_INSTANCE_PORT = "8268"
-
-    EC2_INSTANCE_ID = "i-05c05cc8dbf8cfd76"
-
-    ECS_CLUSTER_NAME = "production"
-
-    ECS_SERVICE_NAME = "instructor-graphql-api"
-
-    ECS_TASK_DEFINITION_FAMILY = "instructor-graphql-api"
-
-    REGION = "us-gov-west-1"
-
-  }
-  instance_id = "0db8dbd2185c4c0184e80f58fee8ba1d"
-  service_id  = "srv-hnkaalc5ogatpt72"
-}
-
 resource "aws_service_discovery_instance" "_155ec77d4fc34fa3868bc5de00f119d4" {
   attributes = {
     AVAILABILITY_ZONE = "us-gov-west-1a"
@@ -271,31 +246,6 @@ resource "aws_service_discovery_instance" "_4f6f5f23a8f44ff1bf45de3030730c27" {
   }
   instance_id = "4f6f5f23a8f44ff1bf45de3030730c27"
   service_id  = "srv-ybkpsu72oxg2xhon"
-}
-
-resource "aws_service_discovery_instance" "_564b3e343abe4dd997c1b8fec33edd2a" {
-  attributes = {
-    AVAILABILITY_ZONE = "us-gov-west-1c"
-
-    AWS_INIT_HEALTH_STATUS = "HEALTHY"
-
-    AWS_INSTANCE_IPV4 = "10.21.93.37"
-
-    AWS_INSTANCE_PORT = "8268"
-
-    EC2_INSTANCE_ID = "i-0db9986f41eead4f0"
-
-    ECS_CLUSTER_NAME = "production"
-
-    ECS_SERVICE_NAME = "instructor-graphql-api"
-
-    ECS_TASK_DEFINITION_FAMILY = "instructor-graphql-api"
-
-    REGION = "us-gov-west-1"
-
-  }
-  instance_id = "564b3e343abe4dd997c1b8fec33edd2a"
-  service_id  = "srv-hnkaalc5ogatpt72"
 }
 
 resource "aws_service_discovery_instance" "_5bd63dba81ef43ae9e6bf35496e60729" {
@@ -548,6 +498,31 @@ resource "aws_service_discovery_instance" "_9ae5827e93a7489aa1da7a186ba7684e" {
   service_id  = "srv-muux3gdwo42gq75s"
 }
 
+resource "aws_service_discovery_instance" "_9c00deef89e74421b3a23781f8b1042a" {
+  attributes = {
+    AVAILABILITY_ZONE = "us-gov-west-1a"
+
+    AWS_INIT_HEALTH_STATUS = "HEALTHY"
+
+    AWS_INSTANCE_IPV4 = "10.21.19.38"
+
+    AWS_INSTANCE_PORT = "8268"
+
+    EC2_INSTANCE_ID = "i-0f3baa6f6ea2b4c66"
+
+    ECS_CLUSTER_NAME = "production"
+
+    ECS_SERVICE_NAME = "instructor-graphql-api"
+
+    ECS_TASK_DEFINITION_FAMILY = "instructor-graphql-api"
+
+    REGION = "us-gov-west-1"
+
+  }
+  instance_id = "9c00deef89e74421b3a23781f8b1042a"
+  service_id  = "srv-hnkaalc5ogatpt72"
+}
+
 resource "aws_service_discovery_instance" "a649227814514d30b2be86a8b99c9511" {
   attributes = {
     AVAILABILITY_ZONE = "us-gov-west-1c"
@@ -696,6 +671,31 @@ resource "aws_service_discovery_instance" "c6343166fefb40efa4d047226ef1e8bf" {
   }
   instance_id = "c6343166fefb40efa4d047226ef1e8bf"
   service_id  = "srv-sqvbk2ghwn2lhqnx"
+}
+
+resource "aws_service_discovery_instance" "c88cf381f6804ba2b55dd48577a44445" {
+  attributes = {
+    AVAILABILITY_ZONE = "us-gov-west-1b"
+
+    AWS_INIT_HEALTH_STATUS = "HEALTHY"
+
+    AWS_INSTANCE_IPV4 = "10.21.39.162"
+
+    AWS_INSTANCE_PORT = "8268"
+
+    EC2_INSTANCE_ID = "i-0af6641d34c6eeb19"
+
+    ECS_CLUSTER_NAME = "production"
+
+    ECS_SERVICE_NAME = "instructor-graphql-api"
+
+    ECS_TASK_DEFINITION_FAMILY = "instructor-graphql-api"
+
+    REGION = "us-gov-west-1"
+
+  }
+  instance_id = "c88cf381f6804ba2b55dd48577a44445"
+  service_id  = "srv-hnkaalc5ogatpt72"
 }
 
 resource "aws_service_discovery_instance" "ccfc94843a0f4fa6a3358515d04a689b" {

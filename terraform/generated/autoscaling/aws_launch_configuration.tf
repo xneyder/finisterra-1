@@ -53,6 +53,17 @@ resource "aws_launch_configuration" "awseb_e_bner7vhrif_stack_AWSEBAutoScalingLa
   user_data = "6a120d438bca04a7138ecba60aff512867afb73f"
 }
 
+resource "aws_launch_configuration" "awseb_e_fbj96npvkw_stack_AWSEBAutoScalingLaunchConfiguration_NTZB83ZL82PC" {
+  enable_monitoring    = false
+  iam_instance_profile = "web-app-identity-service"
+  image_id             = "ami-052e897b5512ff945"
+  instance_type        = "t2.small"
+  security_groups = [
+    "sg-034a6ff43d0aa2770"
+  ]
+  user_data = "444538a5324cafef2e72e74a1510569cb305ed4b"
+}
+
 resource "aws_launch_configuration" "awseb_e_fmzgrfkcqp_stack_AWSEBAutoScalingLaunchConfiguration_1LOGBY1QQR689" {
   enable_monitoring    = false
   iam_instance_profile = "web-app-book-service"
@@ -62,17 +73,6 @@ resource "aws_launch_configuration" "awseb_e_fmzgrfkcqp_stack_AWSEBAutoScalingLa
     "sg-0d799b653c4043218"
   ]
   user_data = "6d36cd5748689fd6f5ef22287939a5cc48e567d6"
-}
-
-resource "aws_launch_configuration" "awseb_e_ipfavj64xz_stack_AWSEBAutoScalingLaunchConfiguration_1GO4LR28F9S60" {
-  enable_monitoring    = false
-  iam_instance_profile = "web-app-gateway"
-  image_id             = "ami-0a4f692219167e96a"
-  instance_type        = "t2.small"
-  security_groups = [
-    "sg-06c73378f62490b36"
-  ]
-  user_data = "a72fed0fac73831d78eb664fed87552331c72e55"
 }
 
 resource "aws_launch_configuration" "awseb_e_jgrjparfpf_stack_AWSEBAutoScalingLaunchConfiguration_10ABAES14Y4Q8" {
@@ -97,6 +97,17 @@ resource "aws_launch_configuration" "awseb_e_jhagz8maay_stack_AWSEBAutoScalingLa
   user_data = "f2829d95d23d3bd0956bcd88b34b0737ec384ac8"
 }
 
+resource "aws_launch_configuration" "awseb_e_p6bifdmp7h_stack_AWSEBAutoScalingLaunchConfiguration_5ZGXBP8856K5" {
+  enable_monitoring    = false
+  iam_instance_profile = "web-app-gateway"
+  image_id             = "ami-0a4f692219167e96a"
+  instance_type        = "t2.small"
+  security_groups = [
+    "sg-08a68e02fea2591df"
+  ]
+  user_data = "5b5170924413b93785bd172e139f331f2221d3c4"
+}
+
 resource "aws_launch_configuration" "awseb_e_pcw37ypdme_stack_AWSEBAutoScalingLaunchConfiguration_AWZ4IZZYEOO5" {
   enable_monitoring    = false
   iam_instance_profile = "web-app-mobile-client-gateway"
@@ -119,15 +130,15 @@ resource "aws_launch_configuration" "awseb_e_rwv222b3qp_stack_AWSEBAutoScalingLa
   user_data = "2a8f3116cb4bf1176ed38a7c9b5dce1d9976cc4a"
 }
 
-resource "aws_launch_configuration" "awseb_e_udanqbam3f_stack_AWSEBAutoScalingLaunchConfiguration_13URLATTKMNZ3" {
+resource "aws_launch_configuration" "awseb_e_tx62adwg2k_stack_AWSEBAutoScalingLaunchConfiguration_KWTPTGQG6K0F" {
   enable_monitoring    = false
   iam_instance_profile = "web-app-identity-service"
   image_id             = "ami-052e897b5512ff945"
   instance_type        = "t2.small"
   security_groups = [
-    "sg-085fe27725f7793ba"
+    "sg-0abf393744a38edb1"
   ]
-  user_data = "f8ba26b16c1739455947d2f84784fbfffe357e78"
+  user_data = "9febd94e763a2f3f248e93c92f73fbeed495b6cc"
 }
 
 resource "aws_launch_configuration" "awseb_e_xmec4epg3c_stack_AWSEBAutoScalingLaunchConfiguration_12887VXT6TVNY" {

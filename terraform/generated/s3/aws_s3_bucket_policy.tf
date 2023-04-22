@@ -261,17 +261,17 @@ resource "aws_s3_bucket_policy" "elasticbeanstalk_us_gov_west_1_050779347855" {
       "Effect": "Allow",
       "Principal": {
         "AWS": [
-          "arn:aws-us-gov:iam::050779347855:role/web-app-test-web-service",
           "arn:aws-us-gov:iam::050779347855:role/web-app-gateway",
-          "arn:aws-us-gov:iam::050779347855:role/web-app-book-service",
-          "arn:aws-us-gov:iam::050779347855:role/web-app-mobile-client-gateway",
-          "arn:aws-us-gov:iam::050779347855:role/web-app-collaboration-person-service",
-          "arn:aws-us-gov:iam::050779347855:role/web-app-dbt-clinician-web",
-          "arn:aws-us-gov:iam::050779347855:role/web-app-identity-service",
           "arn:aws-us-gov:iam::050779347855:role/internal-services-gateway",
           "arn:aws-us-gov:iam::050779347855:role/web-app-form-service",
+          "arn:aws-us-gov:iam::050779347855:role/web-app-test-web-service",
+          "arn:aws-us-gov:iam::050779347855:role/services-gateway",
           "arn:aws-us-gov:iam::050779347855:role/web-app-market-service",
-          "arn:aws-us-gov:iam::050779347855:role/services-gateway"
+          "arn:aws-us-gov:iam::050779347855:role/web-app-book-service",
+          "arn:aws-us-gov:iam::050779347855:role/web-app-identity-service",
+          "arn:aws-us-gov:iam::050779347855:role/web-app-dbt-clinician-web",
+          "arn:aws-us-gov:iam::050779347855:role/web-app-mobile-client-gateway",
+          "arn:aws-us-gov:iam::050779347855:role/web-app-collaboration-person-service"
         ]
       },
       "Action": [

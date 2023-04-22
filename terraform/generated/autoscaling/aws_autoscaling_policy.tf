@@ -118,6 +118,30 @@ resource "aws_autoscaling_policy" "awseb_e_bner7vhrif_stack_AWSEBAutoScalingScal
   scaling_adjustment        = 1
 }
 
+resource "aws_autoscaling_policy" "awseb_e_fbj96npvkw_stack_AWSEBAutoScalingScaleDownPolicy_137S4KAZDJWXY" {
+  adjustment_type           = "ChangeInCapacity"
+  autoscaling_group_name    = "awseb-e-fbj96npvkw-stack-AWSEBAutoScalingGroup-1MV2WEQG4C74B"
+  cooldown                  = 0
+  enabled                   = true
+  estimated_instance_warmup = 0
+  min_adjustment_magnitude  = 0
+  name                      = "awseb-e-fbj96npvkw-stack-AWSEBAutoScalingScaleDownPolicy-137S4KAZDJWXY"
+  policy_type               = "SimpleScaling"
+  scaling_adjustment        = -1
+}
+
+resource "aws_autoscaling_policy" "awseb_e_fbj96npvkw_stack_AWSEBAutoScalingScaleUpPolicy_1RWNOVAVZ2TXH" {
+  adjustment_type           = "ChangeInCapacity"
+  autoscaling_group_name    = "awseb-e-fbj96npvkw-stack-AWSEBAutoScalingGroup-1MV2WEQG4C74B"
+  cooldown                  = 0
+  enabled                   = true
+  estimated_instance_warmup = 0
+  min_adjustment_magnitude  = 0
+  name                      = "awseb-e-fbj96npvkw-stack-AWSEBAutoScalingScaleUpPolicy-1RWNOVAVZ2TXH"
+  policy_type               = "SimpleScaling"
+  scaling_adjustment        = 1
+}
+
 resource "aws_autoscaling_policy" "awseb_e_fmzgrfkcqp_stack_AWSEBAutoScalingScaleDownPolicy_1T1KWOEZQZ9AU" {
   adjustment_type           = "ChangeInCapacity"
   autoscaling_group_name    = "awseb-e-fmzgrfkcqp-stack-AWSEBAutoScalingGroup-VMGLQ3UKK1KY"
@@ -138,30 +162,6 @@ resource "aws_autoscaling_policy" "awseb_e_fmzgrfkcqp_stack_AWSEBAutoScalingScal
   estimated_instance_warmup = 0
   min_adjustment_magnitude  = 0
   name                      = "awseb-e-fmzgrfkcqp-stack-AWSEBAutoScalingScaleUpPolicy-183USW1NM3Y41"
-  policy_type               = "SimpleScaling"
-  scaling_adjustment        = 1
-}
-
-resource "aws_autoscaling_policy" "awseb_e_ipfavj64xz_stack_AWSEBAutoScalingScaleDownPolicy_Y49RXTNSDAQJ" {
-  adjustment_type           = "ChangeInCapacity"
-  autoscaling_group_name    = "awseb-e-ipfavj64xz-stack-AWSEBAutoScalingGroup-10EZHY36C0W3Z"
-  cooldown                  = 0
-  enabled                   = true
-  estimated_instance_warmup = 0
-  min_adjustment_magnitude  = 0
-  name                      = "awseb-e-ipfavj64xz-stack-AWSEBAutoScalingScaleDownPolicy-Y49RXTNSDAQJ"
-  policy_type               = "SimpleScaling"
-  scaling_adjustment        = -1
-}
-
-resource "aws_autoscaling_policy" "awseb_e_ipfavj64xz_stack_AWSEBAutoScalingScaleUpPolicy_1FZGH811P09GL" {
-  adjustment_type           = "ChangeInCapacity"
-  autoscaling_group_name    = "awseb-e-ipfavj64xz-stack-AWSEBAutoScalingGroup-10EZHY36C0W3Z"
-  cooldown                  = 0
-  enabled                   = true
-  estimated_instance_warmup = 0
-  min_adjustment_magnitude  = 0
-  name                      = "awseb-e-ipfavj64xz-stack-AWSEBAutoScalingScaleUpPolicy-1FZGH811P09GL"
   policy_type               = "SimpleScaling"
   scaling_adjustment        = 1
 }
@@ -214,6 +214,30 @@ resource "aws_autoscaling_policy" "awseb_e_jhagz8maay_stack_AWSEBAutoScalingScal
   scaling_adjustment        = 1
 }
 
+resource "aws_autoscaling_policy" "awseb_e_p6bifdmp7h_stack_AWSEBAutoScalingScaleDownPolicy_V6SQJEGNRN3O" {
+  adjustment_type           = "ChangeInCapacity"
+  autoscaling_group_name    = "awseb-e-p6bifdmp7h-stack-AWSEBAutoScalingGroup-1V4A0JOX0NVPA"
+  cooldown                  = 0
+  enabled                   = true
+  estimated_instance_warmup = 0
+  min_adjustment_magnitude  = 0
+  name                      = "awseb-e-p6bifdmp7h-stack-AWSEBAutoScalingScaleDownPolicy-V6SQJEGNRN3O"
+  policy_type               = "SimpleScaling"
+  scaling_adjustment        = -1
+}
+
+resource "aws_autoscaling_policy" "awseb_e_p6bifdmp7h_stack_AWSEBAutoScalingScaleUpPolicy_2SU74CPESGKG" {
+  adjustment_type           = "ChangeInCapacity"
+  autoscaling_group_name    = "awseb-e-p6bifdmp7h-stack-AWSEBAutoScalingGroup-1V4A0JOX0NVPA"
+  cooldown                  = 0
+  enabled                   = true
+  estimated_instance_warmup = 0
+  min_adjustment_magnitude  = 0
+  name                      = "awseb-e-p6bifdmp7h-stack-AWSEBAutoScalingScaleUpPolicy-2SU74CPESGKG"
+  policy_type               = "SimpleScaling"
+  scaling_adjustment        = 1
+}
+
 resource "aws_autoscaling_policy" "awseb_e_pcw37ypdme_stack_AWSEBAutoScalingScaleDownPolicy_HG4KJV0Q69ZT" {
   adjustment_type           = "ChangeInCapacity"
   autoscaling_group_name    = "awseb-e-pcw37ypdme-stack-AWSEBAutoScalingGroup-165D32JDYUA6O"
@@ -262,26 +286,26 @@ resource "aws_autoscaling_policy" "awseb_e_rwv222b3qp_stack_AWSEBAutoScalingScal
   scaling_adjustment        = 1
 }
 
-resource "aws_autoscaling_policy" "awseb_e_udanqbam3f_stack_AWSEBAutoScalingScaleDownPolicy_KEGT5GEYPXRN" {
+resource "aws_autoscaling_policy" "awseb_e_tx62adwg2k_stack_AWSEBAutoScalingScaleDownPolicy_14XUDKZ14C737" {
   adjustment_type           = "ChangeInCapacity"
-  autoscaling_group_name    = "awseb-e-udanqbam3f-stack-AWSEBAutoScalingGroup-1PJGCX54MJZVZ"
+  autoscaling_group_name    = "awseb-e-tx62adwg2k-stack-AWSEBAutoScalingGroup-WZUPJM6LCB0K"
   cooldown                  = 0
   enabled                   = true
   estimated_instance_warmup = 0
   min_adjustment_magnitude  = 0
-  name                      = "awseb-e-udanqbam3f-stack-AWSEBAutoScalingScaleDownPolicy-KEGT5GEYPXRN"
+  name                      = "awseb-e-tx62adwg2k-stack-AWSEBAutoScalingScaleDownPolicy-14XUDKZ14C737"
   policy_type               = "SimpleScaling"
   scaling_adjustment        = -1
 }
 
-resource "aws_autoscaling_policy" "awseb_e_udanqbam3f_stack_AWSEBAutoScalingScaleUpPolicy_17CZHO24KYTYI" {
+resource "aws_autoscaling_policy" "awseb_e_tx62adwg2k_stack_AWSEBAutoScalingScaleUpPolicy_UCSEVJA3RP2B" {
   adjustment_type           = "ChangeInCapacity"
-  autoscaling_group_name    = "awseb-e-udanqbam3f-stack-AWSEBAutoScalingGroup-1PJGCX54MJZVZ"
+  autoscaling_group_name    = "awseb-e-tx62adwg2k-stack-AWSEBAutoScalingGroup-WZUPJM6LCB0K"
   cooldown                  = 0
   enabled                   = true
   estimated_instance_warmup = 0
   min_adjustment_magnitude  = 0
-  name                      = "awseb-e-udanqbam3f-stack-AWSEBAutoScalingScaleUpPolicy-17CZHO24KYTYI"
+  name                      = "awseb-e-tx62adwg2k-stack-AWSEBAutoScalingScaleUpPolicy-UCSEVJA3RP2B"
   policy_type               = "SimpleScaling"
   scaling_adjustment        = 1
 }

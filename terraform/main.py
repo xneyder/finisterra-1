@@ -35,7 +35,7 @@ def main():
     # provider.cloudmap()
     # provider.backup()
     # provider.guardduty()
-    # provider.apigateway() #Waiting for permissions
+    # provider.apigateway()
     # provider.apigatewayv2()
     # provider.wafv2()
     # provider.secretsmanager()
@@ -43,16 +43,17 @@ def main():
     # provider.sqs()
     # provider.sns()
     # provider.rds()
-    # provider.aws_lambda() #Waiting for permissions
-    # # provider.kms()  # tf refresh errors
+    # provider.aws_lambda() 
+    # provider.kms()  # tf refresh errors
     # provider.elasticbeanstalk()
     # provider.elb()
     # provider.elbv2()
-    provider.relations()
+    # provider.relations()
 
     print("Finished processing AWS resources.")
 
 
 if __name__ == "__main__":
-    provider = Aws(os.path.dirname(os.path.abspath(sys.argv[0])))
+    script_dir=os.path.dirname(os.path.abspath(sys.argv[0]))
+    provider = Aws(script_dir)
     main()

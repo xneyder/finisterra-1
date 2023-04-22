@@ -268,6 +268,60 @@ resource "aws_autoscaling_group_tag" "awseb_e_bner7vhrif_stack_AWSEBAutoScalingG
   }
 }
 
+resource "aws_autoscaling_group_tag" "awseb_e_fbj96npvkw_stack_AWSEBAutoScalingGroup_1MV2WEQG4C74B_tag_Name" {
+  autoscaling_group_name = "awseb-e-fbj96npvkw-stack-AWSEBAutoScalingGroup-1MV2WEQG4C74B"
+  tag {
+    key                 = "Name"
+    propagate_at_launch = true
+    value               = "identity-service-blue"
+  }
+}
+
+resource "aws_autoscaling_group_tag" "awseb_e_fbj96npvkw_stack_AWSEBAutoScalingGroup_1MV2WEQG4C74B_tag_aws_cloudformation_logical_id" {
+  autoscaling_group_name = "awseb-e-fbj96npvkw-stack-AWSEBAutoScalingGroup-1MV2WEQG4C74B"
+  tag {
+    key                 = "aws:cloudformation:logical-id"
+    propagate_at_launch = true
+    value               = "AWSEBAutoScalingGroup"
+  }
+}
+
+resource "aws_autoscaling_group_tag" "awseb_e_fbj96npvkw_stack_AWSEBAutoScalingGroup_1MV2WEQG4C74B_tag_aws_cloudformation_stack_id" {
+  autoscaling_group_name = "awseb-e-fbj96npvkw-stack-AWSEBAutoScalingGroup-1MV2WEQG4C74B"
+  tag {
+    key                 = "aws:cloudformation:stack-id"
+    propagate_at_launch = true
+    value               = "arn:aws-us-gov:cloudformation:us-gov-west-1:050779347855:stack/awseb-e-fbj96npvkw-stack/b1901640-de30-11ed-8b14-02612278158e"
+  }
+}
+
+resource "aws_autoscaling_group_tag" "awseb_e_fbj96npvkw_stack_AWSEBAutoScalingGroup_1MV2WEQG4C74B_tag_aws_cloudformation_stack_name" {
+  autoscaling_group_name = "awseb-e-fbj96npvkw-stack-AWSEBAutoScalingGroup-1MV2WEQG4C74B"
+  tag {
+    key                 = "aws:cloudformation:stack-name"
+    propagate_at_launch = true
+    value               = "awseb-e-fbj96npvkw-stack"
+  }
+}
+
+resource "aws_autoscaling_group_tag" "awseb_e_fbj96npvkw_stack_AWSEBAutoScalingGroup_1MV2WEQG4C74B_tag_elasticbeanstalk_environment_id" {
+  autoscaling_group_name = "awseb-e-fbj96npvkw-stack-AWSEBAutoScalingGroup-1MV2WEQG4C74B"
+  tag {
+    key                 = "elasticbeanstalk:environment-id"
+    propagate_at_launch = true
+    value               = "e-fbj96npvkw"
+  }
+}
+
+resource "aws_autoscaling_group_tag" "awseb_e_fbj96npvkw_stack_AWSEBAutoScalingGroup_1MV2WEQG4C74B_tag_elasticbeanstalk_environment_name" {
+  autoscaling_group_name = "awseb-e-fbj96npvkw-stack-AWSEBAutoScalingGroup-1MV2WEQG4C74B"
+  tag {
+    key                 = "elasticbeanstalk:environment-name"
+    propagate_at_launch = true
+    value               = "identity-service-blue"
+  }
+}
+
 resource "aws_autoscaling_group_tag" "awseb_e_fmzgrfkcqp_stack_AWSEBAutoScalingGroup_VMGLQ3UKK1KY_tag_Name" {
   autoscaling_group_name = "awseb-e-fmzgrfkcqp-stack-AWSEBAutoScalingGroup-VMGLQ3UKK1KY"
   tag {
@@ -319,60 +373,6 @@ resource "aws_autoscaling_group_tag" "awseb_e_fmzgrfkcqp_stack_AWSEBAutoScalingG
     key                 = "elasticbeanstalk:environment-name"
     propagate_at_launch = true
     value               = "book-service-blue"
-  }
-}
-
-resource "aws_autoscaling_group_tag" "awseb_e_ipfavj64xz_stack_AWSEBAutoScalingGroup_10EZHY36C0W3Z_tag_Name" {
-  autoscaling_group_name = "awseb-e-ipfavj64xz-stack-AWSEBAutoScalingGroup-10EZHY36C0W3Z"
-  tag {
-    key                 = "Name"
-    propagate_at_launch = true
-    value               = "capillary-web-ui-gateway-green"
-  }
-}
-
-resource "aws_autoscaling_group_tag" "awseb_e_ipfavj64xz_stack_AWSEBAutoScalingGroup_10EZHY36C0W3Z_tag_aws_cloudformation_logical_id" {
-  autoscaling_group_name = "awseb-e-ipfavj64xz-stack-AWSEBAutoScalingGroup-10EZHY36C0W3Z"
-  tag {
-    key                 = "aws:cloudformation:logical-id"
-    propagate_at_launch = true
-    value               = "AWSEBAutoScalingGroup"
-  }
-}
-
-resource "aws_autoscaling_group_tag" "awseb_e_ipfavj64xz_stack_AWSEBAutoScalingGroup_10EZHY36C0W3Z_tag_aws_cloudformation_stack_id" {
-  autoscaling_group_name = "awseb-e-ipfavj64xz-stack-AWSEBAutoScalingGroup-10EZHY36C0W3Z"
-  tag {
-    key                 = "aws:cloudformation:stack-id"
-    propagate_at_launch = true
-    value               = "arn:aws-us-gov:cloudformation:us-gov-west-1:050779347855:stack/awseb-e-ipfavj64xz-stack/a003a160-9b43-11ed-9ccf-0a6230a107d4"
-  }
-}
-
-resource "aws_autoscaling_group_tag" "awseb_e_ipfavj64xz_stack_AWSEBAutoScalingGroup_10EZHY36C0W3Z_tag_aws_cloudformation_stack_name" {
-  autoscaling_group_name = "awseb-e-ipfavj64xz-stack-AWSEBAutoScalingGroup-10EZHY36C0W3Z"
-  tag {
-    key                 = "aws:cloudformation:stack-name"
-    propagate_at_launch = true
-    value               = "awseb-e-ipfavj64xz-stack"
-  }
-}
-
-resource "aws_autoscaling_group_tag" "awseb_e_ipfavj64xz_stack_AWSEBAutoScalingGroup_10EZHY36C0W3Z_tag_elasticbeanstalk_environment_id" {
-  autoscaling_group_name = "awseb-e-ipfavj64xz-stack-AWSEBAutoScalingGroup-10EZHY36C0W3Z"
-  tag {
-    key                 = "elasticbeanstalk:environment-id"
-    propagate_at_launch = true
-    value               = "e-ipfavj64xz"
-  }
-}
-
-resource "aws_autoscaling_group_tag" "awseb_e_ipfavj64xz_stack_AWSEBAutoScalingGroup_10EZHY36C0W3Z_tag_elasticbeanstalk_environment_name" {
-  autoscaling_group_name = "awseb-e-ipfavj64xz-stack-AWSEBAutoScalingGroup-10EZHY36C0W3Z"
-  tag {
-    key                 = "elasticbeanstalk:environment-name"
-    propagate_at_launch = true
-    value               = "capillary-web-ui-gateway-green"
   }
 }
 
@@ -484,6 +484,60 @@ resource "aws_autoscaling_group_tag" "awseb_e_jhagz8maay_stack_AWSEBAutoScalingG
   }
 }
 
+resource "aws_autoscaling_group_tag" "awseb_e_p6bifdmp7h_stack_AWSEBAutoScalingGroup_1V4A0JOX0NVPA_tag_Name" {
+  autoscaling_group_name = "awseb-e-p6bifdmp7h-stack-AWSEBAutoScalingGroup-1V4A0JOX0NVPA"
+  tag {
+    key                 = "Name"
+    propagate_at_launch = true
+    value               = "capillary-web-ui-gateway-green"
+  }
+}
+
+resource "aws_autoscaling_group_tag" "awseb_e_p6bifdmp7h_stack_AWSEBAutoScalingGroup_1V4A0JOX0NVPA_tag_aws_cloudformation_logical_id" {
+  autoscaling_group_name = "awseb-e-p6bifdmp7h-stack-AWSEBAutoScalingGroup-1V4A0JOX0NVPA"
+  tag {
+    key                 = "aws:cloudformation:logical-id"
+    propagate_at_launch = true
+    value               = "AWSEBAutoScalingGroup"
+  }
+}
+
+resource "aws_autoscaling_group_tag" "awseb_e_p6bifdmp7h_stack_AWSEBAutoScalingGroup_1V4A0JOX0NVPA_tag_aws_cloudformation_stack_id" {
+  autoscaling_group_name = "awseb-e-p6bifdmp7h-stack-AWSEBAutoScalingGroup-1V4A0JOX0NVPA"
+  tag {
+    key                 = "aws:cloudformation:stack-id"
+    propagate_at_launch = true
+    value               = "arn:aws-us-gov:cloudformation:us-gov-west-1:050779347855:stack/awseb-e-p6bifdmp7h-stack/3f180880-de6b-11ed-b8f6-0668017e3ae6"
+  }
+}
+
+resource "aws_autoscaling_group_tag" "awseb_e_p6bifdmp7h_stack_AWSEBAutoScalingGroup_1V4A0JOX0NVPA_tag_aws_cloudformation_stack_name" {
+  autoscaling_group_name = "awseb-e-p6bifdmp7h-stack-AWSEBAutoScalingGroup-1V4A0JOX0NVPA"
+  tag {
+    key                 = "aws:cloudformation:stack-name"
+    propagate_at_launch = true
+    value               = "awseb-e-p6bifdmp7h-stack"
+  }
+}
+
+resource "aws_autoscaling_group_tag" "awseb_e_p6bifdmp7h_stack_AWSEBAutoScalingGroup_1V4A0JOX0NVPA_tag_elasticbeanstalk_environment_id" {
+  autoscaling_group_name = "awseb-e-p6bifdmp7h-stack-AWSEBAutoScalingGroup-1V4A0JOX0NVPA"
+  tag {
+    key                 = "elasticbeanstalk:environment-id"
+    propagate_at_launch = true
+    value               = "e-p6bifdmp7h"
+  }
+}
+
+resource "aws_autoscaling_group_tag" "awseb_e_p6bifdmp7h_stack_AWSEBAutoScalingGroup_1V4A0JOX0NVPA_tag_elasticbeanstalk_environment_name" {
+  autoscaling_group_name = "awseb-e-p6bifdmp7h-stack-AWSEBAutoScalingGroup-1V4A0JOX0NVPA"
+  tag {
+    key                 = "elasticbeanstalk:environment-name"
+    propagate_at_launch = true
+    value               = "capillary-web-ui-gateway-green"
+  }
+}
+
 resource "aws_autoscaling_group_tag" "awseb_e_pcw37ypdme_stack_AWSEBAutoScalingGroup_165D32JDYUA6O_tag_Name" {
   autoscaling_group_name = "awseb-e-pcw37ypdme-stack-AWSEBAutoScalingGroup-165D32JDYUA6O"
   tag {
@@ -592,17 +646,17 @@ resource "aws_autoscaling_group_tag" "awseb_e_rwv222b3qp_stack_AWSEBAutoScalingG
   }
 }
 
-resource "aws_autoscaling_group_tag" "awseb_e_udanqbam3f_stack_AWSEBAutoScalingGroup_1PJGCX54MJZVZ_tag_Name" {
-  autoscaling_group_name = "awseb-e-udanqbam3f-stack-AWSEBAutoScalingGroup-1PJGCX54MJZVZ"
+resource "aws_autoscaling_group_tag" "awseb_e_tx62adwg2k_stack_AWSEBAutoScalingGroup_WZUPJM6LCB0K_tag_Name" {
+  autoscaling_group_name = "awseb-e-tx62adwg2k-stack-AWSEBAutoScalingGroup-WZUPJM6LCB0K"
   tag {
     key                 = "Name"
     propagate_at_launch = true
-    value               = "identity-service-blue"
+    value               = "identity-service-green"
   }
 }
 
-resource "aws_autoscaling_group_tag" "awseb_e_udanqbam3f_stack_AWSEBAutoScalingGroup_1PJGCX54MJZVZ_tag_aws_cloudformation_logical_id" {
-  autoscaling_group_name = "awseb-e-udanqbam3f-stack-AWSEBAutoScalingGroup-1PJGCX54MJZVZ"
+resource "aws_autoscaling_group_tag" "awseb_e_tx62adwg2k_stack_AWSEBAutoScalingGroup_WZUPJM6LCB0K_tag_aws_cloudformation_logical_id" {
+  autoscaling_group_name = "awseb-e-tx62adwg2k-stack-AWSEBAutoScalingGroup-WZUPJM6LCB0K"
   tag {
     key                 = "aws:cloudformation:logical-id"
     propagate_at_launch = true
@@ -610,39 +664,39 @@ resource "aws_autoscaling_group_tag" "awseb_e_udanqbam3f_stack_AWSEBAutoScalingG
   }
 }
 
-resource "aws_autoscaling_group_tag" "awseb_e_udanqbam3f_stack_AWSEBAutoScalingGroup_1PJGCX54MJZVZ_tag_aws_cloudformation_stack_id" {
-  autoscaling_group_name = "awseb-e-udanqbam3f-stack-AWSEBAutoScalingGroup-1PJGCX54MJZVZ"
+resource "aws_autoscaling_group_tag" "awseb_e_tx62adwg2k_stack_AWSEBAutoScalingGroup_WZUPJM6LCB0K_tag_aws_cloudformation_stack_id" {
+  autoscaling_group_name = "awseb-e-tx62adwg2k-stack-AWSEBAutoScalingGroup-WZUPJM6LCB0K"
   tag {
     key                 = "aws:cloudformation:stack-id"
     propagate_at_launch = true
-    value               = "arn:aws-us-gov:cloudformation:us-gov-west-1:050779347855:stack/awseb-e-udanqbam3f-stack/ad65d410-55a5-11ed-bcb9-06a846c75e3e"
+    value               = "arn:aws-us-gov:cloudformation:us-gov-west-1:050779347855:stack/awseb-e-tx62adwg2k-stack/72ad22f0-de2c-11ed-8b14-02612278158e"
   }
 }
 
-resource "aws_autoscaling_group_tag" "awseb_e_udanqbam3f_stack_AWSEBAutoScalingGroup_1PJGCX54MJZVZ_tag_aws_cloudformation_stack_name" {
-  autoscaling_group_name = "awseb-e-udanqbam3f-stack-AWSEBAutoScalingGroup-1PJGCX54MJZVZ"
+resource "aws_autoscaling_group_tag" "awseb_e_tx62adwg2k_stack_AWSEBAutoScalingGroup_WZUPJM6LCB0K_tag_aws_cloudformation_stack_name" {
+  autoscaling_group_name = "awseb-e-tx62adwg2k-stack-AWSEBAutoScalingGroup-WZUPJM6LCB0K"
   tag {
     key                 = "aws:cloudformation:stack-name"
     propagate_at_launch = true
-    value               = "awseb-e-udanqbam3f-stack"
+    value               = "awseb-e-tx62adwg2k-stack"
   }
 }
 
-resource "aws_autoscaling_group_tag" "awseb_e_udanqbam3f_stack_AWSEBAutoScalingGroup_1PJGCX54MJZVZ_tag_elasticbeanstalk_environment_id" {
-  autoscaling_group_name = "awseb-e-udanqbam3f-stack-AWSEBAutoScalingGroup-1PJGCX54MJZVZ"
+resource "aws_autoscaling_group_tag" "awseb_e_tx62adwg2k_stack_AWSEBAutoScalingGroup_WZUPJM6LCB0K_tag_elasticbeanstalk_environment_id" {
+  autoscaling_group_name = "awseb-e-tx62adwg2k-stack-AWSEBAutoScalingGroup-WZUPJM6LCB0K"
   tag {
     key                 = "elasticbeanstalk:environment-id"
     propagate_at_launch = true
-    value               = "e-udanqbam3f"
+    value               = "e-tx62adwg2k"
   }
 }
 
-resource "aws_autoscaling_group_tag" "awseb_e_udanqbam3f_stack_AWSEBAutoScalingGroup_1PJGCX54MJZVZ_tag_elasticbeanstalk_environment_name" {
-  autoscaling_group_name = "awseb-e-udanqbam3f-stack-AWSEBAutoScalingGroup-1PJGCX54MJZVZ"
+resource "aws_autoscaling_group_tag" "awseb_e_tx62adwg2k_stack_AWSEBAutoScalingGroup_WZUPJM6LCB0K_tag_elasticbeanstalk_environment_name" {
+  autoscaling_group_name = "awseb-e-tx62adwg2k-stack-AWSEBAutoScalingGroup-WZUPJM6LCB0K"
   tag {
     key                 = "elasticbeanstalk:environment-name"
     propagate_at_launch = true
-    value               = "identity-service-blue"
+    value               = "identity-service-green"
   }
 }
 

@@ -1,6 +1,7 @@
 import os
 import boto3
 import os
+import re
 import subprocess
 import shutil
 import json
@@ -88,11 +89,11 @@ class Aws:
         with open(file_path, 'r') as file:
             state_data = json.load(file)
 
-        arn_mapping = {}
+        id_mapping = {}
         resources = state_data.get('resources', [])
 
         for resource in resources:
-            resource_name = resource.get('name', '')
+            resource_type = resource.get('type', '')
             instances = resource.get('instances', [])
 
             for instance in instances:
@@ -100,26 +101,147 @@ class Aws:
                 arn = attributes.get('arn', '')
 
                 if arn:
-                    arn_mapping[arn] = resource_name
+                    id_mapping[arn] = {'resource_type': resource_type, 'type': 'arn', 'id': instance.get('attributes').get('id')}
 
-        return arn_mapping
+        return id_mapping
 
     def process_terraform_state_files(self, folder_path):
-        arn_to_resource_name = {}
+        id_ro_resource_type = {}
 
         for root, _, files in os.walk(folder_path):
             for file_name in files:
                 if file_name.endswith('.tfstate'):
                     file_path = os.path.join(root, file_name)
-                    arn_mapping = self.extract_arns_from_state_file(file_path)
-                    arn_to_resource_name.update(arn_mapping)
+                    id_mapping = self.extract_arns_from_state_file(file_path)
+                    id_ro_resource_type.update(id_mapping)
 
-        return arn_to_resource_name
+        return id_ro_resource_type
+
+    
+    def extract_arns(self, value, resource_type, field, attributes_id, result):
+        arn_pattern = re.compile(r'^arn:aws[a-zA-Z-]*:([a-zA-Z0-9-_]+):[a-z0-9-]*:[0-9]{12}:[a-zA-Z0-9-_/]+')
+
+        if isinstance(value, list):
+            for item in value:
+                if arn_pattern.match(str(item)):
+                    result.append({
+                        "resource_type": resource_type,
+                        "field": field,
+                        "value": item,
+                        "id": attributes_id
+                    })
+        elif isinstance(value, dict):
+            for nested_field, nested_value in value.items():
+                self.extract_arns(nested_value, resource_type, f"{field}.{nested_field}", attributes_id, result)
+        elif arn_pattern.match(str(value)):
+            result.append({
+                "resource_type": resource_type,
+                "field": field,
+                "value": value,
+                "id": attributes_id
+            })
+
+    def arns_from_state_file(self,file_path):
+        with open(file_path, 'r') as file:
+            state_data = json.load(file)
+
+        resources = state_data.get('resources', [])
+        result = []
+
+        for resource in resources:
+            resource_type = resource.get('type', '')
+            instances = resource.get('instances', [])
+
+            for instance in instances:
+                attributes = instance.get('attributes', {})
+                attributes_id = attributes.get('id', '')
+
+                for field, value in attributes.items():
+                    self.extract_arns(value, resource_type, field, attributes_id, result)
+
+        return result
+
+    def process_and_collect_arns(self,folder_path):
+        all_arns = []
+
+        for root, _, files in os.walk(folder_path):
+            for file_name in files:
+                if file_name.endswith('.tfstate'):
+                    file_path = os.path.join(root, file_name)
+                    all_arns.extend(self.arns_from_state_file(file_path))
+
+        return all_arns
+    
+    def find_children(self, current_arn, collected_arns, id_ro_resource_type, relations, visited):
+        if current_arn not in id_ro_resource_type or current_arn in visited:
+            return
+
+        visited.add(current_arn)
+        parent_resource_type = id_ro_resource_type[current_arn]['resource_type']
+
+        for arn_info in collected_arns:
+            value = arn_info['value']
+            if value == current_arn and arn_info['resource_type'] != parent_resource_type:
+                if current_arn not in relations:
+                    relations[current_arn] = {
+                        "parent": {
+                            "id": id_ro_resource_type[current_arn]['id'],
+                            "resource_type": parent_resource_type,
+                        },
+                        "children": []
+                    }
+
+                child = {
+                    "id": arn_info['id'],
+                    "resource_type": arn_info['resource_type'],
+                    "field": arn_info['field'],
+                    "value": arn_info['value']
+                }
+
+                relations[current_arn]['children'].append(child)
+
+                # Recursively find children of the current child
+                self.find_children(child['value'], collected_arns, id_ro_resource_type, relations, visited)
+
+    def compare_arns(self, collected_arns, id_ro_resource_type):
+        relations = {}
+        visited = set()
+
+        for arn_info in collected_arns:
+            value = arn_info['value']
+            self.find_children(value, collected_arns, id_ro_resource_type, relations, visited)
+
+        return relations
+
+
+
+    def display_relations(self, relations):
+        for arn, relation in relations.items():
+            print("Parent:")
+            print(f"ARN: {arn}")
+            print("  ID:", relation['parent']['id'])
+            print("  Resource Type:", relation['parent']['resource_type'])
+            print("Children:")
+            for child in relation['children']:
+                print("  ID:", child['id'])
+                print("  Resource Type:", child['resource_type'])
+                print("  Field:", child['field'])
+                print("  Value:", child['value'])
+                print()
 
     def relations(self):
-        arn_to_resource_name = self.process_terraform_state_files("generated")
-        print("ARN to Resource Name mapping:")
-        print(json.dumps(arn_to_resource_name, indent=2))
+        tffiles_folder = os.path.join(self.script_dir, "generated")
+        id_ro_resource_type = self.process_terraform_state_files(tffiles_folder)
+        # print("ARN to Resource Name mapping:")
+        # print(json.dumps(id_ro_resource_type, indent=2))
+
+        collected_arns = self.process_and_collect_arns(tffiles_folder)
+        # print("ARN information collected:")
+        # print(json.dumps(collected_arns, indent=2))
+
+        relations=self.compare_arns(collected_arns, id_ro_resource_type)
+        self.display_relations(relations)
+
 
 
     def create_folder(self, folder):

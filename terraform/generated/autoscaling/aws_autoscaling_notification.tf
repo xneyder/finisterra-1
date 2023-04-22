@@ -48,9 +48,9 @@ resource "aws_autoscaling_notification" "awseb_e_bner7vhrif_stack_AWSEBAutoScali
   topic_arn = "arn:aws-us-gov:sns:us-gov-west-1:143707052809:awseb-healthd-asg-notifications"
 }
 
-resource "aws_autoscaling_notification" "awseb_e_fmzgrfkcqp_stack_AWSEBAutoScalingGroup_VMGLQ3UKK1KY_notification_awseb_healthd_asg_notifications" {
+resource "aws_autoscaling_notification" "awseb_e_fbj96npvkw_stack_AWSEBAutoScalingGroup_1MV2WEQG4C74B_notification_awseb_healthd_asg_notifications" {
   group_names = [
-    "awseb-e-fmzgrfkcqp-stack-AWSEBAutoScalingGroup-VMGLQ3UKK1KY"
+    "awseb-e-fbj96npvkw-stack-AWSEBAutoScalingGroup-1MV2WEQG4C74B"
   ]
   notifications = [
     "autoscaling:EC2_INSTANCE_LAUNCH", "autoscaling:EC2_INSTANCE_LAUNCH_ERROR", "autoscaling:EC2_INSTANCE_TERMINATE", "autoscaling:EC2_INSTANCE_TERMINATE_ERROR"
@@ -58,9 +58,9 @@ resource "aws_autoscaling_notification" "awseb_e_fmzgrfkcqp_stack_AWSEBAutoScali
   topic_arn = "arn:aws-us-gov:sns:us-gov-west-1:143707052809:awseb-healthd-asg-notifications"
 }
 
-resource "aws_autoscaling_notification" "awseb_e_ipfavj64xz_stack_AWSEBAutoScalingGroup_10EZHY36C0W3Z_notification_awseb_healthd_asg_notifications" {
+resource "aws_autoscaling_notification" "awseb_e_fmzgrfkcqp_stack_AWSEBAutoScalingGroup_VMGLQ3UKK1KY_notification_awseb_healthd_asg_notifications" {
   group_names = [
-    "awseb-e-ipfavj64xz-stack-AWSEBAutoScalingGroup-10EZHY36C0W3Z"
+    "awseb-e-fmzgrfkcqp-stack-AWSEBAutoScalingGroup-VMGLQ3UKK1KY"
   ]
   notifications = [
     "autoscaling:EC2_INSTANCE_LAUNCH", "autoscaling:EC2_INSTANCE_LAUNCH_ERROR", "autoscaling:EC2_INSTANCE_TERMINATE", "autoscaling:EC2_INSTANCE_TERMINATE_ERROR"
@@ -88,6 +88,16 @@ resource "aws_autoscaling_notification" "awseb_e_jhagz8maay_stack_AWSEBAutoScali
   topic_arn = "arn:aws-us-gov:sns:us-gov-west-1:143707052809:awseb-healthd-asg-notifications"
 }
 
+resource "aws_autoscaling_notification" "awseb_e_p6bifdmp7h_stack_AWSEBAutoScalingGroup_1V4A0JOX0NVPA_notification_awseb_healthd_asg_notifications" {
+  group_names = [
+    "awseb-e-p6bifdmp7h-stack-AWSEBAutoScalingGroup-1V4A0JOX0NVPA"
+  ]
+  notifications = [
+    "autoscaling:EC2_INSTANCE_LAUNCH", "autoscaling:EC2_INSTANCE_LAUNCH_ERROR", "autoscaling:EC2_INSTANCE_TERMINATE", "autoscaling:EC2_INSTANCE_TERMINATE_ERROR"
+  ]
+  topic_arn = "arn:aws-us-gov:sns:us-gov-west-1:143707052809:awseb-healthd-asg-notifications"
+}
+
 resource "aws_autoscaling_notification" "awseb_e_pcw37ypdme_stack_AWSEBAutoScalingGroup_165D32JDYUA6O_notification_awseb_healthd_asg_notifications" {
   group_names = [
     "awseb-e-pcw37ypdme-stack-AWSEBAutoScalingGroup-165D32JDYUA6O"
@@ -108,9 +118,9 @@ resource "aws_autoscaling_notification" "awseb_e_rwv222b3qp_stack_AWSEBAutoScali
   topic_arn = "arn:aws-us-gov:sns:us-gov-west-1:143707052809:awseb-healthd-asg-notifications"
 }
 
-resource "aws_autoscaling_notification" "awseb_e_udanqbam3f_stack_AWSEBAutoScalingGroup_1PJGCX54MJZVZ_notification_awseb_healthd_asg_notifications" {
+resource "aws_autoscaling_notification" "awseb_e_tx62adwg2k_stack_AWSEBAutoScalingGroup_WZUPJM6LCB0K_notification_awseb_healthd_asg_notifications" {
   group_names = [
-    "awseb-e-udanqbam3f-stack-AWSEBAutoScalingGroup-1PJGCX54MJZVZ"
+    "awseb-e-tx62adwg2k-stack-AWSEBAutoScalingGroup-WZUPJM6LCB0K"
   ]
   notifications = [
     "autoscaling:EC2_INSTANCE_LAUNCH", "autoscaling:EC2_INSTANCE_LAUNCH_ERROR", "autoscaling:EC2_INSTANCE_TERMINATE", "autoscaling:EC2_INSTANCE_TERMINATE_ERROR"

@@ -1,23 +1,3 @@
-resource "aws_docdb_cluster_snapshot" "rds_general_documentdb_01_2023_03_29_02_25" {
-  db_cluster_identifier          = "general-documentdb-01"
-  db_cluster_snapshot_identifier = "rds:general-documentdb-01-2023-03-29-02-25"
-}
-
-resource "aws_docdb_cluster_snapshot" "rds_general_documentdb_01_2023_03_30_02_25" {
-  db_cluster_identifier          = "general-documentdb-01"
-  db_cluster_snapshot_identifier = "rds:general-documentdb-01-2023-03-30-02-25"
-}
-
-resource "aws_docdb_cluster_snapshot" "rds_general_documentdb_01_2023_03_31_02_25" {
-  db_cluster_identifier          = "general-documentdb-01"
-  db_cluster_snapshot_identifier = "rds:general-documentdb-01-2023-03-31-02-25"
-}
-
-resource "aws_docdb_cluster_snapshot" "rds_general_documentdb_01_2023_04_01_02_25" {
-  db_cluster_identifier          = "general-documentdb-01"
-  db_cluster_snapshot_identifier = "rds:general-documentdb-01-2023-04-01-02-25"
-}
-
 resource "aws_docdb_cluster_snapshot" "rds_general_documentdb_01_2023_04_02_02_25" {
   db_cluster_identifier          = "general-documentdb-01"
   db_cluster_snapshot_identifier = "rds:general-documentdb-01-2023-04-02-02-25"
@@ -101,5 +81,25 @@ resource "aws_docdb_cluster_snapshot" "rds_general_documentdb_01_2023_04_17_02_2
 resource "aws_docdb_cluster_snapshot" "rds_general_documentdb_01_2023_04_18_02_25" {
   db_cluster_identifier          = "general-documentdb-01"
   db_cluster_snapshot_identifier = "rds:general-documentdb-01-2023-04-18-02-25"
+}
+
+resource "aws_docdb_cluster_snapshot" "rds_general_documentdb_01_2023_04_19_02_25" {
+  db_cluster_identifier          = "general-documentdb-01"
+  db_cluster_snapshot_identifier = "rds:general-documentdb-01-2023-04-19-02-25"
+}
+
+resource "aws_docdb_cluster_snapshot" "rds_general_documentdb_01_2023_04_20_02_25" {
+  db_cluster_identifier          = "general-documentdb-01"
+  db_cluster_snapshot_identifier = "rds:general-documentdb-01-2023-04-20-02-25"
+}
+
+resource "aws_docdb_cluster_snapshot" "rds_general_documentdb_01_2023_04_21_02_25" {
+  db_cluster_identifier          = "general-documentdb-01"
+  db_cluster_snapshot_identifier = "rds:general-documentdb-01-2023-04-21-02-25"
+}
+
+resource "aws_docdb_cluster_snapshot" "rds_general_documentdb_01_2023_04_22_02_25" {
+  db_cluster_identifier          = "general-documentdb-01"
+  db_cluster_snapshot_identifier = "rds:general-documentdb-01-2023-04-22-02-25"
 }
 

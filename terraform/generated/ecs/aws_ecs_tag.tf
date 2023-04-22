@@ -10,18 +10,6 @@ resource "aws_ecs_tag" "_0b48f8e10fcf41ecaa9c911a569f6fbd_tag_aws_ecs_serviceNam
   value        = "media-asset-service"
 }
 
-resource "aws_ecs_tag" "_0db8dbd2185c4c0184e80f58fee8ba1d_tag_aws_ecs_clusterName" {
-  key          = "aws:ecs:clusterName"
-  resource_arn = "arn:aws-us-gov:ecs:us-gov-west-1:050779347855:task/production/0db8dbd2185c4c0184e80f58fee8ba1d"
-  value        = "production"
-}
-
-resource "aws_ecs_tag" "_0db8dbd2185c4c0184e80f58fee8ba1d_tag_aws_ecs_serviceName" {
-  key          = "aws:ecs:serviceName"
-  resource_arn = "arn:aws-us-gov:ecs:us-gov-west-1:050779347855:task/production/0db8dbd2185c4c0184e80f58fee8ba1d"
-  value        = "instructor-graphql-api"
-}
-
 resource "aws_ecs_tag" "_14f0545ed2694b669ff439e7558123df_tag_aws_ecs_clusterName" {
   key          = "aws:ecs:clusterName"
   resource_arn = "arn:aws-us-gov:ecs:us-gov-west-1:050779347855:task/production/14f0545ed2694b669ff439e7558123df"
@@ -334,16 +322,16 @@ resource "aws_ecs_tag" "_4f6f5f23a8f44ff1bf45de3030730c27_tag_aws_ecs_serviceNam
   value        = "book-tree-service"
 }
 
-resource "aws_ecs_tag" "_564b3e343abe4dd997c1b8fec33edd2a_tag_aws_ecs_clusterName" {
+resource "aws_ecs_tag" "_50c3972c8cc948238ed9a8033935319b_tag_aws_ecs_clusterName" {
   key          = "aws:ecs:clusterName"
-  resource_arn = "arn:aws-us-gov:ecs:us-gov-west-1:050779347855:task/production/564b3e343abe4dd997c1b8fec33edd2a"
+  resource_arn = "arn:aws-us-gov:ecs:us-gov-west-1:050779347855:task/production/50c3972c8cc948238ed9a8033935319b"
   value        = "production"
 }
 
-resource "aws_ecs_tag" "_564b3e343abe4dd997c1b8fec33edd2a_tag_aws_ecs_serviceName" {
+resource "aws_ecs_tag" "_50c3972c8cc948238ed9a8033935319b_tag_aws_ecs_serviceName" {
   key          = "aws:ecs:serviceName"
-  resource_arn = "arn:aws-us-gov:ecs:us-gov-west-1:050779347855:task/production/564b3e343abe4dd997c1b8fec33edd2a"
-  value        = "instructor-graphql-api"
+  resource_arn = "arn:aws-us-gov:ecs:us-gov-west-1:050779347855:task/production/50c3972c8cc948238ed9a8033935319b"
+  value        = "builder-service"
 }
 
 resource "aws_ecs_tag" "_5bd63dba81ef43ae9e6bf35496e60729_tag_aws_ecs_clusterName" {
@@ -380,18 +368,6 @@ resource "aws_ecs_tag" "_65f0369136e041aaa94f8d0cd9684da7_tag_aws_ecs_serviceNam
   key          = "aws:ecs:serviceName"
   resource_arn = "arn:aws-us-gov:ecs:us-gov-west-1:050779347855:task/production/65f0369136e041aaa94f8d0cd9684da7"
   value        = "aws-xray-daemon"
-}
-
-resource "aws_ecs_tag" "_6643b3b51de34e8b9f65ca154cc066db_tag_aws_ecs_clusterName" {
-  key          = "aws:ecs:clusterName"
-  resource_arn = "arn:aws-us-gov:ecs:us-gov-west-1:050779347855:task/production/6643b3b51de34e8b9f65ca154cc066db"
-  value        = "production"
-}
-
-resource "aws_ecs_tag" "_6643b3b51de34e8b9f65ca154cc066db_tag_aws_ecs_serviceName" {
-  key          = "aws:ecs:serviceName"
-  resource_arn = "arn:aws-us-gov:ecs:us-gov-west-1:050779347855:task/production/6643b3b51de34e8b9f65ca154cc066db"
-  value        = "builder-service"
 }
 
 resource "aws_ecs_tag" "_6d75c6c324024816b29ae0284e1512eb_tag_aws_ecs_clusterName" {
@@ -658,6 +634,18 @@ resource "aws_ecs_tag" "_9ae5827e93a7489aa1da7a186ba7684e_tag_aws_ecs_serviceNam
   value        = "builder-sqs-task"
 }
 
+resource "aws_ecs_tag" "_9c00deef89e74421b3a23781f8b1042a_tag_aws_ecs_clusterName" {
+  key          = "aws:ecs:clusterName"
+  resource_arn = "arn:aws-us-gov:ecs:us-gov-west-1:050779347855:task/production/9c00deef89e74421b3a23781f8b1042a"
+  value        = "production"
+}
+
+resource "aws_ecs_tag" "_9c00deef89e74421b3a23781f8b1042a_tag_aws_ecs_serviceName" {
+  key          = "aws:ecs:serviceName"
+  resource_arn = "arn:aws-us-gov:ecs:us-gov-west-1:050779347855:task/production/9c00deef89e74421b3a23781f8b1042a"
+  value        = "instructor-graphql-api"
+}
+
 resource "aws_ecs_tag" "_9e02e89b1d5c439f823caa59efbbc917_tag_aws_ecs_clusterName" {
   key          = "aws:ecs:clusterName"
   resource_arn = "arn:aws-us-gov:ecs:us-gov-west-1:050779347855:task/production/9e02e89b1d5c439f823caa59efbbc917"
@@ -814,10 +802,10 @@ resource "aws_ecs_tag" "builder_publisher_task_3_tag_Version" {
   value        = "1.0-74"
 }
 
-resource "aws_ecs_tag" "builder_service_15_tag_Version" {
+resource "aws_ecs_tag" "builder_service_16_tag_Version" {
   key          = "Version"
-  resource_arn = "arn:aws-us-gov:ecs:us-gov-west-1:050779347855:task-definition/builder-service:15"
-  value        = "1.0-815"
+  resource_arn = "arn:aws-us-gov:ecs:us-gov-west-1:050779347855:task-definition/builder-service:16"
+  value        = "1.0-816"
 }
 
 resource "aws_ecs_tag" "builder_sqs_task_3_tag_Version" {
@@ -904,16 +892,16 @@ resource "aws_ecs_tag" "c6402e8794dc400eb125454a343ce43a_tag_aws_ecs_serviceName
   value        = "spring-config-server"
 }
 
-resource "aws_ecs_tag" "cb35c833c9e64a2b8dcaac725b527d0c_tag_aws_ecs_clusterName" {
+resource "aws_ecs_tag" "c88cf381f6804ba2b55dd48577a44445_tag_aws_ecs_clusterName" {
   key          = "aws:ecs:clusterName"
-  resource_arn = "arn:aws-us-gov:ecs:us-gov-west-1:050779347855:task/production/cb35c833c9e64a2b8dcaac725b527d0c"
+  resource_arn = "arn:aws-us-gov:ecs:us-gov-west-1:050779347855:task/production/c88cf381f6804ba2b55dd48577a44445"
   value        = "production"
 }
 
-resource "aws_ecs_tag" "cb35c833c9e64a2b8dcaac725b527d0c_tag_aws_ecs_serviceName" {
+resource "aws_ecs_tag" "c88cf381f6804ba2b55dd48577a44445_tag_aws_ecs_serviceName" {
   key          = "aws:ecs:serviceName"
-  resource_arn = "arn:aws-us-gov:ecs:us-gov-west-1:050779347855:task/production/cb35c833c9e64a2b8dcaac725b527d0c"
-  value        = "builder-service"
+  resource_arn = "arn:aws-us-gov:ecs:us-gov-west-1:050779347855:task/production/c88cf381f6804ba2b55dd48577a44445"
+  value        = "instructor-graphql-api"
 }
 
 resource "aws_ecs_tag" "ccfc94843a0f4fa6a3358515d04a689b_tag_aws_ecs_clusterName" {
@@ -1144,6 +1132,18 @@ resource "aws_ecs_tag" "ec63bc3ffd004c55916dd86adfeb5df8_tag_aws_ecs_serviceName
   value        = "registration-validation-service"
 }
 
+resource "aws_ecs_tag" "ec6d5c864fa34ba594a20d33bdc55d53_tag_aws_ecs_clusterName" {
+  key          = "aws:ecs:clusterName"
+  resource_arn = "arn:aws-us-gov:ecs:us-gov-west-1:050779347855:task/production/ec6d5c864fa34ba594a20d33bdc55d53"
+  value        = "production"
+}
+
+resource "aws_ecs_tag" "ec6d5c864fa34ba594a20d33bdc55d53_tag_aws_ecs_serviceName" {
+  key          = "aws:ecs:serviceName"
+  resource_arn = "arn:aws-us-gov:ecs:us-gov-west-1:050779347855:task/production/ec6d5c864fa34ba594a20d33bdc55d53"
+  value        = "builder-service"
+}
+
 resource "aws_ecs_tag" "ed491c912085499b8f10f75286aceb60_tag_aws_ecs_clusterName" {
   key          = "aws:ecs:clusterName"
   resource_arn = "arn:aws-us-gov:ecs:us-gov-west-1:050779347855:task/production/ed491c912085499b8f10f75286aceb60"
@@ -1282,10 +1282,10 @@ resource "aws_ecs_tag" "image_scaling_service_3_tag_Version" {
   value        = "1.0-13"
 }
 
-resource "aws_ecs_tag" "instructor_graphql_api_8_tag_Version" {
+resource "aws_ecs_tag" "instructor_graphql_api_9_tag_Version" {
   key          = "Version"
-  resource_arn = "arn:aws-us-gov:ecs:us-gov-west-1:050779347855:task-definition/instructor-graphql-api:8"
-  value        = "1.0-119"
+  resource_arn = "arn:aws-us-gov:ecs:us-gov-west-1:050779347855:task-definition/instructor-graphql-api:9"
+  value        = "1.0-120"
 }
 
 resource "aws_ecs_tag" "learner_graphql_api_5_tag_Version" {
@@ -1390,10 +1390,10 @@ resource "aws_ecs_tag" "spring_config_server_4_tag_Version" {
   value        = "1.0-54"
 }
 
-resource "aws_ecs_tag" "survey_form_service_1_tag_Version" {
+resource "aws_ecs_tag" "survey_form_service_2_tag_Version" {
   key          = "Version"
-  resource_arn = "arn:aws-us-gov:ecs:us-gov-west-1:050779347855:task-definition/survey-form-service:1"
-  value        = "1.0-6"
+  resource_arn = "arn:aws-us-gov:ecs:us-gov-west-1:050779347855:task-definition/survey-form-service:2"
+  value        = "1.0-8"
 }
 
 resource "aws_ecs_tag" "team_service_3_tag_Version" {

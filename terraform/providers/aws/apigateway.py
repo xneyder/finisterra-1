@@ -1,11 +1,62 @@
 import os
 from utils.hcl import HCL
 
+def replace_backslashes(value):
+    return value.replace("\\", "\\\\") if isinstance(value, str) else value
+
+def escape_quotes(value):
+    return value.replace('"', '\\"') if isinstance(value, str) else value
+
+def drop_new_lines(value):
+    return value.replace("\n", "") if isinstance(value, str) else value
+
+def process_template(input_dict):
+    output = '{\n'
+    for key, value in input_dict.items():
+        value = value.replace('\n', '\n    ')
+        formatted_value = f'<<EOF\n{value}\nEOF'
+        output += f'  "{key}" : {formatted_value},\n'
+    output = output.rstrip(',\n') + '\n}'
+    return output
+
 
 class Apigateway:
     def __init__(self, apigateway_client, script_dir, provider_name, schema_data, region):
         self.apigateway_client = apigateway_client
-        self.transform_rules = {}
+        self.transform_rules = {
+            "aws_api_gateway_authorizer": {
+                "hcl_apply_function": {
+                    "identity_validation_expression": {'function':[replace_backslashes]}
+                },
+            },
+            "aws_api_gateway_documentation_part": {
+                "hcl_apply_function": {
+                    "properties": {'function':[drop_new_lines,replace_backslashes,escape_quotes]}
+                },
+            },
+            "aws_api_gateway_integration": {
+                "hcl_apply_function_dict": {
+                    "request_templates": {'function':[process_template]}
+                },
+            },
+            "aws_api_gateway_gateway_response": {
+                "hcl_apply_function_dict": {
+                    "response_templates": {'function':[process_template]}
+                },
+            },
+            "aws_api_gateway_integration_response": {
+                "hcl_apply_function_dict": {
+                    "response_templates": {'function':[process_template]}
+                },
+            },
+            "aws_api_gateway_model": {
+                "hcl_json_multiline": {"schema": True}
+            },
+            "aws_api_gateway_rest_api_policy": {
+                "hcl_json_multiline": {"policy": True}
+            },
+
+        }
         self.provider_name = provider_name
         self.script_dir = script_dir
         self.schema_data = schema_data
@@ -107,18 +158,18 @@ class Apigateway:
                 attributes = {
                     "id": authorizer_id,
                     "rest_api_id": rest_api["id"],
-                    "name": authorizer["name"],
-                    "type": authorizer["type"],
+                    # "name": authorizer["name"],
+                    # "type": authorizer["type"],
                 }
 
-                if "authorizerUri" in authorizer:
-                    attributes["authorizer_uri"] = authorizer["authorizerUri"]
+                # if "authorizerUri" in authorizer:
+                #     attributes["authorizer_uri"] = authorizer["authorizerUri"]
 
-                if "authorizerCredentials" in authorizer:
-                    attributes["authorizer_credentials"] = authorizer["authorizerCredentials"]
+                # if "authorizerCredentials" in authorizer:
+                #     attributes["authorizer_credentials"] = authorizer["authorizerCredentials"]
 
-                if "identitySource" in authorizer:
-                    attributes["identity_source"] = authorizer["identitySource"]
+                # if "identitySource" in authorizer:
+                #     attributes["identity_source"] = authorizer["identitySource"]
 
                 self.hcl.process_resource(
                     "aws_api_gateway_authorizer", authorizer_id, attributes)
@@ -138,7 +189,7 @@ class Apigateway:
                     f"  Processing API Gateway Base Path Mapping: {base_path_mapping['basePath']}")
 
                 attributes = {
-                    "id": f"{domain_name['domainName']}-{base_path_mapping['basePath']}",
+                    "id": f"{domain_name['domainName']}/{base_path_mapping['basePath']}",
                     "domain_name": domain_name["domainName"],
                     "rest_api_id": base_path_mapping["restApiId"],
                     "stage": base_path_mapping["stage"],
@@ -184,7 +235,8 @@ class Apigateway:
                     f"  Processing API Gateway Deployment: {deployment['id']}")
 
                 attributes = {
-                    "id": rest_api["id"],
+                    "id": deployment["id"],
+                    "rest_api_id": rest_api["id"]
                 }
 
                 if "description" in deployment:
@@ -195,6 +247,7 @@ class Apigateway:
 
                 self.hcl.process_resource(
                     "aws_api_gateway_deployment", deployment["id"], attributes)
+
 
     def aws_api_gateway_documentation_part(self):
         print("Processing API Gateway Documentation Parts...")
@@ -210,9 +263,9 @@ class Apigateway:
                     f"  Processing API Gateway Documentation Part: {documentation_part['id']}")
 
                 attributes = {
-                    "id": rest_api["id"],
-                    "location": documentation_part["location"],
-                    "properties": documentation_part["properties"],
+                    "id": rest_api["id"]+"/"+documentation_part['id'],
+                    # "location": documentation_part["location"],
+                    # "properties": documentation_part["properties"],
                 }
 
                 self.hcl.process_resource(
@@ -274,11 +327,12 @@ class Apigateway:
                     f"  Processing API Gateway Gateway Response: {gateway_response['responseType']}")
 
                 attributes = {
-                    "id": rest_api["id"],
+                    "id": rest_api["id"]+"/"+ gateway_response["responseType"],
+                    "rest_api_id": rest_api["id"],
                     "response_type": gateway_response["responseType"],
-                    "status_code": gateway_response.get("statusCode", ""),
-                    "response_parameters": gateway_response.get("responseParameters", {}),
-                    "response_templates": gateway_response.get("responseTemplates", {}),
+                    # "status_code": gateway_response.get("statusCode", ""),
+                    # "response_parameters": gateway_response.get("responseParameters", {}),
+                    # "response_templates": gateway_response.get("responseTemplates", {}),
                 }
 
                 resource_name = f"{rest_api['id']}-{gateway_response['responseType']}"
@@ -304,7 +358,8 @@ class Apigateway:
                             f"  Processing API Gateway Integration: {resource['path']} {method}")
 
                         attributes = {
-                            "id": rest_api["id"],
+                            "id": rest_api["id"]+"/"+resource["id"]+"/"+method,
+                            "rest_api_id": rest_api["id"],
                             "resource_id": resource["id"],
                             "http_method": method,
                             "type": integration["type"],
@@ -338,7 +393,8 @@ class Apigateway:
                                 f"  Processing API Gateway Integration Response: {resource['path']} {method} {status_code}")
 
                             attributes = {
-                                "id": rest_api["id"],
+                                "id": rest_api["id"]+"/"+resource["id"]+"/"+method+"/"+status_code,
+                                "rest_api_id": rest_api["id"],
                                 "resource_id": resource["id"],
                                 "http_method": method,
                                 "status_code": status_code,
@@ -369,7 +425,8 @@ class Apigateway:
                             f"  Processing API Gateway Method: {resource['path']} {method}")
 
                         attributes = {
-                            "id": rest_api["id"],
+                            "id": rest_api["id"]+"/"+resource["id"]+"/"+method,
+                            "rest_api_id": rest_api["id"],
                             "resource_id": resource["id"],
                             "http_method": method,
                             "authorization": method_details["authorizationType"],
@@ -402,7 +459,8 @@ class Apigateway:
                                 f"  Processing API Gateway Method Response: {resource['path']} {method} {status_code}")
 
                             attributes = {
-                                "id": rest_api["id"],
+                                "id": rest_api["id"]+"/"+resource["id"]+"/"+method+"/"+status_code,
+                                "rest_api_id": rest_api["id"],
                                 "resource_id": resource["id"],
                                 "http_method": method,
                                 "status_code": status_code,
@@ -427,7 +485,8 @@ class Apigateway:
                 print(f"  Processing API Gateway Model: {model['name']}")
 
                 attributes = {
-                    "id": rest_api["id"],
+                    "id": rest_api["id"]+"/"+model["name"],
+                    "rest_api_id": rest_api["id"],
                     "name": model["name"],
                     "content_type": model["contentType"],
                     "description": model.get("description", ""),
@@ -454,10 +513,11 @@ class Apigateway:
                     print(f"  Processing API Gateway Method Setting: {key}")
 
                     attributes = {
-                        "id": rest_api["id"],
+                        "id": rest_api["id"]+"/"+stage["stageName"]+"/"+key,
+                        "rest_api_id": rest_api["id"],
                         "stage_name": stage["stageName"],
                         "method_path": key,
-                        "settings": setting,
+                        # "settings": setting,
                     }
 
                     resource_name = f"{rest_api['id']}-{stage['stageName']}-{key}"
@@ -478,7 +538,8 @@ class Apigateway:
                     f"  Processing API Gateway Request Validator: {validator['name']}")
 
                 attributes = {
-                    "id": rest_api["id"],
+                    "id": rest_api["id"]+"/"+validator["name"],
+                    "rest_api_id": rest_api["id"],
                     "name": validator["name"],
                     "validate_request_body": validator["validateRequestBody"],
                     "validate_request_parameters": validator["validateRequestParameters"],
@@ -501,7 +562,8 @@ class Apigateway:
                 print(f"  Processing API Gateway Resource: {resource['path']}")
 
                 attributes = {
-                    "id": rest_api["id"],
+                    "id": rest_api["id"]+"/"+resource["id"],
+                    "rest_api_id": rest_api["id"],
                     "parent_id": resource.get("parentId"),
                     "path_part": resource.get("pathPart"),
                 }
@@ -520,10 +582,10 @@ class Apigateway:
 
             attributes = {
                 "id": rest_api["id"],
-                "name": rest_api["name"],
-                "description": rest_api.get("description", ""),
-                "api_key_source": rest_api["apiKeySource"],
-                "endpoint_configuration": rest_api["endpointConfiguration"],
+                # "name": rest_api["name"],
+                # "description": rest_api.get("description", ""),
+                # "api_key_source": rest_api["apiKeySource"],
+                # "endpoint_configuration": rest_api["endpointConfiguration"],
             }
 
             resource_name = f"{rest_api['id']}"
@@ -545,6 +607,7 @@ class Apigateway:
 
                 attributes = {
                     "id": rest_api["id"],
+                    "rest_api_id": rest_api["id"],
                     "policy": policy,
                 }
 
@@ -565,7 +628,8 @@ class Apigateway:
                 print(f"  Processing API Gateway Stage: {stage['stageName']}")
 
                 attributes = {
-                    "id": rest_api["id"],
+                    "id": rest_api["id"]+"/"+stage["stageName"],
+                    "rest_api_id": rest_api["id"],
                     "stage_name": stage["stageName"],
                     "deployment_id": stage["deploymentId"],
                     "description": stage.get("description", ""),
@@ -575,7 +639,7 @@ class Apigateway:
                 self.hcl.process_resource(
                     "aws_api_gateway_stage", resource_name, attributes)
 
-    def aws_api_gateway_usage_plan_and_key(self):
+    def aws_api_gateway_usage_plan_key(self):
         print("Processing API Gateway Usage Plans and Usage Plan Keys...")
 
         paginator = self.apigateway_client.get_paginator("get_usage_plans")
@@ -584,18 +648,6 @@ class Apigateway:
         for page in page_iterator:
             for usage_plan in page["items"]:
                 usage_plan_id = usage_plan["id"]
-                print(f"  Processing API Gateway Usage Plan: {usage_plan_id}")
-
-                attributes = {
-                    "id": usage_plan_id,
-                    "name": usage_plan["name"],
-                    "description": usage_plan.get("description", ""),
-                    "api_stages": usage_plan.get("apiStages", []),
-                    "quota_settings": usage_plan.get("quota", {}),
-                    "throttle_settings": usage_plan.get("throttle", {}),
-                }
-                self.hcl.process_resource(
-                    "aws_api_gateway_usage_plan", usage_plan_id, attributes)
 
                 # Process Usage Plan Keys
                 paginator_key = self.apigateway_client.get_paginator(
@@ -612,7 +664,7 @@ class Apigateway:
                             f"    Processing API Gateway Usage Plan Key: {key_id}")
 
                         attributes_key = {
-                            "id": key_id,
+                            "id": usage_plan_id+"/"+key_id,
                             "usage_plan_id": usage_plan_id,
                             "key_id": key_id,
                             "key_type": key_type,
