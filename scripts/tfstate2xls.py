@@ -23,6 +23,10 @@ def main(output_file, json_file, sheet_name):
             attributes = instance['attributes']
             row = [resource_type, instance_id, json.dumps(attributes)]
             rows.append(row)
+    
+    if not rows:
+        print(f'No resources found in {json_file}')
+        return
 
     # Load the existing workbook or create a new one
     if os.path.exists(output_file):

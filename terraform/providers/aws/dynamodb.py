@@ -20,7 +20,6 @@ class Dynamodb:
         # self.aws_dynamodb_contributor_insights() #import error
         self.aws_dynamodb_kinesis_streaming_destination()
         self.aws_dynamodb_global_table()
-        self.aws_dynamodb_global_table()
         self.aws_dynamodb_table()
         self.aws_dynamodb_table_replica()
         self.aws_dynamodb_tag()

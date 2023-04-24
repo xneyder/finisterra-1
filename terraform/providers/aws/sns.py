@@ -8,7 +8,10 @@ class SNS:
         self.transform_rules = {
             "aws_sns_topic_policy": {
                 "hcl_json_multiline": {"policy": True}
-            }
+            },
+            "aws_sns_topic_subscription": {
+                "hcl_json_multiline": {"filter_policy": True}
+            },
         }
         self.provider_name = provider_name
         self.script_dir = script_dir
@@ -25,7 +28,7 @@ class SNS:
         self.aws_sns_topic()
         self.aws_sns_topic_policy()
         # self.aws_sns_topic_data_protection_policy() #Still to implment
-        # self.aws_sns_topic_subscription() #permissions error
+        self.aws_sns_topic_subscription() #permissions error
 
         self.hcl.refresh_state()
         self.hcl.generate_hcl_file()
