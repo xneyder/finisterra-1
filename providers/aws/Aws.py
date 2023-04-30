@@ -52,38 +52,61 @@ from providers.aws.elbv2 import ELBV2
 
 class Aws:
     def __init__(self, script_dir):
-        self.aws_access_key_id = os.getenv("AWS_ACCESS_KEY_ID")
-        self.aws_secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")
-        self.aws_session_token = os.getenv("AWS_SESSION_TOKEN")
-        self.region = os.getenv("AWS_REGION")
-
-        if self.aws_access_key_id and self.aws_secret_access_key and self.region:
-            self.session = boto3.Session(
-                aws_access_key_id=self.aws_access_key_id,
-                aws_secret_access_key=self.aws_secret_access_key,
-                aws_session_token=self.aws_session_token,
-                region_name=self.region,
-            )
-        else:
-            self.profile = os.getenv("AWS_PROFILE")
-            if self.profile:
-                self.session = boto3.Session(profile_name=self.profile)
-                if self.session._session.full_config['profiles'][self.profile]['mfa_serial']:
-                    print(
-                        "AWS credentials not found in environment variables using profile with MFA profile.")
-                    mfa_serial = self.session._session.full_config['profiles']['ae-dev']['mfa_serial']
-                    mfa_token = input('Please enter your 6 digit MFA code:')
-                    sts = self.session.client('sts')
-                    self.MFA_validated_token = sts.get_session_token(
-                        SerialNumber=mfa_serial, TokenCode=mfa_token)
-            else:
-                print(
-                    "AWS credentials not found in environment")
-                exit()
-
         self.provider_name = "registry.terraform.io/hashicorp/aws"
         self.script_dir = script_dir
         self.schema_data = self.load_provider_schema()
+    
+    def set_boto3_session(self, id_token=None, role_arn=None, session_duration=None, aws_region="us-east-1"):
+        if id_token and role_arn and session_duration:
+            self.aws_region = aws_region
+            sts = boto3.client('sts', region_name=self.aws_region)
+            response = sts.assume_role_with_web_identity(
+                RoleArn=role_arn,
+                RoleSessionName="FinisterraSession",
+                WebIdentityToken=id_token,
+                DurationSeconds=session_duration
+            )
+            credentials = response['Credentials']
+
+            # Set AWS credentials for boto3
+            self.session = boto3.Session(
+                aws_access_key_id=credentials['AccessKeyId'],
+                aws_secret_access_key=credentials['SecretAccessKey'],
+                aws_session_token=credentials['SessionToken'],
+                region_name=aws_region
+            )
+
+        else:       
+            aws_access_key_id = os.getenv("AWS_ACCESS_KEY_ID")
+            aws_secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")
+            aws_session_token = os.getenv("AWS_SESSION_TOKEN")
+            self.aws_region = os.getenv("AWS_REGION")
+
+            if aws_access_key_id and aws_secret_access_key and self.aws_region:
+                self.session = boto3.Session(
+                    aws_access_key_id=aws_access_key_id,
+                    aws_secret_access_key=aws_secret_access_key,
+                    aws_session_token=aws_session_token,
+                    region_name=self.aws_region,
+                )
+            else:
+                profile = os.getenv("AWS_PROFILE")
+                if profile:
+                    self.session = boto3.Session(profile_name=profile)
+                    if self.session._session.full_config['profiles'][profile]['mfa_serial']:
+                        print(
+                            "AWS credentials not found in environment variables using profile with MFA profile.")
+                        mfa_serial = self.session._session.full_config['profiles']['ae-dev']['mfa_serial']
+                        mfa_token = input('Please enter your 6 digit MFA code:')
+                        sts = self.session.client('sts')
+                        MFA_validated_token = sts.get_session_token(
+                            SerialNumber=mfa_serial, TokenCode=mfa_token)
+                else:
+                    print(
+                        "AWS credentials not found in environment")
+                    return False
+
+        return True
 
     def extract_arns_from_state_file(self, file_path):
         with open(file_path, 'r') as file:
@@ -213,8 +236,6 @@ class Aws:
 
         return relations
 
-
-
     def display_relations(self, relations):
         for arn, relation in relations.items():
             print("Parent:")
@@ -253,36 +274,36 @@ class Aws:
 
     def load_provider_schema(self):
         # Remove these comments
-        # self.create_folder(os.path.join("tmp"))
+        self.create_folder(os.path.join("tmp"))
         os.chdir(os.path.join("tmp"))
-        # create_version_file()
-        # print("Initializing Terraform...")
-        # subprocess.run(["terraform", "init"], check=True)
+        create_version_file()
+        print("Initializing Terraform...")
+        subprocess.run(["terraform", "init"], check=True)
 
         print("Loading provider schema...")
         temp_file = 'terraform_providers_schema.json'
         # Remove these comments
-        # output = open(temp_file, 'w')
-        # subprocess.run(["terraform", "providers", "schema",
-        #                 "-json"], check=True, stdout=output)
+        output = open(temp_file, 'w')
+        subprocess.run(["terraform", "providers", "schema",
+                        "-json"], check=True, stdout=output)
         with open(temp_file, "r") as schema_file:
             schema_data = json.load(schema_file)
 
         # remove the temporary file
 
         # Remove these comments
-        # os.chdir(self.script_dir)
-        # shutil.rmtree(os.path.join("tmp"))
+        os.chdir(self.script_dir)
+        shutil.rmtree(os.path.join("tmp"))
         return schema_data
 
     def route53(self):
         route53_client = self.session.client(
-            "route53", region_name=self.region)
+            "route53", region_name=self.aws_region)
         Route53(route53_client, self.script_dir, self.provider_name,
-                self.schema_data, self.region).route53()
+                self.schema_data, self.aws_region).route53()
 
     def vpc(self):
-        ec2_client = self.session.client("ec2", region_name=self.region)
+        ec2_client = self.session.client("ec2", region_name=self.aws_region)
         # ec2_client = self.session.client('ec2',
         #                                   aws_session_token=self.MFA_validated_token[
         #                                       'Credentials']['SessionToken'],
@@ -290,284 +311,284 @@ class Aws:
         #                                       'Credentials']['SecretAccessKey'],
         #                                   aws_access_key_id=self.MFA_validated_token[
         #                                       'Credentials']['AccessKeyId'],
-        #                                   region_name=self.region
+        #                                   region_name=self.aws_region
         #                                   )
         VPC(ec2_client, self.script_dir, self.provider_name,
-            self.schema_data, self.region).vpc()
+            self.schema_data, self.aws_region).vpc()
 
     def s3(self):
         s3_client = self.session.client(
-            "s3", region_name=self.region)
+            "s3", region_name=self.aws_region)
         S3(s3_client, self.script_dir, self.provider_name,
-           self.schema_data, self.region).s3()
+           self.schema_data, self.aws_region).s3()
 
     def iam(self):
         iam_client = self.session.client(
-            "iam", region_name=self.region)
+            "iam", region_name=self.aws_region)
         IAM(iam_client, self.script_dir, self.provider_name,
-            self.schema_data, self.region).iam()
+            self.schema_data, self.aws_region).iam()
 
     def acm(self):
         acm_client = self.session.client(
-            "acm", region_name=self.region)
+            "acm", region_name=self.aws_region)
         ACM(acm_client, self.script_dir, self.provider_name,
-            self.schema_data, self.region).acm()
+            self.schema_data, self.aws_region).acm()
 
     def cloudfront(self):
         cloudfront_client = self.session.client(
-            "cloudfront", region_name=self.region)
+            "cloudfront", region_name=self.aws_region)
         CloudFront(cloudfront_client, self.script_dir, self.provider_name,
-                   self.schema_data, self.region).cloudfront()
+                   self.schema_data, self.aws_region).cloudfront()
 
     def ec2(self):
         ec2_client = self.session.client(
-            "ec2", region_name=self.region)
+            "ec2", region_name=self.aws_region)
         autoscaling_client = self.session.client(
-            "autoscaling", region_name=self.region)
+            "autoscaling", region_name=self.aws_region)
         EC2(ec2_client, autoscaling_client, self.script_dir, self.provider_name,
-            self.schema_data, self.region).ec2()
+            self.schema_data, self.aws_region).ec2()
 
     def ebs(self):
         ec2_client = self.session.client(
-            "ec2", region_name=self.region)
+            "ec2", region_name=self.aws_region)
         autoscaling_client = self.session.client(
-            "autoscaling", region_name=self.region)
+            "autoscaling", region_name=self.aws_region)
         EBS(ec2_client, autoscaling_client, self.script_dir, self.provider_name,
-            self.schema_data, self.region).ebs()
+            self.schema_data, self.aws_region).ebs()
 
     def ecr(self):
         ecr_client = self.session.client(
-            "ecr", region_name=self.region)
+            "ecr", region_name=self.aws_region)
         ECR(ecr_client, self.script_dir, self.provider_name,
-            self.schema_data, self.region).ecr()
+            self.schema_data, self.aws_region).ecr()
 
     def ecr_public(self):
         ecr_public_client = self.session.client(
-            "ecr-public", region_name=self.region)
+            "ecr-public", region_name=self.aws_region)
         ECR_PUBLIC(ecr_public_client, self.script_dir, self.provider_name,
-                   self.schema_data, self.region).ecr_public()
+                   self.schema_data, self.aws_region).ecr_public()
 
     def ecs(self):
         ecs_client = self.session.client(
-            "ecs", region_name=self.region)
+            "ecs", region_name=self.aws_region)
         ECS(ecs_client, self.script_dir, self.provider_name,
-            self.schema_data, self.region).ecs()
+            self.schema_data, self.aws_region).ecs()
 
     def efs(self):
         efs_client = self.session.client(
-            "efs", region_name=self.region)
+            "efs", region_name=self.aws_region)
         EFS(efs_client, self.script_dir, self.provider_name,
-            self.schema_data, self.region).efs()
+            self.schema_data, self.aws_region).efs()
 
     def eks(self):
         eks_client = self.session.client(
-            "eks", region_name=self.region)
+            "eks", region_name=self.aws_region)
         EKS(eks_client, self.script_dir, self.provider_name,
-            self.schema_data, self.region).eks()
+            self.schema_data, self.aws_region).eks()
 
     def autoscaling(self):
         autoscaling_client = self.session.client(
-            "autoscaling", region_name=self.region)
+            "autoscaling", region_name=self.aws_region)
 
         AutoScaling(autoscaling_client, self.script_dir, self.provider_name,
-                    self.schema_data, self.region).autoscaling()
+                    self.schema_data, self.aws_region).autoscaling()
 
     def vpn_client(self):
         ec2_client = self.session.client(
-            "ec2", region_name=self.region)
+            "ec2", region_name=self.aws_region)
 
         VpnClient(ec2_client, self.script_dir, self.provider_name,
-                  self.schema_data, self.region).vpn_client()
+                  self.schema_data, self.aws_region).vpn_client()
 
     def docdb(self):
         docdb_client = self.session.client(
-            "docdb", region_name=self.region)
+            "docdb", region_name=self.aws_region)
 
         DocDb(docdb_client, self.script_dir, self.provider_name,
-              self.schema_data, self.region).docdb()
+              self.schema_data, self.aws_region).docdb()
 
     def opensearch(self):
         opensearch_client = self.session.client(
-            "opensearch", region_name=self.region)
+            "opensearch", region_name=self.aws_region)
 
         Opensearch(opensearch_client, self.script_dir, self.provider_name,
-                   self.schema_data, self.region).opensearch()
+                   self.schema_data, self.aws_region).opensearch()
 
     def es(self):
         es_client = self.session.client(
-            "es", region_name=self.region)
+            "es", region_name=self.aws_region)
 
         ES(es_client, self.script_dir, self.provider_name,
-           self.schema_data, self.region).es()
+           self.schema_data, self.aws_region).es()
 
     def elasticache(self):
         elasticache_client = self.session.client(
-            "elasticache", region_name=self.region)
+            "elasticache", region_name=self.aws_region)
 
         Elasticache(elasticache_client, self.script_dir, self.provider_name,
-                    self.schema_data, self.region).elasticache()
+                    self.schema_data, self.aws_region).elasticache()
 
     def dynamodb(self):
         dynamodb_client = self.session.client(
-            "dynamodb", region_name=self.region)
+            "dynamodb", region_name=self.aws_region)
 
         sts_client = self.session.client(
-            "sts", region_name=self.region)
+            "sts", region_name=self.aws_region)
         
         account_id = sts_client.get_caller_identity()['Account']
 
         Dynamodb(dynamodb_client, account_id, self.script_dir, self.provider_name,
-                 self.schema_data, self.region).dynamodb()
+                 self.schema_data, self.aws_region).dynamodb()
 
     def cognito_identity(self):
         cognito_identity_client = self.session.client(
-            "cognito-identity", region_name=self.region)
+            "cognito-identity", region_name=self.aws_region)
 
         CognitoIdentity(cognito_identity_client, self.script_dir, self.provider_name,
-                        self.schema_data, self.region).cognito_identity()
+                        self.schema_data, self.aws_region).cognito_identity()
 
     def cognito_idp(self):
         cognito_idp_client = self.session.client(
-            "cognito-idp", region_name=self.region)
+            "cognito-idp", region_name=self.aws_region)
 
         CognitoIDP(cognito_idp_client, self.script_dir, self.provider_name,
-                   self.schema_data, self.region).cognito_idp()
+                   self.schema_data, self.aws_region).cognito_idp()
 
     def logs(self):
         logs_client = self.session.client(
-            "logs", region_name=self.region)
+            "logs", region_name=self.aws_region)
 
         Logs(logs_client, self.script_dir, self.provider_name,
-             self.schema_data, self.region).logs()
+             self.schema_data, self.aws_region).logs()
 
     def cloudwatch(self):
         cloudwatch_client = self.session.client(
-            "cloudwatch", region_name=self.region)
+            "cloudwatch", region_name=self.aws_region)
 
         Cloudwatch(cloudwatch_client, self.script_dir, self.provider_name,
-                   self.schema_data, self.region).cloudwatch()
+                   self.schema_data, self.aws_region).cloudwatch()
 
     def cloudtrail(self):
         cloudtrail_client = self.session.client(
-            "cloudtrail", region_name=self.region)
+            "cloudtrail", region_name=self.aws_region)
 
         Cloudtrail(cloudtrail_client, self.script_dir, self.provider_name,
-                   self.schema_data, self.region).cloudtrail()
+                   self.schema_data, self.aws_region).cloudtrail()
 
     def cloudmap(self):
         cloudmap_client = self.session.client(
-            "servicediscovery", region_name=self.region)
+            "servicediscovery", region_name=self.aws_region)
 
         route53_client = self.session.client(
-            "route53", region_name=self.region)
+            "route53", region_name=self.aws_region)
 
         Cloudmap(cloudmap_client, route53_client, self.script_dir, self.provider_name,
-                 self.schema_data, self.region).cloudmap()
+                 self.schema_data, self.aws_region).cloudmap()
 
     def backup(self):
         backup_client = self.session.client(
-            "backup", region_name=self.region)
+            "backup", region_name=self.aws_region)
 
         Backup(backup_client, self.script_dir, self.provider_name,
-               self.schema_data, self.region).backup()
+               self.schema_data, self.aws_region).backup()
 
     def guardduty(self):
         guardduty_client = self.session.client(
-            "guardduty", region_name=self.region)
+            "guardduty", region_name=self.aws_region)
 
         Guardduty(guardduty_client, self.script_dir, self.provider_name,
-                  self.schema_data, self.region).guardduty()
+                  self.schema_data, self.aws_region).guardduty()
 
     def apigateway(self):
         apigateway_client = self.session.client(
-            "apigateway", region_name=self.region)
+            "apigateway", region_name=self.aws_region)
 
         Apigateway(apigateway_client, self.script_dir, self.provider_name,
-                   self.schema_data, self.region).apigateway()
+                   self.schema_data, self.aws_region).apigateway()
 
     def apigatewayv2(self):
         apigatewayv2_client = self.session.client(
-            "apigatewayv2", region_name=self.region)
+            "apigatewayv2", region_name=self.aws_region)
 
         Apigatewayv2(apigatewayv2_client, self.script_dir, self.provider_name,
-                     self.schema_data, self.region).apigatewayv2()
+                     self.schema_data, self.aws_region).apigatewayv2()
 
     def wafv2(self):
         wafv2_client = self.session.client(
-            "wafv2", region_name=self.region)
+            "wafv2", region_name=self.aws_region)
 
         elbv2_client = self.session.client(
-            "elbv2", region_name=self.region)
+            "elbv2", region_name=self.aws_region)
 
         Wafv2(wafv2_client, elbv2_client, self.script_dir, self.provider_name,
-              self.schema_data, self.region).wafv2()
+              self.schema_data, self.aws_region).wafv2()
 
     def secretsmanager(self):
         secretsmanager_client = self.session.client(
-            "secretsmanager", region_name=self.region)
+            "secretsmanager", region_name=self.aws_region)
 
         Secretsmanager(secretsmanager_client, self.script_dir, self.provider_name,
-                       self.schema_data, self.region).secretsmanager()
+                       self.schema_data, self.aws_region).secretsmanager()
 
     def ssm(self):
         ssm_client = self.session.client(
-            "ssm", region_name=self.region)
+            "ssm", region_name=self.aws_region)
 
         SSM(ssm_client, self.script_dir, self.provider_name,
-            self.schema_data, self.region).ssm()
+            self.schema_data, self.aws_region).ssm()
 
     def sqs(self):
         sqs_client = self.session.client(
-            "sqs", region_name=self.region)
+            "sqs", region_name=self.aws_region)
 
         SQS(sqs_client, self.script_dir, self.provider_name,
-            self.schema_data, self.region).sqs()
+            self.schema_data, self.aws_region).sqs()
 
     def sns(self):
         sns_client = self.session.client(
-            "sns", region_name=self.region)
+            "sns", region_name=self.aws_region)
 
         SNS(sns_client, self.script_dir, self.provider_name,
-            self.schema_data, self.region).sns()
+            self.schema_data, self.aws_region).sns()
 
     def rds(self):
         rds_client = self.session.client(
-            "rds", region_name=self.region)
+            "rds", region_name=self.aws_region)
 
         RDS(rds_client, self.script_dir, self.provider_name,
-            self.schema_data, self.region).rds()
+            self.schema_data, self.aws_region).rds()
 
     def aws_lambda(self):
         lambda_client = self.session.client(
-            "lambda", region_name=self.region)
+            "lambda", region_name=self.aws_region)
 
         AwsLambda(lambda_client, self.script_dir, self.provider_name,
-                  self.schema_data, self.region).aws_lambda()
+                  self.schema_data, self.aws_region).aws_lambda()
 
     def kms(self):
         kms_client = self.session.client(
-            "kms", region_name=self.region)
+            "kms", region_name=self.aws_region)
 
         KMS(kms_client, self.script_dir, self.provider_name,
-            self.schema_data, self.region).kms()
+            self.schema_data, self.aws_region).kms()
 
     def elasticbeanstalk(self):
         elasticbeanstalk_client = self.session.client(
-            "elasticbeanstalk", region_name=self.region)
+            "elasticbeanstalk", region_name=self.aws_region)
 
         ElasticBeanstalk(elasticbeanstalk_client, self.script_dir, self.provider_name,
-                         self.schema_data, self.region).elasticbeanstalk()
+                         self.schema_data, self.aws_region).elasticbeanstalk()
 
     def elb(self):
         elb_client = self.session.client(
-            "elb", region_name=self.region)
+            "elb", region_name=self.aws_region)
 
         ELB(elb_client, self.script_dir, self.provider_name,
-            self.schema_data, self.region).elb()
+            self.schema_data, self.aws_region).elb()
 
     def elbv2(self):
         elbv2_client = self.session.client(
-            "elbv2", region_name=self.region)
+            "elbv2", region_name=self.aws_region)
 
         ELBV2(elbv2_client, self.script_dir, self.provider_name,
-              self.schema_data, self.region).elbv2()
+              self.schema_data, self.aws_region).elbv2()

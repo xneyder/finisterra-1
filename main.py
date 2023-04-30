@@ -43,7 +43,7 @@ def main():
     # provider.sqs()
     # provider.sns()
     # provider.rds()
-    provider.aws_lambda() 
+    # provider.aws_lambda()
     # provider.kms()  # tf refresh errors
     # provider.elasticbeanstalk()
     # provider.elb()
