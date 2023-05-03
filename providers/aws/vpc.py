@@ -17,7 +17,9 @@ class VPC:
                 },
             },
             "aws_subnet": {
-                "hcl_drop_fields": {"map_customer_owned_ip_on_launch": False},
+                "hcl_drop_fields": {"map_customer_owned_ip_on_launch": False,
+                                    "enable_lni_at_device_index": 0
+                                    },
             },
             "aws_default_subnet": {
                 "hcl_drop_fields": {"map_customer_owned_ip_on_launch": False},

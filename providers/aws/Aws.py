@@ -76,6 +76,11 @@ class Aws:
                 region_name=aws_region
             )
 
+            os.environ['AWS_ACCESS_KEY_ID'] = credentials['AccessKeyId']
+            os.environ['AWS_SECRET_ACCESS_KEY'] = credentials['SecretAccessKey']
+            os.environ['AWS_SESSION_TOKEN'] = credentials['SessionToken']
+            os.environ['AWS_REGION'] = self.aws_region
+
         else:       
             aws_access_key_id = os.getenv("AWS_ACCESS_KEY_ID")
             aws_secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")
@@ -274,6 +279,7 @@ class Aws:
 
     def load_provider_schema(self):
         # Remove these comments
+        os.chdir(self.script_dir)
         self.create_folder(os.path.join("tmp"))
         os.chdir(os.path.join("tmp"))
         create_version_file()

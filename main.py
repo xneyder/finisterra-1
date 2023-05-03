@@ -54,6 +54,6 @@ def main():
 
 
 if __name__ == "__main__":
-    script_dir=os.path.dirname(os.path.abspath(sys.argv[0]))
+    script_dir = os.path.dirname(os.path.abspath(sys.argv[0]))
     provider = Aws(script_dir)
     main()

@@ -281,6 +281,7 @@ class HCL:
                 hcl_output.write("}\n\n")
         print("Formatting HCL files...")
         subprocess.run(["terraform", "fmt"], check=True)
+        subprocess.run(["terraform", "validate"], check=True)
 
     def replace_special_chars(self, input_string):
         # Replace spaces, "-", ".", and any special character with "_"
