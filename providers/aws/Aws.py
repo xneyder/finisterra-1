@@ -55,7 +55,8 @@ class Aws:
         self.provider_name = "registry.terraform.io/hashicorp/aws"
         self.script_dir = script_dir
         self.schema_data = self.load_provider_schema()
-    
+        self.resource_list = {}
+
     def set_boto3_session(self, id_token=None, role_arn=None, session_duration=None, aws_region="us-east-1"):
         if id_token and role_arn and session_duration:
             self.aws_region = aws_region
@@ -81,7 +82,7 @@ class Aws:
             os.environ['AWS_SESSION_TOKEN'] = credentials['SessionToken']
             os.environ['AWS_REGION'] = self.aws_region
 
-        else:       
+        else:
             aws_access_key_id = os.getenv("AWS_ACCESS_KEY_ID")
             aws_secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")
             aws_session_token = os.getenv("AWS_SESSION_TOKEN")
@@ -102,7 +103,8 @@ class Aws:
                         print(
                             "AWS credentials not found in environment variables using profile with MFA profile.")
                         mfa_serial = self.session._session.full_config['profiles']['ae-dev']['mfa_serial']
-                        mfa_token = input('Please enter your 6 digit MFA code:')
+                        mfa_token = input(
+                            'Please enter your 6 digit MFA code:')
                         sts = self.session.client('sts')
                         MFA_validated_token = sts.get_session_token(
                             SerialNumber=mfa_serial, TokenCode=mfa_token)
@@ -129,7 +131,8 @@ class Aws:
                 arn = attributes.get('arn', '')
 
                 if arn:
-                    id_mapping[arn] = {'resource_type': resource_type, 'type': 'arn', 'id': instance.get('attributes').get('id')}
+                    id_mapping[arn] = {'resource_type': resource_type, 'type': 'arn', 'id': instance.get(
+                        'attributes').get('id')}
 
         return id_mapping
 
@@ -145,9 +148,9 @@ class Aws:
 
         return id_ro_resource_type
 
-    
     def extract_arns(self, value, resource_type, field, attributes_id, result):
-        arn_pattern = re.compile(r'^arn:aws[a-zA-Z-]*:([a-zA-Z0-9-_]+):[a-z0-9-]*:[0-9]{12}:[a-zA-Z0-9-_/]+')
+        arn_pattern = re.compile(
+            r'^arn:aws[a-zA-Z-]*:([a-zA-Z0-9-_]+):[a-z0-9-]*:[0-9]{12}:[a-zA-Z0-9-_/]+')
 
         if isinstance(value, list):
             for item in value:
@@ -160,7 +163,8 @@ class Aws:
                     })
         elif isinstance(value, dict):
             for nested_field, nested_value in value.items():
-                self.extract_arns(nested_value, resource_type, f"{field}.{nested_field}", attributes_id, result)
+                self.extract_arns(nested_value, resource_type,
+                                  f"{field}.{nested_field}", attributes_id, result)
         elif arn_pattern.match(str(value)):
             result.append({
                 "resource_type": resource_type,
@@ -169,7 +173,7 @@ class Aws:
                 "id": attributes_id
             })
 
-    def arns_from_state_file(self,file_path):
+    def arns_from_state_file(self, file_path):
         with open(file_path, 'r') as file:
             state_data = json.load(file)
 
@@ -185,11 +189,12 @@ class Aws:
                 attributes_id = attributes.get('id', '')
 
                 for field, value in attributes.items():
-                    self.extract_arns(value, resource_type, field, attributes_id, result)
+                    self.extract_arns(value, resource_type,
+                                      field, attributes_id, result)
 
         return result
 
-    def process_and_collect_arns(self,folder_path):
+    def process_and_collect_arns(self, folder_path):
         all_arns = []
 
         for root, _, files in os.walk(folder_path):
@@ -199,7 +204,7 @@ class Aws:
                     all_arns.extend(self.arns_from_state_file(file_path))
 
         return all_arns
-    
+
     def find_children(self, current_arn, collected_arns, id_ro_resource_type, relations, visited):
         if current_arn not in id_ro_resource_type or current_arn in visited:
             return
@@ -229,7 +234,8 @@ class Aws:
                 relations[current_arn]['children'].append(child)
 
                 # Recursively find children of the current child
-                self.find_children(child['value'], collected_arns, id_ro_resource_type, relations, visited)
+                self.find_children(
+                    child['value'], collected_arns, id_ro_resource_type, relations, visited)
 
     def compare_arns(self, collected_arns, id_ro_resource_type):
         relations = {}
@@ -237,7 +243,8 @@ class Aws:
 
         for arn_info in collected_arns:
             value = arn_info['value']
-            self.find_children(value, collected_arns, id_ro_resource_type, relations, visited)
+            self.find_children(value, collected_arns,
+                               id_ro_resource_type, relations, visited)
 
         return relations
 
@@ -257,7 +264,8 @@ class Aws:
 
     def relations(self):
         tffiles_folder = os.path.join(self.script_dir, "generated")
-        id_ro_resource_type = self.process_terraform_state_files(tffiles_folder)
+        id_ro_resource_type = self.process_terraform_state_files(
+            tffiles_folder)
         # print("ARN to Resource Name mapping:")
         # print(json.dumps(id_ro_resource_type, indent=2))
 
@@ -265,10 +273,8 @@ class Aws:
         # print("ARN information collected:")
         # print(json.dumps(collected_arns, indent=2))
 
-        relations=self.compare_arns(collected_arns, id_ro_resource_type)
+        relations = self.compare_arns(collected_arns, id_ro_resource_type)
         self.display_relations(relations)
-
-
 
     def create_folder(self, folder):
         if not os.path.exists(folder):
@@ -305,11 +311,17 @@ class Aws:
     def route53(self):
         route53_client = self.session.client(
             "route53", region_name=self.aws_region)
-        Route53(route53_client, self.script_dir, self.provider_name,
-                self.schema_data, self.aws_region).route53()
+        instance = Route53(route53_client, self.script_dir, self.provider_name,
+                           self.schema_data, self.aws_region)
+        instance.route53()
+        self.resource_list['route53'] = instance.resource_list
 
     def vpc(self):
         ec2_client = self.session.client("ec2", region_name=self.aws_region)
+        instance = VPC(ec2_client, self.script_dir, self.provider_name,
+                       self.schema_data, self.aws_region)
+        instance.vpc()
+        self.resource_list['vpc'] = instance.resource_list
         # ec2_client = self.session.client('ec2',
         #                                   aws_session_token=self.MFA_validated_token[
         #                                       'Credentials']['SessionToken'],
@@ -319,120 +331,152 @@ class Aws:
         #                                       'Credentials']['AccessKeyId'],
         #                                   region_name=self.aws_region
         #                                   )
-        VPC(ec2_client, self.script_dir, self.provider_name,
-            self.schema_data, self.aws_region).vpc()
 
     def s3(self):
         s3_client = self.session.client(
             "s3", region_name=self.aws_region)
-        S3(s3_client, self.script_dir, self.provider_name,
-           self.schema_data, self.aws_region).s3()
+        instance = S3(s3_client, self.script_dir, self.provider_name,
+                      self.schema_data, self.aws_region)
+        instance.s3()
+        self.resource_list['s3'] = instance.resource_list
 
     def iam(self):
         iam_client = self.session.client(
             "iam", region_name=self.aws_region)
-        IAM(iam_client, self.script_dir, self.provider_name,
-            self.schema_data, self.aws_region).iam()
+        instance = IAM(iam_client, self.script_dir, self.provider_name,
+                       self.schema_data, self.aws_region)
+        instance.iam()
+        self.resource_list['iam'] = instance.resource_list
 
     def acm(self):
         acm_client = self.session.client(
             "acm", region_name=self.aws_region)
-        ACM(acm_client, self.script_dir, self.provider_name,
-            self.schema_data, self.aws_region).acm()
+        instance = ACM(acm_client, self.script_dir, self.provider_name,
+                       self.schema_data, self.aws_region)
+        instance.acm()
+        self.resource_list['acm'] = instance.resource_list
 
     def cloudfront(self):
         cloudfront_client = self.session.client(
             "cloudfront", region_name=self.aws_region)
-        CloudFront(cloudfront_client, self.script_dir, self.provider_name,
-                   self.schema_data, self.aws_region).cloudfront()
+        instance = CloudFront(cloudfront_client, self.script_dir, self.provider_name,
+                              self.schema_data, self.aws_region)
+        instance.cloudfront()
+        self.resource_list['cloudfront'] = instance.resource_list
 
     def ec2(self):
         ec2_client = self.session.client(
             "ec2", region_name=self.aws_region)
         autoscaling_client = self.session.client(
             "autoscaling", region_name=self.aws_region)
-        EC2(ec2_client, autoscaling_client, self.script_dir, self.provider_name,
-            self.schema_data, self.aws_region).ec2()
+        instance = EC2(ec2_client, autoscaling_client, self.script_dir, self.provider_name,
+                       self.schema_data, self.aws_region)
+        instance.ec2()
+        self.resource_list['ec2'] = instance.resource_list
 
     def ebs(self):
         ec2_client = self.session.client(
             "ec2", region_name=self.aws_region)
         autoscaling_client = self.session.client(
             "autoscaling", region_name=self.aws_region)
-        EBS(ec2_client, autoscaling_client, self.script_dir, self.provider_name,
-            self.schema_data, self.aws_region).ebs()
+        instance = EBS(ec2_client, autoscaling_client, self.script_dir, self.provider_name,
+                       self.schema_data, self.aws_region)
+        instance.ebs()
+        self.resource_list['ebs'] = instance.resource_list
 
     def ecr(self):
         ecr_client = self.session.client(
             "ecr", region_name=self.aws_region)
-        ECR(ecr_client, self.script_dir, self.provider_name,
-            self.schema_data, self.aws_region).ecr()
+        instance = ECR(ecr_client, self.script_dir, self.provider_name,
+                       self.schema_data, self.aws_region)
+        instance.ecr()
+        self.resource_list['ecr'] = instance.resource_list
 
     def ecr_public(self):
         ecr_public_client = self.session.client(
             "ecr-public", region_name=self.aws_region)
-        ECR_PUBLIC(ecr_public_client, self.script_dir, self.provider_name,
-                   self.schema_data, self.aws_region).ecr_public()
+        instance = ECR_PUBLIC(ecr_public_client, self.script_dir, self.provider_name,
+                              self.schema_data, self.aws_region)
+        instance.ecr_public()
+        self.resource_list['ecr_public'] = instance.resource_list
 
     def ecs(self):
         ecs_client = self.session.client(
             "ecs", region_name=self.aws_region)
-        ECS(ecs_client, self.script_dir, self.provider_name,
-            self.schema_data, self.aws_region).ecs()
+        instance = ECS(ecs_client, self.script_dir, self.provider_name,
+                       self.schema_data, self.aws_region)
+        instance.ecs()
+        self.resource_list['ecs'] = instance.resource_list
 
     def efs(self):
         efs_client = self.session.client(
             "efs", region_name=self.aws_region)
-        EFS(efs_client, self.script_dir, self.provider_name,
-            self.schema_data, self.aws_region).efs()
+        instance = EFS(efs_client, self.script_dir, self.provider_name,
+                       self.schema_data, self.aws_region)
+        instance.efs()
+        self.resource_list['efs'] = instance.resource_list
 
     def eks(self):
         eks_client = self.session.client(
             "eks", region_name=self.aws_region)
-        EKS(eks_client, self.script_dir, self.provider_name,
-            self.schema_data, self.aws_region).eks()
+        instance = EKS(eks_client, self.script_dir, self.provider_name,
+                       self.schema_data, self.aws_region)
+        instance.eks()
+        self.resource_list['eks'] = instance.resource_list
 
     def autoscaling(self):
         autoscaling_client = self.session.client(
             "autoscaling", region_name=self.aws_region)
 
-        AutoScaling(autoscaling_client, self.script_dir, self.provider_name,
-                    self.schema_data, self.aws_region).autoscaling()
+        instance = AutoScaling(autoscaling_client, self.script_dir, self.provider_name,
+                               self.schema_data, self.aws_region)
+        instance.autoscaling()
+        self.resource_list['autoscaling'] = instance.resource_list
 
     def vpn_client(self):
         ec2_client = self.session.client(
             "ec2", region_name=self.aws_region)
 
-        VpnClient(ec2_client, self.script_dir, self.provider_name,
-                  self.schema_data, self.aws_region).vpn_client()
+        instance = VpnClient(ec2_client, self.script_dir, self.provider_name,
+                             self.schema_data, self.aws_region)
+        instance.vpn_client()
+        self.resource_list['vpn_client'] = instance.resource_list
 
     def docdb(self):
         docdb_client = self.session.client(
             "docdb", region_name=self.aws_region)
 
-        DocDb(docdb_client, self.script_dir, self.provider_name,
-              self.schema_data, self.aws_region).docdb()
+        instance = DocDb(docdb_client, self.script_dir, self.provider_name,
+                         self.schema_data, self.aws_region)
+        instance.docdb()
+        self.resource_list['docdb'] = instance.resource_list
 
     def opensearch(self):
         opensearch_client = self.session.client(
             "opensearch", region_name=self.aws_region)
 
-        Opensearch(opensearch_client, self.script_dir, self.provider_name,
-                   self.schema_data, self.aws_region).opensearch()
+        instance = Opensearch(opensearch_client, self.script_dir, self.provider_name,
+                              self.schema_data, self.aws_region)
+        instance.opensearch()
+        self.resource_list['opensearch'] = instance.resource_list
 
     def es(self):
         es_client = self.session.client(
             "es", region_name=self.aws_region)
 
-        ES(es_client, self.script_dir, self.provider_name,
-           self.schema_data, self.aws_region).es()
+        instance = ES(es_client, self.script_dir, self.provider_name,
+                      self.schema_data, self.aws_region)
+        instance.es()
+        self.resource_list['es'] = instance.resource_list
 
     def elasticache(self):
         elasticache_client = self.session.client(
             "elasticache", region_name=self.aws_region)
 
-        Elasticache(elasticache_client, self.script_dir, self.provider_name,
-                    self.schema_data, self.aws_region).elasticache()
+        instance = Elasticache(elasticache_client, self.script_dir, self.provider_name,
+                               self.schema_data, self.aws_region)
+        instance.elasticache()
+        self.resource_list['elasticache'] = instance.resource_list
 
     def dynamodb(self):
         dynamodb_client = self.session.client(
@@ -440,46 +484,58 @@ class Aws:
 
         sts_client = self.session.client(
             "sts", region_name=self.aws_region)
-        
+
         account_id = sts_client.get_caller_identity()['Account']
 
-        Dynamodb(dynamodb_client, account_id, self.script_dir, self.provider_name,
-                 self.schema_data, self.aws_region).dynamodb()
+        instance = Dynamodb(dynamodb_client, account_id, self.script_dir, self.provider_name,
+                            self.schema_data, self.aws_region)
+        instance.dynamodb()
+        self.resource_list['dynamodb'] = instance.resource_list
 
     def cognito_identity(self):
         cognito_identity_client = self.session.client(
             "cognito-identity", region_name=self.aws_region)
 
-        CognitoIdentity(cognito_identity_client, self.script_dir, self.provider_name,
-                        self.schema_data, self.aws_region).cognito_identity()
+        instance = CognitoIdentity(cognito_identity_client, self.script_dir, self.provider_name,
+                                   self.schema_data, self.aws_region)
+        instance.cognito_identity()
+        self.resource_list['cognito_identity'] = instance.resource_list
 
     def cognito_idp(self):
         cognito_idp_client = self.session.client(
             "cognito-idp", region_name=self.aws_region)
 
-        CognitoIDP(cognito_idp_client, self.script_dir, self.provider_name,
-                   self.schema_data, self.aws_region).cognito_idp()
+        instance = CognitoIDP(cognito_idp_client, self.script_dir, self.provider_name,
+                              self.schema_data, self.aws_region)
+        instance.cognito_idp()
+        self.resource_list['cognito_idp'] = instance.resource_list
 
     def logs(self):
         logs_client = self.session.client(
             "logs", region_name=self.aws_region)
 
-        Logs(logs_client, self.script_dir, self.provider_name,
-             self.schema_data, self.aws_region).logs()
+        instance = Logs(logs_client, self.script_dir, self.provider_name,
+                        self.schema_data, self.aws_region)
+        instance.logs()
+        self.resource_list['logs'] = instance.resource_list
 
     def cloudwatch(self):
         cloudwatch_client = self.session.client(
             "cloudwatch", region_name=self.aws_region)
 
-        Cloudwatch(cloudwatch_client, self.script_dir, self.provider_name,
-                   self.schema_data, self.aws_region).cloudwatch()
+        instance = Cloudwatch(cloudwatch_client, self.script_dir, self.provider_name,
+                              self.schema_data, self.aws_region)
+        instance.cloudwatch()
+        self.resource_list['cloudwatch'] = instance.resource_list
 
     def cloudtrail(self):
         cloudtrail_client = self.session.client(
             "cloudtrail", region_name=self.aws_region)
 
-        Cloudtrail(cloudtrail_client, self.script_dir, self.provider_name,
-                   self.schema_data, self.aws_region).cloudtrail()
+        instance = Cloudtrail(cloudtrail_client, self.script_dir, self.provider_name,
+                              self.schema_data, self.aws_region)
+        instance.cloudtrail()
+        self.resource_list['cloudtrail'] = instance.resource_list
 
     def cloudmap(self):
         cloudmap_client = self.session.client(
@@ -488,36 +544,46 @@ class Aws:
         route53_client = self.session.client(
             "route53", region_name=self.aws_region)
 
-        Cloudmap(cloudmap_client, route53_client, self.script_dir, self.provider_name,
-                 self.schema_data, self.aws_region).cloudmap()
+        instance = Cloudmap(cloudmap_client, route53_client, self.script_dir, self.provider_name,
+                            self.schema_data, self.aws_region)
+        instance.cloudmap()
+        self.resource_list['cloudmap'] = instance.resource_list
 
     def backup(self):
         backup_client = self.session.client(
             "backup", region_name=self.aws_region)
 
-        Backup(backup_client, self.script_dir, self.provider_name,
-               self.schema_data, self.aws_region).backup()
+        instance = Backup(backup_client, self.script_dir, self.provider_name,
+                          self.schema_data, self.aws_region)
+        instance.backup()
+        self.resource_list['backup'] = instance.resource_list
 
     def guardduty(self):
         guardduty_client = self.session.client(
             "guardduty", region_name=self.aws_region)
 
-        Guardduty(guardduty_client, self.script_dir, self.provider_name,
-                  self.schema_data, self.aws_region).guardduty()
+        instance = Guardduty(guardduty_client, self.script_dir, self.provider_name,
+                             self.schema_data, self.aws_region)
+        instance.guardduty()
+        self.resource_list['guardduty'] = instance.resource_list
 
     def apigateway(self):
         apigateway_client = self.session.client(
             "apigateway", region_name=self.aws_region)
 
-        Apigateway(apigateway_client, self.script_dir, self.provider_name,
-                   self.schema_data, self.aws_region).apigateway()
+        instance = Apigateway(apigateway_client, self.script_dir, self.provider_name,
+                              self.schema_data, self.aws_region)
+        instance.apigateway()
+        self.resource_list['apigateway'] = instance.resource_list
 
     def apigatewayv2(self):
         apigatewayv2_client = self.session.client(
             "apigatewayv2", region_name=self.aws_region)
 
-        Apigatewayv2(apigatewayv2_client, self.script_dir, self.provider_name,
-                     self.schema_data, self.aws_region).apigatewayv2()
+        instance = Apigatewayv2(apigatewayv2_client, self.script_dir, self.provider_name,
+                                self.schema_data, self.aws_region)
+        instance.apigatewayv2()
+        self.resource_list['apigatewayv2'] = instance.resource_list
 
     def wafv2(self):
         wafv2_client = self.session.client(
@@ -526,75 +592,97 @@ class Aws:
         elbv2_client = self.session.client(
             "elbv2", region_name=self.aws_region)
 
-        Wafv2(wafv2_client, elbv2_client, self.script_dir, self.provider_name,
-              self.schema_data, self.aws_region).wafv2()
+        instance = Wafv2(wafv2_client, elbv2_client, self.script_dir, self.provider_name,
+                         self.schema_data, self.aws_region)
+        instance.wafv2()
+        self.resource_list['wafv2'] = instance.resource_list
 
     def secretsmanager(self):
         secretsmanager_client = self.session.client(
             "secretsmanager", region_name=self.aws_region)
 
-        Secretsmanager(secretsmanager_client, self.script_dir, self.provider_name,
-                       self.schema_data, self.aws_region).secretsmanager()
+        instance = Secretsmanager(secretsmanager_client, self.script_dir, self.provider_name,
+                                  self.schema_data, self.aws_region)
+        instance.secretsmanager()
+        self.resource_list['secretsmanager'] = instance.resource_list
 
     def ssm(self):
         ssm_client = self.session.client(
             "ssm", region_name=self.aws_region)
 
-        SSM(ssm_client, self.script_dir, self.provider_name,
-            self.schema_data, self.aws_region).ssm()
+        instance = SSM(ssm_client, self.script_dir, self.provider_name,
+                       self.schema_data, self.aws_region)
+        instance.ssm()
+        self.resource_list['ssm'] = instance.resource_list
 
     def sqs(self):
         sqs_client = self.session.client(
             "sqs", region_name=self.aws_region)
 
-        SQS(sqs_client, self.script_dir, self.provider_name,
-            self.schema_data, self.aws_region).sqs()
+        instance = SQS(sqs_client, self.script_dir, self.provider_name,
+                       self.schema_data, self.aws_region)
+        instance.sqs()
+        self.resource_list['sqs'] = instance.resource_list
 
     def sns(self):
         sns_client = self.session.client(
             "sns", region_name=self.aws_region)
 
-        SNS(sns_client, self.script_dir, self.provider_name,
-            self.schema_data, self.aws_region).sns()
+        instance = SNS(sns_client, self.script_dir, self.provider_name,
+                       self.schema_data, self.aws_region)
+        instance.sns()
+        self.resource_list['sns'] = instance.resource_list
 
     def rds(self):
         rds_client = self.session.client(
             "rds", region_name=self.aws_region)
 
-        RDS(rds_client, self.script_dir, self.provider_name,
-            self.schema_data, self.aws_region).rds()
+        instance = RDS(rds_client, self.script_dir, self.provider_name,
+                       self.schema_data, self.aws_region)
+        instance.rds()
+        self.resource_list['rds'] = instance.resource_list
 
     def aws_lambda(self):
         lambda_client = self.session.client(
             "lambda", region_name=self.aws_region)
 
-        AwsLambda(lambda_client, self.script_dir, self.provider_name,
-                  self.schema_data, self.aws_region).aws_lambda()
+        instance = AwsLambda(lambda_client, self.script_dir, self.provider_name,
+                             self.schema_data, self.aws_region)
+        instance.aws_lambda()
+        self.resource_list['aws_lambda'] = instance.resource_list
 
     def kms(self):
         kms_client = self.session.client(
             "kms", region_name=self.aws_region)
 
-        KMS(kms_client, self.script_dir, self.provider_name,
-            self.schema_data, self.aws_region).kms()
+        instance = KMS(kms_client, self.script_dir, self.provider_name,
+                       self.schema_data, self.aws_region)
+        instance.kms()
+        self.resource_list['kms'] = instance.resource_list
 
     def elasticbeanstalk(self):
         elasticbeanstalk_client = self.session.client(
             "elasticbeanstalk", region_name=self.aws_region)
 
-        ElasticBeanstalk(elasticbeanstalk_client, self.script_dir, self.provider_name,
-                         self.schema_data, self.aws_region).elasticbeanstalk()
+        instance = ElasticBeanstalk(elasticbeanstalk_client, self.script_dir, self.provider_name,
+                                    self.schema_data, self.aws_region)
+        instance.elasticbeanstalk()
+        self.resource_list['elasticbeanstalk'] = instance.resource_list
 
     def elb(self):
         elb_client = self.session.client(
             "elb", region_name=self.aws_region)
 
-        ELB(elb_client, self.script_dir, self.provider_name,
-            self.schema_data, self.aws_region).elb()
+        instance = ELB(elb_client, self.script_dir, self.provider_name,
+                       self.schema_data, self.aws_region)
+        instance.elb()
+        self.resource_list['elb'] = instance.resource_list
 
     def elbv2(self):
         elbv2_client = self.session.client(
             "elbv2", region_name=self.aws_region)
 
-        ELBV2(elbv2_client, self.script_dir, self.provider_name,
-              self.schema_data, self.aws_region).elbv2()
+        instance = ELBV2(elbv2_client, self.script_dir, self.provider_name,
+                         self.schema_data, self.aws_region)
+        instance.elbv2()
+        self.resource_list['elbv2'] = instance.resource_list

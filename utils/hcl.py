@@ -128,7 +128,7 @@ class HCL:
                     is_transformed, transform_str = check_transform_rules(
                         key, value, resource_type)
                     if is_transformed:
-                        return(f'  {transform_str}')
+                        return (f'  {transform_str}')
 
                     # Ignore is key is computed and handled the exception
                     try:
@@ -239,16 +239,17 @@ class HCL:
                         hcl_apply_function = self.transform_rules[resource_type]['hcl_apply_function']
                         if key in hcl_apply_function:
                             for function in hcl_apply_function[key]["function"]:
-                                value=function(value)
+                                value = function(value)
                             return_str += (
                                 f'{quote_string(key)}="{value}"\n')
                             is_transformed = True
                             return is_transformed, return_str
                     if 'hcl_apply_function_dict' in self.transform_rules[resource_type]:
-                        hcl_apply_function_dict = self.transform_rules[resource_type]['hcl_apply_function_dict']
+                        hcl_apply_function_dict = self.transform_rules[
+                            resource_type]['hcl_apply_function_dict']
                         if key in hcl_apply_function_dict:
                             for function in hcl_apply_function_dict[key]["function"]:
-                                value=function(value)
+                                value = function(value)
                             return_str += (
                                 f'{quote_string(key)}={value}\n')
                             is_transformed = True
