@@ -1,10 +1,11 @@
+from sqlalchemy.orm import joinedload
 import os
 from datetime import datetime
 from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, joinedload
 from sqlalchemy.dialects.postgresql import insert
-from db.models import Scan, Workspace, ProviderGroup, Base
+from db.models import Scan, Workspace, ProviderGroup, AwsAccount, AwsAccountGitRepo, GitRepo, Base
 
 
 # Load environment variables from .env file
@@ -59,9 +60,10 @@ def get_scan_by_id(scan_id):
     session = Session()
 
     try:
-        # Query the scan by ID and eagerly load the related 'workspace', 'organization', 'awsAccount' and 'providerGroup'
+        # Query the scan by ID and eagerly load the related 'workspace', 'organization', 'awsAccount', 'awsAccountGitRepos', 'gitRepo', 'githubAccount', and 'providerGroup'
         scan = session.query(Scan).options(
-            joinedload(Scan.workspace).joinedload(Workspace.awsAccount),
+            joinedload(Scan.workspace).joinedload(Workspace.awsAccount).joinedload(
+                AwsAccount.awsAccountGitRepos).joinedload(AwsAccountGitRepo.gitRepo).joinedload(GitRepo.githubAccount),
             joinedload(Scan.workspace).joinedload(Workspace.providerGroup),
             joinedload(Scan.organization)
         ).get(scan_id)
