@@ -1,8 +1,8 @@
-# models.py
-from datetime import datetime
 from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, DateTime, UniqueConstraint
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
+from sqlalchemy.ext.declarative import declarative_base
+from datetime import datetime
+
 
 Base = declarative_base()
 
@@ -15,18 +15,26 @@ class Organization(Base):
     createdAt = Column(DateTime, default=datetime.utcnow)
     updatedAt = Column(DateTime, onupdate=datetime.utcnow)
 
-    aws_resource = relationship("AwsResource", back_populates="organization")
+    # memberships = relationship("Membership")
+    # invitations = relationship("Invitation")
+    # users = relationship("User")
+
+    resources = relationship("Resource")
+    workspaces = relationship("Workspace")
+    github_accounts = relationship("GithubAccount")
+    scans = relationship(
+        "Scan", back_populates="organization")  # Add this line
+    aws_accounts = relationship("AwsAccount")
 
 
-class AwsResource(Base):
-    __tablename__ = 'aws_resource'
+class Resource(Base):
+    __tablename__ = 'resource'
 
     id = Column(Integer, primary_key=True)
     organizationId = Column(Integer, ForeignKey('organization.id'))
+    workspaceId = Column(Integer, ForeignKey('workspace.id'))
     provider = Column(String)
-    accountId = Column(String)
     region = Column(String)
-    role = Column(String)
     resourceType = Column(String)
     resourceName = Column(String)
     resourceId = Column(String)
@@ -37,10 +45,192 @@ class AwsResource(Base):
     description = Column(String, nullable=True)
     createdAt = Column(DateTime, default=datetime.utcnow)
     updatedAt = Column(DateTime, onupdate=datetime.utcnow)
+    awsAccountId = Column(Integer, ForeignKey('aws_account.id'), nullable=True)
 
-    organization = relationship("Organization", back_populates="aws_resource")
+    organization = relationship("Organization", back_populates="resources")
+    workspace = relationship("Workspace", back_populates="resources")
+    awsAccount = relationship(
+        "AwsAccount", back_populates="resources", uselist=False)
 
     __table_args__ = (
-        UniqueConstraint('accountId', 'resourceType',
+        UniqueConstraint('awsAccountId', 'resourceType',
                          'resourceId', name='aws_resource_key'),
     )
+
+
+class AwsAccount(Base):
+    __tablename__ = 'aws_account'
+
+    id = Column(Integer, primary_key=True)
+    organizationId = Column(Integer, ForeignKey('organization.id'))
+    awsAccountId = Column(String)
+    name = Column(String)
+    roleArn = Column(String)
+    sessionDuration = Column(Integer)
+    description = Column(String, nullable=True)
+    createdAt = Column(DateTime, default=datetime.utcnow)
+    updatedAt = Column(DateTime, onupdate=datetime.utcnow)
+
+    # tags = relationship("AwsAccountTag")
+    resources = relationship("Resource", back_populates="awsAccount")
+    awsAccountGitRepos = relationship("AwsAccountGitRepo")
+    workspaces = relationship("Workspace")
+    awsStateConfigs = relationship("AwsStateConfig")
+
+    organization = relationship("Organization", back_populates="aws_accounts")
+
+
+class GithubAccount(Base):
+    __tablename__ = 'github_account'
+
+    id = Column(Integer, primary_key=True)
+    organizationId = Column(Integer, ForeignKey(
+        'organization.id'), unique=True)
+    installationId = Column(Integer, nullable=True)
+    createdAt = Column(DateTime, default=datetime.utcnow)
+    updatedAt = Column(DateTime, onupdate=datetime.utcnow)
+
+    organization = relationship(
+        "Organization", back_populates="github_accounts")
+    gitRepos = relationship("GitRepo")
+
+    __table_args__ = (
+        UniqueConstraint('organizationId', name='organizationId'),
+    )
+
+
+class GitRepo(Base):
+    __tablename__ = 'git_repo'
+
+    id = Column(Integer, primary_key=True)
+    gitrepoId = Column(Integer)
+    name = Column(String)
+    githubAccountId = Column(Integer, ForeignKey('github_account.id'))
+    organizationId = Column(Integer, ForeignKey('organization.id'))
+    createdAt = Column(DateTime, default=datetime.utcnow)
+    updatedAt = Column(DateTime, onupdate=datetime.utcnow)
+
+    githubAccount = relationship("GithubAccount", back_populates="gitRepos")
+    awsAccountGitRepos = relationship("AwsAccountGitRepo")
+
+    __table_args__ = (
+        UniqueConstraint('gitrepoId', 'organizationId',
+                         name='gitrepoId_organizationId'),
+    )
+
+
+class AwsAccountGitRepo(Base):
+    __tablename__ = 'aws_account_git_repo'
+
+    id = Column(Integer, primary_key=True)
+    awsAccountId = Column(Integer, ForeignKey('aws_account.id'))
+    gitRepoId = Column(Integer, ForeignKey('git_repo.id'))
+    organizationId = Column(Integer, ForeignKey('organization.id'))
+    branch = Column(String)
+    path = Column(String)
+    createdAt = Column(DateTime, default=datetime.utcnow)
+    updatedAt = Column(DateTime, onupdate=datetime.utcnow)
+
+    awsAccount = relationship(
+        "AwsAccount", back_populates="awsAccountGitRepos")
+    gitRepo = relationship("GitRepo", back_populates="awsAccountGitRepos")
+
+    __table_args__ = (
+        UniqueConstraint('awsAccountId', 'gitRepoId', 'organizationId'),
+    )
+
+
+class Provider(Base):
+    __tablename__ = 'provider'
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String, unique=True)
+    description = Column(String, nullable=True)
+    createdAt = Column(DateTime, default=datetime.utcnow)
+    updatedAt = Column(DateTime, onupdate=datetime.utcnow)
+
+    providerGroups = relationship("ProviderGroup", back_populates="provider")
+
+
+class ProviderGroup(Base):
+    __tablename__ = 'provider_group'
+
+    id = Column(Integer, primary_key=True)
+    code = Column(String)
+    name = Column(String)
+    description = Column(String, nullable=True)
+    active = Column(Boolean, default=True)
+    providerId = Column(Integer, ForeignKey('provider.id'))
+    createdAt = Column(DateTime, default=datetime.utcnow)
+    updatedAt = Column(DateTime, onupdate=datetime.utcnow)
+
+    provider = relationship("Provider", back_populates="providerGroups")
+    workspaces = relationship("Workspace", back_populates="providerGroup")
+
+
+class Workspace(Base):
+    __tablename__ = 'workspace'
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String)
+    organizationId = Column(Integer, ForeignKey('organization.id'))
+    scanInterval = Column(Integer, default=3600)
+    awsAccountId = Column(Integer, ForeignKey('aws_account.id'), nullable=True)
+    providerGroupId = Column(Integer, ForeignKey(
+        'provider_group.id'), nullable=True)
+    awsStateConfigId = Column(Integer, ForeignKey(
+        'aws_state_config.id'), nullable=True)
+    stateKey = Column(String)
+    awsRegion = Column(String, nullable=True)
+    description = Column(String, nullable=True)
+    createdAt = Column(DateTime, default=datetime.utcnow)
+    updatedAt = Column(DateTime, onupdate=datetime.utcnow)
+
+    awsStateConfig = relationship(
+        "AwsStateConfig", back_populates="workspaces")
+    awsAccount = relationship("AwsAccount", back_populates="workspaces")
+    providerGroup = relationship("ProviderGroup", back_populates="workspaces")
+    organization = relationship("Organization", back_populates="workspaces")
+    resources = relationship("Resource", back_populates="workspace")
+    scans = relationship("Scan", back_populates="workspace")
+
+    __table_args__ = (
+        UniqueConstraint('awsAccountId', 'providerGroupId',
+                         'awsRegion', 'organizationId'),
+    )
+
+
+class AwsStateConfig(Base):
+    __tablename__ = 'aws_state_config'
+
+    id = Column(Integer, primary_key=True)
+    organizationId = Column(Integer, ForeignKey('organization.id'))
+    awsAccountId = Column(Integer, ForeignKey('aws_account.id'))
+    awsRegion = Column(String)
+    s3Bucket = Column(String)
+    dynamoDBTable = Column(String)
+    createdAt = Column(DateTime, default=datetime.utcnow)
+    updatedAt = Column(DateTime, onupdate=datetime.utcnow)
+
+    awsAccount = relationship("AwsAccount", back_populates="awsStateConfigs")
+    workspaces = relationship("Workspace", back_populates="awsStateConfig")
+
+    __table_args__ = (
+        UniqueConstraint('awsAccountId', 'organizationId', 'awsRegion'),
+    )
+
+
+class Scan(Base):
+    __tablename__ = 'scan'
+    id = Column(Integer, primary_key=True)
+    organizationId = Column(Integer, ForeignKey('organization.id'))
+    organization = relationship("Organization", back_populates="scans")
+    createdAt = Column(DateTime, default=datetime.utcnow)
+    updatedAt = Column(DateTime, onupdate=datetime.utcnow)
+    date = Column(DateTime)
+    status = Column(String)
+    trigger = Column(String)
+    logFile = Column(String)
+    workspaceId = Column(Integer, ForeignKey('workspace.id'))
+
+    workspace = relationship("Workspace", back_populates="scans")
