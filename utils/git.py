@@ -3,8 +3,10 @@ import jwt
 import time
 import http.client
 import json
-import base64
 from dotenv import load_dotenv
+
+import git
+import shutil
 
 load_dotenv()
 
@@ -55,102 +57,62 @@ def create_pr_with_files(github_installation_id, git_repo_name, git_repo_path, l
     installation_token, organization = get_installation_token(
         app_id, pem, github_installation_id)
 
-    conn = http.client.HTTPSConnection("api.github.com")
+    # Clone the repository
+    clone_url = f"https://x-access-token:{installation_token}@github.com/{organization}/{git_repo_name}.git"
+    clone_dir = os.path.join(os.getcwd(), "cloned_repo")
+    if os.path.exists(clone_dir):
+        shutil.rmtree(clone_dir)
+    repo = git.Repo.clone_from(clone_url, clone_dir)
 
+    # Checkout to the branch or create it if it does not exist
+    try:
+        repo.git.checkout(git_repo_branch)
+    except git.exc.GitCommandError as e:
+        # Branch does not exist, create it
+        repo.git.checkout("-b", git_repo_branch)
+
+    # Copy the new files into the cloned repository
+    for file in os.listdir(local_path):
+        destination_dir = os.path.join(clone_dir, git_repo_path)
+        # Create the directory if it does not exist
+        os.makedirs(destination_dir, exist_ok=True)
+        if file.endswith('.tf'):
+            shutil.copy(os.path.join(local_path, file), destination_dir)
+
+    # Stage and commit the changes
+    repo.git.add(all=True)
+
+    # Check for changes
+    if not repo.is_dirty():
+        print("No changes detected. No commits will be made.")
+        return
+
+    repo.git.commit('-m', 'Updated files')
+
+    # Push the changes
+    try:
+        repo.git.push('--set-upstream', 'origin', git_repo_branch)
+    except git.exc.GitCommandError as e:
+        # Branch does not exist in remote, create it and push again
+        repo.git.push('-u', 'origin', git_repo_branch)
+
+    # Check if a pull request already exists
+    conn = http.client.HTTPSConnection("api.github.com")
     headers = {
         'User-Agent': 'GitHub App',
         'Accept': 'application/vnd.github+json',
         'Authorization': 'Bearer ' + str(installation_token),
         'Content-Type': 'application/json'
     }
-
     conn.request(
-        "GET", f"/repos/{organization}/{git_repo_name}/git/ref/heads/{git_target_branch}", headers=headers)
-    res = conn.getresponse()
-    data = res.read()
-    json_data = json.loads(data.decode("utf-8"))
-    base_sha = json_data['object']['sha']
-
-    blobs = []
-    for file in os.listdir(local_path):
-        file_path = os.path.join(local_path, file)
-        if os.path.isfile(file_path) and file.endswith('.tf'):
-            content = ''
-            with open(file_path, 'r') as file_content:
-                content = file_content.read()
-
-            content_encoded = base64.b64encode(content.encode()).decode()
-            conn.request("POST", f"/repos/{organization}/{git_repo_name}/git/blobs", headers=headers, body=json.dumps({
-                "content": content_encoded,
-                "encoding": "base64"
-            }))
-            res = conn.getresponse()
-            data = res.read()
-            if res.status != 201:  # If the blob is not created successfully
-                print(
-                    f"Failed to create blob for file {file}. Response: {data.decode()}")
-            else:
-                blob_sha = json.loads(data)['sha']
-                blobs.append({
-                    'path': f"{git_repo_path}/{file}",
-                    'mode': '100644',
-                    'type': 'blob',
-                    'sha': blob_sha
-                })
-
-    # Create a tree with the blobs
-    conn.request("POST", f"/repos/{organization}/{git_repo_name}/git/trees", headers=headers, body=json.dumps({
-        "base_tree": base_sha,
-        "tree": blobs
-    }))
-    res = conn.getresponse()
-    data = res.read()
-    if res.status != 201:
-        print(f"Failed to create tree. Response: {data.decode()}")
-    else:
-        tree_sha = json.loads(data)['sha']
-
-        # Get the current commit SHA of the branch
-        conn.request(
-            "GET", f"/repos/{organization}/{git_repo_name}/git/refs/heads/{git_repo_branch}", headers=headers)
-        res = conn.getresponse()
-        data = res.read()
-        if res.status != 200:
-            print(f"Failed to get reference. Response: {data.decode()}")
-        else:
-            branch_sha = json.loads(data)['object']['sha']
-
-        # Create a commit using the tree
-        conn.request("POST", f"/repos/{organization}/{git_repo_name}/git/commits", headers=headers, body=json.dumps({
-            "message": "commit message",
-            "tree": tree_sha,
-            "parents": [branch_sha]
-        }))
-        res = conn.getresponse()
-        data = res.read()
-        if res.status != 201:
-            print(f"Failed to create commit. Response: {data.decode()}")
-        else:
-            commit_sha = json.loads(data)['sha']
-
-            # Update the reference to point to the new commit
-            conn.request("PATCH", f"/repos/{organization}/{git_repo_name}/git/refs/heads/{git_repo_branch}", headers=headers, body=json.dumps({
-                "sha": commit_sha,
-                "force": False
-            }))
-            res = conn.getresponse()
-            data = res.read()
-            if res.status != 200:
-                print(f"Failed to update reference. Response: {data.decode()}")
-
-    conn.request(
-        "GET", f"/repos/{organization}/{git_repo_name}/pulls?state=open", headers=headers)
+        "GET", f"/repos/{organization}/{git_repo_name}/pulls", headers=headers)
     res = conn.getresponse()
     data = res.read()
     if res.status != 200:
         print(f"Failed to retrieve pull requests. Response: {data.decode()}")
+        return
     else:
-        pulls = json.loads(data)
+        pulls = json.loads(data.decode())
         for pull in pulls:
             if pull['head']['ref'] == git_repo_branch:
                 print(
@@ -158,16 +120,21 @@ def create_pr_with_files(github_installation_id, git_repo_name, git_repo_path, l
                 return
 
     # Create a pull request
-    conn.request("POST", f"/repos/{organization}/{git_repo_name}/pulls", headers=headers, body=json.dumps({
+    body = json.dumps({
         "title": f"{git_repo_path} updates",
-        "body": "Terraform updates",
+        "body": "Updated files",
         "head": git_repo_branch,
         "base": git_target_branch
-    }))
+    })
+    conn.request(
+        "POST", f"/repos/{organization}/{git_repo_name}/pulls", headers=headers, body=body)
     res = conn.getresponse()
     data = res.read()
-    if res.status != 201:  # If the pull request is not created successfully
+    if res.status != 201:
         print(f"Failed to create pull request. Response: {data.decode()}")
+    else:
+        print(
+            f"Successfully created pull request #{json.loads(data.decode())['number']}")
 
-    # Print the repo path
-    print(f"Repo path: {organization}/{git_repo_name}")
+    # Remove the cloned directory
+    shutil.rmtree(clone_dir)
