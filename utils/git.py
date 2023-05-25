@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 
 import git
 import shutil
+import stat
 
 load_dotenv()
 
@@ -59,9 +60,11 @@ def create_pr_with_files(github_installation_id, git_repo_name, git_repo_path, l
 
     # Clone the repository
     clone_url = f"https://x-access-token:{installation_token}@github.com/{organization}/{git_repo_name}.git"
-    clone_dir = os.path.join(os.getcwd(), "cloned_repo")
+    clone_dir = os.path.join("/tmp/", "cloned_repo")
+
     if os.path.exists(clone_dir):
-        shutil.rmtree(clone_dir)
+        os.system(f"rm -rf {clone_dir}")
+
     repo = git.Repo.clone_from(clone_url, clone_dir)
 
     # Checkout to the branch or create it if it does not exist
@@ -137,4 +140,4 @@ def create_pr_with_files(github_installation_id, git_repo_name, git_repo_path, l
             f"Successfully created pull request #{json.loads(data.decode())['number']}")
 
     # Remove the cloned directory
-    shutil.rmtree(clone_dir)
+    os.system(f"rm -rf {clone_dir}")
