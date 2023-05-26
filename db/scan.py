@@ -20,37 +20,22 @@ Base.metadata.bind = engine
 Session = sessionmaker(bind=engine)
 
 
-def upsert_scan(organization_id, workspace_id, date, status, trigger, log_file):
+def update_scan_status(scan_id, status):
     session = Session()
     current_time = datetime.utcnow()
 
-    # Prepare the upsert statement
-    stmt = insert(Scan).values(
-        organizationId=organization_id,
-        workspaceId=workspace_id,
-        date=date,
-        status=status,
-        trigger=trigger,
-        logFile=log_file,
-        createdAt=current_time,
-        updatedAt=current_time
-    ).on_conflict_do_update(
-        index_elements=['workspaceId'],
-        set_=dict(
-            organizationId=organization_id,
-            date=date,
-            status=status,
-            trigger=trigger,
-            logFile=log_file,
-            updatedAt=current_time
-        )
-    )
+    # Get the existing scan
+    scan = session.query(Scan).get(scan_id)
 
-    # Execute the upsert statement
-    session.execute(stmt)
+    if scan is not None:
+        # Update status and updatedAt
+        scan.status = status
+        scan.updatedAt = current_time
 
-    # Commit the transaction
-    session.commit()
+        # Commit the changes
+        session.commit()
+    else:
+        print(f"No scan found with ID {scan_id}")
 
     # Close the session
     session.close()

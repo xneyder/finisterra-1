@@ -6,7 +6,7 @@ from typing import Dict
 import sys
 from providers.aws.Aws import Aws
 from db.resource import upsert_resource
-from db.scan import get_scan_by_id
+from db.scan import get_scan_by_id, update_scan_status
 from utils.git import create_pr_with_files
 
 
@@ -32,6 +32,7 @@ def main():
 
     for message in consumer:
         task = message.value
+        print(task)
         # task = message
         provider_name = task['provider_name']
 
@@ -45,6 +46,8 @@ def main():
                 if scan is None:
                     print(f"No scan found with ID {scan_id}")
                     continue
+
+                update_scan_status(scan_id, "IN_PROGRESS")
 
                 # Extract the values you need
                 organization_id = scan.organization.id
@@ -70,6 +73,7 @@ def main():
                     provider.vpc()
                     print("Processing VPC")
                 else:
+                    update_scan_status(scan_id, "FAILED")
                     break
 
                 for module, module_v in provider.resource_list.items():
@@ -99,8 +103,11 @@ def main():
                                      git_repo_branch=git_repo_path,
                                      git_target_branch=git_repo_branch)
 
+                update_scan_status(scan_id, "COMPLETED")
+
                 print("Task processed and committed")
             except Exception as e:
+                update_scan_status(scan_id, "FAILED")
                 print("Error processing task:", e)
         else:
             print("Provider not supported")
