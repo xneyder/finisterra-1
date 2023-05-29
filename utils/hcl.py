@@ -3,16 +3,20 @@ import subprocess
 import os
 import re
 import shutil
-from utils.filesystem import create_version_file
+from utils.filesystem import create_version_file, create_backend_file
 
 
 class HCL:
-    def __init__(self, schema_data, provider_name, script_dir, transform_rules):
+    def __init__(self, schema_data, provider_name, script_dir, transform_rules, region, bucket, dynamodb_table, state_key):
         self.terraform_state_file = "terraform.tfstate"
         self.schema_data = schema_data
         self.provider_name = provider_name
         self.script_dir = script_dir
         self.transform_rules = transform_rules
+        self.region = region
+        self.bucket = bucket
+        self.dynamodb_table = dynamodb_table
+        self.state_key = state_key
 
     def search_state_file(self, resource_type, resource_name, resource_id):
         # Load the state file
@@ -281,6 +285,8 @@ class HCL:
 
                 hcl_output.write("}\n\n")
         print("Formatting HCL files...")
+        create_backend_file(self.bucket, os.path.join(self.state_key, "terraform.tfstate"),
+                            self.region, self.dynamodb_table)
         subprocess.run(["terraform", "fmt"], check=True)
         subprocess.run(["terraform", "validate"], check=True)
 

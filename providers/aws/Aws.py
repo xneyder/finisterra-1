@@ -5,7 +5,6 @@ import re
 import subprocess
 import shutil
 import json
-from utils.hcl import HCL
 from utils.filesystem import create_version_file
 from providers.aws.vpc import VPC
 from providers.aws.route53 import Route53
@@ -51,11 +50,15 @@ from providers.aws.elbv2 import ELBV2
 
 
 class Aws:
-    def __init__(self, script_dir):
+    def __init__(self, script_dir, s3Bucket,
+                 dynamoDBTable, state_key):
         self.provider_name = "registry.terraform.io/hashicorp/aws"
         self.script_dir = script_dir
         self.schema_data = self.load_provider_schema()
         self.resource_list = {}
+        self.s3Bucket = s3Bucket
+        self.dynamoDBTable = dynamoDBTable
+        self.state_key = state_key
 
     def set_boto3_session(self, id_token=None, role_arn=None, session_duration=None, aws_region="us-east-1"):
         if id_token and role_arn and session_duration:
@@ -114,6 +117,18 @@ class Aws:
                     return False
 
         return True
+
+    def upload_file_to_s3(self, local_file_path):
+        s3_client = self.session.client(
+            "s3", region_name=self.aws_region)
+        try:
+            s3_client.upload_file(
+                os.path.join(local_file_path, "terraform.tfstate"), self.s3Bucket, os.path.join(self.state_key, "terraform.tfstate"))
+            print(
+                f"File {local_file_path} uploaded to {self.state_key} in bucket {self.s3Bucket}.")
+        except Exception as e:
+            print(
+                f"An error occurred while uploading the file to S3: {str(e)}")
 
     def extract_arns_from_state_file(self, file_path):
         with open(file_path, 'r') as file:
@@ -319,7 +334,8 @@ class Aws:
     def vpc(self):
         ec2_client = self.session.client("ec2", region_name=self.aws_region)
         instance = VPC(ec2_client, self.script_dir, self.provider_name,
-                       self.schema_data, self.aws_region)
+                       self.schema_data, self.aws_region, self.s3Bucket,
+                       self.dynamoDBTable, self.state_key)
         instance.vpc()
         self.resource_list['vpc'] = instance.resource_list
         # ec2_client = self.session.client('ec2',

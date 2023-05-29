@@ -50,7 +50,9 @@ def get_scan_by_id(scan_id):
             joinedload(Scan.workspace).joinedload(Workspace.awsAccount).joinedload(
                 AwsAccount.awsAccountGitRepos).joinedload(AwsAccountGitRepo.gitRepo).joinedload(GitRepo.githubAccount),
             joinedload(Scan.workspace).joinedload(Workspace.providerGroup),
-            joinedload(Scan.organization)
+            joinedload(Scan.organization),
+            joinedload(Scan.workspace).joinedload(
+                Workspace.awsAccount).joinedload(AwsAccount.awsStateConfigs)
         ).get(scan_id)
 
         return scan

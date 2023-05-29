@@ -1,9 +1,11 @@
 import os
 from utils.hcl import HCL
+from utils.filesystem import create_backend_file
 
 
 class VPC:
-    def __init__(self, ec2_client, script_dir, provider_name, schema_data, region):
+    def __init__(self, ec2_client, script_dir, provider_name, schema_data, region, s3Bucket,
+                 dynamoDBTable, state_key):
         self.ec2_client = ec2_client
         self.transform_rules = {
             "aws_vpc": {
@@ -34,70 +36,70 @@ class VPC:
         self.provider_name = provider_name
         self.script_dir = script_dir
         self.schema_data = schema_data
-        self.hcl = HCL(self.schema_data, self.provider_name,
-                       self.script_dir, self.transform_rules)
         self.region = region
+        self.hcl = HCL(self.schema_data, self.provider_name,
+                       self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key)
         self.resource_list = {}
 
     def vpc(self):
         self.hcl.prepare_folder(os.path.join("generated", "vpc"))
 
-        self.aws_vpc()
-        self.aws_subnet()
-        self.aws_default_network_acl()
-        self.aws_default_route_table()
-        self.aws_default_security_group()
+        # self.aws_vpc()
+        # self.aws_subnet()
+        # self.aws_default_network_acl()
+        # self.aws_default_route_table()
+        # self.aws_default_security_group()
         self.aws_default_vpc()
-        self.aws_default_subnet()
-        # self.aws_default_vpc_dhcp_options() # no boto3 filter
-        # self.aws_ec2_managed_prefix_list() # Conflicts with aws_ec2_managed_prefix_list_entry
+        # self.aws_default_subnet()
+        # # self.aws_default_vpc_dhcp_options() # no boto3 filter
+        # # self.aws_ec2_managed_prefix_list() # Conflicts with aws_ec2_managed_prefix_list_entry
 
-        if "gov" not in self.region:
-            self.aws_ec2_network_insights_analysis()
-            self.aws_ec2_network_insights_path()
+        # if "gov" not in self.region:
+        #     self.aws_ec2_network_insights_analysis()
+        #     self.aws_ec2_network_insights_path()
 
-        self.aws_ec2_subnet_cidr_reservation()
-        self.aws_ec2_traffic_mirror_filter()
-        self.aws_ec2_traffic_mirror_filter_rule()
-        self.aws_ec2_traffic_mirror_session()
-        self.aws_ec2_traffic_mirror_target()
-        self.aws_egress_only_internet_gateway()
-        self.aws_flow_log()
-        self.aws_internet_gateway()
-        self.aws_internet_gateway_attachment()
-        self.aws_main_route_table_association()
-        self.aws_nat_gateway()
-        self.aws_network_acl()
-        self.aws_network_acl_association()
-        self.aws_network_acl_rule()
-        self.aws_network_interface()
-        self.aws_network_interface_attachment()
-        self.aws_network_interface_sg_attachment()
-        self.aws_route()
-        self.aws_route_table()
-        self.aws_route_table_association()
-        self.aws_security_group()
-        # self.aws_security_group_rule() conflicts with aws_vpc_security_group_egress_rule, and aws_vpc_security_group_ingress_rule
-        self.aws_vpc_dhcp_options()
-        self.aws_vpc_dhcp_options_association()
-        self.aws_vpc_endpoint()
-        self.aws_vpc_endpoint_connection_accepter()
-        self.aws_vpc_endpoint_connection_notification()
-        self.aws_vpc_endpoint_policy()
-        self.aws_vpc_endpoint_route_table_association()
-        # terraform refresh comes empty with resources that are not found in amazon
-        self.aws_vpc_endpoint_security_group_association()
-        self.aws_vpc_endpoint_service()
-        self.aws_vpc_endpoint_service_allowed_principal()
-        self.aws_vpc_endpoint_subnet_association()
-        self.aws_vpc_ipv4_cidr_block_association()
-        self.aws_vpc_ipv6_cidr_block_association()
-        # self.aws_vpc_network_performance_metric_subscription() #no boto3 lib
-        self.aws_vpc_peering_connection()
-        self.aws_vpc_peering_connection_accepter()
-        self.aws_vpc_peering_connection_options()
-        self.aws_vpc_security_group_egress_rule()
-        self.aws_vpc_security_group_ingress_rule()
+        # self.aws_ec2_subnet_cidr_reservation()
+        # self.aws_ec2_traffic_mirror_filter()
+        # self.aws_ec2_traffic_mirror_filter_rule()
+        # self.aws_ec2_traffic_mirror_session()
+        # self.aws_ec2_traffic_mirror_target()
+        # self.aws_egress_only_internet_gateway()
+        # self.aws_flow_log()
+        # self.aws_internet_gateway()
+        # self.aws_internet_gateway_attachment()
+        # self.aws_main_route_table_association()
+        # self.aws_nat_gateway()
+        # self.aws_network_acl()
+        # self.aws_network_acl_association()
+        # self.aws_network_acl_rule()
+        # self.aws_network_interface()
+        # self.aws_network_interface_attachment()
+        # self.aws_network_interface_sg_attachment()
+        # self.aws_route()
+        # self.aws_route_table()
+        # self.aws_route_table_association()
+        # self.aws_security_group()
+        # # self.aws_security_group_rule() conflicts with aws_vpc_security_group_egress_rule, and aws_vpc_security_group_ingress_rule
+        # self.aws_vpc_dhcp_options()
+        # self.aws_vpc_dhcp_options_association()
+        # self.aws_vpc_endpoint()
+        # self.aws_vpc_endpoint_connection_accepter()
+        # self.aws_vpc_endpoint_connection_notification()
+        # self.aws_vpc_endpoint_policy()
+        # self.aws_vpc_endpoint_route_table_association()
+        # # terraform refresh comes empty with resources that are not found in amazon
+        # self.aws_vpc_endpoint_security_group_association()
+        # self.aws_vpc_endpoint_service()
+        # self.aws_vpc_endpoint_service_allowed_principal()
+        # self.aws_vpc_endpoint_subnet_association()
+        # self.aws_vpc_ipv4_cidr_block_association()
+        # self.aws_vpc_ipv6_cidr_block_association()
+        # # self.aws_vpc_network_performance_metric_subscription() #no boto3 lib
+        # self.aws_vpc_peering_connection()
+        # self.aws_vpc_peering_connection_accepter()
+        # self.aws_vpc_peering_connection_options()
+        # self.aws_vpc_security_group_egress_rule()
+        # self.aws_vpc_security_group_ingress_rule()
 
         self.hcl.refresh_state()
         self.hcl.generate_hcl_file()
