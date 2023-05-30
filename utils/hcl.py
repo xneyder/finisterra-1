@@ -4,6 +4,7 @@ import os
 import re
 import shutil
 from utils.filesystem import create_version_file, create_backend_file
+from utils.terraform import Terraform
 
 
 class HCL:
@@ -285,10 +286,14 @@ class HCL:
 
                 hcl_output.write("}\n\n")
         print("Formatting HCL files...")
-        create_backend_file(self.bucket, os.path.join(self.state_key, "terraform.tfstate"),
-                            self.region, self.dynamodb_table)
+
         subprocess.run(["terraform", "fmt"], check=True)
         subprocess.run(["terraform", "validate"], check=True)
+        print("Running Terraform plan on generated files...")
+        terraform = Terraform()
+        self.json_plan = terraform.tf_plan("./")
+        create_backend_file(self.bucket, os.path.join(self.state_key, "terraform.tfstate"),
+                            self.region, self.dynamodb_table)
 
     def replace_special_chars(self, input_string):
         # Replace spaces, "-", ".", and any special character with "_"

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, DateTime, UniqueConstraint
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, DateTime, UniqueConstraint, JSON
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
 from datetime import datetime
@@ -185,6 +185,8 @@ class Workspace(Base):
     description = Column(String, nullable=True)
     createdAt = Column(DateTime, default=datetime.utcnow)
     updatedAt = Column(DateTime, onupdate=datetime.utcnow)
+    terraformPlan = Column(JSON, nullable=True)
+    scannedTerraformPlan = Column(JSON, nullable=True)
 
     awsStateConfig = relationship(
         "AwsStateConfig", back_populates="workspaces")

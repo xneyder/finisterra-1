@@ -50,7 +50,7 @@ class VPC:
         # self.aws_default_route_table()
         # self.aws_default_security_group()
         self.aws_default_vpc()
-        # self.aws_default_subnet()
+        self.aws_default_subnet()
         # # self.aws_default_vpc_dhcp_options() # no boto3 filter
         # # self.aws_ec2_managed_prefix_list() # Conflicts with aws_ec2_managed_prefix_list_entry
 
@@ -103,6 +103,7 @@ class VPC:
 
         self.hcl.refresh_state()
         self.hcl.generate_hcl_file()
+        self.json_plan = self.hcl.json_plan
 
     def aws_vpc(self):
         print("Processing VPCs...")

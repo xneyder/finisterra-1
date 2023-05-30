@@ -337,6 +337,7 @@ class Aws:
                        self.schema_data, self.aws_region, self.s3Bucket,
                        self.dynamoDBTable, self.state_key)
         instance.vpc()
+        self.json_plan = instance.json_plan
         self.resource_list['vpc'] = instance.resource_list
         # ec2_client = self.session.client('ec2',
         #                                   aws_session_token=self.MFA_validated_token[
