@@ -99,7 +99,11 @@ def main():
                 if git_repo.merged:
                     print("Uploading state file because the PR was merged")
                     provider.upload_file_to_s3(
-                        local_path)
+                        local_path, "terraform.tfstate", "terraform.tfstate")
+                else:
+                    print("Uploading scanned state file")
+                    provider.upload_file_to_s3(
+                        local_path, "terraform.tfstate", "terraform.tfstate_scanned")
 
                 update_scan_status(scan_id, "COMPLETED")
 

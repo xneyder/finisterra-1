@@ -118,12 +118,12 @@ class Aws:
 
         return True
 
-    def upload_file_to_s3(self, local_file_path):
+    def upload_file_to_s3(self, local_file_path, state_file_name, target_state_file_name):
         s3_client = self.session.client(
             "s3", region_name=self.aws_region)
         try:
             s3_client.upload_file(
-                os.path.join(local_file_path, "terraform.tfstate"), self.s3Bucket, os.path.join(self.state_key, "terraform.tfstate"))
+                os.path.join(local_file_path, state_file_name), self.s3Bucket, os.path.join(self.state_key, target_state_file_name))
             print(
                 f"File {local_file_path} uploaded to {self.state_key} in bucket {self.s3Bucket}.")
         except Exception as e:
