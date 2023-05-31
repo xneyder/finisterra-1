@@ -6,9 +6,8 @@ from dotenv import load_dotenv
 from typing import Dict
 import sys
 from providers.aws.Aws import Aws
-from db.resource import upsert_resource
 from db.scan import get_scan_by_id, update_scan_status
-from db.workspace import update_workspace_terraform_plan
+from db.workspace import update_workspace
 from utils.git import Git
 from utils.terraform import Terraform
 
@@ -89,12 +88,13 @@ def main():
                 print("Running terraform plan on main branch ...")
                 terraform = Terraform()
                 json_plan = terraform.tf_plan(git_repo.destination_dir)
-                # Update the terraformPlan field of the workspace
-                update_workspace_terraform_plan(
-                    workspace_id, json_plan, provider.json_plan)
 
                 # Do PR
                 git_repo.create_pr_with_files()
+
+                # Update the terraformPlan field of the workspace
+                update_workspace(
+                    workspace_id, json_plan, provider.json_plan, git_repo.pr_url)
 
                 if git_repo.merged:
                     print("Uploading state file because the PR was merged")

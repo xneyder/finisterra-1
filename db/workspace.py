@@ -16,7 +16,7 @@ engine = create_engine(DATABASE_URL)
 Session = sessionmaker(bind=engine)
 
 
-def update_workspace_terraform_plan(workspace_id, terraform_plan, sacanned_terraform_plan):
+def update_workspace(workspace_id, terraform_plan, sacanned_terraform_plan, drift_fix_pr):
     session = Session()
 
     # Get the existing workspace
@@ -26,6 +26,7 @@ def update_workspace_terraform_plan(workspace_id, terraform_plan, sacanned_terra
         # Update terraformPlan field
         workspace.terraformPlan = terraform_plan
         workspace.scannedTerraformPlan = sacanned_terraform_plan
+        workspace.driftFixPR = drift_fix_pr
 
         # Commit the changes
         session.commit()

@@ -165,6 +165,7 @@ class Git:
         res = conn.getresponse()
         data = res.read()
         pr_number = None
+        self.pr_url = None  # Initialize pr_url
         if res.status != 200:
             print(
                 f"Failed to retrieve pull requests. Response: {data.decode()}")
@@ -175,6 +176,8 @@ class Git:
                     print(
                         f"A pull request already exists for branch {self.git_repo_branch}")
                     pr_number = pull['number']
+                    # Save the pull request url
+                    self.pr_url = pull['html_url']
                     break
         return pr_number
 
@@ -199,10 +202,14 @@ class Git:
         res = conn.getresponse()
         data = res.read()
         pr_number = None
+        self.pr_url = None  # Initialize pr_url
         if res.status != 201:
             print(f"Failed to create pull request. Response: {data.decode()}")
         else:
-            pr_number = json.loads(data.decode())['number']
+            response_data = json.loads(data.decode())
+            pr_number = response_data['number']
+            # Save the pull request url
+            self.pr_url = response_data['html_url']
             print(f"Successfully created pull request #{pr_number}")
         return pr_number
 

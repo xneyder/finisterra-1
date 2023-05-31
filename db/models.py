@@ -183,6 +183,7 @@ class Workspace(Base):
     stateKey = Column(String)
     awsRegion = Column(String, nullable=True)
     description = Column(String, nullable=True)
+    driftFixPR = Column(String, nullable=True)
     createdAt = Column(DateTime, default=datetime.utcnow)
     updatedAt = Column(DateTime, onupdate=datetime.utcnow)
     terraformPlan = Column(JSON, nullable=True)
