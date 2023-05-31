@@ -1,9 +1,16 @@
-import os
 import jwt
 import time
 import http.client
 import json
 from dotenv import load_dotenv
+import os
+
+from Crypto.Cipher import AES
+from Crypto.Util.Padding import pad
+from Crypto.Random import get_random_bytes
+from Crypto.Hash import SHA256
+
+import base64
 
 import git
 import shutil
@@ -14,13 +21,14 @@ load_dotenv()
 
 class Git:
 
-    def __init__(self, github_installation_id, git_repo_name, git_repo_path, local_path, git_repo_branch, git_target_branch):
+    def __init__(self, github_installation_id, git_repo_name, git_repo_path, local_path, git_repo_branch, git_target_branch, workspace_id):
         self.github_installation_id = github_installation_id
         self.git_repo_name = git_repo_name
         self.git_repo_path = git_repo_path
         self.local_path = local_path
         self.git_repo_branch = "branch/" + git_repo_branch
         self.git_target_branch = git_target_branch
+        self.workspace_id = workspace_id
 
         self.clone_dir = os.path.join("/tmp/", "cloned_repo")
         if os.path.exists(self.clone_dir):
@@ -77,6 +85,17 @@ class Git:
         clone_url = f"https://x-access-token:{self.installation_token}@github.com/{self.organization}/{self.git_repo_name}.git"
 
         self.repo = git.Repo.clone_from(clone_url, self.clone_dir)
+
+    def encrypt(self, plain_text):
+        secret_key = os.getenv("GITHUB_PR_SECRET")
+        # Hash the secret key
+        hashed_key = SHA256.new(secret_key.encode()).digest()
+        # Use the hashed key instead of the original secret key
+        cipher = AES.new(hashed_key, AES.MODE_CBC)
+        ct_bytes = cipher.encrypt(pad(plain_text.encode(), AES.block_size))
+        iv = base64.b64encode(cipher.iv).decode('utf-8')
+        ct = base64.b64encode(ct_bytes).decode('utf-8')
+        return iv + ":" + ct
 
     def create_pr_with_files(self):
 
@@ -160,6 +179,8 @@ class Git:
         return pr_number
 
     def create_pull_request(self):
+        encrypted_text = self.encrypt(str(self.workspace_id))
+
         conn = http.client.HTTPSConnection("api.github.com")
         headers = {
             'User-Agent': 'GitHub App',
@@ -168,8 +189,8 @@ class Git:
             'Content-Type': 'application/json'
         }
         body = json.dumps({
-            "title": f"{self.git_repo_path} updates",
-            "body": "Updated files",
+            "title": f"{self.git_repo_branch}",
+            "body": f"Updated files for {self.git_repo_path}\n\nworkspace: {encrypted_text}",
             "head": self.git_repo_branch,
             "base": self.git_target_branch
         })

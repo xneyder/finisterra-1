@@ -83,17 +83,15 @@ def main():
                                local_path=local_path,
                                git_repo_path=git_repo_path,
                                git_repo_branch=git_repo_path,
-                               git_target_branch=git_repo_branch)
+                               git_target_branch=git_repo_branch,
+                               workspace_id=workspace_id)
 
                 print("Running terraform plan on main branch ...")
                 terraform = Terraform()
                 json_plan = terraform.tf_plan(git_repo.destination_dir)
-
                 # Update the terraformPlan field of the workspace
                 update_workspace_terraform_plan(
                     workspace_id, json_plan, provider.json_plan)
-
-                # print(json.dumps(json_plan, indent=4))
 
                 # Do PR
                 git_repo.create_pr_with_files()
