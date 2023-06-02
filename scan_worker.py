@@ -58,6 +58,7 @@ def main():
                 github_installation_id = scan.workspace.awsAccount.awsAccountGitRepos[
                     0].gitRepo.githubAccount.installationId
                 git_repo_name = scan.workspace.awsAccount.awsAccountGitRepos[0].gitRepo.name
+                git_repo_id = scan.workspace.awsAccount.awsAccountGitRepos[0].gitRepo.gitrepoId
                 git_repo_path = f"finisterra/{scan.workspace.stateKey}"
                 s3Bucket = scan.workspace.awsAccount.awsStateConfigs[0].s3Bucket
                 dynamoDBTable = scan.workspace.awsAccount.awsStateConfigs[0].dynamoDBTable
@@ -78,7 +79,7 @@ def main():
                 local_path = os.path.join(
                     script_dir, "generated", provider_group_code)
                 git_repo = Git(github_installation_id=github_installation_id,
-                               git_repo_name=git_repo_name,
+                               git_repo_id=git_repo_id,
                                local_path=local_path,
                                git_repo_path=git_repo_path,
                                git_repo_branch=git_repo_path,

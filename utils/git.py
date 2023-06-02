@@ -1,3 +1,4 @@
+
 import jwt
 import time
 import http.client
@@ -21,9 +22,9 @@ load_dotenv()
 
 class Git:
 
-    def __init__(self, github_installation_id, git_repo_name, git_repo_path, local_path, git_repo_branch, git_target_branch, workspace_id):
+    def __init__(self, github_installation_id, git_repo_id, git_repo_path, local_path, git_repo_branch, git_target_branch, workspace_id):
         self.github_installation_id = github_installation_id
-        self.git_repo_name = git_repo_name
+        self.git_repo_id = git_repo_id
         self.git_repo_path = git_repo_path
         self.local_path = local_path
         self.git_repo_branch = "branch/" + git_repo_branch
@@ -40,11 +41,31 @@ class Git:
 
         self.get_installation_token(app_id, pem)
 
+        self.git_repo_name = self.get_repo_name()
+
         self.clone_repo()
 
         self.destination_dir = os.path.join(self.clone_dir, self.git_repo_path)
 
         self.merged = False
+
+    def get_repo_name(self):
+        conn = http.client.HTTPSConnection("api.github.com")
+
+        headers = {
+            'User-Agent': 'GitHub App',
+            'Accept': 'application/vnd.github+json',
+            'Authorization': 'Bearer ' + str(self.installation_token),
+        }
+
+        conn.request(
+            "GET", f"/repositories/{self.git_repo_id}", headers=headers)
+
+        res = conn.getresponse()
+        data = res.read()
+
+        json_data = json.loads(data.decode("utf-8"))
+        return json_data.get('name')
 
     def get_installation_token(self, app_id, pem):
         payload = {
@@ -145,7 +166,7 @@ class Git:
         pr_number = self.get_pull_request()
 
         # If PR does not exist, create one
-        if pr_number is None and new_commit:
+        if pr_number is None:
             pr_number = self.create_pull_request()
 
         # If directory does not exist in target branch, merge the PR
