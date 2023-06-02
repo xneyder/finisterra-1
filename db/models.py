@@ -181,6 +181,7 @@ class Workspace(Base):
     awsStateConfigId = Column(Integer, ForeignKey(
         'aws_state_config.id'), nullable=True)
     stateKey = Column(String)
+    gitPath = Column(String)
     awsRegion = Column(String, nullable=True)
     description = Column(String, nullable=True)
     driftFixPR = Column(String, nullable=True)
