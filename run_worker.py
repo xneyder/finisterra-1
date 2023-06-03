@@ -81,7 +81,7 @@ def main():
 
                 git_repo.checkout_commit(commit_hash)
 
-                print("Running terraform plan on main branch ...")
+                print("Running terraform plan ...")
                 terraform = Terraform()
                 json_plan = terraform.tf_plan(git_repo.destination_dir)
 
