@@ -237,4 +237,23 @@ class Scan(Base):
     logFile = Column(String)
     workspaceId = Column(Integer, ForeignKey('workspace.id'))
 
+    organization = relationship("Organization")
     workspace = relationship("Workspace", back_populates="scans")
+
+
+class Run(Base):
+    __tablename__ = 'run'
+
+    id = Column(Integer, primary_key=True)
+    organizationId = Column(Integer, ForeignKey('organization.id'))
+    createdAt = Column(DateTime, default=datetime.utcnow)
+    updatedAt = Column(DateTime, onupdate=datetime.utcnow)
+    date = Column(DateTime)
+    status = Column(String)
+    trigger = Column(String)
+    logFile = Column(String)
+    commitHash = Column(String)
+    workspaceId = Column(Integer, ForeignKey('workspace.id'))
+
+    organization = relationship("Organization")
+    workspace = relationship("Workspace")

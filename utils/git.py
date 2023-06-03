@@ -283,6 +283,17 @@ class Git:
             print(f"Error while checking if directory exists: {data.decode()}")
             return False
 
+    def checkout_commit(self, commit_hash):
+        """
+        Checkout to a specific commit
+        :param commit_hash: str, commit hash
+        """
+        try:
+            self.repo.git.checkout(commit_hash)
+        except git.exc.GitCommandError as e:
+            print(
+                f"An error occurred while trying to checkout to commit {commit_hash}. Error: {str(e)}")
+
     def create_gitignore_file(self, path):
         gitignore_content = """
         # Local .terraform directories
