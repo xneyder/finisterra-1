@@ -16,7 +16,7 @@ from utils.terraform import Terraform
 load_dotenv()
 
 KAFKA_BROKER = os.environ.get("KAFKA_BROKER")
-KAFKA_TOPIC = os.environ.get("SCAN_KAFKA_TOPIC")
+KAFKA_TOPIC = os.environ.get("RUN_KAFKA_TOPIC")
 
 
 def main():
@@ -33,6 +33,8 @@ def main():
 
     for message in consumer:
         task = message.value
+        print(task)
+        exit()
         id_token = task['idToken']
         scan_id = task['scanId']
 
