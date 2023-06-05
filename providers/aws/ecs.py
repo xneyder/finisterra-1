@@ -3,7 +3,8 @@ from utils.hcl import HCL
 
 
 class ECS:
-    def __init__(self, ecs_client, script_dir, provider_name, schema_data, region):
+    def __init__(self, ecs_client, script_dir, provider_name, schema_data, region, s3Bucket,
+                 dynamoDBTable, state_key):
         self.ecs_client = ecs_client
         self.transform_rules = {
             "aws_ecs_task_definition": {
@@ -13,9 +14,10 @@ class ECS:
         self.provider_name = provider_name
         self.script_dir = script_dir
         self.schema_data = schema_data
-        self.hcl = HCL(self.schema_data, self.provider_name,
-                       self.script_dir, self.transform_rules)
         self.region = region
+        self.hcl = HCL(self.schema_data, self.provider_name,
+                       self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key)
+        self.resource_list = {}
 
     def ecs(self):
         self.hcl.prepare_folder(os.path.join("generated", "ecs"))
@@ -32,6 +34,7 @@ class ECS:
 
         self.hcl.refresh_state()
         self.hcl.generate_hcl_file()
+        self.json_plan = self.hcl.json_plan
 
     def aws_ecs_account_setting_default(self):
         print("Processing ECS Account Setting Defaults...")

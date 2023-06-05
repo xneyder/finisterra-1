@@ -3,18 +3,18 @@ from utils.hcl import HCL
 import botocore
 
 
-
-
 class ElasticBeanstalk:
-    def __init__(self, elasticbeanstalk_client, script_dir, provider_name, schema_data, region):
+    def __init__(self, elasticbeanstalk_client, script_dir, provider_name, schema_data, region, s3Bucket,
+                 dynamoDBTable, state_key):
         self.elasticbeanstalk_client = elasticbeanstalk_client
         self.transform_rules = {}
         self.provider_name = provider_name
         self.script_dir = script_dir
         self.schema_data = schema_data
-        self.hcl = HCL(self.schema_data, self.provider_name,
-                       self.script_dir, self.transform_rules)
         self.region = region
+        self.hcl = HCL(self.schema_data, self.provider_name,
+                       self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key)
+        self.resource_list = {}
 
     def elasticbeanstalk(self):
         self.hcl.prepare_folder(os.path.join("generated", "elasticbeanstalk"))
@@ -24,8 +24,9 @@ class ElasticBeanstalk:
         # self.aws_elastic_beanstalk_configuration_template() #There is not terraform import for this resource
         self.aws_elastic_beanstalk_environment()
 
-        # self.hcl.refresh_state()
+        self.hcl.refresh_state()
         self.hcl.generate_hcl_file()
+        self.json_plan = self.hcl.json_plan
 
     def aws_elastic_beanstalk_application(self):
         print("Processing Elastic Beanstalk Applications...")
@@ -80,7 +81,6 @@ class ElasticBeanstalk:
                 }
                 self.hcl.process_resource(
                     "aws_elastic_beanstalk_application_version", version_id, attributes)
-
 
     def aws_elastic_beanstalk_configuration_template(self):
         print("Processing Elastic Beanstalk Configuration Templates...")

@@ -4,7 +4,8 @@ import datetime
 
 
 class ACM:
-    def __init__(self, acm_client, script_dir, provider_name, schema_data, region):
+    def __init__(self, acm_client, script_dir, provider_name, schema_data, region, s3Bucket,
+                 dynamoDBTable, state_key):
         self.acm_client = acm_client
         self.transform_rules = {
             "aws_acm_certificate": {
@@ -14,9 +15,10 @@ class ACM:
         self.provider_name = provider_name
         self.script_dir = script_dir
         self.schema_data = schema_data
-        self.hcl = HCL(self.schema_data, self.provider_name,
-                       self.script_dir, self.transform_rules)
         self.region = region
+        self.hcl = HCL(self.schema_data, self.provider_name,
+                       self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key)
+        self.resource_list = {}
 
     def acm(self):
         self.hcl.prepare_folder(os.path.join("generated", "acm"))
@@ -26,6 +28,7 @@ class ACM:
 
         self.hcl.refresh_state()
         self.hcl.generate_hcl_file()
+        self.json_plan = self.hcl.json_plan
 
     def aws_acm_certificate(self):
         print("Processing ACM Certificates...")

@@ -189,6 +189,7 @@ class Workspace(Base):
     updatedAt = Column(DateTime, onupdate=datetime.utcnow)
     terraformPlan = Column(JSON, nullable=True)
     scannedTerraformPlan = Column(JSON, nullable=True)
+    terraformPlanBranch2Main = Column(JSON, nullable=True)
 
     awsStateConfig = relationship(
         "AwsStateConfig", back_populates="workspaces")

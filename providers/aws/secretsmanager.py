@@ -3,15 +3,17 @@ from utils.hcl import HCL
 
 
 class Secretsmanager:
-    def __init__(self, secretsmanager_client, script_dir, provider_name, schema_data, region):
+    def __init__(self, secretsmanager_client, script_dir, provider_name, schema_data, region, s3Bucket,
+                 dynamoDBTable, state_key):
         self.secretsmanager_client = secretsmanager_client
         self.transform_rules = {}
         self.provider_name = provider_name
         self.script_dir = script_dir
         self.schema_data = schema_data
-        self.hcl = HCL(self.schema_data, self.provider_name,
-                       self.script_dir, self.transform_rules)
         self.region = region
+        self.hcl = HCL(self.schema_data, self.provider_name,
+                       self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key)
+        self.resource_list = {}
 
     def secretsmanager(self):
         self.hcl.prepare_folder(os.path.join("generated", "secretsmanager"))
@@ -23,6 +25,7 @@ class Secretsmanager:
 
         self.hcl.refresh_state()
         self.hcl.generate_hcl_file()
+        self.json_plan = self.hcl.json_plan
 
     def aws_secretsmanager_secret(self):
         print("Processing Secrets Manager Secrets...")

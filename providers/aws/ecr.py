@@ -4,15 +4,17 @@ import json
 
 
 class ECR:
-    def __init__(self, ecr_client, script_dir, provider_name, schema_data, region):
+    def __init__(self, ecr_client, script_dir, provider_name, schema_data, region, s3Bucket,
+                 dynamoDBTable, state_key):
         self.ecr_client = ecr_client
         self.transform_rules = {}
         self.provider_name = provider_name
         self.script_dir = script_dir
         self.schema_data = schema_data
-        self.hcl = HCL(self.schema_data, self.provider_name,
-                       self.script_dir, self.transform_rules)
         self.region = region
+        self.hcl = HCL(self.schema_data, self.provider_name,
+                       self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key)
+        self.resource_list = {}
 
     def ecr(self):
         self.hcl.prepare_folder(os.path.join("generated", "ecr"))
@@ -29,6 +31,7 @@ class ECR:
 
         self.hcl.refresh_state()
         self.hcl.generate_hcl_file()
+        self.json_plan = self.hcl.json_plan
 
     def aws_ecr_lifecycle_policy(self):
         print("Processing ECR Lifecycle Policies...")
@@ -118,14 +121,19 @@ class ECR:
         try:
             registry = self.ecr_client.describe_registry()
             registryId = registry["registryId"]
-            replication_configuration = registry[
-                "replicationConfiguration"]
+            replication_configuration = registry["replicationConfiguration"]
         except KeyError:
+            return
+
+        rules = replication_configuration["rules"]
+
+        # Skip the resource if the rules are empty
+        if len(rules) == 0:
+            print("  No rules for ECR Replication Configuration. Skipping...")
             return
 
         print(f"  Processing ECR Replication Configuration")
 
-        rules = replication_configuration["rules"]
         formatted_rules = []
         for rule in rules:
             formatted_rules.append({

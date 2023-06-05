@@ -3,7 +3,8 @@ from utils.hcl import HCL
 
 
 class ES:
-    def __init__(self, es_client, script_dir, provider_name, schema_data, region):
+    def __init__(self, es_client, script_dir, provider_name, schema_data, region, s3Bucket,
+                 dynamoDBTable, state_key):
         self.es_client = es_client
         self.transform_rules = {
             "aws_elasticsearch_domain_policy": {
@@ -17,9 +18,10 @@ class ES:
         self.provider_name = provider_name
         self.script_dir = script_dir
         self.schema_data = schema_data
-        self.hcl = HCL(self.schema_data, self.provider_name,
-                       self.script_dir, self.transform_rules)
         self.region = region
+        self.hcl = HCL(self.schema_data, self.provider_name,
+                       self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key)
+        self.resource_list = {}
 
     def es(self):
         self.hcl.prepare_folder(os.path.join("generated", "es"))
@@ -30,6 +32,7 @@ class ES:
 
         self.hcl.refresh_state()
         self.hcl.generate_hcl_file()
+        self.json_plan = self.hcl.json_plan
 
     def aws_elasticsearch_domain(self):
         print("Processing Elasticsearch Domains...")

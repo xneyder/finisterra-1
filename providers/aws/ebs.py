@@ -3,22 +3,25 @@ from utils.hcl import HCL
 
 
 class EBS:
-    def __init__(self, ec2_client, autoscaling_client, script_dir, provider_name, schema_data, region):
+    def __init__(self, ec2_client, kms_client, autoscaling_client, script_dir, provider_name, schema_data, region, s3Bucket,
+                 dynamoDBTable, state_key):
         self.ec2_client = ec2_client
+        self.kms_client = kms_client
         self.autoscaling_client = autoscaling_client
         self.transform_rules = {}
         self.provider_name = provider_name
         self.script_dir = script_dir
         self.schema_data = schema_data
-        self.hcl = HCL(self.schema_data, self.provider_name,
-                       self.script_dir, self.transform_rules)
         self.region = region
+        self.hcl = HCL(self.schema_data, self.provider_name,
+                       self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key)
+        self.resource_list = {}
 
     def ebs(self):
         self.hcl.prepare_folder(os.path.join("generated", "ebs"))
 
         if "gov" not in self.region:
-            self.aws_ebs_default_kms_key()
+            # self.aws_ebs_default_kms_key() # fix function to ignore the default kms alias/aws/ebs
             self.aws_ebs_encryption_by_default()
         self.aws_ebs_snapshot()
         self.aws_ebs_volume()
@@ -27,19 +30,37 @@ class EBS:
 
         self.hcl.refresh_state()
         self.hcl.generate_hcl_file()
+        self.json_plan = self.hcl.json_plan
 
     def aws_ebs_default_kms_key(self):
         print("Processing EBS Default KMS Key...")
 
-        default_kms_key = self.ec2_client.get_ebs_default_kms_key_id()[
+        default_kms_key_id = self.ec2_client.get_ebs_default_kms_key_id()[
             "KmsKeyId"]
-        print(f"  Processing EBS Default KMS Key: {default_kms_key}")
+
+        # List all aliases
+        aliases = self.kms_client.list_aliases()
+
+        # Find the alias for the default key
+        default_kms_key_alias = next((alias for alias in aliases['Aliases']
+                                      if 'TargetKeyId' in alias and alias['TargetKeyId'] == default_kms_key_id), None)
+
+        if default_kms_key_alias and default_kms_key_alias['AliasName'] == 'alias/aws/ebs':
+            print("  Skipping default KMS Key")
+            return
+
+        # Retrieve key metadata to get the ARN
+        key_metadata = self.kms_client.describe_key(KeyId=default_kms_key_id)
+        default_kms_key_arn = key_metadata['KeyMetadata']['Arn']
+
+        print(f"  Processing EBS Default KMS Key: {default_kms_key_arn}")
 
         attributes = {
-            "id": default_kms_key,
+            "id": default_kms_key_id,
+            "key_arn": default_kms_key_arn,
         }
         self.hcl.process_resource(
-            "aws_ebs_default_kms_key", default_kms_key.replace("-", "_"), attributes)
+            "aws_ebs_default_kms_key", default_kms_key_id.replace("-", "_"), attributes)
 
     def aws_ebs_encryption_by_default(self):
         print("Processing EBS Encryption By Default...")

@@ -4,15 +4,17 @@ import json
 
 
 class ECR_PUBLIC:
-    def __init__(self, ecr_public_client, script_dir, provider_name, schema_data, region):
+    def __init__(self, ecr_public_client, script_dir, provider_name, schema_data, region, s3Bucket,
+                 dynamoDBTable, state_key):
         self.ecr_public_client = ecr_public_client
         self.transform_rules = {}
         self.provider_name = provider_name
         self.script_dir = script_dir
         self.schema_data = schema_data
-        self.hcl = HCL(self.schema_data, self.provider_name,
-                       self.script_dir, self.transform_rules)
         self.region = region
+        self.hcl = HCL(self.schema_data, self.provider_name,
+                       self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key)
+        self.resource_list = {}
 
     def ecr_public(self):
         self.hcl.prepare_folder(os.path.join("generated", "ecr_public"))
@@ -23,6 +25,7 @@ class ECR_PUBLIC:
 
         self.hcl.refresh_state()
         self.hcl.generate_hcl_file()
+        self.json_plan = self.hcl.json_plan
 
     def aws_ecrpublic_repository(self):
         print("Processing ECR Public Repositories...")

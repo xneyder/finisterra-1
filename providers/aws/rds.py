@@ -3,15 +3,18 @@ from utils.hcl import HCL
 
 
 class RDS:
-    def __init__(self, rds_client, script_dir, provider_name, schema_data, region):
+    def __init__(self, rds_client, script_dir, provider_name, schema_data, region, s3Bucket,
+                 dynamoDBTable, state_key):
         self.rds_client = rds_client
         self.transform_rules = {}
         self.provider_name = provider_name
         self.script_dir = script_dir
         self.schema_data = schema_data
-        self.hcl = HCL(self.schema_data, self.provider_name,
-                       self.script_dir, self.transform_rules)
+
         self.region = region
+        self.hcl = HCL(self.schema_data, self.provider_name,
+                       self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key)
+        self.resource_list = {}
 
     def rds(self):
         self.hcl.prepare_folder(os.path.join("generated", "rds"))
@@ -46,6 +49,7 @@ class RDS:
 
         self.hcl.refresh_state()
         self.hcl.generate_hcl_file()
+        self.json_plan = self.hcl.json_plan
 
     def aws_db_cluster_snapshot(self):
         print("Processing DB Cluster Snapshots...")
@@ -213,17 +217,26 @@ class RDS:
     def aws_db_proxy_default_target_group(self):
         print("Processing DB Proxy Default Target Groups...")
 
-        paginator = self.rds_client.get_paginator(
-            "describe_db_proxy_target_groups")
-        for page in paginator.paginate():
-            for target_group in page.get("TargetGroups", []):
-                target_group_name = target_group["DBProxyName"]
+        # Get all DB Proxies
+        db_proxies_response = self.rds_client.describe_db_proxies()
+        db_proxies = db_proxies_response.get('DBProxies', [])
+
+        for db_proxy in db_proxies:
+            db_proxy_name = db_proxy.get('DBProxyName')
+
+            # Describe target groups for each DB Proxy
+            target_groups_response = self.rds_client.describe_db_proxy_target_groups(
+                DBProxyName=db_proxy_name)
+            target_groups = target_groups_response.get('TargetGroups', [])
+
+            for target_group in target_groups:
+                target_group_name = target_group.get("DBProxyName")
                 print(
                     f"  Processing DB Proxy Default Target Group: {target_group_name}")
                 attributes = {
-                    "id": target_group["TargetGroupArn"],
+                    "id": target_group.get("TargetGroupArn"),
                     "name": target_group_name,
-                    "db_proxy_name": target_group["DBProxyName"],
+                    "db_proxy_name": target_group.get("DBProxyName"),
                 }
                 self.hcl.process_resource(
                     "aws_db_proxy_default_target_group", target_group_name.replace("-", "_"), attributes)
@@ -250,19 +263,30 @@ class RDS:
     def aws_db_proxy_target(self):
         print("Processing DB Proxy Targets...")
 
-        paginator = self.rds_client.get_paginator("describe_db_proxy_targets")
-        for page in paginator.paginate():
-            for db_proxy_target in page.get("Targets", []):
-                target_arn = db_proxy_target["TargetArn"]
-                print(f"  Processing DB Proxy Target: {target_arn}")
-                attributes = {
-                    "id": target_arn,
-                    "db_proxy_name": db_proxy_target["DBProxyName"],
-                    "target_group_name": db_proxy_target["TargetGroupName"],
-                    "db_instance_identifier": db_proxy_target["DbInstanceIdentifier"],
-                }
-                self.hcl.process_resource("aws_db_proxy_target", target_arn.replace(
-                    ":", "_").replace("-", "_"), attributes)
+        # Get all DB Proxies
+        db_proxies_response = self.rds_client.describe_db_proxies()
+        db_proxies = db_proxies_response.get('DBProxies', [])
+
+        for db_proxy in db_proxies:
+            db_proxy_name = db_proxy.get('DBProxyName')
+
+            # Get paginator for each DB Proxy
+            paginator = self.rds_client.get_paginator(
+                "describe_db_proxy_targets")
+
+            for page in paginator.paginate(DBProxyName=db_proxy_name):
+                for db_proxy_target in page.get("Targets", []):
+                    target_arn = db_proxy_target["TargetArn"]
+                    print(f"  Processing DB Proxy Target: {target_arn}")
+                    attributes = {
+                        "id": target_arn,
+                        "db_proxy_name": db_proxy_target["DBProxyName"],
+                        "target_group_name": db_proxy_target["TargetGroupName"],
+                        # Some targets might not be associated with a DB instance
+                        "db_instance_identifier": db_proxy_target.get("DbInstanceIdentifier", None),
+                    }
+                    self.hcl.process_resource("aws_db_proxy_target", target_arn.replace(
+                        ":", "_").replace("-", "_"), attributes)
 
     # def aws_db_security_group(self):
     #     print("Processing DB Security Groups...")

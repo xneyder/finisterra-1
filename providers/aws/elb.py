@@ -3,15 +3,17 @@ from utils.hcl import HCL
 
 
 class ELB:
-    def __init__(self, elb_client, script_dir, provider_name, schema_data, region):
+    def __init__(self, elb_client, script_dir, provider_name, schema_data, region, s3Bucket,
+                 dynamoDBTable, state_key):
         self.elb_client = elb_client
         self.transform_rules = {}
         self.provider_name = provider_name
         self.script_dir = script_dir
         self.schema_data = schema_data
-        self.hcl = HCL(self.schema_data, self.provider_name,
-                       self.script_dir, self.transform_rules)
         self.region = region
+        self.hcl = HCL(self.schema_data, self.provider_name,
+                       self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key)
+        self.resource_list = {}
 
     def elb(self):
         self.hcl.prepare_folder(os.path.join("generated", "elb"))
@@ -28,6 +30,7 @@ class ELB:
 
         self.hcl.refresh_state()
         self.hcl.generate_hcl_file()
+        self.json_plan = self.hcl.json_plan
 
     def aws_app_cookie_stickiness_policy(self):
         print("Processing App Cookie Stickiness Policies...")

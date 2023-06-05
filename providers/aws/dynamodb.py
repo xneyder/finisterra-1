@@ -3,16 +3,23 @@ from utils.hcl import HCL
 
 
 class Dynamodb:
-    def __init__(self, dynamodb_client, account_id, script_dir, provider_name, schema_data, region):
+    def __init__(self, dynamodb_client, account_id, script_dir, provider_name, schema_data, region, s3Bucket,
+                 dynamoDBTable, state_key):
         self.dynamodb_client = dynamodb_client
         self.account_id = account_id
-        self.transform_rules = {}
+        self.transform_rules = {
+            "aws_dynamodb_table": {
+                "hcl_drop_blocks": {"ttl": {"enabled": False}},
+                "hcl_keep_fields": {"write_capacity": True, "read_capacity": True, "hash_key": True},
+            },
+        }
         self.provider_name = provider_name
         self.script_dir = script_dir
         self.schema_data = schema_data
-        self.hcl = HCL(self.schema_data, self.provider_name,
-                       self.script_dir, self.transform_rules)
         self.region = region
+        self.hcl = HCL(self.schema_data, self.provider_name,
+                       self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key)
+        self.resource_list = {}
 
     def dynamodb(self):
         self.hcl.prepare_folder(os.path.join("generated", "dynamodb"))
@@ -26,6 +33,7 @@ class Dynamodb:
 
         self.hcl.refresh_state()
         self.hcl.generate_hcl_file()
+        self.json_plan = self.hcl.json_plan
 
     def aws_dynamodb_contributor_insights(self):
         print("Processing DynamoDB Contributor Insights...")
@@ -40,7 +48,6 @@ class Dynamodb:
 
                     print(
                         f"  Processing DynamoDB Contributor Insights: {table_name}")
-                    
 
                     attributes = {
                         "id": table_name+"/"+self.account_id,

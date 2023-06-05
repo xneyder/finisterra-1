@@ -1,14 +1,18 @@
 import os
 from utils.hcl import HCL
 
+
 def replace_backslashes(value):
     return value.replace("\\", "\\\\") if isinstance(value, str) else value
+
 
 def escape_quotes(value):
     return value.replace('"', '\\"') if isinstance(value, str) else value
 
+
 def drop_new_lines(value):
     return value.replace("\n", "") if isinstance(value, str) else value
+
 
 def process_template(input_dict):
     output = '{\n'
@@ -21,32 +25,33 @@ def process_template(input_dict):
 
 
 class Apigateway:
-    def __init__(self, apigateway_client, script_dir, provider_name, schema_data, region):
+    def __init__(self, apigateway_client, script_dir, provider_name, schema_data, region, s3Bucket,
+                 dynamoDBTable, state_key):
         self.apigateway_client = apigateway_client
         self.transform_rules = {
             "aws_api_gateway_authorizer": {
                 "hcl_apply_function": {
-                    "identity_validation_expression": {'function':[replace_backslashes]}
+                    "identity_validation_expression": {'function': [replace_backslashes]}
                 },
             },
             "aws_api_gateway_documentation_part": {
                 "hcl_apply_function": {
-                    "properties": {'function':[drop_new_lines,replace_backslashes,escape_quotes]}
+                    "properties": {'function': [drop_new_lines, replace_backslashes, escape_quotes]}
                 },
             },
             "aws_api_gateway_integration": {
                 "hcl_apply_function_dict": {
-                    "request_templates": {'function':[process_template]}
+                    "request_templates": {'function': [process_template]}
                 },
             },
             "aws_api_gateway_gateway_response": {
                 "hcl_apply_function_dict": {
-                    "response_templates": {'function':[process_template]}
+                    "response_templates": {'function': [process_template]}
                 },
             },
             "aws_api_gateway_integration_response": {
                 "hcl_apply_function_dict": {
-                    "response_templates": {'function':[process_template]}
+                    "response_templates": {'function': [process_template]}
                 },
             },
             "aws_api_gateway_model": {
@@ -60,9 +65,10 @@ class Apigateway:
         self.provider_name = provider_name
         self.script_dir = script_dir
         self.schema_data = schema_data
-        self.hcl = HCL(self.schema_data, self.provider_name,
-                       self.script_dir, self.transform_rules)
         self.region = region
+        self.hcl = HCL(self.schema_data, self.provider_name,
+                       self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key)
+        self.resource_list = {}
 
     def apigateway(self):
         self.hcl.prepare_folder(os.path.join("generated", "apigateway"))
@@ -94,6 +100,7 @@ class Apigateway:
 
         self.hcl.refresh_state()
         self.hcl.generate_hcl_file()
+        self.json_plan = self.hcl.json_plan
 
     def aws_api_gateway_account(self):
         print("Processing API Gateway Account...")
@@ -115,7 +122,6 @@ class Apigateway:
 
         self.hcl.process_resource(
             "aws_api_gateway_account", "api_gateway_account", attributes)
-
 
     def aws_api_gateway_api_key(self):
         print("Processing API Gateway API Keys...")
@@ -140,7 +146,6 @@ class Apigateway:
 
                 self.hcl.process_resource(
                     "aws_api_gateway_api_key", api_key["id"], attributes)
-
 
     def aws_api_gateway_authorizer(self):
         print("Processing API Gateway Authorizers...")
@@ -174,7 +179,6 @@ class Apigateway:
                 self.hcl.process_resource(
                     "aws_api_gateway_authorizer", authorizer_id, attributes)
 
-
     def aws_api_gateway_base_path_mapping(self):
         print("Processing API Gateway Base Path Mappings...")
 
@@ -201,7 +205,6 @@ class Apigateway:
                 self.hcl.process_resource(
                     "aws_api_gateway_base_path_mapping", attributes["id"], attributes)
 
-
     def aws_api_gateway_client_certificate(self):
         print("Processing API Gateway Client Certificates...")
 
@@ -218,8 +221,7 @@ class Apigateway:
             }
 
             self.hcl.process_resource("aws_api_gateway_client_certificate",
-                                    client_certificate["clientCertificateId"], attributes)
-
+                                      client_certificate["clientCertificateId"], attributes)
 
     def aws_api_gateway_deployment(self):
         print("Processing API Gateway Deployments...")
@@ -247,7 +249,6 @@ class Apigateway:
 
                 self.hcl.process_resource(
                     "aws_api_gateway_deployment", deployment["id"], attributes)
-
 
     def aws_api_gateway_documentation_part(self):
         print("Processing API Gateway Documentation Parts...")
@@ -312,7 +313,6 @@ class Apigateway:
             self.hcl.process_resource(
                 "aws_api_gateway_domain_name", domain_name["domainName"], attributes)
 
-
     def aws_api_gateway_gateway_response(self):
         print("Processing API Gateway Gateway Responses...")
 
@@ -327,7 +327,7 @@ class Apigateway:
                     f"  Processing API Gateway Gateway Response: {gateway_response['responseType']}")
 
                 attributes = {
-                    "id": rest_api["id"]+"/"+ gateway_response["responseType"],
+                    "id": rest_api["id"]+"/" + gateway_response["responseType"],
                     "rest_api_id": rest_api["id"],
                     "response_type": gateway_response["responseType"],
                     # "status_code": gateway_response.get("statusCode", ""),
@@ -591,7 +591,6 @@ class Apigateway:
             resource_name = f"{rest_api['id']}"
             self.hcl.process_resource(
                 "aws_api_gateway_rest_api", resource_name, attributes)
-
 
     def aws_api_gateway_rest_api_policy(self):
         print("Processing API Gateway REST API Policies...")

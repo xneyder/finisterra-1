@@ -3,15 +3,17 @@ from utils.hcl import HCL
 
 
 class Apigatewayv2:
-    def __init__(self, apigatewayv2_client, script_dir, provider_name, schema_data, region):
+    def __init__(self, apigatewayv2_client, script_dir, provider_name, schema_data, region, s3Bucket,
+                 dynamoDBTable, state_key):
         self.apigatewayv2_client = apigatewayv2_client
         self.transform_rules = {}
         self.provider_name = provider_name
         self.script_dir = script_dir
         self.schema_data = schema_data
-        self.hcl = HCL(self.schema_data, self.provider_name,
-                       self.script_dir, self.transform_rules)
         self.region = region
+        self.hcl = HCL(self.schema_data, self.provider_name,
+                       self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key)
+        self.resource_list = {}
 
     def apigatewayv2(self):
         self.hcl.prepare_folder(os.path.join("generated", "apigatewayv2"))
@@ -31,6 +33,7 @@ class Apigatewayv2:
 
         self.hcl.refresh_state()
         self.hcl.generate_hcl_file()
+        self.json_plan = self.hcl.json_plan
 
     def aws_apigatewayv2_api(self):
         print("Processing API Gateway v2 APIs...")

@@ -3,7 +3,8 @@ from utils.hcl import HCL
 
 
 class ELBV2:
-    def __init__(self, elbv2_client, script_dir, provider_name, schema_data, region):
+    def __init__(self, elbv2_client, script_dir, provider_name, schema_data, region, s3Bucket,
+                 dynamoDBTable, state_key):
         self.elbv2_client = elbv2_client
         self.transform_rules = {
             "aws_lb_target_group": {
@@ -17,9 +18,10 @@ class ELBV2:
         self.provider_name = provider_name
         self.script_dir = script_dir
         self.schema_data = schema_data
-        self.hcl = HCL(self.schema_data, self.provider_name,
-                       self.script_dir, self.transform_rules)
         self.region = region
+        self.hcl = HCL(self.schema_data, self.provider_name,
+                       self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key)
+        self.resource_list = {}
 
     def elbv2(self):
         self.hcl.prepare_folder(os.path.join("generated", "elbv2"))
@@ -33,6 +35,7 @@ class ELBV2:
 
         self.hcl.refresh_state()
         self.hcl.generate_hcl_file()
+        self.json_plan = self.hcl.json_plan
 
     def aws_lb(self):
         print("Processing Load Balancers...")

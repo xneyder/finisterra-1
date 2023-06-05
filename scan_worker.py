@@ -47,9 +47,7 @@ def main():
         if provider_name == 'aws':
             try:
                 # Extract the values you need
-                organization_id = scan.organization.id
                 role_arn = scan.workspace.awsAccount.roleArn
-                aws_account_id = scan.workspace.awsAccount.id
                 session_duration = scan.workspace.awsAccount.sessionDuration
                 aws_region = scan.workspace.awsRegion
                 workspace_id = scan.workspace.id
@@ -69,8 +67,87 @@ def main():
                     id_token, role_arn, session_duration, aws_region)
 
                 if provider_group_code == 'vpc':
-                    print("Processing VPC")
                     provider.vpc()
+                elif provider_group_code == 'rds':
+                    provider.rds()
+                elif provider_group_code == 'acm':
+                    provider.acm()
+                elif provider_group_code == 'apigateway':
+                    provider.apigateway()
+                elif provider_group_code == 'apigatewayv2':
+                    provider.apigatewayv2()
+                elif provider_group_code == 'autoscaling':
+                    provider.autoscaling()
+                elif provider_group_code == 'backup':
+                    provider.backup()
+                elif provider_group_code == 'cloudmap':
+                    provider.cloudmap()
+                elif provider_group_code == 'cloudfront':
+                    provider.cloudfront()
+                elif provider_group_code == 'cloudtrail':
+                    provider.cloudtrail()
+                elif provider_group_code == 'cloudwatch':
+                    provider.cloudwatch()
+                elif provider_group_code == 'logs':
+                    provider.logs()
+                elif provider_group_code == 'cognito_idp':
+                    provider.cognito_idp()
+                elif provider_group_code == 'cognito_identity':
+                    provider.cognito_identity()
+                elif provider_group_code == 'docdb':
+                    provider.docdb()
+                elif provider_group_code == 'dynamodb':
+                    provider.dynamodb()
+                elif provider_group_code == 'ebs':
+                    provider.ebs()
+                elif provider_group_code == 'ec2':
+                    provider.ec2()
+                elif provider_group_code == 'ecr':
+                    provider.ecr()
+                elif provider_group_code == 'ecr_public':
+                    provider.ecr_public()
+                elif provider_group_code == 'ecs':
+                    provider.ecs()
+                elif provider_group_code == 'efs':
+                    provider.efs()
+                elif provider_group_code == 'eks':
+                    provider.eks()
+                elif provider_group_code == 'elbv2':
+                    provider.elbv2()
+                elif provider_group_code == 'elb':
+                    provider.elb()
+                elif provider_group_code == 'elasticache':
+                    provider.elasticache()
+                elif provider_group_code == 'elasticbeanstalk':
+                    provider.elasticbeanstalk()
+                elif provider_group_code == 'es':
+                    provider.es()
+                elif provider_group_code == 'guardduty':
+                    provider.guardduty()
+                elif provider_group_code == 'iam':
+                    provider.iam()
+                elif provider_group_code == 'kms':
+                    provider.kms()
+                elif provider_group_code == 'aws_lambda':
+                    provider.aws_lambda()
+                elif provider_group_code == 'opensearch':
+                    provider.opensearch()
+                elif provider_group_code == 'rds':
+                    provider.rds()
+                elif provider_group_code == 's3':
+                    provider.s3()
+                elif provider_group_code == 'sns':
+                    provider.sns()
+                elif provider_group_code == 'sqs':
+                    provider.sqs()
+                elif provider_group_code == 'ssm':
+                    provider.ssm()
+                elif provider_group_code == 'secretsmanager':
+                    provider.secretsmanager()
+                elif provider_group_code == 'vpn_client':
+                    provider.vpn_client()
+                elif provider_group_code == 'wafv2':
+                    provider.wafv2()
                 else:
                     update_scan_status(scan_id, "FAILED")
                     break
@@ -85,16 +162,19 @@ def main():
                                git_target_branch=git_repo_branch,
                                workspace_id=workspace_id)
 
-                print("Running terraform plan on main branch ...")
+                print("Running terraform plan to see the main branch drifts ...")
                 terraform = Terraform()
-                json_plan = terraform.tf_plan(git_repo.destination_dir)
+                json_plan_main = terraform.tf_plan(git_repo.destination_dir)
 
                 # Do PR
                 git_repo.create_pr_with_files()
 
+                print("Running terraform plan to see the updated branch drifts ...")
+                json_plan_branch = terraform.tf_plan(git_repo.destination_dir)
+
                 # Update the terraformPlan field of the workspace
                 update_workspace(
-                    workspace_id, json_plan, provider.json_plan, git_repo.pr_url)
+                    workspace_id, json_plan_main, provider.json_plan, json_plan_branch, git_repo.pr_url)
 
                 if git_repo.merged:
                     print("Uploading state file because the PR was merged")
@@ -112,6 +192,7 @@ def main():
                 update_scan_status(scan_id, "FAILED")
                 print("Error processing task:", e)
                 traceback.print_exc()
+                consumer.commit()
         else:
             print("Provider not supported")
 

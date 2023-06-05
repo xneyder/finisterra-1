@@ -147,12 +147,10 @@ class Git:
         self.repo.git.add(all=True)
 
         # Check for changes
-        new_commit = False
         if not self.repo.is_dirty():
             print("No changes detected. No commits will be made.")
         else:
             self.repo.git.commit('-m', 'Updated files')
-            new_commit = True
 
         # Push the changes regardless of changes to the repo
         try:
@@ -170,8 +168,8 @@ class Git:
             pr_number = self.create_pull_request()
 
         # If directory does not exist in target branch, merge the PR
-        if pr_number is not None and not self.directory_exists_on_branch(self.git_target_branch):
-            self.merge_pull_request(pr_number)
+        # if pr_number is not None and not self.directory_exists_on_branch(self.git_target_branch):
+        #     self.merge_pull_request(pr_number)
 
     def get_pull_request(self):
         conn = http.client.HTTPSConnection("api.github.com")

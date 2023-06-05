@@ -4,15 +4,17 @@ from utils.hcl import HCL
 
 
 class CloudFront:
-    def __init__(self, cloudfront_client, script_dir, provider_name, schema_data, region):
+    def __init__(self, cloudfront_client, script_dir, provider_name, schema_data, region, s3Bucket,
+                 dynamoDBTable, state_key):
         self.cloudfront_client = cloudfront_client
         self.transform_rules = {}
         self.provider_name = provider_name
         self.script_dir = script_dir
         self.schema_data = schema_data
-        self.hcl = HCL(self.schema_data, self.provider_name,
-                       self.script_dir, self.transform_rules)
         self.region = region
+        self.hcl = HCL(self.schema_data, self.provider_name,
+                       self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key)
+        self.resource_list = {}
 
     def cloudfront(self):
         self.hcl.prepare_folder(os.path.join("generated", "cloudfront"))
@@ -34,6 +36,7 @@ class CloudFront:
 
         self.hcl.refresh_state()
         self.hcl.generate_hcl_file()
+        self.json_plan = self.hcl.json_plan
 
     def aws_cloudfront_cache_policy(self):
         print("Processing CloudFront Cache Policies...")

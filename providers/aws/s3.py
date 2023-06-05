@@ -4,7 +4,8 @@ from botocore.exceptions import ClientError
 
 
 class S3:
-    def __init__(self, s3_session, script_dir, provider_name, schema_data, region):
+    def __init__(self, s3_session, script_dir, provider_name, schema_data, region, s3Bucket,
+                 dynamoDBTable, state_key):
         self.s3_session = s3_session
         self.transform_rules = {
             "aws_s3_bucket_policy": {
@@ -14,9 +15,10 @@ class S3:
         self.provider_name = provider_name
         self.script_dir = script_dir
         self.schema_data = schema_data
-        self.hcl = HCL(self.schema_data, self.provider_name,
-                       self.script_dir, self.transform_rules)
         self.region = region
+        self.hcl = HCL(self.schema_data, self.provider_name,
+                       self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key)
+        self.resource_list = {}
 
     def s3(self):
         self.hcl.prepare_folder(os.path.join("generated", "s3"))
@@ -47,6 +49,7 @@ class S3:
 
         self.hcl.refresh_state()
         self.hcl.generate_hcl_file()
+        self.json_plan = self.hcl.json_plan
 
     def aws_s3_bucket(self):
         print("Processing S3 Buckets...")

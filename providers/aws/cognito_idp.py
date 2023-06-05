@@ -3,15 +3,17 @@ from utils.hcl import HCL
 
 
 class CognitoIDP:
-    def __init__(self, cognito_idp_client, script_dir, provider_name, schema_data, region):
+    def __init__(self, cognito_idp_client, script_dir, provider_name, schema_data, region, s3Bucket,
+                 dynamoDBTable, state_key):
         self.cognito_idp_client = cognito_idp_client
         self.transform_rules = {}
         self.provider_name = provider_name
         self.script_dir = script_dir
         self.schema_data = schema_data
-        self.hcl = HCL(self.schema_data, self.provider_name,
-                       self.script_dir, self.transform_rules)
         self.region = region
+        self.hcl = HCL(self.schema_data, self.provider_name,
+                       self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key)
+        self.resource_list = {}
 
     def cognito_idp(self):
         self.hcl.prepare_folder(os.path.join("generated", "cognito_idp"))
@@ -33,6 +35,7 @@ class CognitoIDP:
 
         self.hcl.refresh_state()
         self.hcl.generate_hcl_file()
+        self.json_plan = self.hcl.json_plan
 
     def aws_cognito_identity_provider(self):
         print("Processing Cognito Identity Providers...")
