@@ -9,7 +9,12 @@ class KMS:
     def __init__(self, kms_client, script_dir, provider_name, schema_data, region, s3Bucket,
                  dynamoDBTable, state_key):
         self.kms_client = kms_client
-        self.transform_rules = {}
+
+        self.transform_rules = {
+            "aws_kms_key_policy": {
+                "hcl_json_multiline": {"policy": True}
+            },
+        }
         self.provider_name = provider_name
         self.script_dir = script_dir
         self.schema_data = schema_data
@@ -42,6 +47,9 @@ class KMS:
         for alias in aliases:
             alias_name = alias["AliasName"]
             target_key_id = alias.get("TargetKeyId", "")
+            if not target_key_id:
+                print(f"Skipping {alias_name} due to empty TargetKeyId")
+                continue
 
             # Ignore KMS AWS managed keys
             # if target_key_id.startswith("alias/aws"):

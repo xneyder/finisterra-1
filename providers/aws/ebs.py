@@ -8,7 +8,12 @@ class EBS:
         self.ec2_client = ec2_client
         self.kms_client = kms_client
         self.autoscaling_client = autoscaling_client
-        self.transform_rules = {}
+        self.transform_rules = {
+            "aws_ebs_volume": {
+                "hcl_keep_fields": {"size": True},
+            },
+
+        }
         self.provider_name = provider_name
         self.script_dir = script_dir
         self.schema_data = schema_data

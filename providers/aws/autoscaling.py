@@ -126,11 +126,14 @@ class AutoScaling:
                 print(
                     f"  Processing AutoScaling Lifecycle Hook: {hook_name} for ASG: {as_group_name}")
 
+                resource_name = f"{hook_name}".replace(
+                    "-", "_")
+
                 attributes = {
                     "id": hook_name,
                     "autoscaling_group_name": as_group_name,
-                    "lifecycle_transition": hook["LifecycleTransition"],
-                    "role_arn": hook["RoleARN"],
+                    # "lifecycle_transition": hook["LifecycleTransition"],
+                    # "role_arn": hook["RoleARN"],
                 }
 
                 if "NotificationTargetARN" in hook:
@@ -143,7 +146,7 @@ class AutoScaling:
                     attributes["default_result"] = hook["DefaultResult"]
 
                 self.hcl.process_resource(
-                    "aws_autoscaling_lifecycle_hook", hook_name.replace("-", "_"), attributes)
+                    "aws_autoscaling_lifecycle_hook", resource_name, attributes)
 
     def aws_autoscaling_notification(self):
         print("Processing AutoScaling Notifications...")

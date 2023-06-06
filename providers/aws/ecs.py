@@ -62,6 +62,9 @@ class ECS:
             provider_name = provider["name"]
             provider_arn = provider["capacityProviderArn"]
 
+            if provider_name == "FARGATE" or provider_name == "FARGATE_SPOT":
+                continue
+
             print(f"  Processing ECS Capacity Provider: {provider_name}")
 
             attributes = {

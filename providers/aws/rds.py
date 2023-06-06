@@ -6,7 +6,18 @@ class RDS:
     def __init__(self, rds_client, script_dir, provider_name, schema_data, region, s3Bucket,
                  dynamoDBTable, state_key):
         self.rds_client = rds_client
-        self.transform_rules = {}
+        self.transform_rules = {
+            "aws_db_parameter_group": {
+                "hcl_keep_fields": {"parameter.name": True},
+            },
+            # "aws_db_instance": {
+            #     "hcl_transform_fields": {
+            #         "apply_immediately": {'source': None, 'target': False},
+            #         "skip_final_snapshot": {'source': None, 'target': False},
+            #     },
+            #     # "hcl_keep_fields": {"delete_automated_backups": True},
+            # },
+        }
         self.provider_name = provider_name
         self.script_dir = script_dir
         self.schema_data = schema_data
@@ -109,8 +120,11 @@ class RDS:
                     "instance_class": instance.get("DBInstanceClass", None),
                     "name": instance.get("DBName", None),
                     "username": instance.get("MasterUsername", None),
-                    "vpc_security_group_ids": [sg["VpcSecurityGroupId"] for sg in instance.get("VpcSecurityGroups", None)],
+                    "vpc_security_group_ids": [sg["VpcSecurityGroupId"] for sg in instance.get("VpcSecurityGroups", [])],
                     "db_subnet_group_name": instance["DBSubnetGroup"]["DBSubnetGroupName"] if instance.get("DBSubnetGroup") else None,
+                    "apply_immediately": instance.get("ApplyImmediately", False),
+                    "delete_automated_backups": instance.get("DeleteAutomatedBackups", False),
+                    "skip_final_snapshot": instance.get("SkipFinalSnapshot", False),
                 }
                 self.hcl.process_resource(
                     "aws_db_instance", instance_id.replace("-", "_"), attributes)
@@ -315,10 +329,10 @@ class RDS:
                 db_snapshot_id = db_snapshot["DBSnapshotIdentifier"]
                 print(f"  Processing DB Snapshot: {db_snapshot_id}")
                 attributes = {
-                    "id": db_snapshot["DBSnapshotArn"],
-                    "snapshot_identifier": db_snapshot_id,
-                    "db_instance_identifier": db_snapshot["DBInstanceIdentifier"],
-                    "snapshot_type": db_snapshot["SnapshotType"],
+                    "id": db_snapshot_id,
+                    # "snapshot_identifier": db_snapshot_id,
+                    # "db_instance_identifier": db_snapshot["DBInstanceIdentifier"],
+                    # "snapshot_type": db_snapshot["SnapshotType"],
                 }
                 self.hcl.process_resource(
                     "aws_db_snapshot", db_snapshot_id.replace("-", "_"), attributes)
@@ -350,10 +364,10 @@ class RDS:
                 db_subnet_group_name = db_subnet_group["DBSubnetGroupName"]
                 print(f"  Processing DB Subnet Group: {db_subnet_group_name}")
                 attributes = {
-                    "id": db_subnet_group["DBSubnetGroupArn"],
-                    "name": db_subnet_group_name,
-                    "description": db_subnet_group["DBSubnetGroupDescription"],
-                    "subnet_ids": [subnet["SubnetIdentifier"] for subnet in db_subnet_group["Subnets"]],
+                    "id": db_subnet_group_name,
+                    # "name": db_subnet_group_name,
+                    # "description": db_subnet_group["DBSubnetGroupDescription"],
+                    # "subnet_ids": [subnet["SubnetIdentifier"] for subnet in db_subnet_group["Subnets"]],
                 }
                 self.hcl.process_resource(
                     "aws_db_subnet_group", db_subnet_group_name.replace("-", "_"), attributes)
@@ -456,10 +470,10 @@ class RDS:
                 print(
                     f"  Processing RDS Cluster Parameter Group: {parameter_group_id}")
                 attributes = {
-                    "id": rds_cluster_parameter_group["DBClusterParameterGroupArn"],
-                    "name": parameter_group_id,
-                    "family": rds_cluster_parameter_group["DBParameterGroupFamily"],
-                    "description": rds_cluster_parameter_group["Description"],
+                    "id": parameter_group_id,
+                    # "name": parameter_group_id,
+                    # "family": rds_cluster_parameter_group["DBParameterGroupFamily"],
+                    # "description": rds_cluster_parameter_group["Description"],
                 }
                 self.hcl.process_resource(
                     "aws_rds_cluster_parameter_group", parameter_group_id.replace("-", "_"), attributes)

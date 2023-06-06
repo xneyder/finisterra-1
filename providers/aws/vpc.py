@@ -31,6 +31,11 @@ class VPC:
                 "hcl_drop_blocks": {"attachment": {"instance": ""}},
                 "hcl_drop_fields": {"attachment_id": 'ALL'},
             },
+            "aws_vpc_security_group_ingress_rule": {
+                "hcl_transform_fields": {
+                    "description": {'source': "", 'target': ""},
+                },
+            },
 
         }
         self.provider_name = provider_name
@@ -1371,7 +1376,7 @@ class VPC:
                     "-", "_")] = attributes
 
     def aws_vpc_security_group_ingress_rule(self):
-        print("Processing VPC Security Group Egress Rules...")
+        print("Processing VPC Security Group Ingress Rules...")
         self.resource_list['aws_vpc_security_group_ingress_rule'] = {}
         security_group_rules = self.ec2_client.describe_security_group_rules()[
             "SecurityGroupRules"]

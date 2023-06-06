@@ -9,8 +9,11 @@ class S3:
         self.s3_session = s3_session
         self.transform_rules = {
             "aws_s3_bucket_policy": {
-                "hcl_json_multiline": {"policy": True}
-            }
+                "hcl_json_multiline": {"policy": True},
+            },
+            "aws_s3_bucket_acl": {
+                "hcl_keep_fields": {"owner.id": True},
+            },
         }
         self.provider_name = provider_name
         self.script_dir = script_dir
@@ -23,29 +26,29 @@ class S3:
     def s3(self):
         self.hcl.prepare_folder(os.path.join("generated", "s3"))
 
-        self.aws_s3_bucket()
-        if "gov" not in self.region:
-            self.aws_s3_bucket_accelerate_configuration()
-            self.aws_s3_bucket_intelligent_tiering_configuration()
+        # self.aws_s3_bucket()
+        # if "gov" not in self.region:
+        #     self.aws_s3_bucket_accelerate_configuration()
+        #     self.aws_s3_bucket_intelligent_tiering_configuration()
 
         self.aws_s3_bucket_acl()
-        self.aws_s3_bucket_analytics_configuration()
-        self.aws_s3_bucket_cors_configuration()
-        self.aws_s3_bucket_inventory()
-        self.aws_s3_bucket_lifecycle_configuration()
-        self.aws_s3_bucket_logging()
-        self.aws_s3_bucket_metric()
-        self.aws_s3_bucket_notification()
-        self.aws_s3_bucket_object_lock_configuration()
-        self.aws_s3_bucket_ownership_controls()
-        self.aws_s3_bucket_policy()
-        self.aws_s3_bucket_public_access_block()
-        self.aws_s3_bucket_replication_configuration()
-        self.aws_s3_bucket_request_payment_configuration()
-        self.aws_s3_bucket_server_side_encryption_configuration()
-        self.aws_s3_bucket_versioning()
-        self.aws_s3_bucket_website_configuration()
-        # self.aws_s3_bucket_object() # Too long to add
+        # self.aws_s3_bucket_analytics_configuration()
+        # self.aws_s3_bucket_cors_configuration()
+        # self.aws_s3_bucket_inventory()
+        # self.aws_s3_bucket_lifecycle_configuration()
+        # self.aws_s3_bucket_logging()
+        # self.aws_s3_bucket_metric()
+        # self.aws_s3_bucket_notification()
+        # self.aws_s3_bucket_object_lock_configuration()
+        # self.aws_s3_bucket_ownership_controls()
+        # self.aws_s3_bucket_policy()
+        # self.aws_s3_bucket_public_access_block()
+        # self.aws_s3_bucket_replication_configuration()
+        # self.aws_s3_bucket_request_payment_configuration()
+        # self.aws_s3_bucket_server_side_encryption_configuration()
+        # self.aws_s3_bucket_versioning()
+        # self.aws_s3_bucket_website_configuration()
+        # # self.aws_s3_bucket_object() # Too long to add
 
         self.hcl.refresh_state()
         self.hcl.generate_hcl_file()

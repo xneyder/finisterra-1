@@ -293,29 +293,30 @@ class Git:
                 f"An error occurred while trying to checkout to commit {commit_hash}. Error: {str(e)}")
 
     def create_gitignore_file(self, path):
-        gitignore_content = """
-        # Local .terraform directories
-        **/.terraform/*
-        
-        # .tfstate files
-        *.tfstate
-        *.tfstate.*
-        
-        # Crash log files
-        crash.log
-        
-        # Ignore all .tfvars files, which are likely to contain sentitive data
-        *.tfvars
-        
-        # Ignore override files as they can contain sensitive information
-        override.tf
-        override.tf.json
-        *_override.tf
-        *_override.tf.json
-        
-        # Ignore CLI configuration files
-        .terraformrc
-        terraform.rc
-        """
+        gitignore_content = (
+            "# Local .terraform directories\n"
+            "**/.terraform/*\n"
+            "\n"
+            "# .tfstate files\n"
+            "*.tfstate\n"
+            "*.tfstate.*\n"
+            "\n"
+            "# Crash log files\n"
+            "crash.log\n"
+            "\n"
+            "# Ignore all .tfvars files, which are likely to contain sentitive data\n"
+            "*.tfvars\n"
+            "\n"
+            "# Ignore override files as they can contain sensitive information\n"
+            "override.tf\n"
+            "override.tf.json\n"
+            "*_override.tf\n"
+            "*_override.tf.json\n"
+            "\n"
+            "# Ignore CLI configuration files\n"
+            ".terraformrc\n"
+            "terraform.rc"
+        )
+
         with open(f'{path}/.gitignore', 'w') as file:
             file.write(gitignore_content)

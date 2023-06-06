@@ -6,7 +6,12 @@ class CognitoIDP:
     def __init__(self, cognito_idp_client, script_dir, provider_name, schema_data, region, s3Bucket,
                  dynamoDBTable, state_key):
         self.cognito_idp_client = cognito_idp_client
-        self.transform_rules = {}
+        self.transform_rules = {
+            "aws_cognito_user": {
+                "hcl_json_multiline": {"identities": True}
+            },
+
+        }
         self.provider_name = provider_name
         self.script_dir = script_dir
         self.schema_data = schema_data
@@ -19,7 +24,7 @@ class CognitoIDP:
         self.hcl.prepare_folder(os.path.join("generated", "cognito_idp"))
 
         self.aws_cognito_identity_provider()
-        self.aws_cognito_managed_user_pool_client()
+        # self.aws_cognito_managed_user_pool_client() # use aws_cognito_user_pool_client instead
         self.aws_cognito_resource_server()
 
         if "gov" not in self.region:
@@ -48,7 +53,7 @@ class CognitoIDP:
                     "Providers"]
                 for provider in providers:
                     attributes = {
-                        "id": provider["ProviderName"],
+                        "id": pool_id+":"+provider["ProviderName"],
                         "user_pool_id": pool_id,
                         "provider_name": provider["ProviderName"],
                         "provider_type": provider["ProviderType"],
@@ -103,17 +108,22 @@ class CognitoIDP:
             for pool in page["UserPools"]:
                 pool_id = pool["Id"]
                 try:
-                    risk_config = self.cognito_idp_client.describe_risk_configuration(
-                        UserPoolId=pool_id)["RiskConfiguration"]
-                    attributes = {
-                        "id": risk_config["ClientId"],
-                        "user_pool_id": pool_id,
-                        "client_id": risk_config["ClientId"],
-                        "compromised_credentials_risk_configuration": risk_config["CompromisedCredentialsRiskConfiguration"],
-                        "account_takeover_risk_configuration": risk_config["AccountTakeoverRiskConfiguration"],
-                    }
-                    self.hcl.process_resource(
-                        "aws_cognito_risk_configuration", risk_config["ClientId"].replace("-", "_"), attributes)
+                    risk_config_response = self.cognito_idp_client.describe_risk_configuration(
+                        UserPoolId=pool_id)
+                    if "RiskConfiguration" in risk_config_response:
+                        risk_config = risk_config_response["RiskConfiguration"]
+                        attributes = {
+                            "id": risk_config["ClientId"],
+                            "user_pool_id": pool_id,
+                            "client_id": risk_config["ClientId"],
+                            "compromised_credentials_risk_configuration": risk_config["CompromisedCredentialsRiskConfiguration"],
+                            "account_takeover_risk_configuration": risk_config["AccountTakeoverRiskConfiguration"],
+                        }
+                        self.hcl.process_resource(
+                            "aws_cognito_risk_configuration", risk_config["ClientId"].replace("-", "_"), attributes)
+                    else:
+                        print(
+                            f"  No Risk Configuration key found for user pool: {pool_id}")
                 except self.cognito_idp_client.exceptions.ResourceNotFoundException:
                     print(
                         f"  No Risk Configuration found for user pool: {pool_id}")
@@ -133,7 +143,7 @@ class CognitoIDP:
                             "id": user["Username"],
                             "user_pool_id": pool_id,
                             "username": user["Username"],
-                            "attributes": user["Attributes"],
+                            # "attributes": user["Attributes"],
                         }
                         self.hcl.process_resource(
                             "aws_cognito_user", user["Username"].replace("-", "_"), attributes)
@@ -153,9 +163,9 @@ class CognitoIDP:
                             "id": group["GroupName"],
                             "user_pool_id": pool_id,
                             "name": group["GroupName"],
-                            "description": group.get("Description", ""),
-                            "role_arn": group.get("RoleArn", ""),
-                            "precedence": group.get("Precedence", ""),
+                            # "description": group.get("Description", ""),
+                            # "role_arn": group.get("RoleArn", ""),
+                            # "precedence": group.get("Precedence", ""),
                         }
                         self.hcl.process_resource(
                             "aws_cognito_user_group", group["GroupName"].replace("-", "_"), attributes)
@@ -262,20 +272,29 @@ class CognitoIDP:
             for pool in page["UserPools"]:
                 pool_id = pool["Id"]
                 try:
-                    ui_customization = self.cognito_idp_client.get_ui_customization(
-                        UserPoolId=pool_id)["UICustomization"]
-                    print(
-                        f"  Processing Cognito User Pool UI Customization: {pool_id}")
+                    ui_customization_response = self.cognito_idp_client.get_ui_customization(
+                        UserPoolId=pool_id)
+                    if "UICustomization" in ui_customization_response:
+                        ui_customization = ui_customization_response["UICustomization"]
+                        print(
+                            f"  Processing Cognito User Pool UI Customization: {pool_id}")
 
-                    attributes = {
-                        "id": pool_id,
-                        "user_pool_id": pool_id,
-                        "client_id": ui_customization["ClientId"],
-                        "css": ui_customization["CSS"],
-                        "image_url": ui_customization["ImageUrl"],
-                    }
-                    self.hcl.process_resource(
-                        "aws_cognito_user_pool_ui_customization", pool_id.replace("-", "_"), attributes)
+                        if "ClientId" in ui_customization:
+                            attributes = {
+                                "id": pool_id,
+                                "user_pool_id": pool_id,
+                                "client_id": ui_customization["ClientId"],
+                                "css": ui_customization["CSS"],
+                                "image_url": ui_customization["ImageUrl"],
+                            }
+                            self.hcl.process_resource(
+                                "aws_cognito_user_pool_ui_customization", pool_id.replace("-", "_"), attributes)
+                        else:
+                            print(
+                                f"  No ClientId found for UI customization of user pool: {pool_id}")
+                    else:
+                        print(
+                            f"  No UI customization found for user pool: {pool_id}")
                 except self.cognito_idp_client.exceptions.ResourceNotFoundException:
                     print(
-                        f"  No UI customization found for user pool: {pool_id}")
+                        f"  ResourceNotFoundException: No UI customization found for user pool: {pool_id}")

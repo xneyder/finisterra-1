@@ -6,7 +6,16 @@ class EKS:
     def __init__(self, eks_client, script_dir, provider_name, schema_data, region, s3Bucket,
                  dynamoDBTable, state_key):
         self.eks_client = eks_client
-        self.transform_rules = {}
+        self.transform_rules = {
+            "aws_eks_node_group": {
+                "hcl_drop_fields": {"max_unavailable": 0, "max_unavailable_percent": 0},
+                "hcl_keep_fields": {
+                    "launch_template.name": True,
+                    "launch_template.version": True,
+                },
+            },
+
+        }
         self.provider_name = provider_name
         self.script_dir = script_dir
         self.schema_data = schema_data
@@ -18,10 +27,10 @@ class EKS:
     def eks(self):
         self.hcl.prepare_folder(os.path.join("generated", "eks"))
 
-        self.aws_eks_addon()
-        self.aws_eks_cluster()
-        self.aws_eks_fargate_profile()
-        self.aws_eks_identity_provider_config()
+        # self.aws_eks_addon()
+        # self.aws_eks_cluster()
+        # self.aws_eks_fargate_profile()
+        # self.aws_eks_identity_provider_config()
         self.aws_eks_node_group()
 
         self.hcl.refresh_state()
@@ -44,7 +53,7 @@ class EKS:
                     f"  Processing EKS Add-on: {addon_name} for Cluster: {cluster_name}")
 
                 attributes = {
-                    "id": addon["addonArn"],
+                    "id": cluster_name+":"+addon_name,
                     "addon_name": addon_name,
                     "cluster_name": cluster_name,
                 }
@@ -62,12 +71,12 @@ class EKS:
             print(f"  Processing EKS Cluster: {cluster_name}")
 
             attributes = {
-                "id": cluster["arn"],
-                "name": cluster_name,
-                "role_arn": cluster["roleArn"],
-                "vpc_config": {
-                    "subnet_ids": cluster["resourcesVpcConfig"]["subnetIds"],
-                },
+                "id": cluster_name,
+                # "name": cluster_name,
+                # "role_arn": cluster["roleArn"],
+                # "vpc_config": {
+                #     "subnet_ids": cluster["resourcesVpcConfig"]["subnetIds"],
+                # },
             }
             self.hcl.process_resource(
                 "aws_eks_cluster", cluster_name.replace("-", "_"), attributes)
@@ -134,9 +143,11 @@ class EKS:
                     f"  Processing EKS Node Group: {node_group_name} for Cluster: {cluster_name}")
 
                 attributes = {
-                    "id": node_group["nodegroupArn"],
+                    "id": cluster_name+":"+node_group_name,
                     "node_group_name": node_group_name,
                     "cluster_name": cluster_name,
                 }
                 self.hcl.process_resource(
                     "aws_eks_node_group", f"{cluster_name}-{node_group_name}".replace("-", "_"), attributes)
+                break
+            break

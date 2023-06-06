@@ -82,7 +82,8 @@ def main():
                     provider.backup()
                 elif provider_group_code == 'cloudmap':
                     provider.cloudmap()
-                elif provider_group_code == 'cloudfront':
+                # Error
+                elif provider_group_code == 'cloudfront':  # FIXME: This is not working
                     provider.cloudfront()
                 elif provider_group_code == 'cloudtrail':
                     provider.cloudtrail()
@@ -100,13 +101,13 @@ def main():
                     provider.dynamodb()
                 elif provider_group_code == 'ebs':
                     provider.ebs()
-                elif provider_group_code == 'ec2':
+                elif provider_group_code == 'ec2':  # FIXME: This is not working on launch_template
                     provider.ec2()
                 elif provider_group_code == 'ecr':
                     provider.ecr()
                 elif provider_group_code == 'ecr_public':
                     provider.ecr_public()
-                elif provider_group_code == 'ecs':
+                elif provider_group_code == 'ecs':  # FIXME: This is not working
                     provider.ecs()
                 elif provider_group_code == 'efs':
                     provider.efs()

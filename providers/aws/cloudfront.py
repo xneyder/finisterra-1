@@ -3,11 +3,42 @@ import os
 from utils.hcl import HCL
 
 
+def header_empty_transform(value):
+    print(value)
+    if value == []:
+        return '{items=[]}'
+    else:
+        return value
+
+
 class CloudFront:
     def __init__(self, cloudfront_client, script_dir, provider_name, schema_data, region, s3Bucket,
                  dynamoDBTable, state_key):
         self.cloudfront_client = cloudfront_client
-        self.transform_rules = {}
+        self.transform_rules = {
+            "aws_cloudfront_response_headers_policy": {
+                "hcl_apply_function": {
+                    "access_control_allow_headers": {'function': [header_empty_transform]}
+                },
+            },
+            # "aws_cloudfront_response_headers_policy": {
+            #     "hcl_keep_fields": {'source': [], 'target': '{items=[]}'},
+            # },
+            # "aws_cloudfront_response_headers_policy": {
+            #     "hcl_transform_fields": {
+            #         "access_control_allow_headers": {'source': [], 'target': '{items=[]}'},
+            #     },
+            # },
+            # "aws_cloudfront_response_headers_policy": {
+            #     "hcl_apply_function": {
+            #         "identity_validation_expression": {'function': [replace_backslashes]}
+            #     },
+            # },
+
+            # "aws_cloudfront_response_headers_policy": {
+            #     "hcl_keep_fields": {"cors_config.access_control_allow_headers": True},
+            # },
+        }
         self.provider_name = provider_name
         self.script_dir = script_dir
         self.schema_data = schema_data
@@ -20,18 +51,18 @@ class CloudFront:
         self.hcl.prepare_folder(os.path.join("generated", "cloudfront"))
 
         if "gov" not in self.region:
-            self.aws_cloudfront_cache_policy()
-            self.aws_cloudfront_distribution()
-            self.aws_cloudfront_field_level_encryption_config()
-            self.aws_cloudfront_field_level_encryption_profile()
-            self.aws_cloudfront_function()
-            self.aws_cloudfront_key_group()
-            self.aws_cloudfront_monitoring_subscription()
-            # self.aws_cloudfront_origin_access_control()  # No API from AWS
-            self.aws_cloudfront_origin_access_identity()
-            self.aws_cloudfront_origin_request_policy()
-            self.aws_cloudfront_public_key()
-            self.aws_cloudfront_realtime_log_config()
+            # self.aws_cloudfront_cache_policy()
+            # self.aws_cloudfront_distribution()
+            # self.aws_cloudfront_field_level_encryption_config()
+            # self.aws_cloudfront_field_level_encryption_profile()
+            # self.aws_cloudfront_function()
+            # self.aws_cloudfront_key_group()
+            # self.aws_cloudfront_monitoring_subscription()
+            # # self.aws_cloudfront_origin_access_control()  # No API from AWS
+            # self.aws_cloudfront_origin_access_identity()
+            # self.aws_cloudfront_origin_request_policy()
+            # self.aws_cloudfront_public_key()
+            # self.aws_cloudfront_realtime_log_config()
             self.aws_cloudfront_response_headers_policy()
 
         self.hcl.refresh_state()
@@ -204,17 +235,17 @@ class CloudFront:
 
         response = self.cloudfront_client.list_origin_request_policies()
 
-        for policy_summary in response["OriginRequestPolicies"]["Items"]:
-            policy_id = policy_summary["Id"]
+        for policy_summary in response["OriginRequestPolicyList"]["Items"]:
+            policy_id = policy_summary["OriginRequestPolicy"]["Id"]
             print(
                 f"  Processing CloudFront Origin Request Policy: {policy_id}")
 
-            policy = self.cloudfront_client.get_origin_request_policy(
-                Id=policy_id)["OriginRequestPolicy"]
+            # policy = self.cloudfront_client.get_origin_request_policy(
+            #     Id=policy_id)["OriginRequestPolicy"]
             attributes = {
                 "id": policy_id,
-                "name": policy["OriginRequestPolicyConfig"]["Name"],
-                "comment": policy["OriginRequestPolicyConfig"].get("Comment", ""),
+                # "name": policy["OriginRequestPolicyConfig"]["Name"],
+                # "comment": policy["OriginRequestPolicyConfig"].get("Comment", ""),
                 # Add other required attributes as needed
             }
             self.hcl.process_resource(
@@ -240,14 +271,32 @@ class CloudFront:
                 self.hcl.process_resource(
                     "aws_cloudfront_public_key", public_key_id.replace("-", "_"), attributes)
 
+    def aws_cloudfront_public_key(self):
+        print("Processing CloudFront Public Keys...")
+
+        response = self.cloudfront_client.list_public_keys()
+
+        for public_key in response.get("PublicKeyList", {}).get("Items", []):
+            public_key_id = public_key["Id"]
+            print(f"  Processing CloudFront Public Key: {public_key_id}")
+
+            attributes = {
+                "id": public_key_id,
+                "name": public_key["Name"],
+                # Add other required attributes as needed
+            }
+
+            self.hcl.process_resource(
+                "aws_cloudfront_public_key", public_key_id.replace("-", "_"), attributes)
+
     def aws_cloudfront_realtime_log_config(self):
         print("Processing CloudFront Realtime Log Configs...")
-        paginator = self.cloudfront_client.get_paginator(
-            "list_realtime_log_configs")
 
-        for page in paginator.paginate():
-            for log_config in page["RealtimeLogConfigs"]["Items"]:
-                log_config_id = log_config["Id"]
+        response = self.cloudfront_client.list_realtime_log_configs()
+
+        if "RealtimeLogConfigs" in response and "Items" in response["RealtimeLogConfigs"]:
+            for log_config in response["RealtimeLogConfigs"]["Items"]:
+                log_config_id = log_config["ARN"]
                 print(
                     f"  Processing CloudFront Realtime Log Config: {log_config_id}")
 
@@ -255,31 +304,28 @@ class CloudFront:
                     "id": log_config_id,
                     "name": log_config["Name"],
                     "fields": log_config["Fields"],
-                    # Add other required attributes, like "sampling_rate" and "endpoint"
-                    # You may need to process the "Endpoints" list and extract the necessary information
+                    # Add other required attributes as needed
                 }
+
                 self.hcl.process_resource(
                     "aws_cloudfront_realtime_log_config", log_config_id.replace("-", "_"), attributes)
 
     def aws_cloudfront_response_headers_policy(self):
         print("Processing CloudFront Response Headers Policies...")
-        paginator = self.cloudfront_client.get_paginator(
-            "list_response_headers_policies")
 
-        for page in paginator.paginate():
-            for headers_policy in page["ResponseHeadersPolicies"]["Items"]:
-                policy_id = headers_policy["Id"]
-                print(
-                    f"  Processing CloudFront Response Headers Policy: {policy_id}")
+        response = self.cloudfront_client.list_response_headers_policies()
 
-                policy = self.cloudfront_client.get_response_headers_policy(
-                    Id=policy_id)["ResponseHeadersPolicy"]
-                attributes = {
-                    "id": policy_id,
-                    "name": policy["ResponseHeadersPolicyConfig"]["Name"],
-                    "comment": policy["ResponseHeadersPolicyConfig"].get("Comment", ""),
-                    # Add other required attributes, like "cors_config", "security_headers_config", etc.
-                    # You may need to process the configuration dictionaries and extract the necessary information
-                }
-                self.hcl.process_resource(
-                    "aws_cloudfront_response_headers_policy", policy_id.replace("-", "_"), attributes)
+        for headers_policy in response["ResponseHeadersPolicyList"]["Items"]:
+            policy_id = headers_policy["ResponseHeadersPolicy"]["Id"]
+            print(
+                f"  Processing CloudFront Response Headers Policy: {policy_id}")
+
+            attributes = {
+                "id": policy_id,
+                # "name": policy["ResponseHeadersPolicyConfig"]["Name"],
+                # "comment": policy["ResponseHeadersPolicyConfig"].get("Comment", ""),
+                # Add other required attributes, like "cors_config", "security_headers_config", etc.
+                # You may need to process the configuration dictionaries and extract the necessary information
+            }
+            self.hcl.process_resource(
+                "aws_cloudfront_response_headers_policy", policy_id.replace("-", "_"), attributes)

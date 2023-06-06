@@ -38,10 +38,10 @@ class Backup:
 
                 attributes = {
                     "id": backup_plan_id,
-                    "name": plan["BackupPlanName"],
-                    "version": plan["VersionId"],
-                    "arn": plan["BackupPlanArn"],
-                    "rule": plan["Rules"],
+                    # "name": plan["BackupPlanName"],
+                    # "version": plan["VersionId"],
+                    # "arn": plan["BackupPlanArn"],
+                    # "rule": plan["Rules"],
                 }
                 self.hcl.process_resource(
                     "aws_backup_plan", backup_plan_id.replace("-", "_"), attributes)

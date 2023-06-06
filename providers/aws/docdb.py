@@ -36,25 +36,15 @@ class DocDb:
         paginator = self.docdb_client.get_paginator("describe_db_clusters")
         for page in paginator.paginate():
             for db_cluster in page["DBClusters"]:
-                print(
-                    f"  Processing DocumentDB Cluster: {db_cluster['DBClusterIdentifier']}")
+                if db_cluster["Engine"] == "docdb":
+                    print(
+                        f"  Processing DocumentDB Cluster: {db_cluster['DBClusterIdentifier']}")
 
-                attributes = {
-                    "id": db_cluster["DBClusterIdentifier"],
-                    # "cluster_identifier": db_cluster["DBClusterIdentifier"],
-                    # "engine": db_cluster["Engine"],
-                    # "engine_version": db_cluster["EngineVersion"],
-                    # "status": db_cluster["Status"],
-                    # "db_subnet_group": db_cluster["DBSubnetGroup"],
-                    # "vpc_security_group_ids": db_cluster["VpcSecurityGroups"],
-                    # "storage_encrypted": db_cluster["StorageEncrypted"],
-                    # "kms_key_id": db_cluster["KmsKeyId"],
-                    # "availability_zones": db_cluster["AvailabilityZones"],
-                    # "port": db_cluster["Port"],
-                    # "master_username": db_cluster["MasterUsername"],
-                }
-                self.hcl.process_resource(
-                    "aws_docdb_cluster", db_cluster["DBClusterIdentifier"].replace("-", "_"), attributes)
+                    attributes = {
+                        "id": db_cluster["DBClusterIdentifier"],
+                    }
+                    self.hcl.process_resource(
+                        "aws_docdb_cluster", db_cluster["DBClusterIdentifier"].replace("-", "_"), attributes)
 
     def aws_docdb_cluster_instance(self):
         print("Processing DocumentDB Cluster Instances...")
@@ -87,17 +77,19 @@ class DocDb:
             "describe_db_cluster_parameter_groups")
         for page in paginator.paginate():
             for parameter_group in page["DBClusterParameterGroups"]:
-                print(
-                    f"  Processing DocumentDB Cluster Parameter Group: {parameter_group['DBClusterParameterGroupName']}")
+                # Check if it's a DocumentDB parameter group
+                if "docdb" in parameter_group["DBParameterGroupFamily"]:
+                    print(
+                        f"  Processing DocumentDB Cluster Parameter Group: {parameter_group['DBClusterParameterGroupName']}")
 
-                attributes = {
-                    "id": parameter_group["DBClusterParameterGroupName"],
-                    "name": parameter_group["DBClusterParameterGroupName"],
-                    "family": parameter_group["DBParameterGroupFamily"],
-                    "description": parameter_group["Description"],
-                }
-                self.hcl.process_resource("aws_docdb_cluster_parameter_group",
-                                          parameter_group["DBClusterParameterGroupName"].replace("-", "_"), attributes)
+                    attributes = {
+                        "id": parameter_group["DBClusterParameterGroupName"],
+                        "name": parameter_group["DBClusterParameterGroupName"],
+                        "family": parameter_group["DBParameterGroupFamily"],
+                        "description": parameter_group["Description"],
+                    }
+                    self.hcl.process_resource("aws_docdb_cluster_parameter_group",
+                                              parameter_group["DBClusterParameterGroupName"].replace("-", "_"), attributes)
 
     def aws_docdb_cluster_snapshot(self):
         print("Processing DocumentDB Cluster Snapshots...")
@@ -106,22 +98,23 @@ class DocDb:
             "describe_db_cluster_snapshots")
         for page in paginator.paginate():
             for snapshot in page["DBClusterSnapshots"]:
-                print(
-                    f"  Processing DocumentDB Cluster Snapshot: {snapshot['DBClusterSnapshotIdentifier']}")
+                if snapshot["Engine"] == "docdb":
+                    print(
+                        f"  Processing DocumentDB Cluster Snapshot: {snapshot['DBClusterSnapshotIdentifier']}")
 
-                attributes = {
-                    "id": snapshot["DBClusterSnapshotIdentifier"],
-                    "snapshot_identifier": snapshot.get("DBClusterSnapshotIdentifier", None),
-                    "cluster_identifier": snapshot.get("DBClusterIdentifier", None),
-                    "snapshot_type": snapshot.get("SnapshotType", None),
-                    "engine": snapshot.get("Engine", None),
-                    "engine_version": snapshot.get("EngineVersion", None),
-                    "port": snapshot.get("Port", None),
-                    "status": snapshot.get("Status", None),
-                    "availability_zone": snapshot.get("AvailabilityZone", None),
-                }
-                self.hcl.process_resource(
-                    "aws_docdb_cluster_snapshot", snapshot["DBClusterSnapshotIdentifier"].replace("-", "_"), attributes)
+                    attributes = {
+                        "id": snapshot["DBClusterSnapshotIdentifier"],
+                        "snapshot_identifier": snapshot.get("DBClusterSnapshotIdentifier", None),
+                        "cluster_identifier": snapshot.get("DBClusterIdentifier", None),
+                        "snapshot_type": snapshot.get("SnapshotType", None),
+                        "engine": snapshot.get("Engine", None),
+                        "engine_version": snapshot.get("EngineVersion", None),
+                        "port": snapshot.get("Port", None),
+                        "status": snapshot.get("Status", None),
+                        "availability_zone": snapshot.get("AvailabilityZone", None),
+                    }
+                    self.hcl.process_resource(
+                        "aws_docdb_cluster_snapshot", snapshot["DBClusterSnapshotIdentifier"].replace("-", "_"), attributes)
 
     def aws_docdb_event_subscription(self):
         print("Processing DocumentDB Event Subscriptions...")
@@ -150,7 +143,7 @@ class DocDb:
         paginator = self.docdb_client.get_paginator("describe_db_clusters")
         for page in paginator.paginate():
             for cluster in page["DBClusters"]:
-                if "GlobalClusterIdentifier" in cluster:
+                if "GlobalClusterIdentifier" in cluster and cluster["Engine"] == "docdb":
                     print(
                         f"  Processing DocumentDB Global Cluster: {cluster['GlobalClusterIdentifier']}")
 
@@ -172,19 +165,17 @@ class DocDb:
             "describe_db_subnet_groups")
         for page in paginator.paginate():
             for subnet_group in page["DBSubnetGroups"]:
-                print(
-                    f"  Processing DocumentDB Subnet Group: {subnet_group['DBSubnetGroupName']}")
+                # Check if it's a DocumentDB subnet group
+                if "DocumentDB" in subnet_group.get("DBSubnetGroupDescription", ""):
+                    print(
+                        f"  Processing DocumentDB Subnet Group: {subnet_group['DBSubnetGroupName']}")
 
-                attributes = {
-                    "id": subnet_group["DBSubnetGroupName"],
-                    "name": subnet_group.get("DBSubnetGroupName", None),
-                    "description": subnet_group.get("DBSubnetGroupDescription", None),
-                    "subnet_ids": [subnet["SubnetIdentifier"] for subnet in subnet_group["Subnets"]],
-                }
-
-                if "Tags" in subnet_group:
-                    attributes["tags"] = {tag["Key"]: tag["Value"]
-                                          for tag in subnet_group["Tags"]}
-
-                self.hcl.process_resource(
-                    "aws_docdb_subnet_group", subnet_group["DBSubnetGroupName"].replace("-", "_"), attributes)
+                    attributes = {
+                        "id": subnet_group["DBSubnetGroupName"],
+                        "name": subnet_group.get("DBSubnetGroupName", None),
+                        "description": subnet_group.get("DBSubnetGroupDescription", None),
+                        "subnet_ids": [subnet['SubnetIdentifier'] for subnet in subnet_group.get("Subnets", [])],
+                        "arn": subnet_group.get("DBSubnetGroupArn", None),
+                    }
+                    self.hcl.process_resource(
+                        "aws_docdb_subnet_group", subnet_group["DBSubnetGroupName"].replace("-", "_"), attributes)

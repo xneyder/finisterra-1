@@ -7,7 +7,14 @@ class EC2:
                  dynamoDBTable, state_key):
         self.ec2_client = ec2_client
         self.autoscaling_client = autoscaling_client
-        self.transform_rules = {}
+        self.transform_rules = {
+            "aws_instance": {
+                "hcl_keep_fields": {"instance_type": True,
+                                    "ami": True,
+                                    "launch_template.name": True,
+                                    },
+            },
+        }
         self.provider_name = provider_name
         self.script_dir = script_dir
         self.schema_data = schema_data
@@ -23,8 +30,8 @@ class EC2:
         self.aws_ami_launch_permission()
         self.aws_ec2_capacity_reservation()
         self.aws_ec2_host()
-        # self.aws_ec2_serial_console_access() # no api in boto3
-        self.aws_ec2_tag()
+        # self.aws_ec2_serial_console_access()  # no api in boto3
+        # self.aws_ec2_tag()  # Blocking now because is long running
         self.aws_eip()
         self.aws_eip_association()
         self.aws_instance()

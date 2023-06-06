@@ -95,6 +95,7 @@ class HCL:
             state_data = json.load(state_file)
 
         for resource in state_data["resources"]:
+            print("=======================RESOURCE=======================")
             # print(
             #     f'Processing resource "{resource["name"]}" of type "{resource["type"]}"...')
             attributes = resource["instances"][0]["attributes"]
@@ -120,20 +121,21 @@ class HCL:
                     return "{\n" + "\n ".join([f'{process_key(k,v)}' for k, v in value.items()]) + "\n}"
                 return ""
 
-            def process_key(key, value, validate=True):
+            def process_key(key, value, validate=True, parent=None):
                 if validate:
-                    if value == None or value == "":
-                        return ""
-                    if isinstance(value, dict) and not value:
-                        return ""
-                    if isinstance(value, list) and not value:
-                        return ""
-
                     # Check if the field is in the transform rules
                     is_transformed, transform_str = check_transform_rules(
-                        key, value, resource_type)
+                        key, value, resource_type, parent)
                     if is_transformed:
                         return (f'  {transform_str}')
+                    else:
+                        # return null ony if is not validated
+                        if value == None or value == "":
+                            return ""
+                        if isinstance(value, dict) and not value:
+                            return ""
+                        if isinstance(value, list) and not value:
+                            return ""
 
                     # Ignore is key is computed and handled the exception
                     try:
@@ -173,17 +175,19 @@ class HCL:
                     is_block = True
                     if schema_block_types[key]['nesting_mode'] == 'list' or schema_block_types[key]['nesting_mode'] == 'set':
                         for block in value:
+                            # print(key, block)
                             # validate if a field in the block is empty
                             if not validate_block(key, block, resource_type):
                                 return is_block, return_str
                             return_str += (f'  {quote_string(key)} {{\n')
                             for block_key, block_value in block.items():
-                                # Ignore is key is computed and handled the exception
-                                try:
-                                    if schema_block_types[key]['block']['attributes'][block_key]['computed']:
-                                        continue
-                                except:
-                                    pass
+                                # # Ignore is key is computed and handled the exception
+                                # try:
+
+                                #     if schema_block_types[key]['block']['attributes'][block_key]['computed']:
+                                #         continue
+                                # except:
+                                #     pass
 
                                 schema_block_types_child = schema_block_types[key]['block'].get(
                                     "block_types", {})
@@ -194,17 +198,21 @@ class HCL:
                                     continue
 
                                 return_str += (
-                                    f'    {process_key(block_key, block_value)}')
+                                    f'    {process_key(block_key, block_value, True, key)}')
                             return_str += ("  }\n   ")
                 return is_block, return_str
 
-            def check_transform_rules(key, value, resource_type):
+            def check_transform_rules(key, value, resource_type, parent=None):
                 is_transformed = False
                 return_str = ""
+                if parent:
+                    key = f'{parent}.{key}'
+                    # print(key, value)
                 if resource_type in self.transform_rules:
                     if 'hcl_drop_fields' in self.transform_rules[resource_type]:
                         hcl_drop_fields = self.transform_rules[resource_type]['hcl_drop_fields']
                         if key in hcl_drop_fields:
+                            print(hcl_drop_fields, key, value)
                             if hcl_drop_fields[key] == 'ALL' or hcl_drop_fields[key] == value:
                                 return_str = ""
                                 is_transformed = True
@@ -212,6 +220,7 @@ class HCL:
                     if 'hcl_keep_fields' in self.transform_rules[resource_type]:
                         hcl_keep_fields = self.transform_rules[resource_type]['hcl_keep_fields']
                         if key in hcl_keep_fields:
+                            key = key.split('.')[-1]
                             return_str += (
                                 f'{process_key(key, value, False)}')
                             is_transformed = True
@@ -242,6 +251,7 @@ class HCL:
                                 return is_transformed, return_str
                     if 'hcl_apply_function' in self.transform_rules[resource_type]:
                         hcl_apply_function = self.transform_rules[resource_type]['hcl_apply_function']
+                        # print(key, hcl_apply_function)
                         if key in hcl_apply_function:
                             for function in hcl_apply_function[key]["function"]:
                                 value = function(value)
@@ -275,7 +285,6 @@ class HCL:
                 hcl_output.write(
                     f'resource "{resource_type}" "{resource_name}" {{\n')
                 for key, value in attributes.items():
-
                     is_block, block_str = process_block_type(
                         key, value, schema_block_types, resource_type)
                     if is_block:

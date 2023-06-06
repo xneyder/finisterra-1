@@ -29,7 +29,7 @@ class Dynamodb:
         self.aws_dynamodb_global_table()
         self.aws_dynamodb_table()
         self.aws_dynamodb_table_replica()
-        self.aws_dynamodb_tag()
+        # self.aws_dynamodb_tag() #Terraform permissions issue
 
         self.hcl.refresh_state()
         self.hcl.generate_hcl_file()
@@ -129,6 +129,20 @@ class Dynamodb:
                     "write_capacity": table_description["ProvisionedThroughput"]["WriteCapacityUnits"],
                 }
 
+                # Extract the key schema
+                key_schema = table_description["KeySchema"]
+
+                # Get the hash key
+                hash_key = next(
+                    key["AttributeName"] for key in key_schema if key["KeyType"] == "HASH")
+                attributes["hash_key"] = hash_key
+
+                # If there's a range key, get it
+                range_key = next(
+                    (key["AttributeName"] for key in key_schema if key["KeyType"] == "RANGE"), None)
+                if range_key is not None:
+                    attributes["range_key"] = range_key
+
                 if "GlobalSecondaryIndexes" in table_description:
                     attributes["global_secondary_index"] = table_description["GlobalSecondaryIndexes"]
 
@@ -175,7 +189,7 @@ class Dynamodb:
                         f"  Processing DynamoDB Tag: {tag['Key']} for Table: {table_name}")
 
                     attributes = {
-                        "id": f"{table_name}-{tag['Key']}",
+                        "id": f"{table_name},{tag['Key']}",
                         "table_name": table_name,
                         "key": tag["Key"],
                         "value": tag["Value"],

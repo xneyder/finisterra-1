@@ -18,7 +18,7 @@ class AwsLambda:
         self.resource_list = {}
 
     def aws_lambda(self):
-        self.hcl.prepare_folder(os.path.join("generated", "lambda"))
+        self.hcl.prepare_folder(os.path.join("generated", "aws_lambda"))
 
         self.aws_lambda_alias()
         # self.aws_lambda_code_signing_config()  #Permission error
