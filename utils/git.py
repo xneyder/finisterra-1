@@ -168,8 +168,8 @@ class Git:
             pr_number = self.create_pull_request()
 
         # If directory does not exist in target branch, merge the PR
-        # if pr_number is not None and not self.directory_exists_on_branch(self.git_target_branch):
-        #     self.merge_pull_request(pr_number)
+        if pr_number is not None and not self.directory_exists_on_branch(self.git_target_branch):
+            self.merge_pull_request(pr_number)
 
     def get_pull_request(self):
         conn = http.client.HTTPSConnection("api.github.com")
@@ -179,17 +179,24 @@ class Git:
             'Authorization': 'Bearer ' + str(self.installation_token),
             'Content-Type': 'application/json'
         }
-        conn.request(
-            "GET", f"/repos/{self.organization}/{self.git_repo_name}/pulls", headers=headers)
-        res = conn.getresponse()
-        data = res.read()
+
         pr_number = None
         self.pr_url = None  # Initialize pr_url
-        if res.status != 200:
-            print(
-                f"Failed to retrieve pull requests. Response: {data.decode()}")
-        else:
+        page = 1
+
+        while True:
+            conn.request(
+                "GET", f"/repos/{self.organization}/{self.git_repo_name}/pulls?state=open&page={page}", headers=headers)
+            res = conn.getresponse()
+            data = res.read()
+
+            if res.status != 200:
+                print(
+                    f"Failed to retrieve pull requests. Response: {data.decode()}")
+                return pr_number
+
             pulls = json.loads(data.decode())
+
             for pull in pulls:
                 if pull['head']['ref'] == self.git_repo_branch:
                     print(
@@ -197,7 +204,16 @@ class Git:
                     pr_number = pull['number']
                     # Save the pull request url
                     self.pr_url = pull['html_url']
-                    break
+                    return pr_number
+
+            # Check Link header to see if there's a next page
+            link_header = res.getheader('Link')
+            if link_header is None or 'rel="next"' not in link_header:
+                # We've read all the pages
+                break
+
+            page += 1
+
         return pr_number
 
     def create_pull_request(self):
