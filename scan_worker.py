@@ -68,8 +68,6 @@ def main():
 
                 if provider_group_code == 'vpc':
                     provider.vpc()
-                elif provider_group_code == 'rds':
-                    provider.rds()
                 elif provider_group_code == 'acm':
                     provider.acm()
                 elif provider_group_code == 'apigateway':
@@ -127,9 +125,9 @@ def main():
                     provider.guardduty()
                 elif provider_group_code == 'iam':
                     provider.iam()
-                elif provider_group_code == 'kms':
+                elif provider_group_code == 'kms':  # FIXME: This is not working
                     provider.kms()
-                elif provider_group_code == 'aws_lambda':
+                elif provider_group_code == 'aws_lambda':  # FIXME: I can not get the code location
                     provider.aws_lambda()
                 elif provider_group_code == 'opensearch':
                     provider.opensearch()
@@ -143,7 +141,7 @@ def main():
                     provider.sqs()
                 elif provider_group_code == 'ssm':
                     provider.ssm()
-                elif provider_group_code == 'secretsmanager':
+                elif provider_group_code == 'secretsmanager':  # FIXME: Check how to handle the insecure values
                     provider.secretsmanager()
                 elif provider_group_code == 'vpn_client':
                     provider.vpn_client()

@@ -25,7 +25,7 @@ class SSM:
         self.aws_ssm_maintenance_window()
         self.aws_ssm_maintenance_window_target()
         self.aws_ssm_maintenance_window_task()
-        self.aws_ssm_parameter()
+        # self.aws_ssm_parameter() #Check how to handle the insecure values
         # self.aws_ssm_patch_baseline() # Permission error
         self.aws_ssm_patch_group()
         self.aws_ssm_resource_data_sync()

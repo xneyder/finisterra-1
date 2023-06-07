@@ -8,11 +8,16 @@ class EKS:
         self.eks_client = eks_client
         self.transform_rules = {
             "aws_eks_node_group": {
-                "hcl_drop_fields": {"max_unavailable": 0, "max_unavailable_percent": 0},
+                "hcl_drop_fields": {"update_config.max_unavailable_percentage": 0, "update_config.max_unavailable_percentage": 0},
                 "hcl_keep_fields": {
                     "launch_template.name": True,
                     "launch_template.version": True,
                 },
+            },
+            "aws_eks_cluster": {
+                "hcl_drop_fields": {"vpc_config.cluster_security_group_id": "ALL",
+                                    "vpc_config.vpc_id": "ALL",
+                                    },
             },
 
         }
@@ -27,10 +32,10 @@ class EKS:
     def eks(self):
         self.hcl.prepare_folder(os.path.join("generated", "eks"))
 
-        # self.aws_eks_addon()
-        # self.aws_eks_cluster()
-        # self.aws_eks_fargate_profile()
-        # self.aws_eks_identity_provider_config()
+        self.aws_eks_addon()
+        self.aws_eks_cluster()
+        self.aws_eks_fargate_profile()
+        self.aws_eks_identity_provider_config()
         self.aws_eks_node_group()
 
         self.hcl.refresh_state()
@@ -149,5 +154,3 @@ class EKS:
                 }
                 self.hcl.process_resource(
                     "aws_eks_node_group", f"{cluster_name}-{node_group_name}".replace("-", "_"), attributes)
-                break
-            break

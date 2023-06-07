@@ -95,7 +95,7 @@ class HCL:
             state_data = json.load(state_file)
 
         for resource in state_data["resources"]:
-            print("=======================RESOURCE=======================")
+            # print("=======================RESOURCE=======================")
             # print(
             #     f'Processing resource "{resource["name"]}" of type "{resource["type"]}"...')
             attributes = resource["instances"][0]["attributes"]
@@ -163,8 +163,11 @@ class HCL:
                 return True
 
             def multiline_json(value):
-                json_value = json.loads(value)
-                return json.dumps(json_value, indent=2).replace("${", "$${")
+                try:
+                    json_value = json.loads(value)
+                    return json.dumps(json_value, indent=2).replace("${", "$${")
+                except:
+                    return value
 
             def process_block_type(key, value, schema_block_types, resource_type):
                 return_str = ""
@@ -211,8 +214,8 @@ class HCL:
                 if resource_type in self.transform_rules:
                     if 'hcl_drop_fields' in self.transform_rules[resource_type]:
                         hcl_drop_fields = self.transform_rules[resource_type]['hcl_drop_fields']
+                        # print(key, value)
                         if key in hcl_drop_fields:
-                            print(hcl_drop_fields, key, value)
                             if hcl_drop_fields[key] == 'ALL' or hcl_drop_fields[key] == value:
                                 return_str = ""
                                 is_transformed = True
@@ -228,6 +231,7 @@ class HCL:
                     if 'hcl_prefix' in self.transform_rules[resource_type]:
                         hcl_prefix = self.transform_rules[resource_type]['hcl_prefix']
                         if key in hcl_prefix:
+                            key = key.split('.')[-1]
                             return_str += (
                                 f'{process_key(key, hcl_prefix[key]+value, False)}')
                             is_transformed = True
@@ -235,8 +239,13 @@ class HCL:
                     if 'hcl_json_multiline' in self.transform_rules[resource_type]:
                         hcl_json_multiline = self.transform_rules[resource_type]['hcl_json_multiline']
                         if key in hcl_json_multiline:
-                            return_str += (
-                                f'{quote_string(key)}=<<EOF\n{multiline_json(value)}\nEOF\n')
+                            key = key.split('.')[-1]
+                            multiline_json_value = multiline_json(value)
+                            if multiline_json_value != "":
+                                return_str += (
+                                    f'{quote_string(key)}=<<EOF\n{multiline_json(value)}\nEOF\n')
+                            else:
+                                return_str += ""
                             is_transformed = True
                             return is_transformed, return_str
                     if 'hcl_file_function' in self.transform_rules[resource_type]:
@@ -245,6 +254,7 @@ class HCL:
                             file_name = f"{resource_name}.{hcl_file_function[key]['type']}"
                             with open(file_name, "w") as hcl_output:
                                 hcl_output.write(f'{value}')
+                                key = key.split('.')[-1]
                                 return_str += (
                                     f'{quote_string(key)}=file("{file_name}")\n')
                                 is_transformed = True
@@ -255,6 +265,7 @@ class HCL:
                         if key in hcl_apply_function:
                             for function in hcl_apply_function[key]["function"]:
                                 value = function(value)
+                            key = key.split('.')[-1]
                             return_str += (
                                 f'{quote_string(key)}="{value}"\n')
                             is_transformed = True
@@ -265,6 +276,7 @@ class HCL:
                         if key in hcl_apply_function_dict:
                             for function in hcl_apply_function_dict[key]["function"]:
                                 value = function(value)
+                            key = key.split('.')[-1]
                             return_str += (
                                 f'{quote_string(key)}={value}\n')
                             is_transformed = True
@@ -274,6 +286,7 @@ class HCL:
                         if key in hcl_transform_fields:
                             if hcl_transform_fields[key]['source'] == value:
                                 target = hcl_transform_fields[key]['target']
+                                key = key.split('.')[-1]
                                 return_str += (
                                     f' {process_key(key, target, False)}')
                                 is_transformed = True

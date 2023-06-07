@@ -2,13 +2,34 @@ import os
 from utils.hcl import HCL
 import botocore
 import json
+import urllib.parse
+
+
+def convert_to_terraform_format(env_variables_dict):
+    # Format the dictionary to Terraform format
+    # terraform_format = "variables = {\n"
+    terraform_format = "{\n"
+    for key, value in env_variables_dict.items():
+        # Escape the double quotes
+        value = str(value).replace('"', '\\"')
+        terraform_format += f"  {key} = \"{value}\"\n"
+    terraform_format += "}"
+
+    return terraform_format
 
 
 class AwsLambda:
     def __init__(self, lambda_client, script_dir, provider_name, schema_data, region, s3Bucket,
                  dynamoDBTable, state_key):
         self.lambda_client = lambda_client
-        self.transform_rules = {}
+        self.transform_rules = {
+            "aws_lambda_function": {
+                "hcl_apply_function_dict": {
+                    "environment.variables": {'function': [convert_to_terraform_format]}
+                },
+                "hcl_drop_fields": {"vpc_config.vpc_id": "ALL"},
+            },
+        }
         self.provider_name = provider_name
         self.script_dir = script_dir
         self.schema_data = schema_data
@@ -112,16 +133,32 @@ class AwsLambda:
             function_name = function["FunctionName"]
             print(f"  Processing Lambda Function: {function_name}")
 
+            # Get more detailed information about the function
+            function_details = self.lambda_client.get_function(
+                FunctionName=function_name)['Configuration']
+
+            s3_bucket = ''
+            s3_key = ''
+
+            # Check if function's code is stored in S3
+            if 'Code' in function_details:
+                if 'S3Bucket' in function_details['Code']:
+                    s3_bucket = function_details['Code']['S3Bucket']
+                if 'S3Key' in function_details['Code']:
+                    s3_key = function_details['Code']['S3Key']
+
             attributes = {
-                "id": function["FunctionArn"],
+                "id": function_details["FunctionArn"],
                 "function_name": function_name,
-                "runtime": function["Runtime"],
-                "role": function["Role"],
-                "handler": function["Handler"],
-                "timeout": function["Timeout"],
-                "memory_size": function["MemorySize"],
-                "description": function.get("Description", ""),
+                "runtime": function_details["Runtime"],
+                "role": function_details["Role"],
+                "handler": function_details["Handler"],
+                "timeout": function_details["Timeout"],
+                "memory_size": function_details["MemorySize"],
+                "description": function_details.get("Description", ""),
                 "publish": False,
+                "s3_bucket": s3_bucket,
+                "s3_key": s3_key,
             }
             self.hcl.process_resource(
                 "aws_lambda_function", function_name.replace("-", "_"), attributes)
