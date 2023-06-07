@@ -40,15 +40,21 @@ class VpnClient:
                     print(
                         f"  Processing EC2 Client VPN Authorization Rule: {rule['GroupId']}")
 
+                    if rule['GroupId'] != "":
+                        id = f"{endpoint_id},{rule['DestinationCidr']},{rule['GroupId']}"
+                    else:
+                        id = f"{endpoint_id},{rule['DestinationCidr']}"
                     attributes = {
-                        "id": f"{endpoint_id}_{rule['GroupId']}",
+                        # Assuming DestinationCidr holds the CIDR value
+                        "id": id,
                         "client_vpn_endpoint_id": endpoint_id,
-                        "target_network_cidr": rule["AccessAll"],
+                        # Assuming DestinationCidr holds the CIDR value
+                        "target_network_cidr": rule["DestinationCidr"],
                         "authorize_all_groups": rule["AccessAll"],
                     }
 
                     self.hcl.process_resource("aws_ec2_client_vpn_authorization_rule",
-                                              f"{endpoint_id}_{rule['GroupId']}".replace("-", "_"), attributes)
+                                              f"{endpoint_id}_{rule['DestinationCidr']}_{rule['GroupId']}".replace("-", "_"), attributes)
 
             except self.ec2_client.exceptions.ClientError as e:
                 print(
@@ -111,7 +117,7 @@ class VpnClient:
             routes = self.ec2_client.describe_client_vpn_routes(
                 ClientVpnEndpointId=endpoint_id)
             for route in routes["Routes"]:
-                route_id = f"{endpoint_id}_{route['DestinationCidr']}_{route['TargetSubnet']}"
+                route_id = f"{endpoint_id},{route['DestinationCidr']},{route['TargetSubnet']}"
                 print(f"  Processing EC2 Client VPN Route: {route_id}")
 
                 attributes = {

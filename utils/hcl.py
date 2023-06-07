@@ -281,6 +281,17 @@ class HCL:
                                 f'{quote_string(key)}={value}\n')
                             is_transformed = True
                             return is_transformed, return_str
+                    if 'hcl_apply_function_block' in self.transform_rules[resource_type]:
+                        hcl_apply_function_block = self.transform_rules[
+                            resource_type]['hcl_apply_function_block']
+                        if key in hcl_apply_function_block:
+                            for function in hcl_apply_function_block[key]["function"]:
+                                value = function(value)
+                            key = key.split('.')[-1]
+                            return_str += (
+                                f'{quote_string(key)} {value}\n')
+                            is_transformed = True
+                            return is_transformed, return_str
                     if 'hcl_transform_fields' in self.transform_rules[resource_type]:
                         hcl_transform_fields = self.transform_rules[resource_type]['hcl_transform_fields']
                         if key in hcl_transform_fields:

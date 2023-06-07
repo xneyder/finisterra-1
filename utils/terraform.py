@@ -24,7 +24,7 @@ class Terraform:
 
         try:
             subprocess.run(
-                ["terraform", "plan", "-out", plan_file], check=True)
+                ["terraform", "plan", "-out", plan_file, "-lock=false"], check=True)
         except subprocess.CalledProcessError as e:
             print(f"Failed to run 'terraform plan': {e}")
             return None

@@ -56,17 +56,20 @@ class Secretsmanager:
                 try:
                     policy_response = self.secretsmanager_client.get_resource_policy(
                         SecretId=secret_id)
-                    policy = policy_response["ResourcePolicy"]
-                    print(
-                        f"  Processing Secrets Manager Secret Policy for Secret: {secret_name}")
+                    if 'ResourcePolicy' in policy_response:    # Check if 'ResourcePolicy' exists
+                        policy = policy_response["ResourcePolicy"]
+                        print(
+                            f"  Processing Secrets Manager Secret Policy for Secret: {secret_name}")
 
-                    attributes = {
-                        "id": secret_id,
-                        "secret_arn": secret_id,
-                        "policy": policy,
-                    }
-                    self.hcl.process_resource(
-                        "aws_secretsmanager_secret_policy", secret_name.replace("-", "_"), attributes)
+                        attributes = {
+                            "id": secret_id,
+                            "secret_arn": secret_id,
+                            "policy": policy,
+                        }
+                        self.hcl.process_resource(
+                            "aws_secretsmanager_secret_policy", secret_name.replace("-", "_"), attributes)
+                    else:
+                        print(f"  No policy found for Secret: {secret_name}")
                 except self.secretsmanager_client.exceptions.ResourceNotFoundException:
                     print(f"  No policy found for Secret: {secret_name}")
 
@@ -112,20 +115,21 @@ class Secretsmanager:
                 secret_id = secret["ARN"]
                 secret_name = secret["Name"]
 
-                version_paginator = self.secretsmanager_client.get_paginator(
-                    "list_secret_version_ids")
-                for version_page in version_paginator.paginate(SecretId=secret_id):
-                    for version in version_page["Versions"]:
-                        version_id = version["VersionId"]
+                # Call list_secret_version_ids directly instead of paginating
+                versions = self.secretsmanager_client.list_secret_version_ids(
+                    SecretId=secret_id)
 
-                        if "AWSCURRENT" in version["VersionStages"]:
-                            print(
-                                f"  Processing Secrets Manager Secret Version: {version_id} for Secret: {secret_name}")
+                for version in versions["Versions"]:
+                    version_id = version["VersionId"]
 
-                            attributes = {
-                                "id": f"{secret_id}|{version_id}",
-                                "secret_id": secret_id,
-                                "version_id": version_id,
-                            }
-                            self.hcl.process_resource(
-                                "aws_secretsmanager_secret_version", f"{secret_name.replace('-', '_')}_version_{version_id.replace('-', '_')}", attributes)
+                    if "AWSCURRENT" in version["VersionStages"]:
+                        print(
+                            f"  Processing Secrets Manager Secret Version: {version_id} for Secret: {secret_name}")
+
+                        attributes = {
+                            "id": f"{secret_id}|{version_id}",
+                            "secret_id": secret_id,
+                            "version_id": version_id,
+                        }
+                        self.hcl.process_resource(
+                            "aws_secretsmanager_secret_version", f"{secret_name.replace('-', '_')}_version_{version_id.replace('-', '_')}", attributes)

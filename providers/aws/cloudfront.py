@@ -3,12 +3,26 @@ import os
 from utils.hcl import HCL
 
 
-def header_empty_transform(value):
-    print(value)
-    if value == []:
-        return '{items=[]}'
-    else:
-        return value
+def cors_config_transform(value):
+    return "{items="+str(value)+"}\n"
+    # if value == []:
+    #     return {"items": []}
+    # else:
+    #     return value
+
+
+# def convert_to_terraform_format(env_variables_dict):
+#     # Format the dictionary to Terraform format
+#     # terraform_format = "variables = {\n"
+#     print(env_variables_dict)
+#     terraform_format = "{\n"
+#     for key, value in env_variables_dict.items():
+#         # Escape the double quotes
+#         value = str(value).replace('"', '\\"')
+#         terraform_format += f"  {key} = \"{value}\"\n"
+#     terraform_format += "}"
+
+#     return terraform_format
 
 
 class CloudFront:
@@ -17,9 +31,13 @@ class CloudFront:
         self.cloudfront_client = cloudfront_client
         self.transform_rules = {
             "aws_cloudfront_response_headers_policy": {
-                "hcl_apply_function": {
-                    "access_control_allow_headers": {'function': [header_empty_transform]}
+                "hcl_apply_function_block": {
+                    "cors_config.access_control_allow_headers": {'function': [cors_config_transform]},
+                    "cors_config.access_control_allow_methods": {'function': [cors_config_transform]}
                 },
+            },
+            "aws_cloudfront_distribution": {
+                "hcl_keep_fields": {"origin.domain_name": True, },
             },
             # "aws_cloudfront_response_headers_policy": {
             #     "hcl_keep_fields": {'source': [], 'target': '{items=[]}'},
@@ -51,18 +69,18 @@ class CloudFront:
         self.hcl.prepare_folder(os.path.join("generated", "cloudfront"))
 
         if "gov" not in self.region:
-            # self.aws_cloudfront_cache_policy()
-            # self.aws_cloudfront_distribution()
-            # self.aws_cloudfront_field_level_encryption_config()
-            # self.aws_cloudfront_field_level_encryption_profile()
-            # self.aws_cloudfront_function()
-            # self.aws_cloudfront_key_group()
-            # self.aws_cloudfront_monitoring_subscription()
-            # # self.aws_cloudfront_origin_access_control()  # No API from AWS
-            # self.aws_cloudfront_origin_access_identity()
-            # self.aws_cloudfront_origin_request_policy()
-            # self.aws_cloudfront_public_key()
-            # self.aws_cloudfront_realtime_log_config()
+            self.aws_cloudfront_cache_policy()
+            self.aws_cloudfront_distribution()
+            self.aws_cloudfront_field_level_encryption_config()
+            self.aws_cloudfront_field_level_encryption_profile()
+            self.aws_cloudfront_function()
+            self.aws_cloudfront_key_group()
+            self.aws_cloudfront_monitoring_subscription()
+            # self.aws_cloudfront_origin_access_control()  # No API from AWS
+            self.aws_cloudfront_origin_access_identity()
+            self.aws_cloudfront_origin_request_policy()
+            self.aws_cloudfront_public_key()
+            self.aws_cloudfront_realtime_log_config()
             self.aws_cloudfront_response_headers_policy()
 
         self.hcl.refresh_state()
@@ -198,6 +216,7 @@ class CloudFront:
 
                         attributes = {
                             "id": distribution_id,
+                            "distribution_id": distribution_id,
                             "distribution_arn": distribution_arn,
                         }
 

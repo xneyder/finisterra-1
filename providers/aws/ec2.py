@@ -13,6 +13,12 @@ class EC2:
                                     "ami": True,
                                     "launch_template.name": True,
                                     },
+
+            },
+            "aws_launch_template": {
+                "hcl_drop_fields": {
+                    "throughput": 0,
+                },
             },
         }
         self.provider_name = provider_name
