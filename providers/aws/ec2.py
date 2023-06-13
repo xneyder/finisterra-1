@@ -9,15 +9,20 @@ class EC2:
         self.autoscaling_client = autoscaling_client
         self.transform_rules = {
             "aws_instance": {
-                "hcl_keep_fields": {"instance_type": True,
-                                    "ami": True,
-                                    "launch_template.name": True,
-                                    },
-
+                "hcl_keep_fields": {
+                    "instance_type": True,
+                    "ami": True,
+                    "launch_template.name": True,
+                },
+                "hcl_drop_fields": {
+                    "ebs_block_device.volume_id": "ALL",
+                    "root_block_device.volume_id": "ALL",
+                    "root_block_device.device_name": "ALL",
+                },
             },
             "aws_launch_template": {
                 "hcl_drop_fields": {
-                    "throughput": 0,
+                    "ebs.throughput": 0,
                 },
             },
         }

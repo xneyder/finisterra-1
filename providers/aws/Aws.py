@@ -434,7 +434,7 @@ class Aws:
 
     def ecr_public(self):
         ecr_public_client = self.session.client(
-            "ecr-public", region_name=self.aws_region)
+            "ecr-public", region_name="us-east-1")
         instance = ECR_PUBLIC(ecr_public_client, self.script_dir, self.provider_name,
                               self.schema_data, self.aws_region, self.s3Bucket,
                               self.dynamoDBTable, self.state_key)

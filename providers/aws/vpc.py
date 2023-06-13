@@ -29,7 +29,7 @@ class VPC:
             "aws_network_interface": {
                 "hcl_keep_fields": {"instance": True},
                 "hcl_drop_blocks": {"attachment": {"instance": ""}},
-                "hcl_drop_fields": {"attachment_id": 'ALL'},
+                "hcl_drop_fields": {"attachment.attachment_id": 'ALL'},
             },
             "aws_vpc_security_group_ingress_rule": {
                 "hcl_transform_fields": {
