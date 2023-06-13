@@ -146,6 +146,8 @@ def main():
                     provider.vpn_client()
                 elif provider_group_code == 'wafv2':
                     provider.wafv2()
+                elif provider_group_code == 'route53':
+                    provider.route53()
                 else:
                     update_scan_status(scan_id, "FAILED")
                     break

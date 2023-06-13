@@ -107,28 +107,43 @@ class Route53:
             hosted_zones = page["HostedZones"]
             for hosted_zone in hosted_zones:
                 hosted_zone_id = hosted_zone["Id"]
-                dnssec_resp = self.route53_client.get_dnssec(
-                    HostedZoneId=hosted_zone_id)
-                dnssec = dnssec_resp["DNSSEC"]
 
-                if dnssec["Status"] != "DISABLED":
+                # Check if hosted zone is public before making get_dnssec() call
+                if 'Config' in hosted_zone and hosted_zone['Config']['PrivateZone'] is False:
+                    try:
+                        dnssec_resp = self.route53_client.get_dnssec(
+                            HostedZoneId=hosted_zone_id)
+                        dnssec = dnssec_resp["DNSSEC"]
+                    except KeyError:
+                        print(
+                            f"No DNSSEC configuration found for Hosted Zone: {hosted_zone_id}")
+                        continue
+                    except Exception as e:
+                        print(
+                            f"Error retrieving DNSSEC configuration for Hosted Zone: {hosted_zone_id} Error: {e}")
+                        continue
+
+                    if dnssec["Status"] != "DISABLED":
+                        print(
+                            f"Processing Route53 Hosted Zone DNSSEC for Hosted Zone: {hosted_zone_id}")
+
+                        attributes = {
+                            "id": dnssec["Id"],
+                            "hosted_zone_id": hosted_zone_id,
+                            "status": dnssec["Status"],
+                        }
+
+                        if "KeySigningKey" in dnssec:
+                            attributes["key_signing_key"] = dnssec["KeySigningKey"]
+
+                        if "ZSK" in dnssec:
+                            attributes["zsk"] = dnssec["ZSK"]
+
+                        self.hcl.process_resource(
+                            "aws_route53_hosted_zone_dnssec", hosted_zone_id.replace("/", "_"), attributes)
+                else:
                     print(
-                        f"  Processing Route53 Hosted Zone DNSSEC for Hosted Zone: {hosted_zone_id}")
-
-                    attributes = {
-                        "id": dnssec["Id"],
-                        "hosted_zone_id": hosted_zone_id,
-                        "status": dnssec["Status"],
-                    }
-
-                    if "KeySigningKey" in dnssec:
-                        attributes["key_signing_key"] = dnssec["KeySigningKey"]
-
-                    if "ZSK" in dnssec:
-                        attributes["zsk"] = dnssec["ZSK"]
-
-                    self.hcl.process_resource(
-                        "aws_route53_hosted_zone_dnssec", hosted_zone_id.replace("/", "_"), attributes)
+                        f"Skipping DNSSEC configuration for private Hosted Zone: {hosted_zone_id}")
 
     # def aws_route53_key_signing_key(self):
     #     print("Processing Route53 Key Signing Key...")
