@@ -25,6 +25,9 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
+RUN git config --global user.email "code@finisterra.io" && \
+    git config --global user.name "finisterra"
+
 # Install Terraform 1.5.0
 RUN curl -O https://releases.hashicorp.com/terraform/0.15.0/terraform_0.15.0_linux_amd64.zip \
     && unzip terraform_0.15.0_linux_amd64.zip \
