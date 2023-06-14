@@ -111,7 +111,17 @@ class CloudFront:
 
         paginator = self.cloudfront_client.get_paginator("list_distributions")
         for page in paginator.paginate():
-            for distribution_summary in page["DistributionList"]["Items"]:
+            distribution_list = page.get("DistributionList")
+            if not distribution_list:
+                print("No DistributionList in page")
+                continue
+
+            items = distribution_list.get("Items")
+            if not items:
+                print("No Items in DistributionList")
+                continue
+
+            for distribution_summary in items:
                 distribution_id = distribution_summary["Id"]
                 print(
                     f"  Processing CloudFront Distribution: {distribution_id}")
