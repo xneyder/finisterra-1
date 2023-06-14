@@ -22,7 +22,8 @@ KAFKA_TOPIC = os.environ.get("RUN_KAFKA_TOPIC")
 def main():
     consumer = KafkaConsumer(
         KAFKA_TOPIC,
-        bootstrap_servers=[KAFKA_BROKER],
+        bootstrap_servers=KAFKA_BROKER.split(','),
+        security_protocol='SSL',
         value_deserializer=lambda v: json.loads(v.decode('utf-8')),
         auto_offset_reset='earliest',
         group_id="gen_code_group",
