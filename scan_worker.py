@@ -26,7 +26,8 @@ def main():
         security_protocol='SSL',
         value_deserializer=lambda v: json.loads(v.decode('utf-8')),
         auto_offset_reset='earliest',
-        group_id="gen_code_group",
+        group_id="scan_worker",
+        max_poll_records=1,
         enable_auto_commit=False
     )
 
