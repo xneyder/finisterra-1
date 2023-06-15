@@ -324,7 +324,7 @@ class HCL:
         subprocess.run(["terraform", "validate"], check=True)
         print("Running Terraform plan on generated files...")
         terraform = Terraform()
-        self.json_plan = terraform.tf_plan("./", False)
+        self.json_plan = terraform.tf_plan("./", True)
         create_backend_file(self.bucket, os.path.join(self.state_key, "terraform.tfstate"),
                             self.region, self.dynamodb_table)
         shutil.rmtree("./.terraform", ignore_errors=True)

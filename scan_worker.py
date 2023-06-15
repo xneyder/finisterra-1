@@ -177,14 +177,14 @@ def main():
 
                 terraform = Terraform()
                 json_plan_main = terraform.tf_plan(
-                    git_repo.destination_dir, False)
+                    git_repo.destination_dir, True)
 
                 # Do PR
                 git_repo.create_pr_with_files()
 
                 print("Running terraform plan to see the updated branch drifts ...")
                 json_plan_branch = terraform.tf_plan(
-                    git_repo.destination_dir, False)
+                    git_repo.destination_dir, True)
 
                 # Update the terraformPlan field of the workspace
                 update_workspace(
