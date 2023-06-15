@@ -7,7 +7,7 @@ class Terraform:
     def __init__(self):
         pass
 
-    def tf_plan(self, tf_path):
+    def tf_plan(self, tf_path, init=True):
         print("Running terraform plan...")
         try:
             os.chdir(tf_path)
@@ -16,11 +16,12 @@ class Terraform:
             return None
 
         plan_file = os.path.join("/tmp/", "plan.out")
-        try:
-            subprocess.run(["terraform", "init"], check=True)
-        except subprocess.CalledProcessError as e:
-            print(f"Failed to run 'terraform init': {e}")
-            return None
+        if init:
+            try:
+                subprocess.run(["terraform", "init"], check=True)
+            except subprocess.CalledProcessError as e:
+                print(f"Failed to run 'terraform init': {e}")
+                return None
 
         try:
             subprocess.run(

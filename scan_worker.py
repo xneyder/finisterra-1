@@ -10,7 +10,7 @@ from db.scan import get_scan_by_id, update_scan_status
 from db.workspace import update_workspace
 from utils.git import Git
 from utils.terraform import Terraform
-
+import shutil
 
 # Load environment variables from .env file
 load_dotenv()
@@ -20,16 +20,20 @@ KAFKA_TOPIC = os.environ.get("SCAN_KAFKA_TOPIC")
 
 
 def main():
-    consumer = KafkaConsumer(
-        KAFKA_TOPIC,
-        bootstrap_servers=KAFKA_BROKER.split(','),
-        security_protocol='SSL',
-        value_deserializer=lambda v: json.loads(v.decode('utf-8')),
-        auto_offset_reset='earliest',
-        group_id="scan_worker",
-        max_poll_records=1,
-        enable_auto_commit=False
-    )
+    consumer_kwargs = {
+        "bootstrap_servers": KAFKA_BROKER.split(','),
+        "value_deserializer": lambda v: json.loads(v.decode('utf-8')),
+        "auto_offset_reset": 'earliest',
+        "group_id": "scan_worker",
+        "max_poll_records": 1,
+        "enable_auto_commit": False
+    }
+
+    kafka_ssl = os.getenv('KAFKA_SSL')
+    if kafka_ssl and kafka_ssl.lower() == 'true':
+        consumer_kwargs["security_protocol"] = 'SSL'
+
+    consumer = KafkaConsumer(KAFKA_TOPIC, **consumer_kwargs)
 
     script_dir = os.path.dirname(os.path.abspath(sys.argv[0]))
 
@@ -154,6 +158,7 @@ def main():
                     update_scan_status(scan_id, "FAILED")
                     break
 
+                temp_dir = os.path.join(script_dir, "tmp", ".terraform")
                 local_path = os.path.join(
                     script_dir, "generated", provider_group_code)
                 git_repo = Git(github_installation_id=github_installation_id,
@@ -165,14 +170,21 @@ def main():
                                workspace_id=workspace_id)
 
                 print("Running terraform plan to see the main branch drifts ...")
+
+                print("Copying Terraform init files...")
+                shutil.copytree(temp_dir, os.path.join(
+                    git_repo.destination_dir, ".terraform"))
+
                 terraform = Terraform()
-                json_plan_main = terraform.tf_plan(git_repo.destination_dir)
+                json_plan_main = terraform.tf_plan(
+                    git_repo.destination_dir, False)
 
                 # Do PR
                 git_repo.create_pr_with_files()
 
                 print("Running terraform plan to see the updated branch drifts ...")
-                json_plan_branch = terraform.tf_plan(git_repo.destination_dir)
+                json_plan_branch = terraform.tf_plan(
+                    git_repo.destination_dir, False)
 
                 # Update the terraformPlan field of the workspace
                 update_workspace(
@@ -182,6 +194,11 @@ def main():
                     print("Uploading state file because the PR was merged")
                     provider.upload_file_to_s3(
                         local_path, "terraform.tfstate", "terraform.tfstate")
+
+                if os.path.exists(git_repo.clone_dir):
+                    print(f"Removing cloned repo {git_repo.clone_dir}")
+                    shutil.rmtree(git_repo.clone_dir)
+
                 else:
                     print("Uploading scanned state file")
                     provider.upload_file_to_s3(

@@ -324,9 +324,10 @@ class HCL:
         subprocess.run(["terraform", "validate"], check=True)
         print("Running Terraform plan on generated files...")
         terraform = Terraform()
-        self.json_plan = terraform.tf_plan("./")
+        self.json_plan = terraform.tf_plan("./", False)
         create_backend_file(self.bucket, os.path.join(self.state_key, "terraform.tfstate"),
                             self.region, self.dynamodb_table)
+        shutil.rmtree("./.terraform", ignore_errors=True)
 
     def replace_special_chars(self, input_string):
         # Replace spaces, "-", ".", and any special character with "_"
@@ -401,12 +402,17 @@ class HCL:
     def prepare_folder(self, folder):
         try:
             os.chdir(self.script_dir)
+            temp_dir = os.path.join(self.script_dir, "tmp", ".terraform")
             generated_path = os.path.join(folder)
             self.create_folder(generated_path)
             os.chdir(generated_path)
             create_version_file()
-            print("Initializing Terraform...")
-            subprocess.run(["terraform", "init"], check=True)
+            destination_folder = os.getcwd()
+            print("Copying Terraform init files...")
+            shutil.copytree(temp_dir, os.path.join(
+                destination_folder, ".terraform"))
+            # print("Initializing Terraform...")
+            # subprocess.run(["terraform", "init"], check=True)
         except Exception as e:
             print(e)
             exit()

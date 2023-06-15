@@ -20,16 +20,20 @@ KAFKA_TOPIC = os.environ.get("RUN_KAFKA_TOPIC")
 
 
 def main():
-    consumer = KafkaConsumer(
-        KAFKA_TOPIC,
-        bootstrap_servers=KAFKA_BROKER.split(','),
-        security_protocol='SSL',
-        value_deserializer=lambda v: json.loads(v.decode('utf-8')),
-        auto_offset_reset='earliest',
-        group_id="run_worker",
-        max_poll_records=1,
-        enable_auto_commit=False
-    )
+    consumer_kwargs = {
+        "bootstrap_servers": KAFKA_BROKER.split(','),
+        "value_deserializer": lambda v: json.loads(v.decode('utf-8')),
+        "auto_offset_reset": 'earliest',
+        "group_id": "scan_worker",
+        "max_poll_records": 1,
+        "enable_auto_commit": False
+    }
+
+    kafka_ssl = os.getenv('KAFKA_SSL')
+    if kafka_ssl and kafka_ssl.lower() == 'true':
+        consumer_kwargs["security_protocol"] = 'SSL'
+
+    consumer = KafkaConsumer(KAFKA_TOPIC, **consumer_kwargs)
 
     script_dir = os.path.dirname(os.path.abspath(sys.argv[0]))
 
