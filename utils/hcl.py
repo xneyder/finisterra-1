@@ -411,8 +411,8 @@ class HCL:
             print("Copying Terraform init files...")
             shutil.copytree(temp_dir, os.path.join(
                 destination_folder, ".terraform"))
-            # print("Initializing Terraform...")
-            # subprocess.run(["terraform", "init"], check=True)
+            print("Initializing Terraform...")
+            subprocess.run(["terraform", "init"], check=True)
         except Exception as e:
             print(e)
             exit()
