@@ -87,6 +87,7 @@ class Git:
             "GET", f"/app/installations/{self.github_installation_id}", headers=headers)
 
         res = conn.getresponse()
+
         data = res.read()
 
         json_data = json.loads(data.decode("utf-8"))
@@ -168,8 +169,8 @@ class Git:
             pr_number = self.create_pull_request()
 
         # If directory does not exist in target branch, merge the PR
-        # if pr_number is not None and not self.directory_exists_on_branch(self.git_target_branch):
-        #     self.merge_pull_request(pr_number)
+        if pr_number is not None and not self.directory_exists_on_branch(self.git_target_branch):
+            self.merge_pull_request(pr_number)
 
     def get_pull_request(self):
         conn = http.client.HTTPSConnection("api.github.com")

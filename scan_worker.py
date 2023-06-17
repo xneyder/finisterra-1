@@ -199,10 +199,9 @@ def main():
                     print(f"Removing cloned repo {git_repo.clone_dir}")
                     shutil.rmtree(git_repo.clone_dir)
 
-                else:
-                    print("Uploading scanned state file")
-                    provider.upload_file_to_s3(
-                        local_path, "terraform.tfstate", "terraform.tfstate_scanned")
+                print("Uploading scanned state file")
+                provider.upload_file_to_s3(
+                    local_path, "terraform.tfstate", "terraform.tfstate_scanned")
 
                 update_scan_status(scan_id, "COMPLETED")
 
