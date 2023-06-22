@@ -6,6 +6,7 @@ import shutil
 from utils.filesystem import create_version_file, create_backend_file
 from utils.terraform import Terraform
 import yaml
+import re
 
 
 class HCL:
@@ -108,6 +109,11 @@ class HCL:
             schema_block_types = self.schema_data['provider_schemas'][self.provider_name][
                 'resource_schemas'][resource_type]["block"].get("block_types", {})
 
+            def escape_dollar_sign(value):
+                replacement = "$$"
+                escaped_value = value.replace("$", replacement)
+                return f'{escaped_value}'
+
             def convert_value(value):
                 if isinstance(value, bool):
                     return "true" if value else "false"
@@ -115,7 +121,7 @@ class HCL:
                     return str(value)
                 if isinstance(value, str):
                     value = value.replace('\n', '')
-                    return f'"{value}"'
+                    return f'"{escape_dollar_sign(value)}"'
                 if isinstance(value, list):
                     return "[\n" + ", ".join([convert_value(v) for v in value]) + "\n]"
                 if isinstance(value, dict):
