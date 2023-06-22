@@ -20,14 +20,14 @@ class ECR:
         self.hcl.prepare_folder(os.path.join("generated", "ecr"))
 
         if "gov" not in self.region:
-            self.aws_ecr_lifecycle_policy()
-            self.aws_ecr_registry_policy()
-            self.aws_ecr_pull_through_cache_rule()
-            self.aws_ecr_replication_configuration()
-            self.aws_ecr_registry_scanning_configuration()
+            self.aws_ecr_lifecycle_policy()  # -
+            self.aws_ecr_registry_policy()  # -
+            self.aws_ecr_pull_through_cache_rule()  # -
+            self.aws_ecr_replication_configuration()  # -
+            self.aws_ecr_registry_scanning_configuration()  # -
 
-        self.aws_ecr_repository()
-        self.aws_ecr_repository_policy()
+        self.aws_ecr_repository()  # -
+        self.aws_ecr_repository_policy()  # -
 
         self.hcl.refresh_state()
         self.hcl.generate_hcl_file()

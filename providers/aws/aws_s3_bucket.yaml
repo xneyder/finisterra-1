@@ -1,0 +1,112 @@
+aws_s3_bucket:
+  keys:
+    - bucket
+  fields:
+    - bucket
+    - bucket_prefix
+    - tags
+    - force_destroy
+    - object_lock_enabled
+  childs:
+    aws_s3_bucket_public_access_block:
+      join:
+        - bucket
+      fields:
+        - attach_public_policy # Controls if a user defined public bucket policy will be attached (set to `false` to allow upstream to apply defaults to     the bucket)
+        - block_public_acls
+        - block_public_policy
+        - ignore_public_acls
+        - restrict_public_buckets
+
+    aws_s3_bucket_acl:
+      join:
+        - bucket
+      fields:
+        - acl
+        - expected_bucket_owner
+
+    aws_s3_bucket_website_configuration:
+      join:
+        - bucket
+      fields:
+        - website
+        - expected_bucket_owner
+
+    aws_s3_bucket_versioning:
+      join:
+        - bucket
+      fields:
+        - versioning
+        - expected_bucket_owner
+
+    aws_s3_bucket_logging:
+      join:
+        - bucket
+      fields:
+        - logging
+
+    aws_s3_bucket_accelerate_configuration:
+      join:
+        - bucket
+      fields:
+        - acceleration_status
+        - expected_bucket_owner
+
+    aws_s3_bucket_request_payment_configuration:
+      join:
+        - bucket
+      fields:
+        - request_payer
+        - expected_bucket_owner
+
+    aws_s3_bucket_cors_configuration:
+      join:
+        - bucket
+      fields:
+        - expected_bucket_owner
+
+    aws_s3_bucket_lifecycle_configuration:
+      join:
+        - bucket
+      fields:
+        - expected_bucket_owner
+
+    aws_s3_bucket_object_lock_configuration:
+      join:
+        - bucket
+      fields:
+        - object_lock_configuration
+        - object_lock_enabled
+        - expected_bucket_owner
+
+    aws_s3_bucket_replication_configuration:
+      join:
+        - bucket
+      fields:
+        - replication_configuration
+
+    aws_s3_bucket_server_side_encryption_configuration:
+      join:
+        - bucket
+      fields:
+        - server_side_encryption_configuration # Map containing server-side encryption configuration.
+        - expected_bucket_owner
+
+    aws_s3_bucket_inventory:
+      join:
+        - bucket
+      fields:
+        - inventory_configuration
+
+    aws_s3_bucket_analytics_configuration:
+      join:
+        - bucket
+      fields:
+        - analytics_configuration
+
+    aws_s3_bucket_ownership_controls:
+      join:
+        - bucket
+      fields:
+        - control_object_ownership
+        - object_ownership

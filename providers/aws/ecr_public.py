@@ -20,8 +20,8 @@ class ECR_PUBLIC:
         self.hcl.prepare_folder(os.path.join("generated", "ecr_public"))
 
         if "gov" not in self.region:
-            self.aws_ecrpublic_repository()
-            self.aws_ecrpublic_repository_policy()
+            self.aws_ecrpublic_repository()  # -
+            self.aws_ecrpublic_repository_policy()  # -
 
         self.hcl.refresh_state()
         self.hcl.generate_hcl_file()

@@ -78,8 +78,8 @@ class VPC:
         self.aws_network_acl_association()
         self.aws_network_acl_rule()
         self.aws_network_interface()
-        self.aws_network_interface_attachment()
-        self.aws_network_interface_sg_attachment()
+        # self.aws_network_interface_attachment()
+        # self.aws_network_interface_sg_attachment()
         self.aws_route()
         self.aws_route_table()
         self.aws_route_table_association()
@@ -738,31 +738,45 @@ class VPC:
         self.resource_list['aws_network_interface'] = {}
         network_interfaces = self.ec2_client.describe_network_interfaces()[
             "NetworkInterfaces"]
+
+        filtered_network_interfaces = []
+
         for network_interface in network_interfaces:
-            eni_id = network_interface["NetworkInterfaceId"]
-            subnet_id = network_interface["SubnetId"]
-            description = network_interface.get("Description", "")
-            private_ips = [private_ip["PrivateIpAddress"]
-                           for private_ip in network_interface["PrivateIpAddresses"]]
-            print(f"  Processing Network Interface: {eni_id}")
+            attachment = network_interface.get("Attachment")
+            if attachment:
+                instance_id = attachment.get("InstanceId")
+                if instance_id:
+                    instance = self.ec2_client.describe_instances(InstanceIds=[instance_id])[
+                        'Reservations'][0]['Instances'][0]
+                    tags = instance.get('Tags', [])
+                    if not any('kubernetes.io/cluster/' in tag['Key'] for tag in tags):
+                        eni_id = network_interface["NetworkInterfaceId"]
+                        subnet_id = network_interface["SubnetId"]
+                        description = network_interface.get("Description", "")
+                        private_ips = [private_ip["PrivateIpAddress"]
+                                       for private_ip in network_interface["PrivateIpAddresses"]]
+                        print(f"  Processing Network Interface: {eni_id}")
 
-            attributes = {
-                "id": eni_id,
-                "subnet_id": subnet_id,
-                "description": description,
-                "private_ips": private_ips,
-            }
+                        attributes = {
+                            "id": eni_id,
+                            "subnet_id": subnet_id,
+                            "description": description,
+                            "private_ips": private_ips,
+                        }
 
-            self.hcl.process_resource(
-                "aws_network_interface", eni_id.replace("-", "_"), attributes)
-            self.resource_list['aws_network_interface'][eni_id.replace(
-                "-", "_")] = attributes
+                        self.hcl.process_resource(
+                            "aws_network_interface", eni_id.replace("-", "_"), attributes)
+                        self.resource_list['aws_network_interface'][eni_id.replace(
+                            "-", "_")] = attributes
 
-    def aws_network_interface_attachment(self):
+                        filtered_network_interfaces.append(network_interface)
+
+        self.aws_network_interface_attachment(filtered_network_interfaces)
+        self.aws_network_interface_sg_attachment(filtered_network_interfaces)
+
+    def aws_network_interface_attachment(self, network_interfaces):
         print("Processing Network Interface Attachments...")
         self.resource_list['aws_network_interface_attachment'] = {}
-        network_interfaces = self.ec2_client.describe_network_interfaces()[
-            "NetworkInterfaces"]
 
         for eni in network_interfaces:
             eni_id = eni["NetworkInterfaceId"]
@@ -785,11 +799,9 @@ class VPC:
                 self.resource_list['aws_network_interface_attachment'][attachment_id.replace(
                     "-", "_")] = attributes
 
-    def aws_network_interface_sg_attachment(self):
+    def aws_network_interface_sg_attachment(self, network_interfaces):
         print("Processing Network Interface Security Group Attachments...")
         self.resource_list['aws_network_interface_sg_attachment'] = {}
-        network_interfaces = self.ec2_client.describe_network_interfaces()[
-            "NetworkInterfaces"]
 
         for eni in network_interfaces:
             eni_id = eni["NetworkInterfaceId"]
@@ -806,8 +818,7 @@ class VPC:
                 }
                 self.hcl.process_resource("aws_network_interface_sg_attachment",
                                           f"{eni_id.replace('-', '_')}-{sg_id.replace('-', '_')}", attributes)
-                self.resource_list['aws_network_interface_sg_attachment'][
-                    f"{eni_id.replace('-', '_')}-{sg_id.replace('-', '_')}"] = attributes
+                self.resource_list
 
     def aws_route(self):
         print("Processing Routes...")

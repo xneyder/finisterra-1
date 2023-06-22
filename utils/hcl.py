@@ -5,6 +5,7 @@ import re
 import shutil
 from utils.filesystem import create_version_file, create_backend_file
 from utils.terraform import Terraform
+import yaml
 
 
 class HCL:
@@ -416,3 +417,84 @@ class HCL:
         except Exception as e:
             print(e)
             exit()
+
+    def get_value_from_tfstate(self, state_data, keys):
+        try:
+            key = keys[0]
+            if isinstance(state_data, list):
+                key = int(key)
+            value = state_data[key]
+            if len(keys) == 1:
+                return value
+            else:
+                return self.get_value_from_tfstate(value, keys[1:])
+        except KeyError:
+            print(
+                f"Warning: field '{'.'.join(keys)}' not found in state file.")
+            return None
+
+    def string_repr(self, value):
+        if isinstance(value, str):
+            return f'"{value}"'
+        else:
+            return repr(value)
+
+    def module_hcl_code(self, module, version, terraform_state_file, config_file):
+        with open(config_file, 'r') as f:
+            config = yaml.safe_load(f)
+
+        with open(terraform_state_file, 'r') as f:
+            tfstate = json.load(f)
+
+        resources = tfstate['resources']
+
+        instances = []
+
+        for resource in resources:
+            attributes = {}
+            resource_type = resource['type']
+            if resource_type in config:
+                resource_config = config[resource_type]
+                resource_attributes = resource['instances'][0]['attributes']
+                resource_name = resource['name']
+                for field in resource_config['fields']:
+                    value = self.get_value_from_tfstate(
+                        resource_attributes, field.split("."))
+                    if value not in [None, "", []]:
+                        attributes[field] = self.string_repr(value)
+
+                for child_type, child in resource_config.get('childs', {}).items():
+                    for child_instance in [res for res in resources if res['type'] == child_type]:
+                        child_attributes = child_instance['instances'][0]['attributes']
+                        for join_field in child['join']:
+                            if self.get_value_from_tfstate(resource_attributes, join_field.split(".")) == self.get_value_from_tfstate(child_attributes, join_field.split(".")):
+                                for field in child['fields']:
+                                    value = self.get_value_from_tfstate(
+                                        child_attributes, field.split("."))
+                                    if value not in [None, "", []]:
+                                        attributes[field] = self.string_repr(
+                                            value)
+                if attributes:
+                    instances.append(
+                        {"type": resource_type, "name": resource_name, "attributes": attributes})
+
+        for instance in instances:
+            if instance["attributes"]:
+                with open(f'{instance["type"]}-{instance["name"]}.tf', 'w') as file:
+                    file.write(f'module "{instance["name"]}" {{\n')
+                    file.write(f'source  = "{module}"\n')
+                    file.write(f'version = "{version}"\n')
+                    for index, key in instance["attributes"].items():
+                        file.write(f'{index} = {key}\n')
+                    file.write('}\n')
+
+        print("Formatting HCL files...")
+
+        subprocess.run(["terraform", "fmt"], check=True)
+        subprocess.run(["terraform", "validate"], check=True)
+        print("Running Terraform plan on generated files...")
+        terraform = Terraform()
+        self.json_plan = terraform.tf_plan("./", True)
+        create_backend_file(self.bucket, os.path.join(self.state_key, "terraform.tfstate"),
+                            self.region, self.dynamodb_table)
+        shutil.rmtree("./.terraform", ignore_errors=True)

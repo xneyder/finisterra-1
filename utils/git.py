@@ -182,7 +182,7 @@ class Git:
         }
 
         pr_number = None
-        self.pr_url = None  # Initialize pr_url
+        self.pr_url = None
         page = 1
 
         while True:
