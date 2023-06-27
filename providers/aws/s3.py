@@ -36,13 +36,13 @@ class S3:
         self.aws_s3_bucket()
 
         self.hcl.refresh_state()
-        self.hcl.module_hcl_code("terraform-aws-modules/s3-bucket/aws", "3.14.0", "terraform.tfstate",
-                                 os.path.join(os.path.dirname(os.path.abspath(__file__)), "aws_s3_bucket.yaml"))
+        # self.hcl.module_hcl_code("terraform-aws-modules/s3-bucket/aws", "3.14.0", "terraform.tfstate",
+        #  os.path.join(os.path.dirname(os.path.abspath(__file__)), "aws_s3_bucket.yaml"))
 
         # load_yaml_and_tfstate("terraform-aws-modules/s3-bucket/aws", "3.14.0", "terraform.tfstate",
         #                       os.path.join(os.path.dirname(os.path.abspath(__file__)), "aws_s3_bucket.yaml"))
         # exit()
-        # self.hcl.generate_hcl_file()
+        self.hcl.generate_hcl_file()
         self.json_plan = self.hcl.json_plan
 
     def aws_s3_bucket(self):

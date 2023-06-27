@@ -10,7 +10,16 @@ class VPC:
         self.transform_rules = {
             "aws_vpc": {
                 "hcl_drop_fields": {"ipv6_netmask_length": 0},
-                "hcl_keep_fields": {"cidr_block": True},
+                "hcl_keep_fields": {"cidr_block": True, "enable_dns_hostnames": True},
+            },
+            "aws_network_acl": {
+                "hcl_keep_fields": {"subnet_ids": True},
+            },
+            "aws_flow_log": {
+                "hcl_keep_fields": {"log_destination": True},
+            },
+            "aws_vpc_peering_connection": {
+                "hcl_drop_fields": {"allow_classic_link_to_remote_vpc": "ALL"},
             },
             "aws_default_vpc": {
                 "hcl_drop_fields": {"ipv6_netmask_length": 0},
@@ -77,16 +86,16 @@ class VPC:
         self.aws_network_acl()
         self.aws_network_acl_association()
         self.aws_network_acl_rule()
-        self.aws_network_interface()
-        # self.aws_network_interface_attachment()
-        # self.aws_network_interface_sg_attachment()
+        # self.aws_network_interface() #Blocking because is called from aws_nat_gateway
+        # self.aws_network_interface_attachment() #will need ot be used from ec2
+        # self.aws_network_interface_sg_attachment()  #will need ot be used from ec2
         self.aws_route()
         self.aws_route_table()
         self.aws_route_table_association()
         self.aws_security_group()
         # self.aws_security_group_rule() conflicts with aws_vpc_security_group_egress_rule, and aws_vpc_security_group_ingress_rule
-        self.aws_vpc_dhcp_options()
-        self.aws_vpc_dhcp_options_association()
+        # self.aws_vpc_dhcp_options() # blocked for now until a customer asks for it
+        # self.aws_vpc_dhcp_options_association() # blocked for now until a customer asks for it
         self.aws_vpc_endpoint()
         self.aws_vpc_endpoint_connection_accepter()
         self.aws_vpc_endpoint_connection_notification()
@@ -97,8 +106,8 @@ class VPC:
         self.aws_vpc_endpoint_service()
         self.aws_vpc_endpoint_service_allowed_principal()
         self.aws_vpc_endpoint_subnet_association()
-        self.aws_vpc_ipv4_cidr_block_association()
-        self.aws_vpc_ipv6_cidr_block_association()
+        # self.aws_vpc_ipv4_cidr_block_association() # blocked for now until a customer asks for it
+        # self.aws_vpc_ipv6_cidr_block_association() # blocked for now until a customer asks for it
         # self.aws_vpc_network_performance_metric_subscription() #no boto3 lib
         self.aws_vpc_peering_connection()
         self.aws_vpc_peering_connection_accepter()
@@ -651,10 +660,48 @@ class VPC:
                 "private_ip": nat_gw["NatGatewayAddresses"][0]["PrivateIp"],
                 "public_ip": nat_gw["NatGatewayAddresses"][0]["PublicIp"],
             }
+
             self.hcl.process_resource(
                 "aws_nat_gateway", nat_gw_id.replace("-", "_"), attributes)
             self.resource_list['aws_nat_gateway'][nat_gw_id.replace(
                 "-", "_")] = attributes
+
+            # Process associated EIP
+            self.aws_eip(nat_gw_id)
+
+    def aws_eip(self, nat_gw_id):
+        print("Processing Elastic IPs associated with NAT Gateway: ", nat_gw_id)
+
+        nat_gw = self.ec2_client.describe_nat_gateways(
+            NatGatewayIds=[nat_gw_id])["NatGateways"][0]
+        allocation_id = nat_gw["NatGatewayAddresses"][0]["AllocationId"]
+
+        eips = self.ec2_client.describe_addresses()
+        eips["Addresses"] = [eip for eip in eips["Addresses"]
+                             if eip["AllocationId"] == allocation_id]
+
+        for eip in eips["Addresses"]:
+            allocation_id = eip["AllocationId"]
+            print(f"  Processing Elastic IP: {allocation_id}")
+
+            attributes = {
+                "id": allocation_id,
+                "public_ip": eip["PublicIp"],
+            }
+
+            if "InstanceId" in eip:
+                attributes["instance"] = eip["InstanceId"]
+
+            if "NetworkInterfaceId" in eip:
+                attributes["network_interface"] = eip["NetworkInterfaceId"]
+                # call aws_network_interface method for the associated network interface
+                self.aws_network_interface(eip["NetworkInterfaceId"])
+
+            if "PrivateIpAddress" in eip:
+                attributes["private_ip"] = eip["PrivateIpAddress"]
+
+            self.hcl.process_resource(
+                "aws_eip", allocation_id.replace("-", "_"), attributes)
 
     def aws_network_acl(self):
         print("Processing Network ACLs...")
@@ -733,46 +780,31 @@ class VPC:
                     self.resource_list['aws_network_acl_rule'][
                         f"{network_acl_id.replace('-', '_')}-{rule_number}"] = attributes
 
-    def aws_network_interface(self):
-        print("Processing Network Interfaces...")
+    def aws_network_interface(self, network_interface_id):
+        print("Processing Network Interface: ", network_interface_id)
         self.resource_list['aws_network_interface'] = {}
-        network_interfaces = self.ec2_client.describe_network_interfaces()[
+        network_interfaces = self.ec2_client.describe_network_interfaces(NetworkInterfaceIds=[network_interface_id])[
             "NetworkInterfaces"]
 
-        filtered_network_interfaces = []
-
         for network_interface in network_interfaces:
-            attachment = network_interface.get("Attachment")
-            if attachment:
-                instance_id = attachment.get("InstanceId")
-                if instance_id:
-                    instance = self.ec2_client.describe_instances(InstanceIds=[instance_id])[
-                        'Reservations'][0]['Instances'][0]
-                    tags = instance.get('Tags', [])
-                    if not any('kubernetes.io/cluster/' in tag['Key'] for tag in tags):
-                        eni_id = network_interface["NetworkInterfaceId"]
-                        subnet_id = network_interface["SubnetId"]
-                        description = network_interface.get("Description", "")
-                        private_ips = [private_ip["PrivateIpAddress"]
-                                       for private_ip in network_interface["PrivateIpAddresses"]]
-                        print(f"  Processing Network Interface: {eni_id}")
+            eni_id = network_interface["NetworkInterfaceId"]
+            subnet_id = network_interface["SubnetId"]
+            description = network_interface.get("Description", "")
+            private_ips = [private_ip["PrivateIpAddress"]
+                           for private_ip in network_interface["PrivateIpAddresses"]]
+            print(f"  Processing Network Interface: {eni_id}")
 
-                        attributes = {
-                            "id": eni_id,
-                            "subnet_id": subnet_id,
-                            "description": description,
-                            "private_ips": private_ips,
-                        }
+            attributes = {
+                "id": eni_id,
+                "subnet_id": subnet_id,
+                "description": description,
+                "private_ips": private_ips,
+            }
 
-                        self.hcl.process_resource(
-                            "aws_network_interface", eni_id.replace("-", "_"), attributes)
-                        self.resource_list['aws_network_interface'][eni_id.replace(
-                            "-", "_")] = attributes
-
-                        filtered_network_interfaces.append(network_interface)
-
-        self.aws_network_interface_attachment(filtered_network_interfaces)
-        self.aws_network_interface_sg_attachment(filtered_network_interfaces)
+            self.hcl.process_resource(
+                "aws_network_interface", eni_id.replace("-", "_"), attributes)
+            self.resource_list['aws_network_interface'][eni_id.replace(
+                "-", "_")] = attributes
 
     def aws_network_interface_attachment(self, network_interfaces):
         print("Processing Network Interface Attachments...")
@@ -832,6 +864,10 @@ class VPC:
                 destination = route.get("DestinationCidrBlock", route.get(
                     "DestinationIpv6CidrBlock", ""))
                 if destination:
+                    # Ignoring local route
+                    if route.get("GatewayId", "") == "local":
+                        continue
+
                     print(
                         f"  Processing Route in Route Table: {route_table_id} for destination: {destination}")
 
@@ -906,6 +942,14 @@ class VPC:
         for sg in security_groups:
             sg_id = sg["GroupId"]
             vpc_id = sg["VpcId"]
+            tags = sg.get("Tags", [])
+
+            # Skip Elastic Beanstalk security groups
+            if any(tag['Key'].startswith("elasticbeanstalk:") for tag in tags):
+                print(
+                    f"  Skipping Elastic Beanstalk Security Group: {sg_id} for VPC: {vpc_id}")
+                continue
+
             print(f"  Processing Security Group: {sg_id} for VPC: {vpc_id}")
 
             attributes = {

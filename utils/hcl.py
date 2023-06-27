@@ -110,8 +110,11 @@ class HCL:
                 'resource_schemas'][resource_type]["block"].get("block_types", {})
 
             def escape_dollar_sign(value):
-                replacement = "$$"
-                escaped_value = value.replace("$", replacement)
+                # replacement = "$$"
+                # escaped_value = value.replace("$", replacement)
+
+                escaped_value = re.sub(r'\$\{(\w+)\}', r'\1', value)
+
                 return f'{escaped_value}'
 
             def convert_value(value):
