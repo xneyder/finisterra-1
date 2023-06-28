@@ -21,7 +21,7 @@ class DocDb:
         self.aws_docdb_cluster()
         self.aws_docdb_cluster_instance()
         self.aws_docdb_cluster_parameter_group()
-        self.aws_docdb_cluster_snapshot()
+        # self.aws_docdb_cluster_snapshot() #disbale because it can be too long and not really needed for modules
         self.aws_docdb_event_subscription()
         self.aws_docdb_global_cluster()
         self.aws_docdb_subnet_group()

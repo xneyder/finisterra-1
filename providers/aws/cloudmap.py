@@ -9,7 +9,7 @@ class Cloudmap:
         self.route53_client = route53_client
         self.transform_rules = {
             "aws_service_discovery_service": {
-                "hcl_keep_fields": {"type": "ALL", "namespace_id": "ALL"},
+                "hcl_keep_fields": {"dns_records.type": "ALL", "dns_config.namespace_id": "ALL"},
                 "hcl_drop_fields": {"type": "DNS_HTTP"},
             },
         }

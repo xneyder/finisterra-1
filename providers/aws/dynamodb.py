@@ -10,7 +10,13 @@ class Dynamodb:
         self.transform_rules = {
             "aws_dynamodb_table": {
                 "hcl_drop_blocks": {"ttl": {"enabled": False}},
-                "hcl_keep_fields": {"write_capacity": True, "read_capacity": True, "hash_key": True},
+                "hcl_keep_fields": {"global_secondary_index.write_capacity": True,
+                                    "global_secondary_index.read_capacity": True,
+                                    "write_capacity": True,
+                                    "read_capacity": True,
+                                    "hash_key": True,
+                                    "global_secondary_index.hash_key": True
+                                    },
             },
         }
         self.provider_name = provider_name

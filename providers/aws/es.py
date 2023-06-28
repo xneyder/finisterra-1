@@ -12,7 +12,12 @@ class ES:
             },
             "aws_elasticsearch_domain": {
                 "hcl_drop_blocks": {"cognito_options": {"enabled": False}},
-                "hcl_drop_fields": {"warm_count": 0},
+                "hcl_drop_fields": {"warm_count": 0,
+                                    "vpc_options.availability_zones": "ALL",
+                                    "vpc_options.vpc_id": "ALL",
+                                    "cluster_config.warm_count": 0,
+                                    "ebs_options.throughput": 0
+                                    },
             }
         }
         self.provider_name = provider_name

@@ -46,8 +46,8 @@ class RDS:
             self.aws_rds_export_task()
 
         # self.aws_db_security_group() #deprecated
-        self.aws_db_snapshot()
-        self.aws_db_snapshot_copy()
+        # self.aws_db_snapshot() # Can be very long
+        # self.aws_db_snapshot_copy() # Can be very long
         self.aws_db_subnet_group()
         self.aws_rds_cluster()
         self.aws_rds_cluster_activity_stream()

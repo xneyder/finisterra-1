@@ -13,6 +13,13 @@ class ELBV2:
             "aws_lb": {
                 "hcl_drop_blocks": {"access_logs": {"enabled": False}},
             },
+            "aws_lb_listener_rule": {
+                "hcl_drop_fields": {"action.order": 0},
+            },
+            "aws_lb_listener": {
+                "hcl_drop_fields": {"default_action.order": 0},
+            },
+
 
         }
         self.provider_name = provider_name

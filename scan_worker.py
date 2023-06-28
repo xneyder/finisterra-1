@@ -86,7 +86,7 @@ def main():
                     provider.backup()
                 elif provider_group_code == 'cloudmap':
                     provider.cloudmap()
-                elif provider_group_code == 'cloudfront':
+                elif provider_group_code == 'cloudfront':  # no in gov cloud
                     provider.cloudfront()
                 elif provider_group_code == 'cloudtrail':
                     provider.cloudtrail()
@@ -104,13 +104,13 @@ def main():
                     provider.dynamodb()
                 elif provider_group_code == 'ebs':
                     provider.ebs()
-                elif provider_group_code == 'ec2':  # FIXME: This is not working on launch_template
+                elif provider_group_code == 'ec2':
                     provider.ec2()
                 elif provider_group_code == 'ecr':
                     provider.ecr()
                 elif provider_group_code == 'ecr_public':
                     provider.ecr_public()
-                elif provider_group_code == 'ecs':  # FIXME: This is not working
+                elif provider_group_code == 'ecs':
                     provider.ecs()
                 elif provider_group_code == 'efs':
                     provider.efs()
@@ -132,7 +132,7 @@ def main():
                     provider.iam()
                 elif provider_group_code == 'DISABLED---kms':  # FIXME: This is not working
                     provider.kms()
-                elif provider_group_code == 'aws_lambda':  # FIXME: I can not get the code location
+                elif provider_group_code == 'DISABLED---aws_lambda':  # FIXME: I can not get the code location
                     provider.aws_lambda()
                 elif provider_group_code == 'opensearch':
                     provider.opensearch()

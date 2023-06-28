@@ -6,7 +6,11 @@ class AutoScaling:
     def __init__(self, autoscaling_client, script_dir, provider_name, schema_data, region, s3Bucket,
                  dynamoDBTable, state_key):
         self.autoscaling_client = autoscaling_client
-        self.transform_rules = {}
+        self.transform_rules = {
+            "aws_autoscaling_policy": {
+                "hcl_drop_fields": {"min_adjustment_magnitude": 0},
+            },
+        }
         self.provider_name = provider_name
         self.script_dir = script_dir
         self.schema_data = schema_data
