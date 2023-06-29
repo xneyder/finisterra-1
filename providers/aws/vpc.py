@@ -92,7 +92,7 @@ class VPC:
         self.aws_route()
         self.aws_route_table()
         self.aws_route_table_association()
-        self.aws_security_group()
+        # self.aws_security_group() # will be use on other modules
         # self.aws_security_group_rule() conflicts with aws_vpc_security_group_egress_rule, and aws_vpc_security_group_ingress_rule
         # self.aws_vpc_dhcp_options() # blocked for now until a customer asks for it
         # self.aws_vpc_dhcp_options_association() # blocked for now until a customer asks for it
