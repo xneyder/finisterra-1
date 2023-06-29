@@ -15,6 +15,9 @@ class VPC:
             "aws_network_acl": {
                 "hcl_keep_fields": {"subnet_ids": True},
             },
+            "aws_default_security_group": {
+                "hcl_keep_fields": {"vpc_id": True, "name": True, "description": True, "egress": True, "ingress": True},
+            },
             "aws_flow_log": {
                 "hcl_keep_fields": {"log_destination": True},
             },
