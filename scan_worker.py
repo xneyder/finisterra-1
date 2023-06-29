@@ -26,7 +26,9 @@ def main():
         "auto_offset_reset": 'earliest',
         "group_id": "scan_worker",
         "max_poll_records": 1,
-        "enable_auto_commit": False
+        "enable_auto_commit": False,
+        "max_poll_interval_ms": 600000  # 10 minutes in milliseconds
+
     }
 
     kafka_ssl = os.getenv('KAFKA_SSL')
