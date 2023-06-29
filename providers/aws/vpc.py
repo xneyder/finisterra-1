@@ -16,7 +16,17 @@ class VPC:
                 "hcl_keep_fields": {"subnet_ids": True},
             },
             "aws_default_security_group": {
-                "hcl_keep_fields": {"vpc_id": True, "name": True, "description": True, "egress": True, "ingress": True},
+                "hcl_keep_fields": {"vpc_id": True,
+                                    "egress": True,
+                                    "ingress": True,
+                                    # "ipv6_cidr_blocks": True,
+                                    "ipv6_cidr_blocks": True,
+                                    # "prefix_list_ids": True,
+                                    "prefix_list_ids": True,
+                                    # "security_groups": True,
+                                    "security_groups": True,
+
+                                    },
             },
             "aws_flow_log": {
                 "hcl_keep_fields": {"log_destination": True},
@@ -65,7 +75,7 @@ class VPC:
         self.aws_subnet()
         self.aws_default_network_acl()
         self.aws_default_route_table()
-        self.aws_default_security_group()
+        # self.aws_default_security_group() # is a spacial blocking it until a client asks for it
         self.aws_default_vpc()
         self.aws_default_subnet()
         # self.aws_default_vpc_dhcp_options() # no boto3 filter
@@ -653,24 +663,27 @@ class VPC:
 
         for nat_gw in nat_gateways:
             nat_gw_id = nat_gw["NatGatewayId"]
-            print(f"  Processing NAT Gateway: {nat_gw_id}")
+            nat_gw_state = nat_gw["State"]
 
-            attributes = {
-                "id": nat_gw_id,
-                "subnet_id": nat_gw["SubnetId"],
-                "allocation_id": nat_gw["NatGatewayAddresses"][0]["AllocationId"],
-                "network_interface_id": nat_gw["NatGatewayAddresses"][0]["NetworkInterfaceId"],
-                "private_ip": nat_gw["NatGatewayAddresses"][0]["PrivateIp"],
-                "public_ip": nat_gw["NatGatewayAddresses"][0]["PublicIp"],
-            }
+            if nat_gw_state == "available":  # Add this condition
+                print(f"  Processing NAT Gateway: {nat_gw_id}")
 
-            self.hcl.process_resource(
-                "aws_nat_gateway", nat_gw_id.replace("-", "_"), attributes)
-            self.resource_list['aws_nat_gateway'][nat_gw_id.replace(
-                "-", "_")] = attributes
+                attributes = {
+                    "id": nat_gw_id,
+                    "subnet_id": nat_gw["SubnetId"],
+                    "allocation_id": nat_gw["NatGatewayAddresses"][0]["AllocationId"],
+                    "network_interface_id": nat_gw["NatGatewayAddresses"][0]["NetworkInterfaceId"],
+                    "private_ip": nat_gw["NatGatewayAddresses"][0]["PrivateIp"],
+                    "public_ip": nat_gw["NatGatewayAddresses"][0]["PublicIp"],
+                }
 
-            # Process associated EIP
-            self.aws_eip(nat_gw_id)
+                self.hcl.process_resource(
+                    "aws_nat_gateway", nat_gw_id.replace("-", "_"), attributes)
+                self.resource_list['aws_nat_gateway'][nat_gw_id.replace(
+                    "-", "_")] = attributes
+
+                # Process associated EIP
+                self.aws_eip(nat_gw_id)
 
     def aws_eip(self, nat_gw_id):
         print("Processing Elastic IPs associated with NAT Gateway: ", nat_gw_id)
