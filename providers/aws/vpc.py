@@ -112,8 +112,8 @@ class VPC:
         self.aws_vpc_peering_connection()
         self.aws_vpc_peering_connection_accepter()
         self.aws_vpc_peering_connection_options()
-        self.aws_vpc_security_group_egress_rule()
-        self.aws_vpc_security_group_ingress_rule()
+        # self.aws_vpc_security_group_egress_rule() #manage it from other modules
+        # self.aws_vpc_security_group_ingress_rule() #manage it from other modules
 
         self.hcl.refresh_state()
         self.hcl.generate_hcl_file()
