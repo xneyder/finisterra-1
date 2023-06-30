@@ -166,6 +166,8 @@ class HCL:
                     if 'hcl_drop_blocks' in self.transform_rules[resource_type]:
                         hcl_drop_blocks = self.transform_rules[resource_type]['hcl_drop_blocks']
                         if key in hcl_drop_blocks:
+                            if hcl_drop_blocks[key] == "ALL":
+                                return False
                             for bkey, bvalue in block.items():
                                 if bkey in hcl_drop_blocks[key]:
                                     if hcl_drop_blocks[key][bkey] == 'ALL' or hcl_drop_blocks[key][bkey] == bvalue:

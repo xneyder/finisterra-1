@@ -18,9 +18,27 @@ class S3:
                 "hcl_keep_fields": {"owner.id": True},
                 "hcl_drop_fields": {"grantee.display_name": "ALL"},
             },
+            "aws_s3_bucket": {
+                "hcl_keep_fields": {"bucket": True},
+                "hcl_drop_blocks": {"grant": "ALL",
+                                    "server_side_encryption_configuration": "ALL",
+                                    "versioning": "ALL",
+                                    "website": "ALL",
+                                    "acceleration_status": "ALL",
+                                    "acl": "ALL",
+                                    "cors_rule": "ALL",
+                                    "lifecycle_rule": "ALL",
+                                    "logging": "ALL",
+                                    "object_lock_configuration": "ALL",
+                                    "policy": "ALL",
+                                    "replication_configuration": "ALL",
+                                    "request_payer": "ALL"
+                                    },
+            },
             "aws_s3_bucket_lifecycle_configuration": {
                 "hcl_keep_fields": {"rule.id": True},
             },
+
         }
         self.provider_name = provider_name
         self.script_dir = script_dir
