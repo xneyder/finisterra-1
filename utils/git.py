@@ -332,7 +332,8 @@ class Git:
             "\n"
             "# Ignore CLI configuration files\n"
             ".terraformrc\n"
-            "terraform.rc"
+            "terraform.rc\n"
+            ".terraform.lock.hcl"
         )
 
         with open(f'{path}/.gitignore', 'w') as file:
