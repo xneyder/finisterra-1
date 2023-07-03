@@ -118,6 +118,8 @@ class HCL:
                 return f'{escaped_value}'
 
             def convert_value(value):
+                if value is None:
+                    return "null"
                 if isinstance(value, bool):
                     return "true" if value else "false"
                 if isinstance(value, (int, float)):

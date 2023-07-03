@@ -3,6 +3,16 @@ from utils.hcl import HCL
 from utils.filesystem import create_backend_file
 
 
+# def dict_to_terraform_block(data_list):
+#     output = ''
+#     for data in data_list:
+#         output += '  {\n'
+#         for key, value in data.items():
+#             output += f'    {key} = "{value}"\n'
+#         output += '  }\n'
+#     return output
+
+
 class VPC:
     def __init__(self, ec2_client, script_dir, provider_name, schema_data, region, s3Bucket,
                  dynamoDBTable, state_key):
@@ -13,19 +23,21 @@ class VPC:
                 "hcl_keep_fields": {"cidr_block": True, "enable_dns_hostnames": True},
             },
             "aws_network_acl": {
-                "hcl_keep_fields": {"subnet_ids": True},
+                "hcl_keep_fields": {"subnet_ids": True,
+                                    "ingress": True,
+                                    "egress": True,
+                                    },
+                "hcl_transform_fields": {
+                    "ipv6_cidr_block": {'source': "", 'target': None},
+                },
             },
             "aws_default_security_group": {
                 "hcl_keep_fields": {"vpc_id": True,
                                     "egress": True,
                                     "ingress": True,
-                                    # "ipv6_cidr_blocks": True,
                                     "ipv6_cidr_blocks": True,
-                                    # "prefix_list_ids": True,
                                     "prefix_list_ids": True,
-                                    # "security_groups": True,
                                     "security_groups": True,
-
                                     },
             },
             "aws_flow_log": {
@@ -97,8 +109,8 @@ class VPC:
         self.aws_main_route_table_association()
         self.aws_nat_gateway()
         self.aws_network_acl()
-        self.aws_network_acl_association()
-        self.aws_network_acl_rule()
+        # self.aws_network_acl_association() # We are using inline rules
+        # self.aws_network_acl_rule() # We are using inline rules
         # self.aws_network_interface() #Blocking because is called from aws_nat_gateway
         # self.aws_network_interface_attachment() #will need ot be used from ec2
         # self.aws_network_interface_sg_attachment()  #will need ot be used from ec2
