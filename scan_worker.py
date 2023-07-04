@@ -80,6 +80,7 @@ def main():
                 dynamoDBTable = scan.workspace.awsAccount.awsStateConfigs[0].dynamoDBTable
                 git_repo_branch = scan.workspace.awsAccount.awsAccountGitRepos[0].branch
 
+                os.chdir(script_dir)
                 local_path = os.path.join(
                     script_dir, "generated", provider_group_code)
                 git_repo = Git(github_installation_id=github_installation_id,

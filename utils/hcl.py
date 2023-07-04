@@ -24,6 +24,7 @@ class HCL:
         self.state_key = state_key
         self.workspace_id = workspace_id
         self.modules = modules
+        self.json_plan = {}
 
         self.module_data = get_module_data(self.workspace_id)
 
@@ -378,8 +379,9 @@ class HCL:
                 hcl_output.write("}\n\n")
 
         print("Creating resources under modules")
-        for tmodule, attributes in modules_code.items():
+        pattern = re.compile(r'\${(.*?)}')  # Matches '${xxxxxx}'
 
+        for tmodule, attributes in modules_code.items():
             # Get the name after the first dot
             tmodule_name = tmodule.split('.')[1]
             db_module_name = self.module_data[tmodule_name]["module_name"]
@@ -388,11 +390,20 @@ class HCL:
                 f.write(f'  source = "../../../modules/{db_module_name}"\n')
                 for attribute, value in attributes.items():
                     if isinstance(value, dict):
+                        # Loop through the dictionary items
+                        for k, v in value.items():
+                            if isinstance(v, str):  # Check if the value is a string
+                                # Replace '${xxxxxx}' with 'xxxxxx' if present
+                                value[k] = re.sub(pattern, r'\1', v)
                         # format the dictionary as a JSON string, then remove the quotes around the keys
                         formatted_value = json.dumps(value, indent=2)
                         formatted_value = formatted_value.replace('\n', '\n  ')
                         f.write(f'  {attribute} = {formatted_value}\n')
                     else:
+                        if isinstance(value, str):  # Check if the value is a string
+                            # Replace '${xxxxxx}' with 'xxxxxx' if present
+                            value = re.sub(pattern, r'\1', value)
+                        # Surround value with quotes
                         f.write(f'  {attribute} = "{value}"\n')
                 f.write('}\n')
 
@@ -402,9 +413,9 @@ class HCL:
         # Because i have modules i need to remove these checks
         # subprocess.run(["terraform", "init"], check=True)
         # subprocess.run(["terraform", "validate"], check=True)
-        print("Running Terraform plan on generated files...")
-        terraform = Terraform()
-        self.json_plan = terraform.tf_plan("./", True)
+        # print("Running Terraform plan on generated files...")
+        # terraform = Terraform()
+        # self.json_plan = terraform.tf_plan("./", True)
         create_backend_file(self.bucket, os.path.join(self.state_key, "terraform.tfstate"),
                             self.region, self.dynamodb_table)
         shutil.rmtree("./.terraform", ignore_errors=True)
