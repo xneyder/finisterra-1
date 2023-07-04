@@ -107,16 +107,19 @@ class GitRepo(Base):
     name = Column(String)
     githubAccountId = Column(Integer, ForeignKey('github_account.id'))
     organizationId = Column(Integer, ForeignKey('organization.id'))
+    terraformModuleId = Column(Integer, ForeignKey(
+        'terraform_module.id'), nullable=True)
+    terraformModuleInstanceId = Column(Integer, ForeignKey(
+        'terraform_module_instance.id'), nullable=True)
     createdAt = Column(DateTime, default=datetime.utcnow)
     updatedAt = Column(DateTime, onupdate=datetime.utcnow)
 
     githubAccount = relationship("GithubAccount", back_populates="gitRepos")
     awsAccountGitRepos = relationship("AwsAccountGitRepo")
-
-    __table_args__ = (
-        UniqueConstraint('gitrepoId', 'organizationId',
-                         name='gitrepoId_organizationId'),
-    )
+    terraformModule = relationship(
+        "TerraformModule", back_populates="git_repos", uselist=False)
+    terraformModuleInstance = relationship(
+        "TerraformModuleInstance", back_populates="git_repos", uselist=False)
 
 
 class AwsAccountGitRepo(Base):
@@ -258,3 +261,59 @@ class Run(Base):
 
     organization = relationship("Organization")
     workspace = relationship("Workspace")
+
+
+class TerraformModule(Base):
+    __tablename__ = 'terraform_module'
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    organizationId = Column(Integer, ForeignKey('organization.id'))
+    name = Column(String)
+    gitPath = Column(String)
+    enabled = Column(Boolean, default=True)
+    providerGroupId = Column(Integer, ForeignKey(
+        'provider_group.id'), nullable=True)
+    description = Column(String, nullable=True)
+    createdAt = Column(DateTime, default=datetime.utcnow)
+    updatedAt = Column(DateTime, onupdate=datetime.utcnow)
+
+    organization = relationship('Organization')
+    git_repos = relationship(
+        'GitRepo', back_populates='terraformModule', uselist=False)
+
+    provider_group = relationship('ProviderGroup', backref='terraform_module')
+    terraform_module_instances = relationship(
+        'TerraformModuleInstance', back_populates='terraform_module')
+
+    __table_args__ = (UniqueConstraint(
+        'gitPath', 'organizationId', name='uix_gitPath_organization'),)
+
+
+class TerraformModuleInstance(Base):
+    __tablename__ = 'terraform_module_instance'
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    # organization_id = Column(Integer, ForeignKey('organization.id'))
+    organizationId = Column(Integer, ForeignKey(
+        'organization.id'))  # changed here
+
+    TerraformModuleId = Column(Integer, ForeignKey('terraform_module.id'))
+
+    resource_type = Column(String)
+    resource_name = Column(String)
+    module_instance = Column(String)
+    gitPath = Column(String)
+    enabled = Column(Boolean, default=True)
+    workspaceId = Column(Integer, ForeignKey('workspace.id'))
+    description = Column(String, nullable=True)
+    createdAt = Column(DateTime, default=datetime.utcnow)
+    updatedAt = Column(DateTime, onupdate=datetime.utcnow)
+
+    organization = relationship('Organization')
+    git_repos = relationship(
+        'GitRepo', back_populates='terraformModuleInstance', uselist=False)
+
+    workspace = relationship('Workspace')
+    terraform_module = relationship('TerraformModule', back_populates='terraform_module_instances',
+                                    overlaps="terraform_module_backref,terraform_module_instances")
+
+    __table_args__ = (UniqueConstraint('organizationId', 'TerraformModuleId', 'resource_type',
+                      'resource_name', name='uix_org_module_resourcetype_resourcename'),)

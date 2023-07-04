@@ -13,7 +13,7 @@ from providers.aws.cloudfront import CloudFront
 from providers.aws.s3 import S3
 from providers.aws.iam import IAM
 from providers.aws.ec2 import EC2
-from providers.aws.ebs import EBS
+from providers.aws.ebs import EBS  # no module
 from providers.aws.ecr import ECR
 from providers.aws.ecr_public import ECR_PUBLIC
 from providers.aws.ecs import ECS
@@ -51,7 +51,7 @@ from providers.aws.elbv2 import ELBV2
 
 class Aws:
     def __init__(self, script_dir, s3Bucket,
-                 dynamoDBTable, state_key):
+                 dynamoDBTable, state_key, workspace_id, modules):
         self.provider_name = "registry.terraform.io/hashicorp/aws"
         self.script_dir = script_dir
         self.schema_data = self.load_provider_schema()
@@ -59,6 +59,8 @@ class Aws:
         self.s3Bucket = s3Bucket
         self.dynamoDBTable = dynamoDBTable
         self.state_key = state_key
+        self.workspace_id = workspace_id
+        self.modules = modules
 
     def set_boto3_session(self, id_token=None, role_arn=None, session_duration=None, aws_region="us-east-1"):
         if id_token and role_arn and session_duration:
@@ -342,7 +344,7 @@ class Aws:
         ec2_client = self.session.client("ec2", region_name=self.aws_region)
         instance = VPC(ec2_client, self.script_dir, self.provider_name,
                        self.schema_data, self.aws_region, self.s3Bucket,
-                       self.dynamoDBTable, self.state_key)
+                       self.dynamoDBTable, self.state_key, self.workspace_id, self.modules)
         instance.vpc()
         self.json_plan = instance.json_plan
         self.resource_list['vpc'] = instance.resource_list

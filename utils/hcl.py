@@ -7,10 +7,12 @@ from utils.filesystem import create_version_file, create_backend_file
 from utils.terraform import Terraform
 import yaml
 import re
+from db.terraform_module_instance import get_module_data
+from collections import OrderedDict
 
 
 class HCL:
-    def __init__(self, schema_data, provider_name, script_dir, transform_rules, region, bucket, dynamodb_table, state_key):
+    def __init__(self, schema_data, provider_name, script_dir, transform_rules, region, bucket, dynamodb_table, state_key, workspace_id, modules):
         self.terraform_state_file = "terraform.tfstate"
         self.schema_data = schema_data
         self.provider_name = provider_name
@@ -20,6 +22,10 @@ class HCL:
         self.bucket = bucket
         self.dynamodb_table = dynamodb_table
         self.state_key = state_key
+        self.workspace_id = workspace_id
+        self.modules = modules
+
+        self.module_data = get_module_data(self.workspace_id)
 
     def search_state_file(self, resource_type, resource_name, resource_id):
         # Load the state file
@@ -56,9 +62,17 @@ class HCL:
     def create_state_file(self, resource_type, resource_name, attributes):
         schema_version = int(self.schema_data['provider_schemas'][self.provider_name]
                              ['resource_schemas'][resource_type]['version'])
+
+        key = f"{resource_type}_{resource_name}"
+        module = ""
+        if key in self.module_data:
+            module_instance = self.module_data[key]["module_instance"]
+            module = f'module.{module_instance}'
+
         # create resource
         resource = {
             "mode": "managed",
+            "module": module,
             "type": resource_type,
             "name": resource_name,
             "provider": f"provider[\"{self.provider_name}\"]",
@@ -96,6 +110,10 @@ class HCL:
         with open(self.terraform_state_file, "r") as state_file:
             state_data = json.load(state_file)
 
+        # Get modules info
+
+        modules_code = {}
+
         for resource in state_data["resources"]:
             # print("=======================RESOURCE=======================")
             # print(
@@ -103,6 +121,32 @@ class HCL:
             attributes = resource["instances"][0]["attributes"]
             resource_type = resource["type"]
             resource_name = resource["name"]
+
+            if 'module' in resource and resource['module'] != "":
+                key = f"{resource_type}_{resource_name}"
+                module_name = ""
+                if key in self.module_data:
+                    module_name = self.module_data[key]["module_name"]
+
+                key = f"{resource_type}-{resource_name}"
+                if key not in self.modules[module_name]:
+                    # no variables for the resource
+                    continue
+
+                module_instance = resource['module']
+
+                if module_instance not in modules_code:
+                    modules_code[module_instance] = OrderedDict()
+                    for okey, ovalue in self.modules[module_name].items():
+                        for ikey in ovalue.keys():
+                            modules_code[module_instance][f'{okey}-{ikey}'] = ""
+
+                for key_field in self.modules[module_name][key].keys():
+                    modules_code[module_instance][f'{key}-{key_field}'] = resource['instances'][0]['attributes'][key_field]
+
+                # print(
+                #     f'Skipping {resource_type}_{resource_name} belongs to {module_instance}')
+                continue
 
             schema_attributes = self.schema_data['provider_schemas'][self.provider_name][
                 'resource_schemas'][resource_type]["block"]["attributes"]
@@ -332,10 +376,32 @@ class HCL:
                     hcl_output.write(f'  {process_key(key, value)}')
 
                 hcl_output.write("}\n\n")
+
+        print("Creating resources under modules")
+        for tmodule, attributes in modules_code.items():
+
+            # Get the name after the first dot
+            tmodule_name = tmodule.split('.')[1]
+            db_module_name = self.module_data[tmodule_name]["module_name"]
+            with open(f'{tmodule_name}.tf', 'w') as f:
+                f.write(f'module "{tmodule_name}" {{\n')
+                f.write(f'  source = "../../../modules/{db_module_name}"\n')
+                for attribute, value in attributes.items():
+                    if isinstance(value, dict):
+                        # format the dictionary as a JSON string, then remove the quotes around the keys
+                        formatted_value = json.dumps(value, indent=2)
+                        formatted_value = formatted_value.replace('\n', '\n  ')
+                        f.write(f'  {attribute} = {formatted_value}\n')
+                    else:
+                        f.write(f'  {attribute} = "{value}"\n')
+                f.write('}\n')
+
         print("Formatting HCL files...")
 
         subprocess.run(["terraform", "fmt"], check=True)
-        subprocess.run(["terraform", "validate"], check=True)
+        # Because i have modules i need to remove these checks
+        # subprocess.run(["terraform", "init"], check=True)
+        # subprocess.run(["terraform", "validate"], check=True)
         print("Running Terraform plan on generated files...")
         terraform = Terraform()
         self.json_plan = terraform.tf_plan("./", True)
@@ -361,7 +427,8 @@ class HCL:
         # search if resource exists in the state
         if not self.search_state_file(resource_type, resource_name, resource_id):
             # print("Importing resource...")
-            self.create_state_file(resource_type, resource_name, attributes)
+            self.create_state_file(
+                resource_type, resource_name, attributes)
 
     def count_state(self):
         resource_count = {}

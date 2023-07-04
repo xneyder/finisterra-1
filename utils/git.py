@@ -1,3 +1,6 @@
+import hashlib
+import random
+import string
 
 import jwt
 import time
@@ -48,6 +51,18 @@ class Git:
         self.destination_dir = os.path.join(self.clone_dir, self.git_repo_path)
 
         self.merged = False
+
+    @staticmethod
+    def create_random_hash(length=10):
+        """Create a random string of fixed length."""
+        letters = string.ascii_lowercase
+        result_str = ''.join(random.choice(letters) for _ in range(length))
+        return hashlib.sha256(result_str.encode()).hexdigest()
+
+    def create_digest_file(self, dir_path):
+        """Create a file named 'digest' with a random hash inside."""
+        with open(os.path.join(dir_path, 'digest'), 'w') as f:
+            f.write(self.create_random_hash())
 
     def get_repo_name(self):
         conn = http.client.HTTPSConnection("api.github.com")
@@ -108,6 +123,15 @@ class Git:
 
         self.repo = git.Repo.clone_from(clone_url, self.clone_dir)
 
+        # Checkout to the branch or create it if it does not exist
+        try:
+            self.repo.git.checkout(self.git_repo_branch)
+        except git.exc.GitCommandError as e:
+            # Branch does not exist, create it
+            print(
+                f'Branch {self.git_repo_branch} does not exist. Creating it...')
+            self.repo.git.checkout("-b", self.git_repo_branch)
+
     def encrypt(self, plain_text):
         secret_key = os.getenv("GITHUB_PR_SECRET")
         # Hash the secret key
@@ -120,15 +144,6 @@ class Git:
         return iv + ":" + ct
 
     def create_pr_with_files(self):
-
-        # Checkout to the branch or create it if it does not exist
-        try:
-            self.repo.git.checkout(self.git_repo_branch)
-        except git.exc.GitCommandError as e:
-            # Branch does not exist, create it
-            print(
-                f'Branch {self.git_repo_branch} does not exist. Creating it...')
-            self.repo.git.checkout("-b", self.git_repo_branch)
 
         # clean the destination directory
         if os.path.exists(self.destination_dir):
@@ -143,6 +158,9 @@ class Git:
                     self.local_path, file), self.destination_dir)
 
         self.create_gitignore_file(self.destination_dir)
+
+        # Create a digest file with a random hash
+        self.create_digest_file(self.destination_dir)
 
         # Stage and commit the changes
         self.repo.git.add(all=True)

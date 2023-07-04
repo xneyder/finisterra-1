@@ -3,19 +3,9 @@ from utils.hcl import HCL
 from utils.filesystem import create_backend_file
 
 
-# def dict_to_terraform_block(data_list):
-#     output = ''
-#     for data in data_list:
-#         output += '  {\n'
-#         for key, value in data.items():
-#             output += f'    {key} = "{value}"\n'
-#         output += '  }\n'
-#     return output
-
-
 class VPC:
     def __init__(self, ec2_client, script_dir, provider_name, schema_data, region, s3Bucket,
-                 dynamoDBTable, state_key):
+                 dynamoDBTable, state_key, workspace_id, modules):
         self.ec2_client = ec2_client
         self.transform_rules = {
             "aws_vpc": {
@@ -76,8 +66,10 @@ class VPC:
         self.script_dir = script_dir
         self.schema_data = schema_data
         self.region = region
+        self.workspace_id = workspace_id
+        self.modules = modules
         self.hcl = HCL(self.schema_data, self.provider_name,
-                       self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key)
+                       self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules)
         self.resource_list = {}
 
     def vpc(self):
