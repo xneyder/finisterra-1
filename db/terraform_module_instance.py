@@ -26,7 +26,7 @@ def get_module_data(workspace_id):
             workspaceId=workspace_id).all()
 
         if not instances:
-            return None
+            return {}
 
         result = {}
         for instance in instances:
