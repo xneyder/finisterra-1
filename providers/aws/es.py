@@ -4,7 +4,7 @@ from utils.hcl import HCL
 
 class ES:
     def __init__(self, es_client, script_dir, provider_name, schema_data, region, s3Bucket,
-                 dynamoDBTable, state_key):
+                 dynamoDBTable, state_key, workspace_id, modules):
         self.es_client = es_client
         self.transform_rules = {
             "aws_elasticsearch_domain_policy": {
@@ -24,8 +24,10 @@ class ES:
         self.script_dir = script_dir
         self.schema_data = schema_data
         self.region = region
+        self.workspace_id = workspace_id
+        self.modules = modules
         self.hcl = HCL(self.schema_data, self.provider_name,
-                       self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key)
+                       self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules)
         self.resource_list = {}
 
     def es(self):

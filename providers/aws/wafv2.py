@@ -4,7 +4,7 @@ from utils.hcl import HCL
 
 class Wafv2:
     def __init__(self, wafv2_client, elbv2_client, script_dir, provider_name, schema_data, region, s3Bucket,
-                 dynamoDBTable, state_key):
+                 dynamoDBTable, state_key, workspace_id, modules):
         self.wafv2_client = wafv2_client
         self.elbv2_client = elbv2_client
         self.transform_rules = {}
@@ -12,8 +12,10 @@ class Wafv2:
         self.script_dir = script_dir
         self.schema_data = schema_data
         self.region = region
+        self.workspace_id = workspace_id
+        self.modules = modules
         self.hcl = HCL(self.schema_data, self.provider_name,
-                       self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key)
+                       self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules)
         self.resource_list = {}
 
     def wafv2(self):

@@ -4,7 +4,7 @@ from utils.hcl import HCL
 
 class AutoScaling:
     def __init__(self, autoscaling_client, script_dir, provider_name, schema_data, region, s3Bucket,
-                 dynamoDBTable, state_key):
+                 dynamoDBTable, state_key, workspace_id, modules):
         self.autoscaling_client = autoscaling_client
         self.transform_rules = {
             "aws_autoscaling_policy": {
@@ -15,8 +15,10 @@ class AutoScaling:
         self.script_dir = script_dir
         self.schema_data = schema_data
         self.region = region
+        self.workspace_id = workspace_id
+        self.modules = modules
         self.hcl = HCL(self.schema_data, self.provider_name,
-                       self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key)
+                       self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules)
         self.resource_list = {}
 
     def autoscaling(self):

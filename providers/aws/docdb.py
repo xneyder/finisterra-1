@@ -4,15 +4,17 @@ from utils.hcl import HCL
 
 class DocDb:
     def __init__(self, docdb_client, script_dir, provider_name, schema_data, region, s3Bucket,
-                 dynamoDBTable, state_key):
+                 dynamoDBTable, state_key, workspace_id, modules):
         self.docdb_client = docdb_client
         self.transform_rules = {}
         self.provider_name = provider_name
         self.script_dir = script_dir
         self.schema_data = schema_data
         self.region = region
+        self.workspace_id = workspace_id
+        self.modules = modules
         self.hcl = HCL(self.schema_data, self.provider_name,
-                       self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key)
+                       self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules)
         self.resource_list = {}
 
     def docdb(self):

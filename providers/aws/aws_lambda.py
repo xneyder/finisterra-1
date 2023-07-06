@@ -20,7 +20,7 @@ def convert_to_terraform_format(env_variables_dict):
 
 class AwsLambda:
     def __init__(self, lambda_client, script_dir, provider_name, schema_data, region, s3Bucket,
-                 dynamoDBTable, state_key):
+                 dynamoDBTable, state_key, workspace_id, modules):
         self.lambda_client = lambda_client
         self.transform_rules = {
             "aws_lambda_function": {
@@ -34,8 +34,10 @@ class AwsLambda:
         self.script_dir = script_dir
         self.schema_data = schema_data
         self.region = region
+        self.workspace_id = workspace_id
+        self.modules = modules
         self.hcl = HCL(self.schema_data, self.provider_name,
-                       self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key)
+                       self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules)
         self.resource_list = {}
 
     def aws_lambda(self):
