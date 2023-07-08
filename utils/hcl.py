@@ -395,16 +395,22 @@ class HCL:
                             if isinstance(v, str):  # Check if the value is a string
                                 # Replace '${xxxxxx}' with 'xxxxxx' if present
                                 value[k] = re.sub(pattern, r'\1', v)
-                        # format the dictionary as a JSON string, then remove the quotes around the keys
+                        # Format the dictionary as a JSON string, then remove the quotes around the keys
                         formatted_value = json.dumps(value, indent=2)
                         formatted_value = formatted_value.replace('\n', '\n  ')
                         f.write(f'  {attribute} = {formatted_value}\n')
+                    elif isinstance(value, list):  # Check if the value is a list
+                        # For simplicity, let's just write out the list as a string
+                        # This can be modified to handle more complex list elements
+                        json_value = json.dumps(value)
+                        f.write(f'  {attribute} = {json_value}\n')
                     else:
                         if isinstance(value, str):  # Check if the value is a string
                             # Replace '${xxxxxx}' with 'xxxxxx' if present
                             value = re.sub(pattern, r'\1', value)
                         # Surround value with quotes
                         f.write(f'  {attribute} = "{value}"\n')
+
                 f.write('}\n')
 
         print("Formatting HCL files...")

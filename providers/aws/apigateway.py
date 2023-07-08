@@ -561,10 +561,14 @@ class Apigateway:
                 restApiId=rest_api["id"])["items"]
 
             for resource in resources:
+                # Skip the root resource
+                if "parentId" not in resource:
+                    continue
+
                 print(f"  Processing API Gateway Resource: {resource['path']}")
 
                 attributes = {
-                    "id": rest_api["id"]+"/"+resource["id"],
+                    "id": resource["id"],
                     "rest_api_id": rest_api["id"],
                     "parent_id": resource.get("parentId"),
                     "path_part": resource.get("pathPart"),

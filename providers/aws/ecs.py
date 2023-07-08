@@ -29,7 +29,7 @@ class ECS:
         self.aws_ecs_cluster()
         self.aws_ecs_cluster_capacity_providers()
         self.aws_ecs_service()
-        self.aws_ecs_tag()
+        # self.aws_ecs_tag()
         self.aws_ecs_task_definition()
         if "gov" not in self.region:
             self.aws_ecs_task_set()
