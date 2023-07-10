@@ -2,111 +2,174 @@ aws_s3_bucket:
   keys:
     - bucket
   fields:
-    - bucket
-    - bucket_prefix
-    - tags
-    - force_destroy
-    - object_lock_enabled
+    bucket:
+      field: bucket
+    bucket_prefix:
+      field: bucket_prefix
+    tags:
+      field: tags
+    force_destroy:
+      field: force_destroy
+    object_lock_enabled:
+      field: object_lock_enabled
   childs:
-    aws_s3_bucket_public_access_block:
+    aws_s3_bucket_logging:
       join:
         - bucket
       fields:
-        - attach_public_policy # Controls if a user defined public bucket policy will be attached (set to `false` to allow upstream to apply defaults to     the bucket)
-        - block_public_acls
-        - block_public_policy
-        - ignore_public_acls
-        - restrict_public_buckets
+        logging:
+          field: logging
 
     aws_s3_bucket_acl:
       join:
         - bucket
       fields:
-        - acl
-        - expected_bucket_owner
+        acl:
+          field: acl
+        expected_bucket_owner:
+          field: expected_bucket_owner
+        grant:
+          function: aws_s3_bucket_acl_grant
+        owner:
+          function: aws_s3_bucket_acl_owner
 
     aws_s3_bucket_website_configuration:
       join:
         - bucket
       fields:
-        - website
-        - expected_bucket_owner
+        website:
+          field: website
+        expected_bucket_owner:
+          field: expected_bucket_owner
 
     aws_s3_bucket_versioning:
       join:
         - bucket
       fields:
-        - versioning
-        - expected_bucket_owner
-
-    aws_s3_bucket_logging:
-      join:
-        - bucket
-      fields:
-        - logging
-
-    aws_s3_bucket_accelerate_configuration:
-      join:
-        - bucket
-      fields:
-        - acceleration_status
-        - expected_bucket_owner
-
-    aws_s3_bucket_request_payment_configuration:
-      join:
-        - bucket
-      fields:
-        - request_payer
-        - expected_bucket_owner
-
-    aws_s3_bucket_cors_configuration:
-      join:
-        - bucket
-      fields:
-        - expected_bucket_owner
-
-    aws_s3_bucket_lifecycle_configuration:
-      join:
-        - bucket
-      fields:
-        - expected_bucket_owner
-
-    aws_s3_bucket_object_lock_configuration:
-      join:
-        - bucket
-      fields:
-        - object_lock_configuration
-        - object_lock_enabled
-        - expected_bucket_owner
-
-    aws_s3_bucket_replication_configuration:
-      join:
-        - bucket
-      fields:
-        - replication_configuration
+        versioning:
+          field: versioning
+        expected_bucket_owner:
+          field: expected_bucket_owner
 
     aws_s3_bucket_server_side_encryption_configuration:
       join:
         - bucket
       fields:
-        - server_side_encryption_configuration # Map containing server-side encryption configuration.
-        - expected_bucket_owner
+        server_side_encryption_configuration:
+          field: server_side_encryption_configuration
+        expected_bucket_owner:
+          field: expected_bucket_owner
 
-    aws_s3_bucket_inventory:
+    aws_s3_bucket_accelerate_configuration:
       join:
         - bucket
       fields:
-        - inventory_configuration
+        acceleration_status:
+          field: acceleration_status
+        expected_bucket_owner:
+          field: expected_bucket_owner
 
-    aws_s3_bucket_analytics_configuration:
+    aws_s3_bucket_request_payment_configuration:
       join:
         - bucket
       fields:
-        - analytics_configuration
+        request_payer:
+          field: request_payer
+        expected_bucket_owner:
+          field: expected_bucket_owner
+
+    aws_s3_bucket_cors_configuration:
+      join:
+        - bucket
+      fields:
+        expected_bucket_owner:
+          field: expected_bucket_owner
+        cors_rule:
+          field: cors_rule
+
+    aws_s3_bucket_lifecycle_configuration:
+      join:
+        - bucket
+      fields:
+        expected_bucket_owner:
+          field: expected_bucket_owner
+        lifecycle_rule:
+          field: lifecycle_rule
+
+    aws_s3_bucket_object_lock_configuration:
+      join:
+        - bucket
+      fields:
+        object_lock_configuration:
+          field: object_lock_configuration
+        object_lock_enabled:
+          field: object_lock_enabled
+        expected_bucket_owner:
+          field: expected_bucket_owner
+
+    aws_s3_bucket_replication_configuration:
+      join:
+        - bucket
+      fields:
+        replication_configuration:
+          field: replication_configuration
+
+    aws_s3_bucket_policy:
+      join:
+        - bucket
+      fields:
+        policy:
+          function: policy
+          arg: policy
+
+    aws_s3_bucket_public_access_block:
+      join:
+        - bucket
+      fields:
+        attach_public_policy:
+          field: attach_public_policy
+        block_public_acls:
+          field: block_public_acls
+        block_public_policy:
+          field: block_public_policy
+        ignore_public_acls:
+          field: ignore_public_acls
+        restrict_public_buckets:
+          field: restrict_public_buckets
 
     aws_s3_bucket_ownership_controls:
       join:
         - bucket
       fields:
-        - control_object_ownership
-        - object_ownership
+        control_object_ownership:
+          field: control_object_ownership
+        object_ownership:
+          field: object_ownership
+
+    aws_s3_bucket_intelligent_tiering_configuration:
+      join:
+        - bucket
+      fields:
+        intelligent_tiering:
+          field: intelligent_tiering
+
+    aws_s3_bucket_metric:
+      join:
+        - bucket
+      fields:
+        metric_configuration:
+          field: metric_configuration
+
+    aws_s3_bucket_inventory:
+      join:
+        - bucket
+      fields:
+        inventory_configuration:
+          field: inventory_configuration
+
+    aws_s3_bucket_analytics_configuration:
+      join:
+        - bucket
+      fields:
+        analytics_configuration:
+          field: analytics_configuration

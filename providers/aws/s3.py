@@ -57,12 +57,12 @@ class S3:
         self.aws_s3_bucket()
 
         self.hcl.refresh_state()
-        # self.hcl.module_hcl_code("terraform-aws-modules/s3-bucket/aws", "3.14.0", "terraform.tfstate",
-        #  os.path.join(os.path.dirname(os.path.abspath(__file__)), "aws_s3_bucket.yaml"))
+        self.hcl.module_hcl_code("terraform-aws-modules/s3-bucket/aws", "3.14.0", "terraform.tfstate",
+                                 os.path.join(os.path.dirname(os.path.abspath(__file__)), "aws_s3_bucket.yaml"))
 
         # load_yaml_and_tfstate("terraform-aws-modules/s3-bucket/aws", "3.14.0", "terraform.tfstate",
         #                       os.path.join(os.path.dirname(os.path.abspath(__file__)), "aws_s3_bucket.yaml"))
-        # exit()
+        exit()
         self.hcl.generate_hcl_file()
         self.json_plan = self.hcl.json_plan
 
@@ -89,6 +89,8 @@ class S3:
             # If the bucket's region matches self.region, process the bucket
             if bucket_region == self.region:
                 buckets.append(bucket)
+
+        buckets = [buckets[0]]
 
         for bucket in buckets:
             bucket_name = bucket["Name"]

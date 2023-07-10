@@ -519,8 +519,17 @@ class HCL:
         try:
             key = keys[0]
             if isinstance(state_data, list):
-                key = int(key)
-            value = state_data[key]
+                # Check if the list contains dictionaries
+                if all(isinstance(item, dict) for item in state_data):
+                    # Using json.dumps to ensure double quotes
+                    value = json.dumps(
+                        next((item[key] for item in state_data if key in item), None))
+                else:
+                    key = int(key)
+                    value = state_data[key]
+            else:
+                value = state_data[key]
+
             if len(keys) == 1:
                 return value
             else:
@@ -531,10 +540,56 @@ class HCL:
             return None
 
     def string_repr(self, value):
-        if isinstance(value, str):
-            return f'"{value}"'
+        if isinstance(value, bool):
+            return "true" if value else "false"
+        elif isinstance(value, (list, dict)):
+            return json.dumps(value)
+        elif isinstance(value, (int, float)):
+            return str(value)
         else:
-            return repr(value)
+            try:
+                return json.loads(value)
+            except json.JSONDecodeError:
+                value = value.replace('\n', '')
+                escaped_value = re.sub(r'\$\{(\w+)\}', r'\1', value)
+                return f'"{escaped_value}"'
+
+    def aws_s3_bucket_acl_owner(self, state):
+        result = {}
+
+        for item in state['access_control_policy']:
+            result = item.get('owner', [{}])[0]
+
+        return result
+
+    def aws_s3_bucket_acl_grant(self, state):
+        result = []
+
+        for item in state['access_control_policy']:
+            grant = item.get('grant', [{}])[0]
+            grantee = grant.get('grantee', [{}])[0]
+            permission = grant.get('permission', '')
+
+            grantee['permission'] = permission
+            result.append(grantee)
+
+        return result
+
+    def policy(self, state, arg):
+        # convert the string to a dict
+        input_string = state.get(arg, '{}')
+        json_dict = json.loads(input_string)
+
+        # convert the dict back to a string, pretty printed
+        pretty_json = json.dumps(json_dict, indent=4)
+
+        if pretty_json == '{}':
+            return None
+
+        # create the final string with the 'EOF' tags
+        result = pretty_json
+
+        return result
 
     def module_hcl_code(self, module, version, terraform_state_file, config_file):
         with open(config_file, 'r') as f:
@@ -554,23 +609,47 @@ class HCL:
                 resource_config = config[resource_type]
                 resource_attributes = resource['instances'][0]['attributes']
                 resource_name = resource['name']
-                for field in resource_config['fields']:
-                    value = self.get_value_from_tfstate(
-                        resource_attributes, field.split("."))
-                    if value not in [None, "", []]:
-                        attributes[field] = self.string_repr(value)
 
+                # Get fields from config
+                fields_config = resource_config.get('fields', {})
+                for field, field_info in fields_config.items():
+                    state_field = field_info.get('field', '').split('.')
+                    if state_field:
+                        value = self.get_value_from_tfstate(
+                            resource_attributes, state_field)
+                        if value not in [None, "", []]:
+                            attributes[field] = self.string_repr(value)
+
+                # Get childs from config
                 for child_type, child in resource_config.get('childs', {}).items():
                     for child_instance in [res for res in resources if res['type'] == child_type]:
                         child_attributes = child_instance['instances'][0]['attributes']
                         for join_field in child['join']:
                             if self.get_value_from_tfstate(resource_attributes, join_field.split(".")) == self.get_value_from_tfstate(child_attributes, join_field.split(".")):
-                                for field in child['fields']:
-                                    value = self.get_value_from_tfstate(
-                                        child_attributes, field.split("."))
-                                    if value not in [None, "", []]:
+                                # Fields from child resources
+                                fields_config = child.get('fields', {})
+                                for field, field_info in fields_config.items():
+                                    # Check if we have to apply function
+                                    func = field_info.get('function')
+                                    state_field = field_info.get(
+                                        'field', '').split('.')
+                                    if func:
+                                        value = None
+                                        arg = field_info.get('arg', '')
+                                        if arg:
+                                            value = getattr(self, func)(
+                                                child_attributes, arg)
+                                        else:
+                                            value = getattr(self, func)(
+                                                child_attributes)
+                                    elif state_field:
+                                        value = self.get_value_from_tfstate(
+                                            child_attributes, state_field)
+
+                                    if value not in [None, "", [], {}]:
                                         attributes[field] = self.string_repr(
                                             value)
+
                 if attributes:
                     instances.append(
                         {"type": resource_type, "name": resource_name, "attributes": attributes})
@@ -581,8 +660,8 @@ class HCL:
                     file.write(f'module "{instance["name"]}" {{\n')
                     file.write(f'source  = "{module}"\n')
                     file.write(f'version = "{version}"\n')
-                    for index, key in instance["attributes"].items():
-                        file.write(f'{index} = {key}\n')
+                    for index, value in instance["attributes"].items():
+                        file.write(f'{index} = {value}\n')
                     file.write('}\n')
 
         print("Formatting HCL files...")
