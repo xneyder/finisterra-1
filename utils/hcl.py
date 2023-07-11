@@ -9,6 +9,7 @@ import yaml
 import re
 from db.terraform_module_instance import get_module_data
 from collections import OrderedDict
+import concurrent.futures
 
 
 class HCL:
@@ -554,246 +555,302 @@ class HCL:
                 escaped_value = re.sub(r'\$\{(\w+)\}', r'\1', value)
                 return f'"{escaped_value}"'
 
-    def aws_s3_bucket_acl_owner(self, state):
-        result = {}
+    # def policy(self, state, arg):
+    #     # convert the string to a dict
+    #     input_string = state.get(arg, '{}')
+    #     json_dict = json.loads(input_string)
 
-        for item in state['access_control_policy']:
-            result = item.get('owner', [{}])[0]
+    #     # convert the dict back to a string, pretty printed
+    #     pretty_json = json.dumps(json_dict, indent=4)
 
-        return result
+    #     if pretty_json == '{}':
+    #         return None
 
-    def aws_s3_bucket_acl_grant(self, state):
-        result = []
+    #     # create the final string with the 'EOF' tags
+    #     result = pretty_json
 
-        for item in state['access_control_policy']:
-            grant = item.get('grant', [{}])[0]
-            grantee = grant.get('grantee', [{}])[0]
-            permission = grant.get('permission', '')
+    #     return result
 
-            grantee['permission'] = permission
-            result.append(grantee)
+    # def is_field_set(self, state, arg):
+    #     # convert the string to a dict
+    #     input_string = state.get(arg, '')
+    #     if input_string != '':
+    #         return True
+    #     else:
+    #         return False
 
-        return result
+    # def module_hcl_code(self, module, version, terraform_state_file, config_file, functions={}):
+    #     with open(config_file, 'r') as f:
+    #         config = yaml.safe_load(f)
 
-    def aws_s3_bucket_website_configuration_website(self, state):
-        result = {}
+    #     with open(terraform_state_file, 'r') as f:
+    #         tfstate = json.load(f)
 
-        tmp = state.get('index_document', [{}])[0].get(
-            'suffix', '') if state.get('index_document', [{}]) else ''
-        if tmp:
-            result['index_document'] = tmp
+    #     resources = tfstate['resources']
 
-        tmp = state.get('error_document', [{}])[0].get(
-            'key', '') if state.get('error_document', [{}]) else ''
-        if tmp:
-            result['error_document'] = tmp
+    #     instances = []
 
-        tmp = state.get('redirect_all_requests_to', [{}])[0].get(
-            'host_name', '') if state.get('redirect_all_requests_to', [{}]) else ''
-        if tmp:
-            result['redirect_all_requests_to'] = tmp
+    #     for resource in resources:
+    #         created = False
+    #         attributes = {}
+    #         deployed_resources = []
+    #         resource_type = resource['type']
+    #         resource_name = resource['name']
+    #         if resource_type in config:
+    #             resource_config = config[resource_type]
+    #             resource_attributes = resource['instances'][0]['attributes']
 
-        tmp = state.get('routing_rules', [{}])[0].get('routing_rules', [{}])[0].get(
-            'condition', [{}])[0].get('http_error_code_returned_equals', '') if state.get('routing_rules', [{}]) else ''
-        if tmp:
-            result['routing_rules'] = tmp
+    #             # Get fields from config
+    #             fields_config = resource_config.get('fields', {})
+    #             target_resource_name = resource_config.get(
+    #                 'target_resource_name', "")
 
-        return result
+    #             defaults = resource_config.get('defaults', {})
+    #             for default in defaults:
+    #                 attributes[default] = self.string_repr(defaults[default])
 
-    def filter_empty_fields(self, input_data):
-        if isinstance(input_data, dict):
-            return {k: self.filter_empty_fields(v) for k, v in input_data.items() if v and self.filter_empty_fields(v)}
-        elif isinstance(input_data, list):
-            return [self.filter_empty_fields(elem) for elem in input_data if elem and self.filter_empty_fields(elem)]
+    #             for field, field_info in fields_config.items():
+    #                 state_field = field_info.get('field', '').split('.')
+    #                 if state_field:
+    #                     value = self.get_value_from_tfstate(
+    #                         resource_attributes, state_field)
+    #                     if value not in [None, "", []]:
+    #                         created = True
+    #                         attributes[field] = self.string_repr(value)
+    #             if created:
+    #                 deployed_resources.append({
+    #                     'resource_type': resource_type,
+    #                     'resource_name': resource_name,
+    #                     'target_resource_name': target_resource_name,
+    #                     'id': resource_attributes.get('id', ''),
+    #                 })
+
+    #             # Get childs from config
+    #             for child_type, child in resource_config.get('childs', {}).items():
+    #                 for child_instance in [res for res in resources if res['type'] == child_type]:
+    #                     created = False
+    #                     child_resource_type = child_instance['type']
+    #                     child_resource_name = child_instance['name']
+    #                     child_attributes = child_instance['instances'][0]['attributes']
+    #                     for join_field in child['join']:
+    #                         if self.get_value_from_tfstate(resource_attributes, join_field.split(".")) == self.get_value_from_tfstate(child_attributes, join_field.split(".")):
+    #                             # Fields from child resources
+    #                             fields_config = child.get('fields', {})
+    #                             target_resource_name = child.get(
+    #                                 'target_resource_name', "")
+
+    #                             defaults = child.get('defaults', {})
+    #                             for default in defaults:
+    #                                 attributes[default] = self.string_repr(
+    #                                     defaults[default])
+
+    #                             for field, field_info in fields_config.items():
+    #                                 # Check if we have to apply function
+    #                                 multiline = False
+    #                                 func_name = field_info.get('function')
+    #                                 state_field = field_info.get(
+    #                                     'field', '').split('.')
+    #                                 if func_name:
+    #                                     func = functions.get(func_name)
+    #                                     if func is not None:
+    #                                         value = None
+    #                                         arg = field_info.get('arg', '')
+    #                                         multiline = field_info.get(
+    #                                             'multiline', '')
+    #                                         if arg:
+    #                                             value = func(
+    #                                                 child_attributes, arg)
+    #                                         else:
+    #                                             value = func(child_attributes)
+    #                                 elif state_field:
+    #                                     value = self.get_value_from_tfstate(
+    #                                         child_attributes, state_field)
+
+    #                                 if value not in [None, "", [], {}]:
+    #                                     created = True
+
+    #                                     if multiline:
+    #                                         attributes[field] = "<<EOF\n" + \
+    #                                             value + "\nEOF\n"
+    #                                     else:
+    #                                         attributes[field] = self.string_repr(
+    #                                             value)
+
+    #                     if created:
+    #                         deployed_resources.append({
+    #                             'resource_type': child_resource_type,
+    #                             'resource_name': child_resource_name,
+    #                             'target_resource_name': target_resource_name,
+    #                             'id': child_attributes.get('id', ''),
+    #                         })
+
+    #             if attributes:
+    #                 instances.append({
+    #                     "type": resource_type,
+    #                     "name": resource_name,
+    #                     "attributes": attributes,
+    #                     "deployed_resources": deployed_resources
+    #                 })
+
+    #     for instance in instances:
+    #         if instance["attributes"]:
+    #             with open(f'{instance["type"]}-{instance["name"]}.tf', 'w') as file:
+    #                 file.write(f'module "{instance["name"]}" {{\n')
+    #                 file.write(f'source  = "{module}"\n')
+    #                 file.write(f'version = "{version}"\n')
+    #                 for index, value in instance["attributes"].items():
+    #                     file.write(f'{index} = {value}\n')
+    #                 file.write('}\n')
+
+    #     subprocess.run(["terraform", "init"], check=True)
+    #     for instance in instances:
+    #         for deployed_resource in instance["deployed_resources"]:
+    #             resource_import_source = f'{deployed_resource["resource_type"]}.{deployed_resource["resource_name"]}'
+    #             resource_import_target = f'module.{instance["name"]}.{deployed_resource["resource_type"]}.{deployed_resource["target_resource_name"]}'
+    #             # subprocess.run(
+    #             #     ["terraform", "import", resource_import_target, deployed_resource["id"]])
+    #             subprocess.run(
+    #                 ["terraform", "state", "mv", "-backup=/dev/null", resource_import_source, resource_import_target])
+
+    #     print("Formatting HCL files...")
+    #     subprocess.run(["terraform", "fmt"], check=True)
+    #     subprocess.run(["terraform", "validate"], check=True)
+
+    #     # exit()
+    #     print("Running Terraform plan on generated files...")
+    #     terraform = Terraform()
+    #     self.json_plan = terraform.tf_plan("./", False)
+    #     create_backend_file(self.bucket, os.path.join(self.state_key, "terraform.tfstate"),
+    #                         self.region, self.dynamodb_table)
+    #     shutil.rmtree("./.terraform", ignore_errors=True)
+
+    def find_resource_config(self, config, resource_type):
+        resource_config = config.get(resource_type)
+
+        if resource_config is not None:
+            return resource_config
+
+        for key, value in config.items():
+            if isinstance(value, dict):
+                resource_config = self.find_resource_config(
+                    value, resource_type)
+                if resource_config is not None:
+                    return resource_config
+            elif isinstance(value, list):
+                for item in value:
+                    if isinstance(item, dict):
+                        resource_config = self.find_resource_config(
+                            item, resource_type)
+                        if resource_config is not None:
+                            return resource_config
+
+        return None
+
+    def process_resource_module(self, resource, resources, config, functions={}):
+        def process_resource(resource, config):
+            created = False
+            attributes = {}
+            deployed_resources = []
+            resource_type = resource['type']
+            resource_name = resource['name']
+            resource_config = self.find_resource_config(config, resource_type)
+
+            # Add check for resource_config
+            if resource_config is None:
+                print(
+                    f"Warning: Config not found for resource type {resource_type}. Skipping.")
+                print(config)
+                exit()
+                return attributes, deployed_resources
+
+            resource_attributes = resource['instances'][0]['attributes']
+
+            # Get fields from config
+            fields_config = resource_config.get('fields', {})
+            target_resource_name = resource_config.get(
+                'target_resource_name', "")
+
+            defaults = resource_config.get('defaults', {})
+            for default in defaults:
+                attributes[default] = self.string_repr(defaults[default])
+
+            for field, field_info in fields_config.items():
+                # Check if we have to apply function
+                multiline = False
+                func_name = field_info.get('function')
+                state_field = field_info.get('field', '').split('.')
+                if func_name:
+                    func = functions.get(func_name)
+                    if func is not None:
+                        value = None
+                        arg = field_info.get('arg', '')
+                        multiline = field_info.get('multiline', '')
+                        if arg:
+                            value = func(resource_attributes, arg)
+                        else:
+                            value = func(resource_attributes)
+                elif state_field:
+                    value = self.get_value_from_tfstate(
+                        resource_attributes, state_field)
+
+                if value not in [None, "", [], {}]:
+                    created = True
+                    if multiline:
+                        attributes[field] = "<<EOF\n" + value + "\nEOF\n"
+                    else:
+                        attributes[field] = self.string_repr(value)
+
+            if created:
+                deployed_resources.append({
+                    'resource_type': resource_type,
+                    'resource_name': resource_name,
+                    'target_resource_name': target_resource_name,
+                    'id': resource_attributes.get('id', ''),
+                })
+
+            # Get childs from config
+            for child_type, child_config in resource_config.get('childs', {}).items():
+                for child_instance in [res for res in resources if res['type'] == child_type]:
+                    child_attributes, child_resources = process_resource(
+                        child_instance, {child_type: child_config})
+                    if child_attributes:
+                        attributes.update(child_attributes)
+                    if child_resources:
+                        deployed_resources.extend(child_resources)
+
+            return attributes, deployed_resources
+
+        attributes, deployed_resources = process_resource(resource, config)
+
+        if attributes or deployed_resources:
+            return {
+                "type": resource['type'],
+                "name": resource['name'],
+                "attributes": attributes,
+                "deployed_resources": deployed_resources
+            }
         else:
-            return input_data
+            return []
 
-    def aws_s3_bucket_lifecycle_configuration_lifecycle_rule(self, state):
-        rules = state["rule"]
-
-        result = []
-        for rule in rules:
-            transformed_rule = self.filter_empty_fields(rule)
-            result.append(transformed_rule)
-
-        return result
-
-    def aws_s3_bucket_versioning_versioning(self, state):
-        result = {}
-
-        tmp = state.get('mfa', '')
-        if tmp:
-            result['mfa'] = tmp
-
-        tmp = state.get('error_document', [{}])[0].get(
-            'key', '') if state.get('error_document', [{}]) else ''
-        if tmp:
-            result['error_document'] = tmp
-
-        tmp = state.get('versioning_configuration', [{}])[0].get(
-            'mfa_delete', '')
-        if tmp:
-            result['mfa_delete'] = tmp
-
-        tmp = state.get('versioning_configuration', [{}])[0].get(
-            'status', '')
-        if tmp:
-            result['status'] = tmp
-
-        return result
-
-    def convert_dict_structure(self, input_dict):
-        if isinstance(input_dict, dict):
-            for key, value in input_dict.items():
-                if isinstance(value, list) and len(value) > 0 and isinstance(value[0], dict):
-                    input_dict[key] = value[0]
-                    self.convert_dict_structure(input_dict[key])
-        return input_dict
-
-    def server_side_encryption_configuration(self, state):
-        result = {}
-
-        tmp = state.get('rule', '')
-        if tmp:
-            result['rule'] = tmp
-
-        return self.convert_dict_structure(result)
-
-    def policy(self, state, arg):
-        # convert the string to a dict
-        input_string = state.get(arg, '{}')
-        json_dict = json.loads(input_string)
-
-        # convert the dict back to a string, pretty printed
-        pretty_json = json.dumps(json_dict, indent=4)
-
-        if pretty_json == '{}':
-            return None
-
-        # create the final string with the 'EOF' tags
-        result = pretty_json
-
-        return result
-
-    def is_field_set(self, state, arg):
-        # convert the string to a dict
-        input_string = state.get(arg, '')
-        if input_string != '':
-            return True
-        else:
-            return False
-
-    def module_hcl_code(self, module, version, terraform_state_file, config_file):
+    def module_hcl_code(self, module, version, terraform_state_file, config_file, functions={}):
         with open(config_file, 'r') as f:
             config = yaml.safe_load(f)
 
         with open(terraform_state_file, 'r') as f:
             tfstate = json.load(f)
 
-        # # Remove the terraform.tfstate before starting the imports
-        # if os.path.exists(terraform_state_file):
-        #     os.remove(terraform_state_file)
-
         resources = tfstate['resources']
 
         instances = []
 
         for resource in resources:
-            created = False
-            attributes = {}
-            deployed_resources = []
-            resource_type = resource['type']
-            resource_name = resource['name']
-            if resource_type in config:
-                resource_config = config[resource_type]
-                resource_attributes = resource['instances'][0]['attributes']
+            if resource['type'] in config:  # Check if resource is root in the config
+                instance = self.process_resource_module(
+                    resource, resources, config, functions)
+                if instance:
+                    instances.append(instance)
 
-                # Get fields from config
-                fields_config = resource_config.get('fields', {})
-                target_resource_name = resource_config.get(
-                    'target_resource_name', "")
-
-                defaults = resource_config.get('defaults', {})
-                for default in defaults:
-                    attributes[default] = self.string_repr(defaults[default])
-
-                for field, field_info in fields_config.items():
-                    state_field = field_info.get('field', '').split('.')
-                    if state_field:
-                        value = self.get_value_from_tfstate(
-                            resource_attributes, state_field)
-                        if value not in [None, "", []]:
-                            created = True
-                            attributes[field] = self.string_repr(value)
-                if created:
-                    deployed_resources.append(
-                        {'resource_type': resource_type,
-                         'resource_name': resource_name,
-                         'target_resource_name': target_resource_name,
-                         'id': resource_attributes.get('id', ''),
-                         })
-
-                # Get childs from config
-                for child_type, child in resource_config.get('childs', {}).items():
-                    for child_instance in [res for res in resources if res['type'] == child_type]:
-                        created = False
-                        child_resource_type = child_instance['type']
-                        child_resource_name = child_instance['name']
-                        child_attributes = child_instance['instances'][0]['attributes']
-                        for join_field in child['join']:
-                            if self.get_value_from_tfstate(resource_attributes, join_field.split(".")) == self.get_value_from_tfstate(child_attributes, join_field.split(".")):
-                                # Fields from child resources
-                                fields_config = child.get('fields', {})
-                                target_resource_name = child.get(
-                                    'target_resource_name', "")
-
-                                defaults = child.get('defaults', {})
-                                for default in defaults:
-                                    attributes[default] = self.string_repr(
-                                        defaults[default])
-
-                                for field, field_info in fields_config.items():
-                                    # Check if we have to apply function
-                                    multiline = False
-                                    func = field_info.get('function')
-                                    state_field = field_info.get(
-                                        'field', '').split('.')
-                                    if func:
-                                        value = None
-                                        arg = field_info.get('arg', '')
-                                        multiline = field_info.get(
-                                            'multiline', '')
-                                        if arg:
-                                            value = getattr(self, func)(
-                                                child_attributes, arg)
-                                        else:
-                                            value = getattr(self, func)(
-                                                child_attributes)
-                                    elif state_field:
-                                        value = self.get_value_from_tfstate(
-                                            child_attributes, state_field)
-
-                                    if value not in [None, "", [], {}]:
-                                        created = True
-
-                                        if multiline:
-                                            attributes[field] = "<<EOF\n" + \
-                                                value+"\nEOF\n"
-                                        else:
-                                            attributes[field] = self.string_repr(
-                                                value)
-
-                        if created:
-                            deployed_resources.append(
-                                {'resource_type': child_resource_type,
-                                 'resource_name': child_resource_name,
-                                 'target_resource_name': target_resource_name,
-                                 'id': child_attributes.get('id', ''),
-                                 })
-
-                if attributes:
-                    instances.append(
-                        {"type": resource_type, "name": resource_name, "attributes": attributes, "deployed_resources": deployed_resources})
+        # The rest of the function...
 
         for instance in instances:
             if instance["attributes"]:
@@ -819,10 +876,10 @@ class HCL:
         subprocess.run(["terraform", "fmt"], check=True)
         subprocess.run(["terraform", "validate"], check=True)
 
-        exit()
+        # exit()
         print("Running Terraform plan on generated files...")
         terraform = Terraform()
-        self.json_plan = terraform.tf_plan("./", True)
+        self.json_plan = terraform.tf_plan("./", False)
         create_backend_file(self.bucket, os.path.join(self.state_key, "terraform.tfstate"),
                             self.region, self.dynamodb_table)
         shutil.rmtree("./.terraform", ignore_errors=True)

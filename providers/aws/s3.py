@@ -57,14 +57,134 @@ class S3:
         self.aws_s3_bucket()
 
         self.hcl.refresh_state()
+
+        functions = {
+            'aws_s3_bucket_acl_owner': self.aws_s3_bucket_acl_owner,
+            'aws_s3_bucket_acl_grant': self.aws_s3_bucket_acl_grant,
+            'aws_s3_bucket_website_configuration_website': self.aws_s3_bucket_website_configuration_website,
+            'aws_s3_bucket_ownership_controls_object_ownership': self.aws_s3_bucket_ownership_controls_object_ownership,
+            'filter_empty_fields': self.filter_empty_fields,
+            'aws_s3_bucket_lifecycle_configuration_lifecycle_rule': self.aws_s3_bucket_lifecycle_configuration_lifecycle_rule,
+            'aws_s3_bucket_versioning_versioning': self.aws_s3_bucket_versioning_versioning,
+            'convert_dict_structure': self.convert_dict_structure,
+            'server_side_encryption_configuration': self.server_side_encryption_configuration
+        }
+
         self.hcl.module_hcl_code("terraform-aws-modules/s3-bucket/aws", "3.14.0", "terraform.tfstate",
-                                 os.path.join(os.path.dirname(os.path.abspath(__file__)), "aws_s3_bucket.yaml"))
+                                 os.path.join(os.path.dirname(os.path.abspath(__file__)), "aws_s3_bucket.yaml"), functions)
 
         # load_yaml_and_tfstate("terraform-aws-modules/s3-bucket/aws", "3.14.0", "terraform.tfstate",
         #                       os.path.join(os.path.dirname(os.path.abspath(__file__)), "aws_s3_bucket.yaml"))
-        exit()
-        self.hcl.generate_hcl_file()
+        # self.hcl.generate_hcl_file()
         self.json_plan = self.hcl.json_plan
+
+    def aws_s3_bucket_acl_owner(self, state):
+        result = {}
+
+        for item in state['access_control_policy']:
+            result = item.get('owner', [{}])[0]
+
+        return result
+
+    def aws_s3_bucket_acl_grant(self, state):
+        result = []
+
+        for item in state['access_control_policy']:
+            grant = item.get('grant', [{}])[0]
+            grantee = grant.get('grantee', [{}])[0]
+            permission = grant.get('permission', '')
+
+            grantee['permission'] = permission
+            result.append(grantee)
+
+        return result
+
+    def aws_s3_bucket_website_configuration_website(self, state):
+        result = {}
+
+        tmp = state.get('index_document', [{}])[0].get(
+            'suffix', '') if state.get('index_document', [{}]) else ''
+        if tmp:
+            result['index_document'] = tmp
+
+        tmp = state.get('error_document', [{}])[0].get(
+            'key', '') if state.get('error_document', [{}]) else ''
+        if tmp:
+            result['error_document'] = tmp
+
+        tmp = state.get('redirect_all_requests_to', [{}])[0].get(
+            'host_name', '') if state.get('redirect_all_requests_to', [{}]) else ''
+        if tmp:
+            result['redirect_all_requests_to'] = tmp
+
+        tmp = state.get('routing_rules', [{}])[0].get('routing_rules', [{}])[0].get(
+            'condition', [{}])[0].get('http_error_code_returned_equals', '') if state.get('routing_rules', [{}]) else ''
+        if tmp:
+            result['routing_rules'] = tmp
+
+        return result
+
+    def aws_s3_bucket_ownership_controls_object_ownership(self, state):
+        return state.get('rule', [{}])[0].get('object_ownership', '')
+
+    def filter_empty_fields(self, input_data):
+        if isinstance(input_data, dict):
+            return {k: self.filter_empty_fields(v) for k, v in input_data.items() if v and self.filter_empty_fields(v)}
+        elif isinstance(input_data, list):
+            return [self.filter_empty_fields(elem) for elem in input_data if elem and self.filter_empty_fields(elem)]
+        else:
+            return input_data
+
+    def aws_s3_bucket_lifecycle_configuration_lifecycle_rule(self, state):
+        rules = state["rule"]
+
+        result = []
+        for rule in rules:
+            transformed_rule = self.filter_empty_fields(rule)
+            result.append(transformed_rule)
+
+        return result
+
+    def aws_s3_bucket_versioning_versioning(self, state):
+        result = {}
+
+        tmp = state.get('mfa', '')
+        if tmp:
+            result['mfa'] = tmp
+
+        tmp = state.get('error_document', [{}])[0].get(
+            'key', '') if state.get('error_document', [{}]) else ''
+        if tmp:
+            result['error_document'] = tmp
+
+        tmp = state.get('versioning_configuration', [{}])[0].get(
+            'mfa_delete', '')
+        if tmp:
+            result['mfa_delete'] = tmp
+
+        tmp = state.get('versioning_configuration', [{}])[0].get(
+            'status', '')
+        if tmp:
+            result['status'] = tmp
+
+        return result
+
+    def convert_dict_structure(self, input_dict):
+        if isinstance(input_dict, dict):
+            for key, value in input_dict.items():
+                if isinstance(value, list) and len(value) > 0 and isinstance(value[0], dict):
+                    input_dict[key] = value[0]
+                    self.convert_dict_structure(input_dict[key])
+        return input_dict
+
+    def server_side_encryption_configuration(self, state):
+        result = {}
+
+        tmp = state.get('rule', '')
+        if tmp:
+            result['rule'] = tmp
+
+        return self.convert_dict_structure(result)
 
     def aws_s3_bucket(self):
         print("Processing S3 Buckets...")
@@ -90,7 +210,7 @@ class S3:
             if bucket_region == self.region:
                 buckets.append(bucket)
 
-        buckets = [{"Name": "vpc-flowlogs-050779347855-vpc-0bd9acb7990b4154d"}]
+        buckets = [{"Name": "allogy-gov-cloudformation-files"}]
 
         for bucket in buckets:
             bucket_name = bucket["Name"]

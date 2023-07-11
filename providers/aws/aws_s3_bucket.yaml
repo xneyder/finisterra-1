@@ -97,7 +97,7 @@ aws_s3_bucket:
         cors_rule:
           field: cors_rule
 
-    aws_s3_bucket_lifecycle_configuration: #Not tested
+    aws_s3_bucket_lifecycle_configuration:
       join:
         - bucket
       target_resource_name: this[0]
@@ -162,11 +162,11 @@ aws_s3_bucket:
       join:
         - bucket
       target_resource_name: this[0]
+      defaults:
+        control_object_ownership: true
       fields:
-        control_object_ownership:
-          field: control_object_ownership
         object_ownership:
-          field: object_ownership
+          function: aws_s3_bucket_ownership_controls_object_ownership
 
     aws_s3_bucket_intelligent_tiering_configuration: #no tested
       join:
