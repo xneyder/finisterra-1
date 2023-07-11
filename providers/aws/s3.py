@@ -130,7 +130,7 @@ class S3:
         self.aws_s3_bucket_lifecycle_configuration(buckets)
         self.aws_s3_bucket_logging(buckets)
         self.aws_s3_bucket_metric(buckets)
-        self.aws_s3_bucket_notification(buckets)
+        # self.aws_s3_bucket_notification(buckets) #will be called from other modules
         self.aws_s3_bucket_object_lock_configuration(buckets)
         self.aws_s3_bucket_ownership_controls(buckets)
         self.aws_s3_bucket_policy(buckets)
@@ -473,9 +473,12 @@ class S3:
         print("Processing S3 Bucket Public Access Blocks...")
         for bucket in buckets:
             bucket_name = bucket["Name"]
+            print("bucket_name", bucket_name)
             try:
                 public_access_block = self.s3_session.get_public_access_block(
                     Bucket=bucket_name)
+                print("public_access_block", public_access_block)
+                exit()
                 block_config = public_access_block.get(
                     "PublicAccessBlockConfiguration", {})
                 if block_config:
@@ -492,6 +495,8 @@ class S3:
                     self.hcl.process_resource(
                         "aws_s3_bucket_public_access_block", bucket_name.replace("-", "_"), attributes)
             except self.s3_session.exceptions.ClientError as e:
+                print(e)
+                exit()
                 if e.response["Error"]["Code"] != "NoSuchPublicAccessBlockConfiguration":
                     raise
 

@@ -575,6 +575,72 @@ class HCL:
 
         return result
 
+    def aws_s3_bucket_website_configuration_website(self, state):
+        result = {}
+
+        tmp = state.get('index_document', [{}])[0].get(
+            'suffix', '') if state.get('index_document', [{}]) else ''
+        if tmp:
+            result['index_document'] = tmp
+
+        tmp = state.get('error_document', [{}])[0].get(
+            'key', '') if state.get('error_document', [{}]) else ''
+        if tmp:
+            result['error_document'] = tmp
+
+        tmp = state.get('redirect_all_requests_to', [{}])[0].get(
+            'host_name', '') if state.get('redirect_all_requests_to', [{}]) else ''
+        if tmp:
+            result['redirect_all_requests_to'] = tmp
+
+        tmp = state.get('routing_rules', [{}])[0].get('routing_rules', [{}])[0].get(
+            'condition', [{}])[0].get('http_error_code_returned_equals', '') if state.get('routing_rules', [{}]) else ''
+        if tmp:
+            result['routing_rules'] = tmp
+
+        return result
+
+    def aws_s3_bucket_versioning_versioning(self, state):
+        result = {}
+
+        tmp = state.get('mfa', '')
+        if tmp:
+            result['mfa'] = tmp
+
+        tmp = state.get('error_document', [{}])[0].get(
+            'key', '') if state.get('error_document', [{}]) else ''
+        if tmp:
+            result['error_document'] = tmp
+
+        tmp = state.get('versioning_configuration', [{}])[0].get(
+            'mfa_delete', '')
+        if tmp:
+            result['mfa_delete'] = tmp
+
+        tmp = state.get('versioning_configuration', [{}])[0].get(
+            'status', '')
+        if tmp:
+            result['status'] = tmp
+
+        return result
+
+    def convert_dict_structure(self, input_dict):
+        if isinstance(input_dict, dict):
+            for key, value in input_dict.items():
+                if isinstance(value, list) and len(value) > 0 and isinstance(value[0], dict):
+                    input_dict[key] = value[0]
+                    self.convert_dict_structure(input_dict[key])
+        return input_dict
+
+    def server_side_encryption_configuration(self, state):
+        result = {}
+
+        tmp = state.get('rule', '')
+        if tmp:
+            result['rule'] = tmp
+
+        return self.convert_dict_structure(result)
+
     def policy(self, state, arg):
         # convert the string to a dict
         input_string = state.get(arg, '{}')
@@ -591,6 +657,14 @@ class HCL:
 
         return result
 
+    def is_field_set(self, state, arg):
+        # convert the string to a dict
+        input_string = state.get(arg, '')
+        if input_string != '':
+            return True
+        else:
+            return False
+
     def module_hcl_code(self, module, version, terraform_state_file, config_file):
         with open(config_file, 'r') as f:
             config = yaml.safe_load(f)
@@ -598,44 +672,70 @@ class HCL:
         with open(terraform_state_file, 'r') as f:
             tfstate = json.load(f)
 
+        # Remove the terraform.tfstate before starting the imports
+        if os.path.exists(terraform_state_file):
+            os.remove(terraform_state_file)
+
         resources = tfstate['resources']
 
         instances = []
 
         for resource in resources:
+            created = False
             attributes = {}
+            deployed_resources = []
             resource_type = resource['type']
+            resource_name = resource['name']
             if resource_type in config:
                 resource_config = config[resource_type]
                 resource_attributes = resource['instances'][0]['attributes']
-                resource_name = resource['name']
 
                 # Get fields from config
                 fields_config = resource_config.get('fields', {})
+                target_resource_name = resource_config.get(
+                    'target_resource_name', "")
+
                 for field, field_info in fields_config.items():
                     state_field = field_info.get('field', '').split('.')
                     if state_field:
                         value = self.get_value_from_tfstate(
                             resource_attributes, state_field)
                         if value not in [None, "", []]:
+                            created = True
                             attributes[field] = self.string_repr(value)
+                if created:
+                    deployed_resources.append(
+                        {'resource_type': resource_type,
+                         'resource_name': resource_name,
+                         'target_resource_name': target_resource_name,
+                         'id': resource_attributes.get('id', ''),
+                         })
 
                 # Get childs from config
                 for child_type, child in resource_config.get('childs', {}).items():
                     for child_instance in [res for res in resources if res['type'] == child_type]:
+                        created = False
+                        child_resource_type = child_instance['type']
+                        child_resource_name = child_instance['name']
                         child_attributes = child_instance['instances'][0]['attributes']
                         for join_field in child['join']:
                             if self.get_value_from_tfstate(resource_attributes, join_field.split(".")) == self.get_value_from_tfstate(child_attributes, join_field.split(".")):
                                 # Fields from child resources
                                 fields_config = child.get('fields', {})
+                                target_resource_name = child.get(
+                                    'target_resource_name', "")
+
                                 for field, field_info in fields_config.items():
                                     # Check if we have to apply function
+                                    multiline = False
                                     func = field_info.get('function')
                                     state_field = field_info.get(
                                         'field', '').split('.')
                                     if func:
                                         value = None
                                         arg = field_info.get('arg', '')
+                                        multiline = field_info.get(
+                                            'multiline', '')
                                         if arg:
                                             value = getattr(self, func)(
                                                 child_attributes, arg)
@@ -647,12 +747,26 @@ class HCL:
                                             child_attributes, state_field)
 
                                     if value not in [None, "", [], {}]:
-                                        attributes[field] = self.string_repr(
-                                            value)
+                                        created = True
+
+                                        if multiline:
+                                            attributes[field] = "<<EOF\n" + \
+                                                value+"\nEOF\n"
+                                        else:
+                                            attributes[field] = self.string_repr(
+                                                value)
+
+                        if created:
+                            deployed_resources.append(
+                                {'resource_type': child_resource_type,
+                                 'resource_name': child_resource_name,
+                                 'target_resource_name': target_resource_name,
+                                 'id': child_attributes.get('id', ''),
+                                 })
 
                 if attributes:
                     instances.append(
-                        {"type": resource_type, "name": resource_name, "attributes": attributes})
+                        {"type": resource_type, "name": resource_name, "attributes": attributes, "deployed_resources": deployed_resources})
 
         for instance in instances:
             if instance["attributes"]:
@@ -664,10 +778,17 @@ class HCL:
                         file.write(f'{index} = {value}\n')
                     file.write('}\n')
 
-        print("Formatting HCL files...")
+                subprocess.run(["terraform", "init"], check=True)
+                for deployed_resource in instance["deployed_resources"]:
+                    resource_import_string = f'module.{instance["name"]}.{deployed_resource["resource_type"]}.{deployed_resource["target_resource_name"]}'
+                    subprocess.run(
+                        ["terraform", "import", resource_import_string, deployed_resource["id"]])
 
+        print("Formatting HCL files...")
         subprocess.run(["terraform", "fmt"], check=True)
         subprocess.run(["terraform", "validate"], check=True)
+
+        exit()
         print("Running Terraform plan on generated files...")
         terraform = Terraform()
         self.json_plan = terraform.tf_plan("./", True)

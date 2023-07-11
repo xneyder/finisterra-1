@@ -1,6 +1,7 @@
 aws_s3_bucket:
   keys:
     - bucket
+  target_resource_name: this[0]
   fields:
     bucket:
       field: bucket
@@ -23,6 +24,7 @@ aws_s3_bucket:
     aws_s3_bucket_acl:
       join:
         - bucket
+      target_resource_name: this[0]
       fields:
         acl:
           field: acl
@@ -36,33 +38,37 @@ aws_s3_bucket:
     aws_s3_bucket_website_configuration:
       join:
         - bucket
+      target_resource_name: this[0]
       fields:
         website:
-          field: website
+          function: aws_s3_bucket_website_configuration_website
         expected_bucket_owner:
           field: expected_bucket_owner
 
     aws_s3_bucket_versioning:
       join:
         - bucket
+      target_resource_name: this[0]
       fields:
         versioning:
-          field: versioning
+          function: aws_s3_bucket_versioning_versioning
         expected_bucket_owner:
           field: expected_bucket_owner
 
     aws_s3_bucket_server_side_encryption_configuration:
       join:
         - bucket
+      target_resource_name: this[0]
       fields:
         server_side_encryption_configuration:
-          field: server_side_encryption_configuration
+          function: server_side_encryption_configuration
         expected_bucket_owner:
           field: expected_bucket_owner
 
     aws_s3_bucket_accelerate_configuration:
       join:
         - bucket
+      target_resource_name: this[0]
       fields:
         acceleration_status:
           field: acceleration_status
@@ -72,33 +78,37 @@ aws_s3_bucket:
     aws_s3_bucket_request_payment_configuration:
       join:
         - bucket
+      target_resource_name: this[0]
       fields:
         request_payer:
-          field: request_payer
+          field: payer
         expected_bucket_owner:
           field: expected_bucket_owner
 
-    aws_s3_bucket_cors_configuration:
+    aws_s3_bucket_cors_configuration: #Not tested
       join:
         - bucket
+      target_resource_name: this[0]
       fields:
         expected_bucket_owner:
           field: expected_bucket_owner
         cors_rule:
           field: cors_rule
 
-    aws_s3_bucket_lifecycle_configuration:
+    aws_s3_bucket_lifecycle_configuration: #Not tested
       join:
         - bucket
+      target_resource_name: this[0]
       fields:
         expected_bucket_owner:
           field: expected_bucket_owner
         lifecycle_rule:
           field: lifecycle_rule
 
-    aws_s3_bucket_object_lock_configuration:
+    aws_s3_bucket_object_lock_configuration: #Not tested
       join:
         - bucket
+      target_resource_name: this[0]
       fields:
         object_lock_configuration:
           field: object_lock_configuration
@@ -107,9 +117,10 @@ aws_s3_bucket:
         expected_bucket_owner:
           field: expected_bucket_owner
 
-    aws_s3_bucket_replication_configuration:
+    aws_s3_bucket_replication_configuration: #Not tested
       join:
         - bucket
+      target_resource_name: this[0]
       fields:
         replication_configuration:
           field: replication_configuration
@@ -117,14 +128,20 @@ aws_s3_bucket:
     aws_s3_bucket_policy:
       join:
         - bucket
+      target_resource_name: this[0]
       fields:
         policy:
           function: policy
           arg: policy
+          multiline: true
+        attach_policy:
+          function: is_field_set
+          arg: policy
 
-    aws_s3_bucket_public_access_block:
+    aws_s3_bucket_public_access_block: #no tested
       join:
         - bucket
+      target_resource_name: this[0]
       fields:
         attach_public_policy:
           field: attach_public_policy
@@ -137,39 +154,44 @@ aws_s3_bucket:
         restrict_public_buckets:
           field: restrict_public_buckets
 
-    aws_s3_bucket_ownership_controls:
+    aws_s3_bucket_ownership_controls: #no tested
       join:
         - bucket
+      target_resource_name: this[0]
       fields:
         control_object_ownership:
           field: control_object_ownership
         object_ownership:
           field: object_ownership
 
-    aws_s3_bucket_intelligent_tiering_configuration:
+    aws_s3_bucket_intelligent_tiering_configuration: #no tested
       join:
         - bucket
+      target_resource_name: this[0]
       fields:
         intelligent_tiering:
           field: intelligent_tiering
 
-    aws_s3_bucket_metric:
+    aws_s3_bucket_metric: #no tested
       join:
         - bucket
+      target_resource_name: this[0]
       fields:
         metric_configuration:
           field: metric_configuration
 
-    aws_s3_bucket_inventory:
+    aws_s3_bucket_inventory: #no tested
       join:
         - bucket
+      target_resource_name: this[0]
       fields:
         inventory_configuration:
           field: inventory_configuration
 
-    aws_s3_bucket_analytics_configuration:
+    aws_s3_bucket_analytics_configuration: #no tested
       join:
         - bucket
+      target_resource_name: this[0]
       fields:
         analytics_configuration:
           field: analytics_configuration
