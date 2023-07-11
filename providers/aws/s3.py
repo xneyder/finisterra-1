@@ -90,7 +90,7 @@ class S3:
             if bucket_region == self.region:
                 buckets.append(bucket)
 
-        buckets = [buckets[0]]
+        buckets = [{"Name": "vpc-flowlogs-050779347855-vpc-0bd9acb7990b4154d"}]
 
         for bucket in buckets:
             bucket_name = bucket["Name"]
@@ -473,12 +473,9 @@ class S3:
         print("Processing S3 Bucket Public Access Blocks...")
         for bucket in buckets:
             bucket_name = bucket["Name"]
-            print("bucket_name", bucket_name)
             try:
                 public_access_block = self.s3_session.get_public_access_block(
                     Bucket=bucket_name)
-                print("public_access_block", public_access_block)
-                exit()
                 block_config = public_access_block.get(
                     "PublicAccessBlockConfiguration", {})
                 if block_config:
@@ -495,8 +492,6 @@ class S3:
                     self.hcl.process_resource(
                         "aws_s3_bucket_public_access_block", bucket_name.replace("-", "_"), attributes)
             except self.s3_session.exceptions.ClientError as e:
-                print(e)
-                exit()
                 if e.response["Error"]["Code"] != "NoSuchPublicAccessBlockConfiguration":
                     raise
 

@@ -600,6 +600,24 @@ class HCL:
 
         return result
 
+    def filter_empty_fields(self, input_data):
+        if isinstance(input_data, dict):
+            return {k: self.filter_empty_fields(v) for k, v in input_data.items() if v and self.filter_empty_fields(v)}
+        elif isinstance(input_data, list):
+            return [self.filter_empty_fields(elem) for elem in input_data if elem and self.filter_empty_fields(elem)]
+        else:
+            return input_data
+
+    def aws_s3_bucket_lifecycle_configuration_lifecycle_rule(self, state):
+        rules = state["rule"]
+
+        result = []
+        for rule in rules:
+            transformed_rule = self.filter_empty_fields(rule)
+            result.append(transformed_rule)
+
+        return result
+
     def aws_s3_bucket_versioning_versioning(self, state):
         result = {}
 
@@ -672,9 +690,9 @@ class HCL:
         with open(terraform_state_file, 'r') as f:
             tfstate = json.load(f)
 
-        # Remove the terraform.tfstate before starting the imports
-        if os.path.exists(terraform_state_file):
-            os.remove(terraform_state_file)
+        # # Remove the terraform.tfstate before starting the imports
+        # if os.path.exists(terraform_state_file):
+        #     os.remove(terraform_state_file)
 
         resources = tfstate['resources']
 
@@ -694,6 +712,10 @@ class HCL:
                 fields_config = resource_config.get('fields', {})
                 target_resource_name = resource_config.get(
                     'target_resource_name', "")
+
+                defaults = resource_config.get('defaults', {})
+                for default in defaults:
+                    attributes[default] = self.string_repr(defaults[default])
 
                 for field, field_info in fields_config.items():
                     state_field = field_info.get('field', '').split('.')
@@ -724,6 +746,11 @@ class HCL:
                                 fields_config = child.get('fields', {})
                                 target_resource_name = child.get(
                                     'target_resource_name', "")
+
+                                defaults = child.get('defaults', {})
+                                for default in defaults:
+                                    attributes[default] = self.string_repr(
+                                        defaults[default])
 
                                 for field, field_info in fields_config.items():
                                     # Check if we have to apply function
@@ -778,11 +805,15 @@ class HCL:
                         file.write(f'{index} = {value}\n')
                     file.write('}\n')
 
-                subprocess.run(["terraform", "init"], check=True)
-                for deployed_resource in instance["deployed_resources"]:
-                    resource_import_string = f'module.{instance["name"]}.{deployed_resource["resource_type"]}.{deployed_resource["target_resource_name"]}'
-                    subprocess.run(
-                        ["terraform", "import", resource_import_string, deployed_resource["id"]])
+        subprocess.run(["terraform", "init"], check=True)
+        for instance in instances:
+            for deployed_resource in instance["deployed_resources"]:
+                resource_import_source = f'{deployed_resource["resource_type"]}.{deployed_resource["resource_name"]}'
+                resource_import_target = f'module.{instance["name"]}.{deployed_resource["resource_type"]}.{deployed_resource["target_resource_name"]}'
+                # subprocess.run(
+                #     ["terraform", "import", resource_import_target, deployed_resource["id"]])
+                subprocess.run(
+                    ["terraform", "state", "mv", "-backup=/dev/null", resource_import_source, resource_import_target])
 
         print("Formatting HCL files...")
         subprocess.run(["terraform", "fmt"], check=True)
