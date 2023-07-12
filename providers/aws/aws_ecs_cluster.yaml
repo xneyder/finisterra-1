@@ -1,57 +1,66 @@
 aws_ecs_cluster:
   keys:
     - name
-  target_resource_name: this[0]
+  target_resource_name: this
+  target_submodule: module.cluster.
   defaults:
     create_cloudwatch_log_group: false
   fields:
     cluster_name:
       field: name
+      type: string
     cluster_configuration:
       function: to_map
       arg: configuration
+      type: map
     cluster_service_connect_defaults:
       function: to_map
       arg: service_connect_defaults
+      type: map
     cluster_settings:
       function: to_map
       arg: setting
+      type: map
     tags:
       field: tags
+      type: map
   childs:
     aws_cloudwatch_log_group: #Not tested
       join:
         name:
           function: cloudwatch_log_group_name
-      target_resource_name: this[0]
+      target_resource_name: this
       target_submodule: module.cluster.
       defaults:
         create_cloudwatch_log_group: true
       fields:
         cloudwatch_log_group_retention_in_days:
           field: retention_in_days
+          type: number
         cloudwatch_log_group_kms_key_id:
           field: kms_key_id
+          type: string
         cloudwatch_log_group_tags:
           field: tags
+          type: map
 
     # aws_ecs_cluster_capacity_providers: #Not tested
     #   join:
     #     - cluster_name
-    #   target_resource_name: this[0]
+    #   target_resource_name: this
     #   fields:
 
     # aws_ecs_capacity_provider: #Not tested
     #   join:
     #     - cluster_name
-    #   target_resource_name: this[0]
+    #   target_resource_name: this
     #   fields:
 
     aws_ecs_service:
       join:
         arn:
           function: aws_ecs_service_cluster_arn
-      target_resource_name: this[0]
+      target_resource_name: this
       target_submodule: module.service.
       root_attribute: services
       root_attribute_key: name
@@ -60,77 +69,110 @@ aws_ecs_cluster:
       fields:
         name:
           field: name
+          type: string
         alarms:
           field: alarms
+          type: map
         capacity_provider_strategy:
           field: capacity_provider_strategy
+          type: map
         cluster_arn:
           field: cluster
+          type: string
         deployment_circuit_breaker:
           field: deployment_circuit_breaker
+          type: map
         deployment_controller:
           field: deployment_controller
+          type: map
         deployment_maximum_percent:
           field: deployment_maximum_percent
+          type: number
         deployment_minimum_healthy_percent:
           field: deployment_minimum_healthy_percent
+          type: number
         desired_count:
           field: desired_count
+          type: number
         enable_ecs_managed_tags:
           field: enable_ecs_managed_tags
+          type: boolean
         enable_execute_command:
           field: enable_execute_command
+          type: boolean
         force_new_deployment:
           field: force_new_deployment
+          type: boolean
         health_check_grace_period_seconds:
           field: health_check_grace_period_seconds
+          type: number
         launch_type:
           field: launch_type
+          type: string
         load_balancer:
           field: load_balancer
-        network_mode:
-          field: network_mode
+          type: map
         ordered_placement_strategy:
           field: ordered_placement_strategy
+          type: map
         placement_constraints:
           field: placement_constraints
+          type: map
         platform_version:
           field: platform_version
+          type: string
         scheduling_strategy:
           field: scheduling_strategy
+          type: string
         service_connect_configuration:
           field: service_connect_configuration
+          type: map
         service_registries:
           field: service_registries
+          type: map
         triggers:
           field: triggers
+          type: map
         wait_for_steady_state:
           field: wait_for_steady_state
+          type: boolean
         propagate_tags:
           field: propagate_tags
+          type: string
         tags:
           field: tags
+          type: map
         timeouts:
           field: timeouts
+          type: map
         assign_public_ip:
           function: get_network_field
           arg: assign_public_ip
+          type: boolean
         security_group_ids:
           function: get_network_field
           arg: security_group_ids
+          type: list
         subnet_ids:
           function: get_network_field
           arg: subnet_ids
+          type: list
 
-      childs:
-        aws_ecs_task_definition:
-          join:
-            task_definition:
-              function: task_definition_id
-          target_resource_name: this[0]
-          target_submodule: module.service.
-          # defaults:
-          #   ignore_task_definition_changes: false
-          fields:
-            task_definition_arn:
-              field: arn
+    # childs:
+    #   aws_ecs_task_definition:
+    #     join:
+    #       task_definition:
+    #         function: task_definition_id
+    #     root_attribute: services
+    #     root_attribute_key: name
+    #     target_resource_name: this
+    #     target_submodule: module.service.
+    #     # defaults:
+    #     #   ignore_task_definition_changes: false
+    #     fields:
+    #       task_definition_arn:
+    #         field: arn
+    #         type: string
+    #       network_mode:
+    #         field: network_mode
+    #         type: string

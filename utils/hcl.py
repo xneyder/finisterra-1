@@ -10,6 +10,7 @@ import re
 from db.terraform_module_instance import get_module_data
 from collections import OrderedDict
 import concurrent.futures
+import ast
 
 
 class HCL:
@@ -731,7 +732,6 @@ class HCL:
         return None
 
     def match_fields(self, parent_attributes, child_attributes, join_field, functions):
-        print("match_fields", join_field)
         if isinstance(join_field, tuple):  # new case when join_field is tuple
             parent_field, value_dict = join_field
             # get function name from the value_dict
@@ -747,8 +747,10 @@ class HCL:
         return False
 
     def process_resource_module(self, resource, resources, config, functions={}):
-        def process_resource(resource, resources, config):
+        root_attributes = []
 
+        def process_resource(resource, resources, config):
+            nonlocal root_attributes
             created = False
             attributes = {}
             deployed_resources = []
@@ -762,7 +764,6 @@ class HCL:
                 return attributes, deployed_resources
 
             resource_attributes = resource['instances'][0]['attributes']
-
             fields_config = resource_config.get('fields', {})
             target_resource_name = resource_config.get(
                 'target_resource_name', "")
@@ -774,8 +775,14 @@ class HCL:
 
             if root_attribute != "" and root_attribute not in resource_attributes:
                 root_attribute_key_value = self.get_value_from_tfstate(
-                    resource_attributes, root_attribute_key)
-                attributes[root_attribute] = {root_attribute_key_value: {}}
+                    resource_attributes, [root_attribute_key])
+                if root_attribute not in attributes:
+                    attributes[root_attribute] = {}
+                if root_attribute_key_value not in attributes[root_attribute]:
+                    attributes[root_attribute][root_attribute_key_value] = {}
+
+                # add this root_attribute to the list
+                root_attributes.append(root_attribute)
 
             defaults = resource_config.get('defaults', {})
             for default in defaults:
@@ -827,15 +834,13 @@ class HCL:
                     'target_resource_name': target_resource_name,
                     'target_submodule': target_submodule,
                     'id': resource_attributes.get('id', ''),
+                    'index': root_attribute_key_value if root_attribute_key_value else 0,
                 })
 
             for child_type, child_config in resource_config.get('childs', {}).items():
                 for child_instance in [res for res in resources if res['type'] == child_type]:
-                    print("child_type", child_type)
-                    print("child_config", child_config)
                     join_fields = [
                         item for item in child_config.get('join', {}).items()]
-                    print("join_fields", join_fields)
                     match = all(self.match_fields(
                         resource_attributes, child_instance['instances'][0]['attributes'], join_field, functions) for join_field in join_fields)
                     if match:
@@ -843,14 +848,90 @@ class HCL:
                             child_instance, resources, {child_type: child_config})
 
                         if child_attributes:
+                            if 'root_attribute' in child_config:
+                                root_attribute = child_config['root_attribute']
+                                if root_attribute in attributes and root_attribute in child_attributes:
+                                    # if the root_attribute is present in both dictionaries, merge them
+                                    if isinstance(attributes[root_attribute], dict) and isinstance(child_attributes[root_attribute], dict):
+                                        attributes[root_attribute].update(
+                                            child_attributes[root_attribute])
+                                    elif isinstance(attributes[root_attribute], list):
+                                        attributes[root_attribute].append(
+                                            child_attributes[root_attribute])
+                                    else:
+                                        attributes[root_attribute] = [
+                                            attributes[root_attribute], child_attributes[root_attribute]]
+                                    # remove the merged attribute from child_attributes
+                                    child_attributes.pop(root_attribute)
+
+                            # update the rest of the attributes normally
                             attributes.update(child_attributes)
+
                         if child_resources:
                             deployed_resources.extend(child_resources)
 
             return attributes, deployed_resources
 
+        def dict_to_hcl(input_dict, is_top_level=True):
+            hcl_str = "{\n" if is_top_level else ""
+
+            for key, value in input_dict.items():
+                # Check if value is a string representation of a list or dict
+                if isinstance(value, str) and (value.startswith('{') or value.startswith('[')):
+                    try:
+                        # use json.loads to handle `true` and `false`
+                        value = json.loads(value)
+                    except json.JSONDecodeError:
+                        pass  # not a string representation of a list or dict
+
+                if isinstance(value, dict):
+                    hcl_str += f"{key} = " + "{\n"  # Added equal sign
+                    hcl_str += dict_to_hcl(value, is_top_level=False)
+                    hcl_str += "}\n"
+                elif isinstance(value, list):
+                    if len(value) == 1 and isinstance(value[0], dict):
+                        # list contains one dictionary, handle it separately
+                        hcl_str += f"{key} = " + "{\n"  # Added equal sign
+                        hcl_str += dict_to_hcl(value[0], is_top_level=False)
+                        hcl_str += "}\n"
+                    elif all(isinstance(item, dict) for item in value):
+                        # list of dictionaries
+                        hcl_str += f"{key} = [\n"  # open list of blocks
+                        for i, item in enumerate(value):
+                            hcl_str += "{\n"  # open a block
+                            hcl_str += dict_to_hcl(item, is_top_level=False)
+                            hcl_str += "}"
+                            if i < len(value) - 1:  # If this is not the last item, add comma
+                                hcl_str += ","
+                            hcl_str += "\n"  # close a block
+                        hcl_str += "]\n"  # close list of blocks
+                    else:
+                        # list of primitive types
+                        hcl_str += f"{key} = " + "["
+                        hcl_str += ",".join([f"{item}" for item in value])
+                        hcl_str += "]\n"
+                else:
+                    # primitive type
+                    # Add quotes only if they are not present
+                    if isinstance(value, str):
+                        hcl_str += f"{key} = " + (value if value.startswith(
+                            "\"") and value.endswith("\"") else "\"" + value + "\"") + "\n"
+                    else:
+                        hcl_str += f"{key} = {value}\n"
+
+            hcl_str += "}\n" if is_top_level else ""
+
+            return hcl_str
+
         attributes, deployed_resources = process_resource(
             resource, resources, config)
+
+        # JSON dump the root attributes
+        # remove duplicates by converting to a set
+        for root_attribute in set(root_attributes):
+            if root_attribute in attributes:
+                attributes[root_attribute] = dict_to_hcl(
+                    attributes[root_attribute])
 
         if attributes or deployed_resources:
             return {
@@ -896,7 +977,7 @@ class HCL:
         for instance in instances:
             for deployed_resource in instance["deployed_resources"]:
                 resource_import_source = f'{deployed_resource["resource_type"]}.{deployed_resource["resource_name"]}'
-                resource_import_target = f'module.{instance["name"]}.{deployed_resource["target_submodule"]}{deployed_resource["resource_type"]}.{deployed_resource["target_resource_name"]}'
+                resource_import_target = f'module.{instance["name"]}.{deployed_resource["target_submodule"]}{deployed_resource["resource_type"]}.{deployed_resource["target_resource_name"]}[{deployed_resource["index"]}]'
                 # subprocess.run(
                 #     ["terraform", "import", resource_import_target, deployed_resource["id"]])
                 subprocess.run(

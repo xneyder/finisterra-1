@@ -62,7 +62,7 @@ class ECS:
         self.hcl.prepare_folder(os.path.join("generated", "ecs"))
 
         self.aws_ecs_cluster()
-        self.aws_ecs_task_definition()
+        # self.aws_ecs_task_definition()
 
         # self.aws_ecs_account_setting_default()
         # self.aws_ecs_capacity_provider()
