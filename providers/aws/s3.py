@@ -1,5 +1,6 @@
 import os
 from utils.hcl import HCL
+import json
 # from utils.module_hcl import load_yaml_and_tfstate
 
 
@@ -67,7 +68,8 @@ class S3:
             'aws_s3_bucket_lifecycle_configuration_lifecycle_rule': self.aws_s3_bucket_lifecycle_configuration_lifecycle_rule,
             'aws_s3_bucket_versioning_versioning': self.aws_s3_bucket_versioning_versioning,
             'convert_dict_structure': self.convert_dict_structure,
-            'server_side_encryption_configuration': self.server_side_encryption_configuration
+            'server_side_encryption_configuration': self.server_side_encryption_configuration,
+            'aws_s3_bucket_policy_policy': self.aws_s3_bucket_policy_policy,
         }
 
         self.hcl.module_hcl_code("terraform-aws-modules/s3-bucket/aws", "3.14.0", "terraform.tfstate",
@@ -186,6 +188,22 @@ class S3:
 
         return self.convert_dict_structure(result)
 
+    def aws_s3_bucket_policy_policy(self, state, arg):
+        # convert the string to a dict
+        input_string = state.get(arg, '{}')
+        json_dict = json.loads(input_string)
+
+        # convert the dict back to a string, pretty printed
+        pretty_json = json.dumps(json_dict, indent=4)
+
+        if pretty_json == '{}':
+            return None
+
+        # create the final string with the 'EOF' tags
+        result = pretty_json
+
+        return result
+
     def aws_s3_bucket(self):
         print("Processing S3 Buckets...")
 
@@ -210,7 +228,8 @@ class S3:
             if bucket_region == self.region:
                 buckets.append(bucket)
 
-        buckets = [{"Name": "allogy-gov-cloudformation-files"}]
+        # buckets = [{"Name": "allogy_gov_bundles"}]
+        buckets = [buckets[0], buckets[1]]
 
         for bucket in buckets:
             bucket_name = bucket["Name"]
@@ -728,6 +747,7 @@ class S3:
 
             except self.s3_session.exceptions.ClientError as e:
                 if e.response["Error"]["Code"] == "NoSuchWebsiteConfiguration":
+                    pass
                     print(
                         f"  No website configuration found for bucket: {bucket_name}")
                 else:

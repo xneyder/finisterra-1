@@ -135,7 +135,7 @@ aws_s3_bucket:
         attach_policy: true
       fields:
         policy:
-          function: policy
+          function: aws_s3_bucket_policy_policy
           arg: policy
           multiline: true
         # attach_policy:

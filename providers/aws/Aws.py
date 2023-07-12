@@ -447,7 +447,10 @@ class Aws:
     def ecs(self):
         ecs_client = self.session.client(
             "ecs", region_name=self.aws_region)
-        instance = ECS(ecs_client, self.script_dir, self.provider_name,
+        logs_client = self.session.client(
+            "logs", region_name=self.aws_region)
+
+        instance = ECS(ecs_client, logs_client, self.script_dir, self.provider_name,
                        self.schema_data, self.aws_region, self.s3Bucket,
                        self.dynamoDBTable, self.state_key, self.workspace_id, self.modules)
         instance.ecs()

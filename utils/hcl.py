@@ -555,22 +555,6 @@ class HCL:
                 escaped_value = re.sub(r'\$\{(\w+)\}', r'\1', value)
                 return f'"{escaped_value}"'
 
-    # def policy(self, state, arg):
-    #     # convert the string to a dict
-    #     input_string = state.get(arg, '{}')
-    #     json_dict = json.loads(input_string)
-
-    #     # convert the dict back to a string, pretty printed
-    #     pretty_json = json.dumps(json_dict, indent=4)
-
-    #     if pretty_json == '{}':
-    #         return None
-
-    #     # create the final string with the 'EOF' tags
-    #     result = pretty_json
-
-    #     return result
-
     # def is_field_set(self, state, arg):
     #     # convert the string to a dict
     #     input_string = state.get(arg, '')
@@ -746,8 +730,22 @@ class HCL:
 
         return None
 
+    def match_fields(self, parent_attributes, child_attributes, join_field, functions):
+        if isinstance(join_field, dict):  # new case when function is specified
+            for _, func_name in join_field.items():
+                func = functions.get(func_name)
+                if func is not None:
+                    if func(parent_attributes) == func(child_attributes):
+                        return True
+        else:
+            return self.get_value_from_tfstate(parent_attributes, join_field.split(".")) == self.get_value_from_tfstate(
+                child_attributes, join_field.split("."))
+
+        return False
+
     def process_resource_module(self, resource, resources, config, functions={}):
-        def process_resource(resource, config):
+        def process_resource(resource, resources, config):
+
             created = False
             attributes = {}
             deployed_resources = []
@@ -769,12 +767,14 @@ class HCL:
             fields_config = resource_config.get('fields', {})
             target_resource_name = resource_config.get(
                 'target_resource_name', "")
+            target_submodule = resource_config.get('target_submodule', "")
 
             defaults = resource_config.get('defaults', {})
             for default in defaults:
                 attributes[default] = self.string_repr(defaults[default])
 
             for field, field_info in fields_config.items():
+                value = None
                 # Check if we have to apply function
                 multiline = False
                 func_name = field_info.get('function')
@@ -805,22 +805,29 @@ class HCL:
                     'resource_type': resource_type,
                     'resource_name': resource_name,
                     'target_resource_name': target_resource_name,
+                    'target_submodule': target_submodule,
                     'id': resource_attributes.get('id', ''),
                 })
 
             # Get childs from config
             for child_type, child_config in resource_config.get('childs', {}).items():
                 for child_instance in [res for res in resources if res['type'] == child_type]:
-                    child_attributes, child_resources = process_resource(
-                        child_instance, {child_type: child_config})
-                    if child_attributes:
-                        attributes.update(child_attributes)
-                    if child_resources:
-                        deployed_resources.extend(child_resources)
+                    join_fields = child_config.get('join', [])
+                    match = all(self.match_fields(
+                        resource_attributes, child_instance['instances'][0]['attributes'], join_field, functions) for join_field in join_fields)
+                    if match:
+                        child_attributes, child_resources = process_resource(
+                            child_instance, resources, {child_type: child_config})
+
+                        if child_attributes:
+                            attributes.update(child_attributes)
+                        if child_resources:
+                            deployed_resources.extend(child_resources)
 
             return attributes, deployed_resources
 
-        attributes, deployed_resources = process_resource(resource, config)
+        attributes, deployed_resources = process_resource(
+            resource, resources, config)
 
         if attributes or deployed_resources:
             return {
@@ -866,7 +873,7 @@ class HCL:
         for instance in instances:
             for deployed_resource in instance["deployed_resources"]:
                 resource_import_source = f'{deployed_resource["resource_type"]}.{deployed_resource["resource_name"]}'
-                resource_import_target = f'module.{instance["name"]}.{deployed_resource["resource_type"]}.{deployed_resource["target_resource_name"]}'
+                resource_import_target = f'module.{instance["name"]}.{deployed_resource["target_submodule"]}{deployed_resource["resource_type"]}.{deployed_resource["target_resource_name"]}'
                 # subprocess.run(
                 #     ["terraform", "import", resource_import_target, deployed_resource["id"]])
                 subprocess.run(

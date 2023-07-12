@@ -1,0 +1,48 @@
+aws_ecs_cluster:
+  keys:
+    - name
+  target_resource_name: this[0]
+  defaults:
+    create_cloudwatch_log_group: false
+  fields:
+    cluster_name:
+      field: name
+    cluster_configuration:
+      function: to_map
+      arg: configuration
+    cluster_service_connect_defaults:
+      function: to_map
+      arg: service_connect_defaults
+    cluster_settings:
+      function: to_map
+      arg: setting
+    tags:
+      field: tags
+  childs:
+    aws_cloudwatch_log_group: #Not tested
+      join:
+        name:
+          function: cloudwatch_log_group_name
+      target_resource_name: this[0]
+      target_submodule: module.cluster.
+      defaults:
+        create_cloudwatch_log_group: true
+      fields:
+        cloudwatch_log_group_retention_in_days:
+          field: retention_in_days
+        cloudwatch_log_group_kms_key_id:
+          field: kms_key_id
+        cloudwatch_log_group_tags:
+          field: tags
+
+    # aws_ecs_cluster_capacity_providers: #Not tested
+    #   join:
+    #     - cluster_name
+    #   target_resource_name: this[0]
+    #   fields:
+
+    # aws_ecs_capacity_provider: #Not tested
+    #   join:
+    #     - cluster_name
+    #   target_resource_name: this[0]
+    #   fields:
