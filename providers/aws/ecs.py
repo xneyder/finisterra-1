@@ -39,10 +39,30 @@ class ECS:
                 return attributes[arg][0]
         return None
 
+    def aws_ecs_service_cluster_arn(self, attributes):
+        # The name is expected to be in the format /aws/ecs/{cluster_name}
+        return attributes.get('cluster')
+
+    def get_network_field(self, attributes, field):
+        if 'network_configuration' in attributes:
+            network_configuration = attributes['network_configuration'][0]
+            if field in network_configuration:
+                return network_configuration[field]
+        return None
+
+    def task_definition_id(self, attributes):
+        # The name is expected to be in the format /aws/ecs/{cluster_name}
+        arn = attributes.get('arn')
+        if arn is not None:
+            # split the string by '/' and take the last part as the cluster_arn
+            return arn.split('/')[-1]
+        return None
+
     def ecs(self):
         self.hcl.prepare_folder(os.path.join("generated", "ecs"))
 
         self.aws_ecs_cluster()
+        self.aws_ecs_task_definition()
 
         # self.aws_ecs_account_setting_default()
         # self.aws_ecs_capacity_provider()
@@ -58,6 +78,7 @@ class ECS:
         functions = {
             'cloudwatch_log_group_name': self.cloudwatch_log_group_name,
             'to_map': self.to_map,
+            'aws_ecs_service_cluster_arn': self.aws_ecs_service_cluster_arn,
         }
 
         self.hcl.module_hcl_code("terraform-aws-modules/ecs/aws", "5.2.0", "terraform.tfstate",
@@ -90,6 +111,7 @@ class ECS:
             self.aws_cloudwatch_log_group(cluster_name)
             self.aws_ecs_cluster_capacity_providers(cluster_name)
             self.aws_ecs_capacity_provider(cluster_name)
+            self.aws_ecs_service(cluster_name)
 
     def aws_cloudwatch_log_group(self, cluster_name):
         print("Processing CloudWatch Log Group for ECS Cluster...")
@@ -184,6 +206,67 @@ class ECS:
             else:
                 print(f"Skipping cluster: {cluster['clusterName']}")
 
+    def aws_ecs_service(self, cluster_name):
+        print(f"Processing ECS Services for cluster: {cluster_name}...")
+
+        clusters_arns = self.ecs_client.list_clusters()["clusterArns"]
+        clusters = self.ecs_client.describe_clusters(
+            clusters=clusters_arns)["clusters"]
+
+        for cluster in clusters:
+            if cluster['clusterName'] == cluster_name:
+                cluster_arn = cluster['clusterArn']
+
+                paginator = self.ecs_client.get_paginator('list_services')
+                for page in paginator.paginate(cluster=cluster_arn):
+                    services_arns = page["serviceArns"]
+                    services = self.ecs_client.describe_services(
+                        cluster=cluster_arn, services=services_arns)["services"]
+
+                    for service in services:
+                        service_name = service["serviceName"]
+                        service_arn = service["serviceArn"]
+                        id = cluster_arn.split("/")[1] + "/" + service_name
+
+                        print(f"  Processing ECS Service: {service_name}")
+
+                        attributes = {
+                            "id": id,
+                            "arn": service_arn,
+                            "name": service_name,
+                            "cluster": cluster_arn,
+                        }
+                        self.hcl.process_resource(
+                            "aws_ecs_service", service_name.replace("-", "_"), attributes)
+            else:
+                print(f"Skipping cluster: {cluster['clusterName']}")
+
+    def aws_ecs_task_definition(self):
+        print("Processing ECS Task Definitions...")
+
+        paginator = self.ecs_client.get_paginator(
+            "list_task_definition_families")
+        for page in paginator.paginate():
+            task_definition_families = page["families"]
+            for family in task_definition_families:
+                latest_task_definition_arn = self.ecs_client.list_task_definitions(
+                    familyPrefix=family, sort="DESC", maxResults=1
+                )["taskDefinitionArns"][0]
+
+                task_definition = self.ecs_client.describe_task_definition(
+                    taskDefinition=latest_task_definition_arn)["taskDefinition"]
+
+                print(
+                    f"  Processing ECS Task Definition: {latest_task_definition_arn}")
+
+                attributes = {
+                    "id": latest_task_definition_arn,
+                    "arn": latest_task_definition_arn,
+                    "family": family,
+                }
+                self.hcl.process_resource(
+                    "aws_ecs_task_definition", family.replace("-", "_"), attributes)
+
     def aws_ecs_account_setting_default(self):
         print("Processing ECS Account Setting Defaults...")
 
@@ -200,32 +283,6 @@ class ECS:
             }
             self.hcl.process_resource(
                 "aws_ecs_account_setting_default", name.replace("-", "_"), attributes)
-
-    def aws_ecs_service(self):
-        print("Processing ECS Services...")
-
-        clusters_arns = self.ecs_client.list_clusters()["clusterArns"]
-        for cluster_arn in clusters_arns:
-            services_arns = self.ecs_client.list_services(
-                cluster=cluster_arn)["serviceArns"]
-            services = self.ecs_client.describe_services(
-                cluster=cluster_arn, services=services_arns)["services"]
-
-            for service in services:
-                service_name = service["serviceName"]
-                service_arn = service["serviceArn"]
-                id = cluster_arn.split("/")[1] + "/" + service_name
-
-                print(f"  Processing ECS Service: {service_name}")
-
-                attributes = {
-                    "id": id,
-                    "arn": service_arn,
-                    "name": service_name,
-                    "cluster": cluster_arn,
-                }
-                self.hcl.process_resource(
-                    "aws_ecs_service", service_name.replace("-", "_"), attributes)
 
     def aws_ecs_tag(self):
         print("Processing ECS Tags...")
@@ -283,32 +340,6 @@ class ECS:
             }
             self.hcl.process_resource(
                 resource_type, hcl_resource_name.replace("-", "_"), attributes)
-
-    def aws_ecs_task_definition(self):
-        print("Processing ECS Task Definitions...")
-
-        paginator = self.ecs_client.get_paginator(
-            "list_task_definition_families")
-        for page in paginator.paginate():
-            task_definition_families = page["families"]
-            for family in task_definition_families:
-                latest_task_definition_arn = self.ecs_client.list_task_definitions(
-                    familyPrefix=family, sort="DESC", maxResults=1
-                )["taskDefinitionArns"][0]
-
-                task_definition = self.ecs_client.describe_task_definition(
-                    taskDefinition=latest_task_definition_arn)["taskDefinition"]
-
-                print(
-                    f"  Processing ECS Task Definition: {latest_task_definition_arn}")
-
-                attributes = {
-                    "id": latest_task_definition_arn,
-                    "arn": latest_task_definition_arn,
-                    "family": family,
-                }
-                self.hcl.process_resource(
-                    "aws_ecs_task_definition", family.replace("-", "_"), attributes)
 
     def aws_ecs_task_set(self):
         print("Processing ECS Task Sets...")

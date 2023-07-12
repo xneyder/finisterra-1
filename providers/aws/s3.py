@@ -228,7 +228,7 @@ class S3:
             if bucket_region == self.region:
                 buckets.append(bucket)
 
-        # buckets = [{"Name": "allogy_gov_bundles"}]
+        # buckets = [{"Name": "allogy-gov-bundles"}]
         buckets = [buckets[0], buckets[1]]
 
         for bucket in buckets:

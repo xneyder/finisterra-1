@@ -731,12 +731,15 @@ class HCL:
         return None
 
     def match_fields(self, parent_attributes, child_attributes, join_field, functions):
-        if isinstance(join_field, dict):  # new case when function is specified
-            for _, func_name in join_field.items():
-                func = functions.get(func_name)
-                if func is not None:
-                    if func(parent_attributes) == func(child_attributes):
-                        return True
+        print("match_fields", join_field)
+        if isinstance(join_field, tuple):  # new case when join_field is tuple
+            parent_field, value_dict = join_field
+            # get function name from the value_dict
+            func_name = value_dict.get('function')
+            func = functions.get(func_name)
+            if func is not None:
+                if self.get_value_from_tfstate(parent_attributes, parent_field.split(".")) == func(child_attributes):
+                    return True
         else:
             return self.get_value_from_tfstate(parent_attributes, join_field.split(".")) == self.get_value_from_tfstate(
                 child_attributes, join_field.split("."))
@@ -753,29 +756,37 @@ class HCL:
             resource_name = resource['name']
             resource_config = self.find_resource_config(config, resource_type)
 
-            # Add check for resource_config
             if resource_config is None:
                 print(
                     f"Warning: Config not found for resource type {resource_type}. Skipping.")
-                print(config)
-                exit()
                 return attributes, deployed_resources
 
             resource_attributes = resource['instances'][0]['attributes']
 
-            # Get fields from config
             fields_config = resource_config.get('fields', {})
             target_resource_name = resource_config.get(
                 'target_resource_name', "")
             target_submodule = resource_config.get('target_submodule', "")
+            root_attribute = resource_config.get('root_attribute', "")
+            root_attribute_key_value = None
+            root_attribute_key = resource_config.get(
+                'root_attribute_key', None)
+
+            if root_attribute != "" and root_attribute not in resource_attributes:
+                root_attribute_key_value = self.get_value_from_tfstate(
+                    resource_attributes, root_attribute_key)
+                attributes[root_attribute] = {root_attribute_key_value: {}}
 
             defaults = resource_config.get('defaults', {})
             for default in defaults:
-                attributes[default] = self.string_repr(defaults[default])
+                if root_attribute and root_attribute_key_value:
+                    attributes[root_attribute][root_attribute_key_value][default] = self.string_repr(
+                        defaults[default])
+                else:
+                    attributes[default] = self.string_repr(defaults[default])
 
             for field, field_info in fields_config.items():
                 value = None
-                # Check if we have to apply function
                 multiline = False
                 func_name = field_info.get('function')
                 state_field = field_info.get('field', '').split('.')
@@ -796,9 +807,18 @@ class HCL:
                 if value not in [None, "", [], {}]:
                     created = True
                     if multiline:
-                        attributes[field] = "<<EOF\n" + value + "\nEOF\n"
+                        value = "<<EOF\n" + value + "\nEOF\n"
+                    if root_attribute and root_attribute_key_value:
+                        if multiline:
+                            attributes[root_attribute][root_attribute_key_value][field] = value
+                        else:
+                            attributes[root_attribute][root_attribute_key_value][field] = self.string_repr(
+                                value)
                     else:
-                        attributes[field] = self.string_repr(value)
+                        if multiline:
+                            attributes[field] = value
+                        else:
+                            attributes[field] = self.string_repr(value)
 
             if created:
                 deployed_resources.append({
@@ -809,10 +829,13 @@ class HCL:
                     'id': resource_attributes.get('id', ''),
                 })
 
-            # Get childs from config
             for child_type, child_config in resource_config.get('childs', {}).items():
                 for child_instance in [res for res in resources if res['type'] == child_type]:
-                    join_fields = child_config.get('join', [])
+                    print("child_type", child_type)
+                    print("child_config", child_config)
+                    join_fields = [
+                        item for item in child_config.get('join', {}).items()]
+                    print("join_fields", join_fields)
                     match = all(self.match_fields(
                         resource_attributes, child_instance['instances'][0]['attributes'], join_field, functions) for join_field in join_fields)
                     if match:
