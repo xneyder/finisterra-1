@@ -750,9 +750,9 @@ class HCL:
         return False
 
     def process_resource_module(self, resource, resources, config, functions={}):
-        root_attributes = []
+        root_attributes = set()
 
-        def process_resource(resource, resources, config):
+        def process_resource(resource, resources, config, parent_attributes=None):
             nonlocal root_attributes
             created = False
             attributes = {}
@@ -772,20 +772,26 @@ class HCL:
                 'target_resource_name', "")
             target_submodule = resource_config.get('target_submodule', "")
             root_attribute = resource_config.get('root_attribute', "")
+            root_attribute_key_parent = resource_config.get(
+                'root_attribute_key_parent', "")
             root_attribute_key_value = None
             root_attribute_key = resource_config.get(
                 'root_attribute_key', None)
 
             if root_attribute != "" and root_attribute not in resource_attributes:
-                root_attribute_key_value = self.get_value_from_tfstate(
-                    resource_attributes, [root_attribute_key])
+                if parent_attributes and root_attribute_key_parent:
+                    root_attribute_key_value = self.get_value_from_tfstate(
+                        parent_attributes, [root_attribute_key])
+                else:
+                    root_attribute_key_value = self.get_value_from_tfstate(
+                        resource_attributes, [root_attribute_key],)
                 if root_attribute not in attributes:
                     attributes[root_attribute] = {}
                 if root_attribute_key_value not in attributes[root_attribute]:
                     attributes[root_attribute][root_attribute_key_value] = {}
 
                 # add this root_attribute to the list
-                root_attributes.append(root_attribute)
+                root_attributes.add(root_attribute)
 
             defaults = resource_config.get('defaults', {})
             for default in defaults:
@@ -848,11 +854,15 @@ class HCL:
                         resource_attributes, child_instance['instances'][0]['attributes'], join_field, functions) for join_field in join_fields)
                     if match:
                         child_attributes, child_resources = process_resource(
-                            child_instance, resources, {child_type: child_config})
+                            child_instance, resources, {child_type: child_config}, resource_attributes)
 
                         if child_attributes:
                             if 'root_attribute' in child_config:
                                 root_attribute = child_config['root_attribute']
+                                print('root_attribute:', root_attribute)
+                                print('root_attributes:', root_attributes)
+                                print('child_attributes:', child_attributes)
+                                print('attributes:', attributes)
                                 if root_attribute in attributes and root_attribute in child_attributes:
                                     # if the root_attribute is present in both dictionaries, merge them
                                     if isinstance(attributes[root_attribute], dict) and isinstance(child_attributes[root_attribute], dict):
