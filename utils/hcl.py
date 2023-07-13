@@ -738,6 +738,9 @@ class HCL:
             func_name = value_dict.get('function')
             func = functions.get(func_name)
             if func is not None:
+                # print('parent value:', self.get_value_from_tfstate(
+                #     parent_attributes, parent_field.split(".")))
+                # print('child value:', func(child_attributes))
                 if self.get_value_from_tfstate(parent_attributes, parent_field.split(".")) == func(child_attributes):
                     return True
         else:
@@ -834,7 +837,7 @@ class HCL:
                     'target_resource_name': target_resource_name,
                     'target_submodule': target_submodule,
                     'id': resource_attributes.get('id', ''),
-                    'index': root_attribute_key_value if root_attribute_key_value else 0,
+                    'index': root_attribute_key_value if root_attribute_key_value else '',
                 })
 
             for child_type, child_config in resource_config.get('childs', {}).items():
@@ -876,46 +879,42 @@ class HCL:
             hcl_str = "{\n" if is_top_level else ""
 
             for key, value in input_dict.items():
-                # Check if value is a string representation of a list or dict
                 if isinstance(value, str) and (value.startswith('{') or value.startswith('[')):
                     try:
-                        # use json.loads to handle `true` and `false`
                         value = json.loads(value)
                     except json.JSONDecodeError:
-                        pass  # not a string representation of a list or dict
+                        pass
 
                 if isinstance(value, dict):
-                    hcl_str += f"{key} = " + "{\n"  # Added equal sign
+                    hcl_str += f"{key} = " + "{\n"
                     hcl_str += dict_to_hcl(value, is_top_level=False)
                     hcl_str += "}\n"
                 elif isinstance(value, list):
                     if len(value) == 1 and isinstance(value[0], dict):
-                        # list contains one dictionary, handle it separately
-                        hcl_str += f"{key} = " + "{\n"  # Added equal sign
+                        hcl_str += f"{key} = " + "{\n"
                         hcl_str += dict_to_hcl(value[0], is_top_level=False)
                         hcl_str += "}\n"
                     elif all(isinstance(item, dict) for item in value):
-                        # list of dictionaries
-                        hcl_str += f"{key} = [\n"  # open list of blocks
+                        hcl_str += f"{key} = [\n"
                         for i, item in enumerate(value):
-                            hcl_str += "{\n"  # open a block
+                            hcl_str += "{\n"
                             hcl_str += dict_to_hcl(item, is_top_level=False)
                             hcl_str += "}"
-                            if i < len(value) - 1:  # If this is not the last item, add comma
+                            if i < len(value) - 1:
                                 hcl_str += ","
-                            hcl_str += "\n"  # close a block
-                        hcl_str += "]\n"  # close list of blocks
+                            hcl_str += "\n"
+                        hcl_str += "]\n"
                     else:
-                        # list of primitive types
                         hcl_str += f"{key} = " + "["
                         hcl_str += ",".join([f"{item}" for item in value])
                         hcl_str += "]\n"
                 else:
-                    # primitive type
-                    # Add quotes only if they are not present
                     if isinstance(value, str):
                         hcl_str += f"{key} = " + (value if value.startswith(
                             "\"") and value.endswith("\"") else "\"" + value + "\"") + "\n"
+                    # additional condition to handle booleans correctly
+                    elif isinstance(value, bool):
+                        hcl_str += f'{key} = "{str(value).lower()}"\n'
                     else:
                         hcl_str += f"{key} = {value}\n"
 
@@ -977,7 +976,16 @@ class HCL:
         for instance in instances:
             for deployed_resource in instance["deployed_resources"]:
                 resource_import_source = f'{deployed_resource["resource_type"]}.{deployed_resource["resource_name"]}'
-                resource_import_target = f'module.{instance["name"]}.{deployed_resource["target_submodule"]}{deployed_resource["resource_type"]}.{deployed_resource["target_resource_name"]}[{deployed_resource["index"]}]'
+                index_str = ""
+                if deployed_resource["index"]:
+                    index_str = '["'+deployed_resource["index"]+'"].'
+                if not index_str and deployed_resource["target_submodule"]:
+                    deployed_resource["target_submodule"] += "."
+
+                resource_import_target = f'module.{instance["name"]}.{deployed_resource["target_submodule"]}{index_str}{deployed_resource["resource_type"]}.{deployed_resource["target_resource_name"]}'
+
+                # print(resource_import_source)
+                # print(resource_import_target)
                 # subprocess.run(
                 #     ["terraform", "import", resource_import_target, deployed_resource["id"]])
                 subprocess.run(

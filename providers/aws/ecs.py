@@ -50,6 +50,14 @@ class ECS:
                 return network_configuration[field]
         return None
 
+    def check_subnet_ids(self, attributes):
+        if 'network_configuration' in attributes:
+            if len(attributes['network_configuration']) > 0:
+                network_configuration = attributes['network_configuration'][0]
+                if 'subnet_ids' in network_configuration:
+                    return True
+        return False
+
     def task_definition_id(self, attributes):
         # The name is expected to be in the format /aws/ecs/{cluster_name}
         arn = attributes.get('arn')
@@ -62,7 +70,7 @@ class ECS:
         self.hcl.prepare_folder(os.path.join("generated", "ecs"))
 
         self.aws_ecs_cluster()
-        # self.aws_ecs_task_definition()
+        self.aws_ecs_task_definition()
 
         # self.aws_ecs_account_setting_default()
         # self.aws_ecs_capacity_provider()
@@ -79,6 +87,8 @@ class ECS:
             'cloudwatch_log_group_name': self.cloudwatch_log_group_name,
             'to_map': self.to_map,
             'aws_ecs_service_cluster_arn': self.aws_ecs_service_cluster_arn,
+            'check_subnet_ids': self.check_subnet_ids,
+            'task_definition_id': self.task_definition_id,
         }
 
         self.hcl.module_hcl_code("terraform-aws-modules/ecs/aws", "5.2.0", "terraform.tfstate",
@@ -238,6 +248,8 @@ class ECS:
                         }
                         self.hcl.process_resource(
                             "aws_ecs_service", service_name.replace("-", "_"), attributes)
+
+                        return  # TO REMOVE
             else:
                 print(f"Skipping cluster: {cluster['clusterName']}")
 
@@ -249,12 +261,14 @@ class ECS:
         for page in paginator.paginate():
             task_definition_families = page["families"]
             for family in task_definition_families:
+                if family != "publication-service":  # TO REMOVE
+                    continue  # TO REMOVE
                 latest_task_definition_arn = self.ecs_client.list_task_definitions(
                     familyPrefix=family, sort="DESC", maxResults=1
                 )["taskDefinitionArns"][0]
 
-                task_definition = self.ecs_client.describe_task_definition(
-                    taskDefinition=latest_task_definition_arn)["taskDefinition"]
+                # task_definition = self.ecs_client.describe_task_definition(
+                #     taskDefinition=latest_task_definition_arn)["taskDefinition"]
 
                 print(
                     f"  Processing ECS Task Definition: {latest_task_definition_arn}")
