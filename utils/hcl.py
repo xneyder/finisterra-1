@@ -595,10 +595,16 @@ class HCL:
             func_name = value_dict.get('function')
             func = functions.get(func_name)
             if func is not None:
+                arg = value_dict.get('arg')
+                child_value = None
+                if arg:
+                    child_value = func(child_attributes, arg)
+                else:
+                    child_value = func(child_attributes)
                 # print('parent value:', self.get_value_from_tfstate(
                 #     parent_attributes, parent_field.split(".")))
                 # print('child value:', func(child_attributes))
-                if self.get_value_from_tfstate(parent_attributes, parent_field.split(".")) == func(child_attributes):
+                if self.get_value_from_tfstate(parent_attributes, parent_field.split(".")) == child_value:
                     return True
         else:
             return self.get_value_from_tfstate(parent_attributes, join_field.split(".")) == self.get_value_from_tfstate(
@@ -609,7 +615,7 @@ class HCL:
     def process_resource_module(self, resource, resources, config, functions={}):
         root_attributes = set()
 
-        def process_resource(resource, resources, config, parent_attributes=None):
+        def process_resource(resource, resources, config, parent_root_attribute_key_value=None):
             nonlocal root_attributes
             created = False
             attributes = {}
@@ -629,19 +635,17 @@ class HCL:
                 'target_resource_name', "")
             target_submodule = resource_config.get('target_submodule', "")
             root_attribute = resource_config.get('root_attribute', "")
-            root_attribute_key_parent = resource_config.get(
-                'root_attribute_key_parent', "")
             root_attribute_key_value = None
+            if parent_root_attribute_key_value:
+                root_attribute_key_value = parent_root_attribute_key_value
             root_attribute_key = resource_config.get(
                 'root_attribute_key', None)
 
             if root_attribute != "" and root_attribute not in resource_attributes:
-                if parent_attributes and root_attribute_key_parent:
-                    root_attribute_key_value = self.get_value_from_tfstate(
-                        parent_attributes, [root_attribute_key])
-                else:
+                if not root_attribute_key_value:
                     root_attribute_key_value = self.get_value_from_tfstate(
                         resource_attributes, [root_attribute_key],)
+
                 if root_attribute not in attributes:
                     attributes[root_attribute] = {}
                 if root_attribute_key_value not in attributes[root_attribute]:
@@ -682,9 +686,6 @@ class HCL:
                 if value in [None, "", [], {}] and default is not 'N/A':
                     value = default
                     defaulted = True
-                    # if field == "cpu":
-                    #     print("cpu", field_info)
-                    #     print("value", value)
 
                 if value not in [None, "", [], {}] or defaulted:
                     created = True
@@ -720,17 +721,11 @@ class HCL:
                         resource_attributes, child_instance['instances'][0]['attributes'], join_field, functions) for join_field in join_fields)
                     if match:
                         child_attributes, child_resources = process_resource(
-                            child_instance, resources, {child_type: child_config}, resource_attributes)
+                            child_instance, resources, {child_type: child_config}, root_attribute_key_value)
 
                         if child_attributes:
                             if 'root_attribute' in child_config:
                                 root_attribute = child_config['root_attribute']
-
-                                # print('root_attribute', root_attribute)
-                                # print('child_attributes', child_attributes)
-                                # print('attributes', attributes)
-                                # print('++++++++++++++++++++')
-
                                 # make a copy of the child_attributes
                                 child_attributes_copy = child_attributes.copy()
 
@@ -780,7 +775,9 @@ class HCL:
                     hcl_str += dict_to_hcl(value, is_top_level=False)
                     hcl_str += "}\n"
                 elif isinstance(value, list):
-                    if len(value) == 1 and isinstance(value[0], dict):
+                    if not value:  # Special case for empty list
+                        hcl_str += f"{key} = []\n"
+                    elif len(value) == 1 and isinstance(value[0], dict):
                         hcl_str += f"{key} = " + "{\n"
                         hcl_str += dict_to_hcl(value[0], is_top_level=False)
                         hcl_str += "}\n"
@@ -801,13 +798,11 @@ class HCL:
                 else:
                     if isinstance(value, str):
                         escaped_value = escape_special_characters(value)
-                        # additional check for "null" string
                         if escaped_value.lower() == "null":
                             hcl_str += f"{key} = null\n"
                         else:
                             hcl_str += f"{key} = " + (escaped_value if escaped_value.startswith(
                                 "\"") and escaped_value.endswith("\"") else "\"" + escaped_value + "\"") + "\n"
-                    # additional condition to handle booleans correctly
                     elif isinstance(value, bool):
                         hcl_str += f'{key} = "{str(value).lower()}"\n'
                     else:

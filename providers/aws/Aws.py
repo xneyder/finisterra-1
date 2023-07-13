@@ -450,7 +450,13 @@ class Aws:
         logs_client = self.session.client(
             "logs", region_name=self.aws_region)
 
-        instance = ECS(ecs_client, logs_client, self.script_dir, self.provider_name,
+        appautoscaling_client = self.session.client(
+            "application-autoscaling", region_name=self.aws_region)
+
+        iam_client = self.session.client(
+            "iam", region_name=self.aws_region)
+
+        instance = ECS(ecs_client, logs_client, appautoscaling_client, iam_client, self.script_dir, self.provider_name,
                        self.schema_data, self.aws_region, self.s3Bucket,
                        self.dynamoDBTable, self.state_key, self.workspace_id, self.modules)
         instance.ecs()

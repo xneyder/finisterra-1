@@ -67,6 +67,7 @@ aws_ecs_cluster:
       defaults:
         ignore_task_definition_changes: true
         create_task_definition: false
+        enable_autoscaling: false #To implement aws_appautoscaling_policy, and aws_appautoscaling_target
       fields:
         name:
           field: name
@@ -173,6 +174,8 @@ aws_ecs_cluster:
           target_submodule: module.service
           defaults:
             create_task_definition: true
+            create_tasks_iam_role: false
+            create_task_exec_policy: false
           fields:
             task_definition_arn:
               field: arn
@@ -225,3 +228,61 @@ aws_ecs_cluster:
             task_tags:
               field: tags
               type: map
+          childs:
+            aws_iam_role:
+              join:
+                task_role_arn:
+                  function: get_arn
+              root_attribute: services
+              root_attribute_key: name
+              root_attribute_key_parent: true #Take the field from the parent attributes
+              target_resource_name: tasks[0]
+              target_submodule: module.service
+              defaults:
+                create_tasks_iam_role: true
+                tasks_iam_role_use_name_prefix: false
+              fields:
+                tasks_iam_role_arn:
+                  field: arn
+                  type: string
+                tasks_iam_role_name:
+                  field: name
+                  type: string
+                tasks_iam_role_path:
+                  field: path
+                  type: string
+                tasks_iam_role_description:
+                  field: description
+                  type: string
+                tasks_iam_role_permissions_boundary:
+                  field: permissions_boundary
+                  type: string
+                tasks_iam_role_tags:
+                  field: tags
+                  type: map
+              childs:
+                aws_iam_role_policy_attachment:
+                  join:
+                    name:
+                      function: get_field_from_attrs
+                      arg: role
+                  root_attribute: services
+                  root_attribute_key: name
+                  target_resource_name: tasks[0]
+                  target_submodule: module.service
+                  fields:
+                    tasks_iam_role_policies:
+                      function: tasks_iam_role_policies
+                      type: string
+
+  # Tasks - IAM role
+  # create_tasks_iam_role               = try(each.value.create_tasks_iam_role, true)
+  # tasks_iam_role_arn                  = lookup(each.value, "tasks_iam_role_arn", null)
+  # tasks_iam_role_name                 = try(each.value.tasks_iam_role_name, null)
+  # tasks_iam_role_use_name_prefix      = try(each.value.tasks_iam_role_use_name_prefix, true)
+  # tasks_iam_role_path                 = try(each.value.tasks_iam_role_path, null)
+  # tasks_iam_role_description          = try(each.value.tasks_iam_role_description, null)
+  # tasks_iam_role_permissions_boundary = try(each.value.tasks_iam_role_permissions_boundary, null)
+  # tasks_iam_role_tags                 = try(each.value.tasks_iam_role_tags, {})
+  # tasks_iam_role_policies             = lookup(each.value, "tasks_iam_role_policies", {})
+  # tasks_iam_role_statements           = lookup(each.value, "tasks_iam_role_statements", {})

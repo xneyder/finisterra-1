@@ -4,10 +4,12 @@ import json
 
 
 class ECS:
-    def __init__(self, ecs_client, logs_client, script_dir, provider_name, schema_data, region, s3Bucket,
+    def __init__(self, ecs_client, logs_client, appautoscaling_client, iam_client, script_dir, provider_name, schema_data, region, s3Bucket,
                  dynamoDBTable, state_key, workspace_id, modules):
         self.ecs_client = ecs_client
         self.logs_client = logs_client
+        self.appautoscaling_client = appautoscaling_client
+        self.iam_client = iam_client
         self.transform_rules = {
             "aws_ecs_task_definition": {
                 "hcl_json_multiline": {"container_definitions": True}
@@ -41,8 +43,13 @@ class ECS:
         return None
 
     def aws_ecs_service_cluster_arn(self, attributes):
-        # The name is expected to be in the format /aws/ecs/{cluster_name}
         return attributes.get('cluster')
+
+    def get_field_from_attrs(self, attributes, arg):
+        return attributes.get(arg)
+
+    def get_arn(self, attributes):
+        return attributes.get('arn')
 
     def get_network_field(self, attributes, field):
         if 'network_configuration' in attributes:
@@ -91,6 +98,14 @@ class ECS:
 
         return result
 
+    def tasks_iam_role_policies(self, attributes):
+        result = {}
+        policy_arn = attributes.get('policy_arn', "")
+        if policy_arn != "":
+            name = policy_arn.split('/')[-1]
+            result[name] = policy_arn
+        return result
+
     def ecs(self):
         self.hcl.prepare_folder(os.path.join("generated", "ecs"))
 
@@ -116,6 +131,9 @@ class ECS:
             'task_definition_id': self.task_definition_id,
             'container_definitions': self.container_definitions,
             'task_definition_volume': self.task_definition_volume,
+            'get_arn': self.get_arn,
+            'get_field_from_attrs': self.get_field_from_attrs,
+            'tasks_iam_role_policies': self.tasks_iam_role_policies,
         }
 
         self.hcl.module_hcl_code("terraform-aws-modules/ecs/aws", "5.2.0", "terraform.tfstate",
@@ -276,6 +294,9 @@ class ECS:
                         self.hcl.process_resource(
                             "aws_ecs_service", service_name.replace("-", "_"), attributes)
 
+                        self.aws_appautoscaling_target(
+                            cluster_name, service_name)
+
                         return  # TO REMOVE
             else:
                 print(f"Skipping cluster: {cluster['clusterName']}")
@@ -294,8 +315,8 @@ class ECS:
                     familyPrefix=family, sort="DESC", maxResults=1
                 )["taskDefinitionArns"][0]
 
-                # task_definition = self.ecs_client.describe_task_definition(
-                #     taskDefinition=latest_task_definition_arn)["taskDefinition"]
+                task_definition = self.ecs_client.describe_task_definition(
+                    taskDefinition=latest_task_definition_arn)["taskDefinition"]
 
                 print(
                     f"  Processing ECS Task Definition: {latest_task_definition_arn}")
@@ -307,6 +328,122 @@ class ECS:
                 }
                 self.hcl.process_resource(
                     "aws_ecs_task_definition", family.replace("-", "_"), attributes)
+
+                # Process IAM roles for the task
+                if task_definition.get('taskRoleArn'):
+                    self.aws_iam_role(task_definition.get('taskRoleArn'))
+                if task_definition.get('executionRoleArn'):
+                    self.aws_iam_role(task_definition.get('executionRoleArn'))
+
+    def aws_iam_role(self, role_arn):
+        print(f"Processing IAM Role: {role_arn}...")
+
+        role_name = role_arn.split('/')[-1]  # Extract role name from ARN
+
+        try:
+            role = self.iam_client.get_role(RoleName=role_name)['Role']
+
+            print(f"  Processing IAM Role: {role['Arn']}")
+
+            attributes = {
+                "id": role['RoleName'],
+            }
+            self.hcl.process_resource(
+                "aws_iam_role", role['RoleName'], attributes)
+            # Process IAM role policy attachments for the role
+            self.aws_iam_role_policy_attachment(role['RoleName'])
+        except Exception as e:
+            print(f"Error processing IAM role: {role_name}: {str(e)}")
+
+    def aws_iam_role_policy_attachment(self, role_name):
+        print(
+            f"Processing IAM Role Policy Attachments for role: {role_name}...")
+
+        try:
+            paginator = self.iam_client.get_paginator(
+                'list_attached_role_policies')
+            for page in paginator.paginate(RoleName=role_name):
+                for policy in page['AttachedPolicies']:
+                    print(
+                        f"  Processing IAM Role Policy Attachment: {policy['PolicyName']} for role: {role_name}")
+
+                    resource_name = f"{role_name}-{policy['PolicyName']}"
+                    attributes = {
+                        "id": f"{role_name}/{policy['PolicyArn']}",
+                        "role": role_name,
+                        "policy_arn": policy['PolicyArn']
+                    }
+                    self.hcl.process_resource(
+                        "aws_iam_role_policy_attachment", resource_name, attributes)
+
+        except Exception as e:
+            print(
+                f"Error processing IAM role policy attachments for role: {role_name}: {str(e)}")
+
+    def aws_appautoscaling_target(self, cluster_name, service_name):
+        service_namespace = 'ecs'
+        resource_id = f'service/{cluster_name}/{service_name}'
+        print(
+            f"Processing AppAutoScaling target for ECS service: {service_name} in cluster: {cluster_name}...")
+
+        try:
+            response = self.appautoscaling_client.describe_scalable_targets(
+                ServiceNamespace=service_namespace,
+                ResourceIds=[resource_id]
+            )
+            scalable_targets = response.get('ScalableTargets', [])
+
+            if scalable_targets:
+                # We expect only one target per service
+                target = scalable_targets[0]
+                print(f"  Processing ECS AppAutoScaling Target: {resource_id}")
+
+                resource_name = f"{service_namespace}-{resource_id.replace('/', '-')}"
+                attributes = {
+                    "id": target['ScalableDimension'],
+                    "resource_id": resource_id,
+                    "service_namespace": service_namespace
+                }
+                self.hcl.process_resource(
+                    "aws_appautoscaling_target", resource_name, attributes)
+
+                # Processing scaling policies for the target
+                self.aws_appautoscaling_policy(service_namespace, resource_id)
+
+            else:
+                print(
+                    f"No AppAutoScaling target found for ECS service: {service_name} in cluster: {cluster_name}")
+
+        except Exception as e:
+            print(
+                f"Error processing AppAutoScaling target for ECS service: {service_name} in cluster: {cluster_name}: {str(e)}")
+
+    def aws_appautoscaling_policy(self, service_namespace, resource_id):
+        print(
+            f"Processing AppAutoScaling policies for resource: {resource_id}...")
+
+        try:
+            response = self.appautoscaling_client.describe_scaling_policies(
+                ServiceNamespace=service_namespace,
+                ResourceId=resource_id
+            )
+            scaling_policies = response.get('ScalingPolicies', [])
+
+            for policy in scaling_policies:
+                print(
+                    f"  Processing AppAutoScaling Policy: {policy['PolicyName']} for resource: {resource_id}")
+
+                resource_name = f"{service_namespace}-{resource_id.replace('/', '-')}-{policy['PolicyName']}"
+                attributes = {
+                    "id": policy['PolicyName'],
+                    "resource_id": resource_id,
+                    "service_namespace": service_namespace
+                }
+                self.hcl.process_resource(
+                    "aws_appautoscaling_policy", resource_name, attributes)
+        except Exception as e:
+            print(
+                f"Error processing AppAutoScaling policies for resource: {resource_id}: {str(e)}")
 
     def aws_ecs_account_setting_default(self):
         print("Processing ECS Account Setting Defaults...")
