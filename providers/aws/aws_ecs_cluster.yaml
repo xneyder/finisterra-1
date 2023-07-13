@@ -180,3 +180,49 @@ aws_ecs_cluster:
             network_mode:
               field: network_mode
               type: string
+            container_definitions:
+              function: key_in_front
+              type: map
+              arg: container_definitions
+            container_definition_defaults:
+              field: container_definition_defaults
+              type: map
+            cpu:
+              field: cpu
+              type: number
+              nullable: true
+            ephemeral_storage:
+              field: ephemeral_storage
+              type: map
+            family:
+              field: family
+              type: string
+            inference_accelerator:
+              field: inference_accelerator
+              type: map
+            ipc_mode:
+              field: ipc_mode
+              type: string
+            memory:
+              field: memory
+              type: number
+              nullable: true
+            proxy_configuration:
+              field: proxy_configuration
+              type: map
+            requires_compatibilities:
+              field: requires_compatibilities
+              type: list
+            runtime_platform:
+              field: runtime_platform
+              type: map
+            skip_destroy:
+              field: skip_destroy
+              type: boolean
+            volume:
+              function: key_in_front
+              type: map
+              arg: volume
+            task_tags:
+              field: tags
+              type: map

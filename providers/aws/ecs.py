@@ -1,5 +1,6 @@
 import os
 from utils.hcl import HCL
+import json
 
 
 class ECS:
@@ -66,6 +67,20 @@ class ECS:
             return arn.split('/')[-1]
         return None
 
+    def key_in_front(self, attributes, arg):
+        result = {}
+        dict_definitions_str = attributes.get(
+            arg, '[]')
+        try:
+            dict_definitions = json.loads(dict_definitions_str)
+        except json.JSONDecodeError:
+            print("Error: dict_definitions is not a valid JSON string", arg)
+            return result
+
+        for dict in dict_definitions:
+            result[dict['name']] = dict
+        return result
+
     def ecs(self):
         self.hcl.prepare_folder(os.path.join("generated", "ecs"))
 
@@ -89,6 +104,7 @@ class ECS:
             'aws_ecs_service_cluster_arn': self.aws_ecs_service_cluster_arn,
             'check_subnet_ids': self.check_subnet_ids,
             'task_definition_id': self.task_definition_id,
+            'key_in_front': self.key_in_front,
         }
 
         self.hcl.module_hcl_code("terraform-aws-modules/ecs/aws", "5.2.0", "terraform.tfstate",

@@ -542,7 +542,9 @@ class HCL:
             return None
 
     def string_repr(self, value):
-        if isinstance(value, bool):
+        if value is None:
+            return "null"
+        elif isinstance(value, bool):
             return "true" if value else "false"
         elif isinstance(value, (list, dict)):
             return json.dumps(value)
@@ -804,6 +806,7 @@ class HCL:
             for field, field_info in fields_config.items():
                 value = None
                 multiline = False
+                nullable = field_info.get('nullable', False)
                 func_name = field_info.get('function')
                 state_field = field_info.get('field', '').split('.')
                 if func_name:
@@ -820,7 +823,9 @@ class HCL:
                     value = self.get_value_from_tfstate(
                         resource_attributes, state_field)
 
-                if value not in [None, "", [], {}]:
+                if value in [None, "", [], {}] and not nullable:
+                    pass
+                else:
                     created = True
                     if multiline:
                         value = "<<EOF\n" + value + "\nEOF\n"
@@ -859,26 +864,37 @@ class HCL:
                         if child_attributes:
                             if 'root_attribute' in child_config:
                                 root_attribute = child_config['root_attribute']
-                                print('root_attribute:', root_attribute)
-                                print('root_attributes:', root_attributes)
-                                print('child_attributes:', child_attributes)
-                                print('attributes:', attributes)
+
+                                # print('root_attribute', root_attribute)
+                                # print('child_attributes', child_attributes)
+                                # print('attributes', attributes)
+                                # print('++++++++++++++++++++')
+
+                                # make a copy of the child_attributes
+                                child_attributes_copy = child_attributes.copy()
+
                                 if root_attribute in attributes and root_attribute in child_attributes:
-                                    # if the root_attribute is present in both dictionaries, merge them
                                     if isinstance(attributes[root_attribute], dict) and isinstance(child_attributes[root_attribute], dict):
-                                        attributes[root_attribute].update(
-                                            child_attributes[root_attribute])
-                                    elif isinstance(attributes[root_attribute], list):
+                                        if root_attribute_key_value in attributes[root_attribute] and root_attribute_key_value in child_attributes[root_attribute]:
+                                            attributes[root_attribute][root_attribute_key_value].update(
+                                                child_attributes[root_attribute][root_attribute_key_value])
+                                            child_attributes_copy[root_attribute].pop(
+                                                root_attribute_key_value)  # pop from the copy
+                                        else:
+                                            attributes[root_attribute].update(
+                                                child_attributes[root_attribute])
+                                    elif root_attribute in attributes and isinstance(attributes[root_attribute], list):
                                         attributes[root_attribute].append(
                                             child_attributes[root_attribute])
                                     else:
                                         attributes[root_attribute] = [
                                             attributes[root_attribute], child_attributes[root_attribute]]
                                     # remove the merged attribute from child_attributes
-                                    child_attributes.pop(root_attribute)
+                                    child_attributes_copy.pop(
+                                        root_attribute)  # pop from the copy
 
-                            # update the rest of the attributes normally
-                            attributes.update(child_attributes)
+                            # update the rest of the attributes normally, using the copy
+                            attributes.update(child_attributes_copy)
 
                         if child_resources:
                             deployed_resources.extend(child_resources)
@@ -886,6 +902,9 @@ class HCL:
             return attributes, deployed_resources
 
         def dict_to_hcl(input_dict, is_top_level=True):
+            def escape_special_characters(input_str):
+                return input_str.replace("\\", "\\\\")
+
             hcl_str = "{\n" if is_top_level else ""
 
             for key, value in input_dict.items():
@@ -920,8 +939,9 @@ class HCL:
                         hcl_str += "]\n"
                 else:
                     if isinstance(value, str):
-                        hcl_str += f"{key} = " + (value if value.startswith(
-                            "\"") and value.endswith("\"") else "\"" + value + "\"") + "\n"
+                        escaped_value = escape_special_characters(value)
+                        hcl_str += f"{key} = " + (escaped_value if escaped_value.startswith(
+                            "\"") and escaped_value.endswith("\"") else "\"" + escaped_value + "\"") + "\n"
                     # additional condition to handle booleans correctly
                     elif isinstance(value, bool):
                         hcl_str += f'{key} = "{str(value).lower()}"\n'
