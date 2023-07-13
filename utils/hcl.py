@@ -543,7 +543,7 @@ class HCL:
 
     def string_repr(self, value):
         if value is None:
-            return "null"
+            return json.dumps(value)
         elif isinstance(value, bool):
             return "true" if value else "false"
         elif isinstance(value, (list, dict)):
@@ -565,151 +565,6 @@ class HCL:
     #         return True
     #     else:
     #         return False
-
-    # def module_hcl_code(self, module, version, terraform_state_file, config_file, functions={}):
-    #     with open(config_file, 'r') as f:
-    #         config = yaml.safe_load(f)
-
-    #     with open(terraform_state_file, 'r') as f:
-    #         tfstate = json.load(f)
-
-    #     resources = tfstate['resources']
-
-    #     instances = []
-
-    #     for resource in resources:
-    #         created = False
-    #         attributes = {}
-    #         deployed_resources = []
-    #         resource_type = resource['type']
-    #         resource_name = resource['name']
-    #         if resource_type in config:
-    #             resource_config = config[resource_type]
-    #             resource_attributes = resource['instances'][0]['attributes']
-
-    #             # Get fields from config
-    #             fields_config = resource_config.get('fields', {})
-    #             target_resource_name = resource_config.get(
-    #                 'target_resource_name', "")
-
-    #             defaults = resource_config.get('defaults', {})
-    #             for default in defaults:
-    #                 attributes[default] = self.string_repr(defaults[default])
-
-    #             for field, field_info in fields_config.items():
-    #                 state_field = field_info.get('field', '').split('.')
-    #                 if state_field:
-    #                     value = self.get_value_from_tfstate(
-    #                         resource_attributes, state_field)
-    #                     if value not in [None, "", []]:
-    #                         created = True
-    #                         attributes[field] = self.string_repr(value)
-    #             if created:
-    #                 deployed_resources.append({
-    #                     'resource_type': resource_type,
-    #                     'resource_name': resource_name,
-    #                     'target_resource_name': target_resource_name,
-    #                     'id': resource_attributes.get('id', ''),
-    #                 })
-
-    #             # Get childs from config
-    #             for child_type, child in resource_config.get('childs', {}).items():
-    #                 for child_instance in [res for res in resources if res['type'] == child_type]:
-    #                     created = False
-    #                     child_resource_type = child_instance['type']
-    #                     child_resource_name = child_instance['name']
-    #                     child_attributes = child_instance['instances'][0]['attributes']
-    #                     for join_field in child['join']:
-    #                         if self.get_value_from_tfstate(resource_attributes, join_field.split(".")) == self.get_value_from_tfstate(child_attributes, join_field.split(".")):
-    #                             # Fields from child resources
-    #                             fields_config = child.get('fields', {})
-    #                             target_resource_name = child.get(
-    #                                 'target_resource_name', "")
-
-    #                             defaults = child.get('defaults', {})
-    #                             for default in defaults:
-    #                                 attributes[default] = self.string_repr(
-    #                                     defaults[default])
-
-    #                             for field, field_info in fields_config.items():
-    #                                 # Check if we have to apply function
-    #                                 multiline = False
-    #                                 func_name = field_info.get('function')
-    #                                 state_field = field_info.get(
-    #                                     'field', '').split('.')
-    #                                 if func_name:
-    #                                     func = functions.get(func_name)
-    #                                     if func is not None:
-    #                                         value = None
-    #                                         arg = field_info.get('arg', '')
-    #                                         multiline = field_info.get(
-    #                                             'multiline', '')
-    #                                         if arg:
-    #                                             value = func(
-    #                                                 child_attributes, arg)
-    #                                         else:
-    #                                             value = func(child_attributes)
-    #                                 elif state_field:
-    #                                     value = self.get_value_from_tfstate(
-    #                                         child_attributes, state_field)
-
-    #                                 if value not in [None, "", [], {}]:
-    #                                     created = True
-
-    #                                     if multiline:
-    #                                         attributes[field] = "<<EOF\n" + \
-    #                                             value + "\nEOF\n"
-    #                                     else:
-    #                                         attributes[field] = self.string_repr(
-    #                                             value)
-
-    #                     if created:
-    #                         deployed_resources.append({
-    #                             'resource_type': child_resource_type,
-    #                             'resource_name': child_resource_name,
-    #                             'target_resource_name': target_resource_name,
-    #                             'id': child_attributes.get('id', ''),
-    #                         })
-
-    #             if attributes:
-    #                 instances.append({
-    #                     "type": resource_type,
-    #                     "name": resource_name,
-    #                     "attributes": attributes,
-    #                     "deployed_resources": deployed_resources
-    #                 })
-
-    #     for instance in instances:
-    #         if instance["attributes"]:
-    #             with open(f'{instance["type"]}-{instance["name"]}.tf', 'w') as file:
-    #                 file.write(f'module "{instance["name"]}" {{\n')
-    #                 file.write(f'source  = "{module}"\n')
-    #                 file.write(f'version = "{version}"\n')
-    #                 for index, value in instance["attributes"].items():
-    #                     file.write(f'{index} = {value}\n')
-    #                 file.write('}\n')
-
-    #     subprocess.run(["terraform", "init"], check=True)
-    #     for instance in instances:
-    #         for deployed_resource in instance["deployed_resources"]:
-    #             resource_import_source = f'{deployed_resource["resource_type"]}.{deployed_resource["resource_name"]}'
-    #             resource_import_target = f'module.{instance["name"]}.{deployed_resource["resource_type"]}.{deployed_resource["target_resource_name"]}'
-    #             # subprocess.run(
-    #             #     ["terraform", "import", resource_import_target, deployed_resource["id"]])
-    #             subprocess.run(
-    #                 ["terraform", "state", "mv", "-backup=/dev/null", resource_import_source, resource_import_target])
-
-    #     print("Formatting HCL files...")
-    #     subprocess.run(["terraform", "fmt"], check=True)
-    #     subprocess.run(["terraform", "validate"], check=True)
-
-    #     # exit()
-    #     print("Running Terraform plan on generated files...")
-    #     terraform = Terraform()
-    #     self.json_plan = terraform.tf_plan("./", False)
-    #     create_backend_file(self.bucket, os.path.join(self.state_key, "terraform.tfstate"),
-    #                         self.region, self.dynamodb_table)
-    #     shutil.rmtree("./.terraform", ignore_errors=True)
 
     def find_resource_config(self, config, resource_type):
         resource_config = config.get(resource_type)
@@ -806,7 +661,7 @@ class HCL:
             for field, field_info in fields_config.items():
                 value = None
                 multiline = False
-                nullable = field_info.get('nullable', False)
+                default = field_info.get('default', 'N/A')
                 func_name = field_info.get('function')
                 state_field = field_info.get('field', '').split('.')
                 if func_name:
@@ -823,9 +678,15 @@ class HCL:
                     value = self.get_value_from_tfstate(
                         resource_attributes, state_field)
 
-                if value in [None, "", [], {}] and not nullable:
-                    pass
-                else:
+                defaulted = False
+                if value in [None, "", [], {}] and default is not 'N/A':
+                    value = default
+                    defaulted = True
+                    # if field == "cpu":
+                    #     print("cpu", field_info)
+                    #     print("value", value)
+
+                if value not in [None, "", [], {}] or defaulted:
                     created = True
                     if multiline:
                         value = "<<EOF\n" + value + "\nEOF\n"
@@ -940,8 +801,12 @@ class HCL:
                 else:
                     if isinstance(value, str):
                         escaped_value = escape_special_characters(value)
-                        hcl_str += f"{key} = " + (escaped_value if escaped_value.startswith(
-                            "\"") and escaped_value.endswith("\"") else "\"" + escaped_value + "\"") + "\n"
+                        # additional check for "null" string
+                        if escaped_value.lower() == "null":
+                            hcl_str += f"{key} = null\n"
+                        else:
+                            hcl_str += f"{key} = " + (escaped_value if escaped_value.startswith(
+                                "\"") and escaped_value.endswith("\"") else "\"" + escaped_value + "\"") + "\n"
                     # additional condition to handle booleans correctly
                     elif isinstance(value, bool):
                         hcl_str += f'{key} = "{str(value).lower()}"\n'

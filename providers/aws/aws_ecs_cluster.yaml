@@ -181,16 +181,15 @@ aws_ecs_cluster:
               field: network_mode
               type: string
             container_definitions:
-              function: key_in_front
+              function: container_definitions
               type: map
-              arg: container_definitions
             container_definition_defaults:
               field: container_definition_defaults
               type: map
             cpu:
               field: cpu
               type: number
-              nullable: true
+              default: null
             ephemeral_storage:
               field: ephemeral_storage
               type: map
@@ -206,7 +205,7 @@ aws_ecs_cluster:
             memory:
               field: memory
               type: number
-              nullable: true
+              default: null
             proxy_configuration:
               field: proxy_configuration
               type: map
@@ -216,13 +215,13 @@ aws_ecs_cluster:
             runtime_platform:
               field: runtime_platform
               type: map
+              default: {}
             skip_destroy:
               field: skip_destroy
               type: boolean
             volume:
-              function: key_in_front
+              function: task_definition_volume
               type: map
-              arg: volume
             task_tags:
               field: tags
               type: map

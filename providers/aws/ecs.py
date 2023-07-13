@@ -67,18 +67,28 @@ class ECS:
             return arn.split('/')[-1]
         return None
 
-    def key_in_front(self, attributes, arg):
+    def container_definitions(self, attributes):
         result = {}
-        dict_definitions_str = attributes.get(
-            arg, '[]')
+        container_definitions_str = attributes.get(
+            'container_definitions', '[]')
         try:
-            dict_definitions = json.loads(dict_definitions_str)
+            container_definitions = json.loads(container_definitions_str)
         except json.JSONDecodeError:
-            print("Error: dict_definitions is not a valid JSON string", arg)
+            print("Error: container_definitions is not a valid JSON string")
             return result
 
-        for dict in dict_definitions:
-            result[dict['name']] = dict
+        for container in container_definitions:
+            result[container['name']] = container
+        return result
+
+    def task_definition_volume(self, attributes):
+        result = {}
+        volumes = attributes.get('volume')
+
+        for volume in volumes:
+            cleaned_volume = {k: v for k, v in volume.items() if v != []}
+            result[cleaned_volume['name']] = cleaned_volume
+
         return result
 
     def ecs(self):
@@ -104,7 +114,8 @@ class ECS:
             'aws_ecs_service_cluster_arn': self.aws_ecs_service_cluster_arn,
             'check_subnet_ids': self.check_subnet_ids,
             'task_definition_id': self.task_definition_id,
-            'key_in_front': self.key_in_front,
+            'container_definitions': self.container_definitions,
+            'task_definition_volume': self.task_definition_volume,
         }
 
         self.hcl.module_hcl_code("terraform-aws-modules/ecs/aws", "5.2.0", "terraform.tfstate",
