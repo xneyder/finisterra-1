@@ -1,7 +1,9 @@
 aws_s3_bucket:
+  terraform_module: "terraform-aws-modules/s3-bucket/aws"
+  terraform_module_version: "3.14.0"
   keys:
     - bucket
-  target_resource_name: this[0]
+  target_resource_name: this
   fields:
     bucket:
       field: bucket
@@ -18,15 +20,17 @@ aws_s3_bucket:
   childs:
     aws_s3_bucket_logging:
       join:
-        - bucket
+        bucket:
+          field: bucket
       fields:
         logging:
           field: logging
 
     aws_s3_bucket_acl:
       join:
-        - bucket
-      target_resource_name: this[0]
+        bucket:
+          field: bucket
+      target_resource_name: this
       fields:
         acl:
           field: acl
@@ -39,8 +43,9 @@ aws_s3_bucket:
 
     aws_s3_bucket_website_configuration:
       join:
-        - bucket
-      target_resource_name: this[0]
+        bucket:
+          field: bucket
+      target_resource_name: this
       fields:
         website:
           function: aws_s3_bucket_website_configuration_website
@@ -49,8 +54,9 @@ aws_s3_bucket:
 
     aws_s3_bucket_versioning:
       join:
-        - bucket
-      target_resource_name: this[0]
+        bucket:
+          field: bucket
+      target_resource_name: this
       fields:
         versioning:
           function: aws_s3_bucket_versioning_versioning
@@ -59,8 +65,9 @@ aws_s3_bucket:
 
     aws_s3_bucket_server_side_encryption_configuration:
       join:
-        - bucket
-      target_resource_name: this[0]
+        bucket:
+          field: bucket
+      target_resource_name: this
       fields:
         server_side_encryption_configuration:
           function: server_side_encryption_configuration
@@ -69,8 +76,9 @@ aws_s3_bucket:
 
     aws_s3_bucket_accelerate_configuration:
       join:
-        - bucket
-      target_resource_name: this[0]
+        bucket:
+          field: bucket
+      target_resource_name: this
       fields:
         acceleration_status:
           field: acceleration_status
@@ -79,8 +87,9 @@ aws_s3_bucket:
 
     aws_s3_bucket_request_payment_configuration:
       join:
-        - bucket
-      target_resource_name: this[0]
+        bucket:
+          field: bucket
+      target_resource_name: this
       fields:
         request_payer:
           field: payer
@@ -89,8 +98,9 @@ aws_s3_bucket:
 
     aws_s3_bucket_cors_configuration: #Not tested
       join:
-        - bucket
-      target_resource_name: this[0]
+        bucket:
+          field: bucket
+      target_resource_name: this
       fields:
         expected_bucket_owner:
           field: expected_bucket_owner
@@ -99,8 +109,9 @@ aws_s3_bucket:
 
     aws_s3_bucket_lifecycle_configuration:
       join:
-        - bucket
-      target_resource_name: this[0]
+        bucket:
+          field: bucket
+      target_resource_name: this
       fields:
         expected_bucket_owner:
           field: expected_bucket_owner
@@ -109,8 +120,9 @@ aws_s3_bucket:
 
     aws_s3_bucket_object_lock_configuration: #Not tested
       join:
-        - bucket
-      target_resource_name: this[0]
+        bucket:
+          field: bucket
+      target_resource_name: this
       fields:
         object_lock_configuration:
           field: object_lock_configuration
@@ -121,16 +133,18 @@ aws_s3_bucket:
 
     aws_s3_bucket_replication_configuration: #Not tested
       join:
-        - bucket
-      target_resource_name: this[0]
+        bucket:
+          field: bucket
+      target_resource_name: this
       fields:
         replication_configuration:
           field: replication_configuration
 
     aws_s3_bucket_policy:
       join:
-        - bucket
-      target_resource_name: this[0]
+        bucket:
+          field: bucket
+      target_resource_name: this
       defaults:
         attach_policy: true
       fields:
@@ -144,8 +158,9 @@ aws_s3_bucket:
 
     aws_s3_bucket_public_access_block:
       join:
-        - bucket
-      target_resource_name: this[0]
+        bucket:
+          field: bucket
+      target_resource_name: this
       defaults:
         attach_public_policy: true
       fields:
@@ -160,8 +175,9 @@ aws_s3_bucket:
 
     aws_s3_bucket_ownership_controls: #no tested
       join:
-        - bucket
-      target_resource_name: this[0]
+        bucket:
+          field: bucket
+      target_resource_name: this
       defaults:
         control_object_ownership: true
       fields:
@@ -170,32 +186,36 @@ aws_s3_bucket:
 
     aws_s3_bucket_intelligent_tiering_configuration: #no tested
       join:
-        - bucket
-      target_resource_name: this[0]
+        bucket:
+          field: bucket
+      target_resource_name: this
       fields:
         intelligent_tiering:
           field: intelligent_tiering
 
     aws_s3_bucket_metric: #no tested
       join:
-        - bucket
-      target_resource_name: this[0]
+        bucket:
+          field: bucket
+      target_resource_name: this
       fields:
         metric_configuration:
           field: metric_configuration
 
     aws_s3_bucket_inventory: #no tested
       join:
-        - bucket
-      target_resource_name: this[0]
+        bucket:
+          field: bucket
+      target_resource_name: this
       fields:
         inventory_configuration:
           field: inventory_configuration
 
     aws_s3_bucket_analytics_configuration: #no tested
       join:
-        - bucket
-      target_resource_name: this[0]
+        bucket:
+          field: bucket
+      target_resource_name: this
       fields:
         analytics_configuration:
           field: analytics_configuration

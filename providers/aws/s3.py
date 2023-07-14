@@ -72,7 +72,7 @@ class S3:
             'aws_s3_bucket_policy_policy': self.aws_s3_bucket_policy_policy,
         }
 
-        self.hcl.module_hcl_code("terraform-aws-modules/s3-bucket/aws", "3.14.0", "terraform.tfstate",
+        self.hcl.module_hcl_code("terraform.tfstate",
                                  os.path.join(os.path.dirname(os.path.abspath(__file__)), "aws_s3_bucket.yaml"), functions)
 
         # load_yaml_and_tfstate("terraform-aws-modules/s3-bucket/aws", "3.14.0", "terraform.tfstate",
@@ -229,7 +229,7 @@ class S3:
                 buckets.append(bucket)
 
         # buckets = [{"Name": "allogy-gov-bundles"}]
-        buckets = [buckets[0], buckets[1]]
+        # buckets = [buckets[0], buckets[1]]
 
         for bucket in buckets:
             bucket_name = bucket["Name"]

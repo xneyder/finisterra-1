@@ -38,7 +38,7 @@ def main():
         "group_id": "scan_worker",
         "max_poll_records": 1,
         "enable_auto_commit": False,
-        "max_poll_interval_ms": 600000  # 10 minutes in milliseconds
+        "max_poll_interval_ms":  1800000  # 30 minutes in milliseconds
 
     }
 

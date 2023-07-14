@@ -594,8 +594,10 @@ class HCL:
         return None
 
     def match_fields(self, parent_attributes, child_attributes, join_field, functions):
+        # print('join_field', join_field)
         if isinstance(join_field, tuple):  # new case when join_field is tuple
             parent_field, value_dict = join_field
+            parent_field = parent_field.split('.')
             # get function name from the value_dict
             func_name = value_dict.get('function')
             func = functions.get(func_name)
@@ -609,11 +611,17 @@ class HCL:
                 # print('parent value:', self.get_value_from_tfstate(
                 #     parent_attributes, parent_field.split(".")))
                 # print('child value:', func(child_attributes))
-                if self.get_value_from_tfstate(parent_attributes, parent_field.split(".")) == child_value:
+                if self.get_value_from_tfstate(parent_attributes, parent_field) == child_value:
                     return True
-        else:
-            return self.get_value_from_tfstate(parent_attributes, join_field.split(".")) == self.get_value_from_tfstate(
-                child_attributes, join_field.split("."))
+            child_field = value_dict.get('field', None)
+            child_field = child_field.split('.')
+            if child_field:
+                # print('parent', self.get_value_from_tfstate(
+                #     parent_attributes, parent_field))
+                # print('child', self.get_value_from_tfstate(
+                #     child_attributes, child_field))
+                return self.get_value_from_tfstate(parent_attributes, parent_field) == self.get_value_from_tfstate(
+                    child_attributes, child_field)
 
         return False
 
