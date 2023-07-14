@@ -155,7 +155,6 @@ class ECS:
         self.hcl.module_hcl_code("terraform.tfstate", os.path.join(
             os.path.dirname(os.path.abspath(__file__)), "aws_ecs_cluster.yaml"), functions)
 
-        exit()
         # self.hcl.generate_hcl_file()
         self.json_plan = self.hcl.json_plan
 
@@ -313,7 +312,7 @@ class ECS:
                         self.aws_appautoscaling_target(
                             cluster_name, service_name)
 
-                        return  # TO REMOVE
+                        # return  # TO REMOVE
             else:
                 print(f"Skipping cluster: {cluster['clusterName']}")
 
@@ -325,8 +324,8 @@ class ECS:
         for page in paginator.paginate():
             task_definition_families = page["families"]
             for family in task_definition_families:
-                if family != "publication-service":  # TO REMOVE
-                    continue  # TO REMOVE
+                # if family != "publication-service":  # TO REMOVE
+                #     continue  # TO REMOVE
                 latest_task_definition_arn = self.ecs_client.list_task_definitions(
                     familyPrefix=family, sort="DESC", maxResults=1
                 )["taskDefinitionArns"][0]

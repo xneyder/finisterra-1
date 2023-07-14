@@ -613,15 +613,16 @@ class HCL:
                 # print('child value:', func(child_attributes))
                 if self.get_value_from_tfstate(parent_attributes, parent_field) == child_value:
                     return True
-            child_field = value_dict.get('field', None)
-            child_field = child_field.split('.')
-            if child_field:
-                # print('parent', self.get_value_from_tfstate(
-                #     parent_attributes, parent_field))
-                # print('child', self.get_value_from_tfstate(
-                #     child_attributes, child_field))
-                return self.get_value_from_tfstate(parent_attributes, parent_field) == self.get_value_from_tfstate(
-                    child_attributes, child_field)
+            else:
+                child_field = value_dict.get('field', None)
+                if child_field:
+                    child_field = child_field.split('.')
+                    # print('parent', self.get_value_from_tfstate(
+                    #     parent_attributes, parent_field))
+                    # print('child', self.get_value_from_tfstate(
+                    #     child_attributes, child_field))
+                    return self.get_value_from_tfstate(parent_attributes, parent_field) == self.get_value_from_tfstate(
+                        child_attributes, child_field)
 
         return False
 
@@ -938,11 +939,11 @@ class HCL:
             # exit()
             for key, value in attributes.items():
                 if not str(value).startswith('<<EOF'):
-                    print("===========================")
-                    print(key, value)
+                    # print("===========================")
+                    # print(key, value)
                     attributes[key] = value_to_hcl(value)
-                    print(key, attributes[key])
-                    print("===========================")
+                    # print(key, attributes[key])
+                    # print("===========================")
 
         if attributes or deployed_resources:
             return {
