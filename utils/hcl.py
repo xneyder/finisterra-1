@@ -595,7 +595,7 @@ class HCL:
 
     def match_fields(self, parent_attributes, child_attributes, join_field, functions):
         # print('join_field', join_field)
-        if isinstance(join_field, tuple):  # new case when join_field is tuple
+        if isinstance(join_field, tuple):
             parent_field, value_dict = join_field
             parent_field = parent_field.split('.')
             # get function name from the value_dict
@@ -609,8 +609,8 @@ class HCL:
                 else:
                     child_value = func(child_attributes)
                 # print('parent value:', self.get_value_from_tfstate(
-                #     parent_attributes, parent_field.split(".")))
-                # print('child value:', func(child_attributes))
+                #     parent_attributes, parent_field))
+                # print('child value:', child_value)
                 if self.get_value_from_tfstate(parent_attributes, parent_field) == child_value:
                     return True
             else:
@@ -692,6 +692,13 @@ class HCL:
                         second_index_value = func(resource_attributes, arg)
                     else:
                         second_index_value = func(resource_attributes)
+                else:
+                    field_name = second_index.get('field')
+                    if field_name:
+                        second_index_value_tmp = self.get_value_from_tfstate(
+                            resource_attributes, field_name.split('.'))
+
+                        second_index_value = second_index_value_tmp.rstrip()
 
             root_attribute_key_value = None
             if parent_root_attribute_key_value:
@@ -763,6 +770,7 @@ class HCL:
                             attributes[field] = self.string_repr(
                                 value, field_type)
 
+            created = True
             if created:
                 deployed_resources.append({
                     'resource_type': resource_type,
@@ -877,7 +885,6 @@ class HCL:
                 return input_str.replace("\\", "\\\\")
 
             hcl_str = ""
-
             if isinstance(value, str) and (value.startswith('{') or value.startswith('[')):
                 try:
                     value = json.loads(value)
@@ -887,14 +894,11 @@ class HCL:
             if isinstance(value, dict):
                 hcl_str += "{\n"
                 for k, v in value.items():
-                    hcl_str += f"{k} = {value_to_hcl(v)}"
+                    hcl_str += f"\"{k}\" = {value_to_hcl(v)}"
                 hcl_str += "}\n"
             elif isinstance(value, list):
                 if not value:  # Special case for empty list
                     hcl_str += "[]\n"
-                # Special case for single-item list containing a dict
-                # elif len(value) == 1 and isinstance(value[0], dict):
-                #     hcl_str += value_to_hcl(value[0])
                 elif all(isinstance(item, dict) for item in value):
                     hcl_str += "[\n"
                     for i, item in enumerate(value):
@@ -924,7 +928,6 @@ class HCL:
                     hcl_str += f"{str(value).lower()}\n"
                 else:
                     hcl_str += f"{value}\n"
-
             return hcl_str
 
         attributes, deployed_resources = process_resource(

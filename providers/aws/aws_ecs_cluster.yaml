@@ -72,7 +72,7 @@ aws_ecs_service:
   defaults:
     ignore_task_definition_changes: true
     create_task_definition: false
-    enable_autoscaling: false #To implement aws_appautoscaling_policy, and aws_appautoscaling_target
+    enable_autoscaling: false
   fields:
     name:
       field: name
@@ -118,7 +118,7 @@ aws_ecs_service:
       field: launch_type
       type: string
     load_balancer:
-      field: load_balancer
+      function: load_balancer
       type: map
     ordered_placement_strategy:
       field: ordered_placement_strategy
@@ -171,6 +171,52 @@ aws_ecs_service:
       function: check_subnet_ids
 
   childs:
+    aws_iam_role:
+      join:
+        iam_role:
+          function: join_path_role_name
+      target_resource_name: service
+      defaults:
+        create_iam_role: true
+        iam_role_use_name_prefix: false
+      fields:
+        iam_role_arn:
+          field: arn
+          type: string
+        iam_role_name:
+          field: name
+          type: string
+        # iam_role_use_name_prefix:
+        #   field: name_prefix
+        #   type: string
+        iam_role_path:
+          field: path
+          type: string
+        iam_role_description:
+          field: description
+          type: string
+        iam_role_permissions_boundary:
+          field: permissions_boundary
+          type: string
+        iam_role_tags:
+          field: tags
+          type: map
+        iam_role_statements:
+          field: statements
+          type: map
+      childs:
+        aws_iam_role_policy_attachment:
+          join:
+            name:
+              field: role
+          target_resource_name: service
+          childs:
+            aws_iam_policy:
+              join:
+                policy_arn:
+                  field: arn
+              target_resource_name: service
+
     aws_ecs_task_definition:
       join:
         task_definition:
@@ -358,3 +404,47 @@ aws_ecs_service:
                 task_exec_iam_role_policies:
                   function: tasks_iam_role_policies
                   type: string
+    aws_appautoscaling_target:
+      join:
+        name:
+          function: get_name_from_arn
+          arg: resource_id
+      target_resource_name: this
+      defaults:
+        enable_autoscaling: true
+      fields:
+        autoscaling_min_capacity:
+          field: min_capacity
+          type: number
+        autoscaling_max_capacity:
+          field: max_capacity
+          type: number
+      childs:
+        aws_appautoscaling_policy:
+          join:
+            resource_id:
+              field: resource_id
+            service_namespace:
+              field: service_namespace
+            scalable_dimension:
+              field: scalable_dimension
+          target_resource_name: this
+          second_index:
+            field: name
+          fields:
+            autoscaling_policies:
+              function: autoscaling_policies
+              type: list
+        aws_appautoscaling_scheduled_action:
+          join:
+            resource_id:
+              field: resource_id
+            service_namespace:
+              field: service_namespace
+            scalable_dimension:
+              field: scalable_dimension
+          target_resource_name: this
+          fields:
+            autoscaling_scheduled_actions:
+              function: autoscaling_scheduled_actions
+              type: list

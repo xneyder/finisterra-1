@@ -1,0 +1,350 @@
+aws_db_instance:
+  terraform_module: "terraform-aws-modules/rds/aws"
+  terraform_module_version: "6.1.0"
+  keys:
+    - identifier
+  target_resource_name: this
+  defaults:
+    create_db_instance: true
+
+  fields:
+    identifier:
+      field: identifier
+    identifier_prefix:
+      field: identifier_prefix
+    engine:
+      field: engine
+    engine_version:
+      field: engine_version
+    instance_class:
+      field: instance_class
+    allocated_storage:
+      field: allocated_storage
+    storage_type:
+      field: storage_type
+    storage_encrypted:
+      field: storage_encrypted
+    kms_key_id:
+      field: kms_key_id
+    license_model:
+      field: license_model
+    db_name:
+      field: db_name
+    username:
+      field: username
+    password:
+      field: password
+    port:
+      field: port
+    domain:
+      field: domain
+    domain_iam_role_name:
+      field: domain_iam_role_name
+    iam_database_authentication_enabled:
+      field: iam_database_authentication_enabled
+    custom_iam_instance_profile:
+      field: custom_iam_instance_profile
+    manage_master_user_password:
+      field: manage_master_user_password
+    master_user_secret_kms_key_id:
+      field: master_user_secret_kms_key_id
+    vpc_security_group_ids:
+      field: vpc_security_group_ids
+    db_subnet_group_name:
+      field: db_subnet_group_name
+    parameter_group_name:
+      field: parameter_group_name
+    option_group_name:
+      field: option_group_name
+    network_type:
+      field: network_type
+    availability_zone:
+      field: availability_zone
+    multi_az:
+      field: multi_az
+    iops:
+      field: iops
+    storage_throughput:
+      field: storage_throughput
+    publicly_accessible:
+      field: publicly_accessible
+    ca_cert_identifier:
+      field: ca_cert_identifier
+    allow_major_version_upgrade:
+      field: allow_major_version_upgrade
+    auto_minor_version_upgrade:
+      field: auto_minor_version_upgrade
+    apply_immediately:
+      field: apply_immediately
+    maintenance_window:
+      field: maintenance_window
+    blue_green_update:
+      field: blue_green_update
+    snapshot_identifier:
+      field: snapshot_identifier
+    copy_tags_to_snapshot:
+      field: copy_tags_to_snapshot
+    skip_final_snapshot:
+      field: skip_final_snapshot
+    final_snapshot_identifier_prefix:
+      field: final_snapshot_identifier_prefix
+    performance_insights_enabled:
+      field: performance_insights_enabled
+    performance_insights_retention_period:
+      field: performance_insights_retention_period
+    performance_insights_kms_key_id:
+      field: performance_insights_kms_key_id
+    replicate_source_db:
+      field: replicate_source_db
+    replica_mode:
+      field: replica_mode
+    backup_retention_period:
+      field: backup_retention_period
+    backup_window:
+      field: backup_window
+    max_allocated_storage:
+      field: max_allocated_storage
+    monitoring_interval:
+      field: monitoring_interval
+    monitoring_role_arn:
+      field: monitoring_role_arn
+    monitoring_role_name:
+      field: monitoring_role_name
+    monitoring_role_use_name_prefix:
+      field: monitoring_role_use_name_prefix
+    monitoring_role_description:
+      field: monitoring_role_description
+    create_monitoring_role:
+      field: create_monitoring_role
+    monitoring_role_permissions_boundary:
+      field: monitoring_role_permissions_boundary
+    character_set_name:
+      field: character_set_name
+    nchar_character_set_name:
+      field: nchar_character_set_name
+    timezone:
+      field: timezone
+    enabled_cloudwatch_logs_exports:
+      field: enabled_cloudwatch_logs_exports
+    create_cloudwatch_log_group:
+      field: create_cloudwatch_log_group
+    cloudwatch_log_group_retention_in_days:
+      field: cloudwatch_log_group_retention_in_days
+    cloudwatch_log_group_kms_key_id:
+      field: cloudwatch_log_group_kms_key_id
+    timeouts:
+      field: timeouts
+    deletion_protection:
+      field: deletion_protection
+    delete_automated_backups:
+      field: delete_automated_backups
+    restore_to_point_in_time:
+      field: restore_to_point_in_time
+    s3_import:
+      field: s3_import
+    tags:
+      field: tags
+    db_instance_tags:
+      field: db_instance_tags
+  childs:
+    db_subnet_group:
+      join:
+        db_subnet_group_name:
+          field: name
+      fields:
+        logging:
+          field: logging
+
+  #   aws_s3_bucket_acl:
+  #     join:
+  #       bucket:
+  #         field: bucket
+  #     target_resource_name: this
+  #     fields:
+  #       acl:
+  #         field: acl
+  #       expected_bucket_owner:
+  #         field: expected_bucket_owner
+  #       grant:
+  #         function: aws_s3_bucket_acl_grant
+  #       owner:
+  #         function: aws_s3_bucket_acl_owner
+
+  #   aws_s3_bucket_website_configuration:
+  #     join:
+  #       bucket:
+  #         field: bucket
+  #     target_resource_name: this
+  #     fields:
+  #       website:
+  #         function: aws_s3_bucket_website_configuration_website
+  #       expected_bucket_owner:
+  #         field: expected_bucket_owner
+
+  #   aws_s3_bucket_versioning:
+  #     join:
+  #       bucket:
+  #         field: bucket
+  #     target_resource_name: this
+  #     fields:
+  #       versioning:
+  #         function: aws_s3_bucket_versioning_versioning
+  #       expected_bucket_owner:
+  #         field: expected_bucket_owner
+
+  #   aws_s3_bucket_server_side_encryption_configuration:
+  #     join:
+  #       bucket:
+  #         field: bucket
+  #     target_resource_name: this
+  #     fields:
+  #       server_side_encryption_configuration:
+  #         function: server_side_encryption_configuration
+  #       expected_bucket_owner:
+  #         field: expected_bucket_owner
+
+  #   aws_s3_bucket_accelerate_configuration:
+  #     join:
+  #       bucket:
+  #         field: bucket
+  #     target_resource_name: this
+  #     fields:
+  #       acceleration_status:
+  #         field: acceleration_status
+  #       expected_bucket_owner:
+  #         field: expected_bucket_owner
+
+  #   aws_s3_bucket_request_payment_configuration:
+  #     join:
+  #       bucket:
+  #         field: bucket
+  #     target_resource_name: this
+  #     fields:
+  #       request_payer:
+  #         field: payer
+  #       expected_bucket_owner:
+  #         field: expected_bucket_owner
+
+  #   aws_s3_bucket_cors_configuration: #Not tested
+  #     join:
+  #       bucket:
+  #         field: bucket
+  #     target_resource_name: this
+  #     fields:
+  #       expected_bucket_owner:
+  #         field: expected_bucket_owner
+  #       cors_rule:
+  #         field: cors_rule
+
+  #   aws_s3_bucket_lifecycle_configuration:
+  #     join:
+  #       bucket:
+  #         field: bucket
+  #     target_resource_name: this
+  #     fields:
+  #       expected_bucket_owner:
+  #         field: expected_bucket_owner
+  #       lifecycle_rule:
+  #         function: aws_s3_bucket_lifecycle_configuration_lifecycle_rule
+
+  #   aws_s3_bucket_object_lock_configuration: #Not tested
+  #     join:
+  #       bucket:
+  #         field: bucket
+  #     target_resource_name: this
+  #     fields:
+  #       object_lock_configuration:
+  #         field: object_lock_configuration
+  #       object_lock_enabled:
+  #         field: object_lock_enabled
+  #       expected_bucket_owner:
+  #         field: expected_bucket_owner
+
+  #   aws_s3_bucket_replication_configuration: #Not tested
+  #     join:
+  #       bucket:
+  #         field: bucket
+  #     target_resource_name: this
+  #     fields:
+  #       replication_configuration:
+  #         field: replication_configuration
+
+  #   aws_s3_bucket_policy:
+  #     join:
+  #       bucket:
+  #         field: bucket
+  #     target_resource_name: this
+  #     defaults:
+  #       attach_policy: true
+  #     fields:
+  #       policy:
+  #         function: aws_s3_bucket_policy_policy
+  #         arg: policy
+  #         multiline: true
+  #       # attach_policy:
+  #       #   function: is_field_set
+  #       #   arg: policy
+
+  #   aws_s3_bucket_public_access_block:
+  #     join:
+  #       bucket:
+  #         field: bucket
+  #     target_resource_name: this
+  #     defaults:
+  #       attach_public_policy: true
+  #     fields:
+  #       block_public_acls:
+  #         field: block_public_acls
+  #       block_public_policy:
+  #         field: block_public_policy
+  #       ignore_public_acls:
+  #         field: ignore_public_acls
+  #       restrict_public_buckets:
+  #         field: restrict_public_buckets
+
+  #   aws_s3_bucket_ownership_controls: #no tested
+  #     join:
+  #       bucket:
+  #         field: bucket
+  #     target_resource_name: this
+  #     defaults:
+  #       control_object_ownership: true
+  #     fields:
+  #       object_ownership:
+  #         function: aws_s3_bucket_ownership_controls_object_ownership
+
+  #   aws_s3_bucket_intelligent_tiering_configuration: #no tested
+  #     join:
+  #       bucket:
+  #         field: bucket
+  #     target_resource_name: this
+  #     fields:
+  #       intelligent_tiering:
+  #         field: intelligent_tiering
+
+  #   aws_s3_bucket_metric: #no tested
+  #     join:
+  #       bucket:
+  #         field: bucket
+  #     target_resource_name: this
+  #     fields:
+  #       metric_configuration:
+  #         field: metric_configuration
+
+  #   aws_s3_bucket_inventory: #no tested
+  #     join:
+  #       bucket:
+  #         field: bucket
+  #     target_resource_name: this
+  #     fields:
+  #       inventory_configuration:
+  #         field: inventory_configuration
+
+  #   aws_s3_bucket_analytics_configuration: #no tested
+  #     join:
+  #       bucket:
+  #         field: bucket
+  #     target_resource_name: this
+  #     fields:
+  #       analytics_configuration:
+  #         field: analytics_configuration
