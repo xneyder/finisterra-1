@@ -1,6 +1,7 @@
 import os
 from utils.hcl import HCL
 import json
+import re
 
 
 class ECS:
@@ -74,6 +75,10 @@ class ECS:
             return arn.split('/')[-1]
         return None
 
+    def to_snake_case(self, name):
+        s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
+        return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
+
     def container_definitions(self, attributes):
         result = {}
         container_definitions_str = attributes.get(
@@ -85,7 +90,10 @@ class ECS:
             return result
 
         for container in container_definitions:
-            result[container['name']] = container
+            updated_container = {}
+            for k, v in container.items():
+                updated_container[self.to_snake_case(k)] = v
+            result[updated_container['name']] = updated_container
         return result
 
     def task_definition_volume(self, attributes):
@@ -106,18 +114,18 @@ class ECS:
             result[name] = policy_arn
         return result
 
-    # def get_name_from_arn(self, attributes, arg):
-    #     arn = attributes.get(arg)
-    #     if arn is not None:
-    #         # split the string by '/' and take the last part as the cluster_arn
-    #         return arn.split('/')[-1]
-    #     return None
+    def get_name_from_arn(self, attributes, arg):
+        arn = attributes.get(arg)
+        if arn is not None:
+            # split the string by '/' and take the last part as the cluster_arn
+            return arn.split('/')[-1]
+        return None
 
     def ecs(self):
         self.hcl.prepare_folder(os.path.join("generated", "ecs"))
 
         self.aws_ecs_cluster()
-        # self.aws_ecs_task_definition() # TO REMOVE COMMENT
+        self.aws_ecs_task_definition()
 
         # self.aws_ecs_account_setting_default()
         # self.aws_ecs_capacity_provider()
@@ -141,7 +149,7 @@ class ECS:
             'get_arn': self.get_arn,
             'get_field_from_attrs': self.get_field_from_attrs,
             'tasks_iam_role_policies': self.tasks_iam_role_policies,
-            # 'get_name_from_arn': self.get_name_from_arn,
+            'get_name_from_arn': self.get_name_from_arn,
         }
 
         self.hcl.module_hcl_code("terraform.tfstate", os.path.join(

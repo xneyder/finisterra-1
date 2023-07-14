@@ -1,0 +1,56 @@
+aws_ecs_service:
+
+explicit defines wait_for_steady_state, and timeouts
+
+  # module.publication_service.aws_ecs_service.ignore_task_definition[0] will be updated in-place
+  ~ resource "aws_ecs_service" "ignore_task_definition" {
+        id                                 = "arn:aws-us-gov:ecs:us-gov-west-1:050779347855:service/production/publication-service"
+        name                               = "publication-service"
+        tags                               = {}
+      + wait_for_steady_state              = false
+        # (13 unchanged attributes hidden)
+
+      + timeouts {}
+
+        # (4 unchanged blocks hidden)
+    }
+
+aws_iam_role.tasks[0]
+
+assume_role_policy: Adds the hardcoded conditions, good for security
+
+https://github.com/terraform-aws-modules/terraform-aws-ecs/blob/master/modules/service/main.tf#L916
+
+  # module.publication_service.aws_iam_role.tasks[0] will be updated in-place
+  ~ resource "aws_iam_role" "tasks" {
+      ~ assume_role_policy    = jsonencode(
+          ~ {
+              ~ Statement = [
+                  ~ {
+                      + Condition = {
+                          + ArnLike      = {
+                              + "aws:SourceArn" = "arn:aws-us-gov:ecs:us-gov-west-1:050779347855:*"
+                            }
+                          + StringEquals = {
+                              + "aws:SourceAccount" = "050779347855"
+                            }
+                        }
+                      + Sid       = "ECSTasksAssumeRole"
+                        # (3 unchanged attributes hidden)
+                    },
+                ]
+                # (1 unchanged attribute hidden)
+            }
+        )
+      + force_detach_policies = true
+        id                    = "web-app-publication-service"
+        name                  = "web-app-publication-service"
+        tags                  = {}
+        # (8 unchanged attributes hidden)
+    }
+    
+force_detach_policies moves always to true: If policies are attached to the role via the aws_iam_policy_attachment resource and you are modifying the role name or path, the force_detach_policies argument must be set to true and applied before attempting the operation otherwise you will encounter a DeleteConflict error. The aws_iam_role_policy_attachment resource (recommended) does not have this requirement.
+
+https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role
+
+https://github.com/terraform-aws-modules/terraform-aws-ecs/blob/master/modules/service/main.tf#L940

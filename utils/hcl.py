@@ -541,12 +541,17 @@ class HCL:
                 f"Warning: field '{'.'.join(keys)}' not found in state file.")
             return None
 
-    def string_repr(self, value):
+    def string_repr(self, value, field_type=None):
         if value is None:
             return json.dumps(value)
         elif isinstance(value, bool):
             return "true" if value else "false"
-        elif isinstance(value, (list, dict)):
+        elif isinstance(value, (list)):
+            if field_type == "map":
+                if len(value) == 1:
+                    return json.dumps(value[0])
+            return json.dumps(value)
+        elif isinstance(value, (dict)):
             return json.dumps(value)
         elif isinstance(value, (int, float)):
             return str(value)
@@ -667,6 +672,18 @@ class HCL:
                 'target_resource_name', "")
             target_submodule = resource_config.get('target_submodule', "")
             root_attribute = resource_config.get('root_attribute', "")
+            second_index = resource_config.get('second_index', "")
+            second_index_value = None
+            if second_index:
+                func_name = second_index.get('function')
+                func = functions.get(func_name)
+                if func is not None:
+                    arg = second_index.get('arg')
+                    if arg:
+                        second_index_value = func(resource_attributes, arg)
+                    else:
+                        second_index_value = func(resource_attributes)
+
             root_attribute_key_value = None
             if parent_root_attribute_key_value:
                 root_attribute_key_value = parent_root_attribute_key_value
@@ -699,6 +716,7 @@ class HCL:
                 multiline = False
                 default = field_info.get('default', 'N/A')
                 func_name = field_info.get('function')
+                field_type = field_info.get('type', None)
                 state_field = field_info.get('field', '').split('.')
                 if func_name:
                     func = functions.get(func_name)
@@ -728,12 +746,13 @@ class HCL:
                             attributes[root_attribute][root_attribute_key_value][field] = value
                         else:
                             attributes[root_attribute][root_attribute_key_value][field] = self.string_repr(
-                                value)
+                                value, field_type)
                     else:
                         if multiline:
                             attributes[field] = value
                         else:
-                            attributes[field] = self.string_repr(value)
+                            attributes[field] = self.string_repr(
+                                value, field_type)
 
             if created:
                 deployed_resources.append({
@@ -743,10 +762,12 @@ class HCL:
                     'target_submodule': target_submodule,
                     'id': resource_attributes.get('id', ''),
                     'index': root_attribute_key_value if root_attribute_key_value else '',
-                    # 'second_index': root_attribute_key_value if root_attribute_key_value else '',
+                    'second_index_value': second_index_value if second_index_value else '',
                 })
 
             for child_type, child_config in resource_config.get('childs', {}).items():
+                # Check if resource type is defined use it
+                child_type = child_config.get('resource_type', child_type)
                 for child_instance in [res for res in resources if res['type'] == child_type]:
                     join_fields = [
                         item for item in child_config.get('join', {}).items()]
@@ -783,11 +804,14 @@ class HCL:
 
             return attributes, deployed_resources
 
-        def dict_to_hcl(input_dict, is_top_level=True):
+        def dict_to_hcl(input_dict, indent=0, root=True):
             def escape_special_characters(input_str):
                 return input_str.replace("\\", "\\\\")
 
-            hcl_str = "{\n" if is_top_level else ""
+            def indent_str(level):
+                return '  ' * level
+
+            hcl_lines = []
 
             for key, value in input_dict.items():
                 if isinstance(value, str) and (value.startswith('{') or value.startswith('[')):
@@ -797,46 +821,47 @@ class HCL:
                         pass
 
                 if isinstance(value, dict):
-                    hcl_str += f"{key} = " + "{\n"
-                    hcl_str += dict_to_hcl(value, is_top_level=False)
-                    hcl_str += "}\n"
-                elif isinstance(value, list):
-                    if not value:  # Special case for empty list
-                        hcl_str += f"{key} = []\n"
-                    elif len(value) == 1 and isinstance(value[0], dict):
-                        hcl_str += f"{key} = " + "{\n"
-                        hcl_str += dict_to_hcl(value[0], is_top_level=False)
-                        hcl_str += "}\n"
-                    elif all(isinstance(item, dict) for item in value):
-                        hcl_str += f"{key} = [\n"
-                        for i, item in enumerate(value):
-                            hcl_str += "{\n"
-                            hcl_str += dict_to_hcl(item, is_top_level=False)
-                            hcl_str += "}"
-                            if i < len(value) - 1:
-                                hcl_str += ","
-                            hcl_str += "\n"
-                        hcl_str += "]\n"
+                    if not root:
+                        hcl_lines.append(f"{indent_str(indent)}{key} = {{")
+                        hcl_lines.extend(dict_to_hcl(
+                            value, indent=indent+1, root=False))
+                        hcl_lines.append(f"{indent_str(indent)}}}")
                     else:
-                        hcl_str += f"{key} = " + "["
-                        hcl_str += ",".join([f"{item}" for item in value])
-                        hcl_str += "]\n"
+                        hcl_lines.append(f"{indent_str(indent)}{key} = ")
+                        hcl_lines.extend(dict_to_hcl(
+                            value, indent=indent+1, root=False))
+                elif isinstance(value, list):
+                    hcl_lines.append(f"{indent_str(indent)}{key} = [")
+                    for item in value:
+                        if isinstance(item, dict):
+                            hcl_lines.extend(dict_to_hcl(
+                                item, indent=indent+1, root=False))
+                            hcl_lines.append(",")
+                        else:
+                            hcl_lines.append(f"{indent_str(indent+1)}{item},")
+                    # Remove trailing comma from the last item
+                    hcl_lines[-1] = hcl_lines[-1][:-1]
+                    hcl_lines.append(f"{indent_str(indent)}]")
                 else:
                     if isinstance(value, str):
                         escaped_value = escape_special_characters(value)
                         if escaped_value.lower() == "null":
-                            hcl_str += f"{key} = null\n"
+                            hcl_lines.append(
+                                f"{indent_str(indent)}{key} = null")
                         else:
-                            hcl_str += f"{key} = " + (escaped_value if escaped_value.startswith(
-                                "\"") and escaped_value.endswith("\"") else "\"" + escaped_value + "\"") + "\n"
+                            hcl_lines.append(f"{indent_str(indent)}{key} = " + (escaped_value if escaped_value.startswith(
+                                "\"") and escaped_value.endswith("\"") else "\"" + escaped_value + "\""))
                     elif isinstance(value, bool):
-                        hcl_str += f'{key} = "{str(value).lower()}"\n'
+                        hcl_lines.append(
+                            f'{indent_str(indent)}{key} = "{str(value).lower()}"')
                     else:
-                        hcl_str += f"{key} = {value}\n"
+                        hcl_lines.append(
+                            f"{indent_str(indent)}{key} = {value}")
 
-            hcl_str += "}\n" if is_top_level else ""
+            return hcl_lines
 
-            return hcl_str
+        def convert_dict_to_hcl(input_dict):
+            return '\n'.join(dict_to_hcl(input_dict))
 
         def value_to_hcl(value):
             def escape_special_characters(input_str):
@@ -851,21 +876,20 @@ class HCL:
                     pass
 
             if isinstance(value, dict):
+                hcl_str += "{\n"
                 for k, v in value.items():
-                    hcl_str += f"{k} = {value_to_hcl(v)}\n"
+                    hcl_str += f"{k} = {value_to_hcl(v)}"
+                hcl_str += "}\n"
             elif isinstance(value, list):
                 if not value:  # Special case for empty list
                     hcl_str += "[]\n"
-                elif len(value) == 1 and isinstance(value[0], dict):
-                    hcl_str += "{\n"
-                    hcl_str += value_to_hcl(value[0])
-                    hcl_str += "}\n"
+                # Special case for single-item list containing a dict
+                # elif len(value) == 1 and isinstance(value[0], dict):
+                #     hcl_str += value_to_hcl(value[0])
                 elif all(isinstance(item, dict) for item in value):
                     hcl_str += "[\n"
                     for i, item in enumerate(value):
-                        hcl_str += "{\n"
                         hcl_str += value_to_hcl(item)
-                        hcl_str += "}"
                         if i < len(value) - 1:
                             hcl_str += ","
                         hcl_str += "\n"
@@ -874,16 +898,21 @@ class HCL:
                     hcl_str += "["
                     hcl_str += ",".join([f"{item}" for item in value])
                     hcl_str += "]\n"
+            elif isinstance(value, bool):
+                hcl_str += f"{str(value).lower()}\n"
             else:
                 if isinstance(value, str):
                     escaped_value = escape_special_characters(value)
                     if escaped_value.lower() == "null":
                         hcl_str += "null\n"
+                    # check for "true" or "false" strings
+                    elif escaped_value.lower() in ["true", "false"]:
+                        hcl_str += f"{escaped_value}\n"
                     else:
                         hcl_str += (escaped_value if escaped_value.startswith(
                             "\"") and escaped_value.endswith("\"") else "\"" + escaped_value + "\"") + "\n"
                 elif isinstance(value, bool):
-                    hcl_str += f'"{str(value).lower()}"\n'
+                    hcl_str += f"{str(value).lower()}\n"
                 else:
                     hcl_str += f"{value}\n"
 
@@ -892,25 +921,27 @@ class HCL:
         attributes, deployed_resources = process_resource(
             resource, resources, config)
 
-        def is_dict_or_list_of_dicts(value):
-            try:
-                data = json.loads(value)
-                return isinstance(data, dict) or (isinstance(data, list) and all(isinstance(item, dict) for item in data))
-            except json.JSONDecodeError:
-                return False
-
         # JSON dump the root attributes
         # remove duplicates by converting to a set
+        full_dump = {}
         if config[resource['type']].get('dict_to_hcl', False):
+            # full_dump = convert_dict_to_hcl({'attributes': attributes})
+            # print(full_dump)
+            # exit()
             for key, value in attributes.items():
                 if not str(value).startswith('<<EOF'):
+                    print("===========================")
+                    print(key, value)
                     attributes[key] = value_to_hcl(value)
+                    print(key, attributes[key])
+                    print("===========================")
 
         if attributes or deployed_resources:
             return {
                 "type": resource['type'],
                 "name": resource['name'],
                 "attributes": attributes,
+                "full_dump": full_dump,
                 "deployed_resources": deployed_resources
             }
         else:
@@ -944,8 +975,11 @@ class HCL:
                     file.write(f'module "{instance["name"]}" {{\n')
                     file.write(f'source  = "{instance["module"]}"\n')
                     file.write(f'version = "{instance["version"]}"\n')
-                    for index, value in instance["attributes"].items():
-                        file.write(f'{index} = {value}\n')
+                    if instance["full_dump"]:
+                        file.write(instance["full_dump"]['attributes'])
+                    else:
+                        for index, value in instance["attributes"].items():
+                            file.write(f'{index} = {value}\n')
                     file.write('}\n')
 
         subprocess.run(["terraform", "init"], check=True)
@@ -958,7 +992,12 @@ class HCL:
                 if not index_str and deployed_resource["target_submodule"]:
                     deployed_resource["target_submodule"] += "."
 
-                resource_import_target = f'module.{instance["name"]}.{deployed_resource["target_submodule"]}{index_str}{deployed_resource["resource_type"]}.{deployed_resource["target_resource_name"]}'
+                second_index_str = "[0]"
+                if deployed_resource["second_index_value"]:
+                    second_index_str = '["' + \
+                        deployed_resource["second_index_value"]+'"]'
+
+                resource_import_target = f'module.{instance["name"]}.{deployed_resource["target_submodule"]}{index_str}{deployed_resource["resource_type"]}.{deployed_resource["target_resource_name"]}{second_index_str}'
 
                 # print(resource_import_source)
                 # print(resource_import_target)
