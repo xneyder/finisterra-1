@@ -106,11 +106,18 @@ class ECS:
             result[name] = policy_arn
         return result
 
+    # def get_name_from_arn(self, attributes, arg):
+    #     arn = attributes.get(arg)
+    #     if arn is not None:
+    #         # split the string by '/' and take the last part as the cluster_arn
+    #         return arn.split('/')[-1]
+    #     return None
+
     def ecs(self):
         self.hcl.prepare_folder(os.path.join("generated", "ecs"))
 
         self.aws_ecs_cluster()
-        self.aws_ecs_task_definition()
+        # self.aws_ecs_task_definition() # TO REMOVE COMMENT
 
         # self.aws_ecs_account_setting_default()
         # self.aws_ecs_capacity_provider()
@@ -134,10 +141,11 @@ class ECS:
             'get_arn': self.get_arn,
             'get_field_from_attrs': self.get_field_from_attrs,
             'tasks_iam_role_policies': self.tasks_iam_role_policies,
+            # 'get_name_from_arn': self.get_name_from_arn,
         }
 
-        self.hcl.module_hcl_code("terraform-aws-modules/ecs/aws", "5.2.0", "terraform.tfstate",
-                                 os.path.join(os.path.dirname(os.path.abspath(__file__)), "aws_ecs_cluster.yaml"), functions)
+        self.hcl.module_hcl_code("terraform.tfstate", os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), "aws_ecs_cluster.yaml"), functions)
 
         exit()
         # self.hcl.generate_hcl_file()

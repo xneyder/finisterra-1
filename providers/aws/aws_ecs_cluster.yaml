@@ -1,4 +1,6 @@
 aws_ecs_cluster:
+  terraform_module: "terraform-aws-modules/ecs/aws"
+  terraform_module_version: "5.2.0"
   keys:
     - name
   target_resource_name: this[0]
@@ -56,224 +58,230 @@ aws_ecs_cluster:
     #   target_resource_name: this[0]
     #   fields:
 
-    aws_ecs_service:
+aws_ecs_service:
+  terraform_module: "terraform-aws-modules/ecs/aws//modules/service"
+  terraform_module_version: "5.2.0"
+  dict_to_hcl: true
+  join:
+    arn:
+      function: aws_ecs_service_cluster_arn
+  target_resource_name: ignore_task_definition[0]
+  # target_submodule: module.service
+  # root_attribute: services
+  # root_attribute_key: name
+  defaults:
+    ignore_task_definition_changes: true
+    create_task_definition: false
+    enable_autoscaling: false #To implement aws_appautoscaling_policy, and aws_appautoscaling_target
+  fields:
+    name:
+      field: name
+      type: string
+    alarms:
+      field: alarms
+      type: map
+    capacity_provider_strategy:
+      field: capacity_provider_strategy
+      type: map
+    cluster_arn:
+      field: cluster
+      type: string
+    deployment_circuit_breaker:
+      field: deployment_circuit_breaker
+      type: map
+    deployment_controller:
+      field: deployment_controller
+      type: map
+    deployment_maximum_percent:
+      field: deployment_maximum_percent
+      type: number
+    deployment_minimum_healthy_percent:
+      field: deployment_minimum_healthy_percent
+      type: number
+    desired_count:
+      field: desired_count
+      type: number
+    enable_ecs_managed_tags:
+      field: enable_ecs_managed_tags
+      type: boolean
+    enable_execute_command:
+      field: enable_execute_command
+      type: boolean
+    force_new_deployment:
+      field: force_new_deployment
+      type: boolean
+    health_check_grace_period_seconds:
+      field: health_check_grace_period_seconds
+      type: number
+    launch_type:
+      field: launch_type
+      type: string
+    load_balancer:
+      field: load_balancer
+      type: map
+    ordered_placement_strategy:
+      field: ordered_placement_strategy
+      type: map
+    placement_constraints:
+      field: placement_constraints
+      type: map
+    platform_version:
+      field: platform_version
+      type: string
+    scheduling_strategy:
+      field: scheduling_strategy
+      type: string
+    service_connect_configuration:
+      field: service_connect_configuration
+      type: map
+    service_registries:
+      field: service_registries
+      type: map
+    triggers:
+      field: triggers
+      type: map
+    wait_for_steady_state:
+      field: wait_for_steady_state
+      type: boolean
+    propagate_tags:
+      field: propagate_tags
+      type: string
+    tags:
+      field: tags
+      type: map
+    timeouts:
+      field: timeouts
+      type: map
+    assign_public_ip:
+      function: get_network_field
+      arg: assign_public_ip
+      type: boolean
+    security_group_ids:
+      function: get_network_field
+      arg: security_group_ids
+      type: list
+    subnet_ids:
+      function: get_network_field
+      arg: subnet_ids
+      type: list
+    create_security_group:
+      function: check_subnet_ids
+
+  childs:
+    aws_ecs_task_definition:
       join:
-        arn:
-          function: aws_ecs_service_cluster_arn
-      target_resource_name: ignore_task_definition[0]
-      target_submodule: module.service
-      root_attribute: services
-      root_attribute_key: name
+        task_definition:
+          function: task_definition_id
+      # root_attribute: services
+      # root_attribute_key: name
+      # root_attribute_key_parent: true #Take the field from the parent attributes
+      target_resource_name: this[0]
+      # target_submodule: module.service
       defaults:
-        ignore_task_definition_changes: true
-        create_task_definition: false
-        enable_autoscaling: false #To implement aws_appautoscaling_policy, and aws_appautoscaling_target
+        create_task_definition: true
+        create_tasks_iam_role: false
+        create_task_exec_policy: false
       fields:
-        name:
-          field: name
+        task_definition_arn:
+          field: arn
           type: string
-        alarms:
-          field: alarms
-          type: map
-        capacity_provider_strategy:
-          field: capacity_provider_strategy
-          type: map
-        cluster_arn:
-          field: cluster
+        network_mode:
+          field: network_mode
           type: string
-        deployment_circuit_breaker:
-          field: deployment_circuit_breaker
+        container_definitions:
+          function: container_definitions
           type: map
-        deployment_controller:
-          field: deployment_controller
+        container_definition_defaults:
+          field: container_definition_defaults
           type: map
-        deployment_maximum_percent:
-          field: deployment_maximum_percent
+        cpu:
+          field: cpu
           type: number
-        deployment_minimum_healthy_percent:
-          field: deployment_minimum_healthy_percent
+          default: null
+        ephemeral_storage:
+          field: ephemeral_storage
+          type: map
+        family:
+          field: family
+          type: string
+        inference_accelerator:
+          field: inference_accelerator
+          type: map
+        ipc_mode:
+          field: ipc_mode
+          type: string
+        memory:
+          field: memory
           type: number
-        desired_count:
-          field: desired_count
-          type: number
-        enable_ecs_managed_tags:
-          field: enable_ecs_managed_tags
+          default: null
+        proxy_configuration:
+          field: proxy_configuration
+          type: map
+        requires_compatibilities:
+          field: requires_compatibilities
+          type: list
+        runtime_platform:
+          field: runtime_platform
+          type: map
+          default: {}
+        skip_destroy:
+          field: skip_destroy
           type: boolean
-        enable_execute_command:
-          field: enable_execute_command
-          type: boolean
-        force_new_deployment:
-          field: force_new_deployment
-          type: boolean
-        health_check_grace_period_seconds:
-          field: health_check_grace_period_seconds
-          type: number
-        launch_type:
-          field: launch_type
-          type: string
-        load_balancer:
-          field: load_balancer
+        volume:
+          function: task_definition_volume
           type: map
-        ordered_placement_strategy:
-          field: ordered_placement_strategy
-          type: map
-        placement_constraints:
-          field: placement_constraints
-          type: map
-        platform_version:
-          field: platform_version
-          type: string
-        scheduling_strategy:
-          field: scheduling_strategy
-          type: string
-        service_connect_configuration:
-          field: service_connect_configuration
-          type: map
-        service_registries:
-          field: service_registries
-          type: map
-        triggers:
-          field: triggers
-          type: map
-        wait_for_steady_state:
-          field: wait_for_steady_state
-          type: boolean
-        propagate_tags:
-          field: propagate_tags
-          type: string
-        tags:
+        task_tags:
           field: tags
           type: map
-        timeouts:
-          field: timeouts
-          type: map
-        assign_public_ip:
-          function: get_network_field
-          arg: assign_public_ip
-          type: boolean
-        security_group_ids:
-          function: get_network_field
-          arg: security_group_ids
-          type: list
-        subnet_ids:
-          function: get_network_field
-          arg: subnet_ids
-          type: list
-        create_security_group:
-          function: check_subnet_ids
-
       childs:
-        aws_ecs_task_definition:
+        aws_iam_role:
           join:
-            task_definition:
-              function: task_definition_id
-          root_attribute: services
-          root_attribute_key: name
-          root_attribute_key_parent: true #Take the field from the parent attributes
-          target_resource_name: this[0]
-          target_submodule: module.service
+            task_role_arn:
+              function: get_arn
+          # root_attribute: services
+          # root_attribute_key: name
+          # root_attribute_key_parent: true #Take the field from the parent attributes
+          target_resource_name: tasks[0]
+          # target_submodule: module.service
           defaults:
-            create_task_definition: true
-            create_tasks_iam_role: false
-            create_task_exec_policy: false
+            create_tasks_iam_role: true
+            tasks_iam_role_use_name_prefix: false
           fields:
-            task_definition_arn:
+            tasks_iam_role_arn:
               field: arn
               type: string
-            network_mode:
-              field: network_mode
+            tasks_iam_role_name:
+              field: name
               type: string
-            container_definitions:
-              function: container_definitions
-              type: map
-            container_definition_defaults:
-              field: container_definition_defaults
-              type: map
-            cpu:
-              field: cpu
-              type: number
-              default: null
-            ephemeral_storage:
-              field: ephemeral_storage
-              type: map
-            family:
-              field: family
+            tasks_iam_role_path:
+              field: path
               type: string
-            inference_accelerator:
-              field: inference_accelerator
-              type: map
-            ipc_mode:
-              field: ipc_mode
+            tasks_iam_role_description:
+              field: description
               type: string
-            memory:
-              field: memory
-              type: number
-              default: null
-            proxy_configuration:
-              field: proxy_configuration
-              type: map
-            requires_compatibilities:
-              field: requires_compatibilities
-              type: list
-            runtime_platform:
-              field: runtime_platform
-              type: map
-              default: {}
-            skip_destroy:
-              field: skip_destroy
-              type: boolean
-            volume:
-              function: task_definition_volume
-              type: map
-            task_tags:
+            tasks_iam_role_permissions_boundary:
+              field: permissions_boundary
+              type: string
+            tasks_iam_role_tags:
               field: tags
               type: map
           childs:
-            aws_iam_role:
+            aws_iam_role_policy_attachment:
               join:
-                task_role_arn:
-                  function: get_arn
-              root_attribute: services
-              root_attribute_key: name
-              root_attribute_key_parent: true #Take the field from the parent attributes
+                name:
+                  function: get_field_from_attrs
+                  arg: role
+              # root_attribute: services
+              # root_attribute_key: name
               target_resource_name: tasks[0]
-              target_submodule: module.service
-              defaults:
-                create_tasks_iam_role: true
-                tasks_iam_role_use_name_prefix: false
+              # second_index:
+              #   function: get_name_from_arn
+              #   arg: policy_arn
+              # target_submodule: module.service
               fields:
-                tasks_iam_role_arn:
-                  field: arn
+                tasks_iam_role_policies:
+                  function: tasks_iam_role_policies
                   type: string
-                tasks_iam_role_name:
-                  field: name
-                  type: string
-                tasks_iam_role_path:
-                  field: path
-                  type: string
-                tasks_iam_role_description:
-                  field: description
-                  type: string
-                tasks_iam_role_permissions_boundary:
-                  field: permissions_boundary
-                  type: string
-                tasks_iam_role_tags:
-                  field: tags
-                  type: map
-              childs:
-                aws_iam_role_policy_attachment:
-                  join:
-                    name:
-                      function: get_field_from_attrs
-                      arg: role
-                  root_attribute: services
-                  root_attribute_key: name
-                  target_resource_name: tasks[0]
-                  target_submodule: module.service
-                  fields:
-                    tasks_iam_role_policies:
-                      function: tasks_iam_role_policies
-                      type: string
 
   # Tasks - IAM role
   # create_tasks_iam_role               = try(each.value.create_tasks_iam_role, true)

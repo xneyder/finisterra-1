@@ -616,6 +616,38 @@ class HCL:
         root_attributes = set()
 
         def process_resource(resource, resources, config, parent_root_attribute_key_value=None):
+
+            def deep_update(original, update):
+                """
+                Recursively update a dictionary.
+
+                :param original: original dictionary
+                :param update: updated dictionary
+                """
+                if not isinstance(update, dict):
+                    return update
+
+                for key, value in update.items():
+                    if isinstance(value, dict):
+                        original[key] = deep_update(
+                            original.get(key, {}), value)
+                    elif isinstance(value, str) and isinstance(original.get(key), str):
+                        try:
+                            # Check if the string can be converted to a dictionary
+                            original_value_dict = json.loads(original[key])
+                            update_value_dict = json.loads(value)
+
+                            # If conversion is successful, merge the dictionaries
+                            original[key] = json.dumps(deep_update(
+                                original_value_dict, update_value_dict))
+
+                        except json.JSONDecodeError:
+                            # If conversion fails, it's not a 'stringified' dictionary, so just overwrite
+                            original[key] = value
+                    else:
+                        original[key] = value
+                return original
+
             nonlocal root_attributes
             created = False
             attributes = {}
@@ -711,6 +743,7 @@ class HCL:
                     'target_submodule': target_submodule,
                     'id': resource_attributes.get('id', ''),
                     'index': root_attribute_key_value if root_attribute_key_value else '',
+                    # 'second_index': root_attribute_key_value if root_attribute_key_value else '',
                 })
 
             for child_type, child_config in resource_config.get('childs', {}).items():
@@ -724,33 +757,26 @@ class HCL:
                             child_instance, resources, {child_type: child_config}, root_attribute_key_value)
 
                         if child_attributes:
+                            child_attributes_copy = child_attributes.copy()
                             if 'root_attribute' in child_config:
                                 root_attribute = child_config['root_attribute']
                                 # make a copy of the child_attributes
-                                child_attributes_copy = child_attributes.copy()
 
                                 if root_attribute in attributes and root_attribute in child_attributes:
-                                    if isinstance(attributes[root_attribute], dict) and isinstance(child_attributes[root_attribute], dict):
-                                        if root_attribute_key_value in attributes[root_attribute] and root_attribute_key_value in child_attributes[root_attribute]:
-                                            attributes[root_attribute][root_attribute_key_value].update(
-                                                child_attributes[root_attribute][root_attribute_key_value])
-                                            child_attributes_copy[root_attribute].pop(
-                                                root_attribute_key_value)  # pop from the copy
-                                        else:
-                                            attributes[root_attribute].update(
-                                                child_attributes[root_attribute])
-                                    elif root_attribute in attributes and isinstance(attributes[root_attribute], list):
+                                    if isinstance(attributes[root_attribute], list):
                                         attributes[root_attribute].append(
                                             child_attributes[root_attribute])
+                                        child_attributes_copy.pop(
+                                            root_attribute)
                                     else:
-                                        attributes[root_attribute] = [
-                                            attributes[root_attribute], child_attributes[root_attribute]]
-                                    # remove the merged attribute from child_attributes
-                                    child_attributes_copy.pop(
-                                        root_attribute)  # pop from the copy
+                                        attributes[root_attribute] = deep_update(attributes.get(
+                                            root_attribute, {}), child_attributes[root_attribute])
+                                        child_attributes_copy.pop(
+                                            root_attribute)
 
                             # update the rest of the attributes normally, using the copy
-                            attributes.update(child_attributes_copy)
+                            attributes = deep_update(
+                                attributes, child_attributes_copy)
 
                         if child_resources:
                             deployed_resources.extend(child_resources)
@@ -812,15 +838,73 @@ class HCL:
 
             return hcl_str
 
+        def value_to_hcl(value):
+            def escape_special_characters(input_str):
+                return input_str.replace("\\", "\\\\")
+
+            hcl_str = ""
+
+            if isinstance(value, str) and (value.startswith('{') or value.startswith('[')):
+                try:
+                    value = json.loads(value)
+                except json.JSONDecodeError:
+                    pass
+
+            if isinstance(value, dict):
+                for k, v in value.items():
+                    hcl_str += f"{k} = {value_to_hcl(v)}\n"
+            elif isinstance(value, list):
+                if not value:  # Special case for empty list
+                    hcl_str += "[]\n"
+                elif len(value) == 1 and isinstance(value[0], dict):
+                    hcl_str += "{\n"
+                    hcl_str += value_to_hcl(value[0])
+                    hcl_str += "}\n"
+                elif all(isinstance(item, dict) for item in value):
+                    hcl_str += "[\n"
+                    for i, item in enumerate(value):
+                        hcl_str += "{\n"
+                        hcl_str += value_to_hcl(item)
+                        hcl_str += "}"
+                        if i < len(value) - 1:
+                            hcl_str += ","
+                        hcl_str += "\n"
+                    hcl_str += "]\n"
+                else:
+                    hcl_str += "["
+                    hcl_str += ",".join([f"{item}" for item in value])
+                    hcl_str += "]\n"
+            else:
+                if isinstance(value, str):
+                    escaped_value = escape_special_characters(value)
+                    if escaped_value.lower() == "null":
+                        hcl_str += "null\n"
+                    else:
+                        hcl_str += (escaped_value if escaped_value.startswith(
+                            "\"") and escaped_value.endswith("\"") else "\"" + escaped_value + "\"") + "\n"
+                elif isinstance(value, bool):
+                    hcl_str += f'"{str(value).lower()}"\n'
+                else:
+                    hcl_str += f"{value}\n"
+
+            return hcl_str
+
         attributes, deployed_resources = process_resource(
             resource, resources, config)
 
+        def is_dict_or_list_of_dicts(value):
+            try:
+                data = json.loads(value)
+                return isinstance(data, dict) or (isinstance(data, list) and all(isinstance(item, dict) for item in data))
+            except json.JSONDecodeError:
+                return False
+
         # JSON dump the root attributes
         # remove duplicates by converting to a set
-        for root_attribute in set(root_attributes):
-            if root_attribute in attributes:
-                attributes[root_attribute] = dict_to_hcl(
-                    attributes[root_attribute])
+        if config[resource['type']].get('dict_to_hcl', False):
+            for key, value in attributes.items():
+                if not str(value).startswith('<<EOF'):
+                    attributes[key] = value_to_hcl(value)
 
         if attributes or deployed_resources:
             return {
@@ -832,7 +916,7 @@ class HCL:
         else:
             return []
 
-    def module_hcl_code(self, module, version, terraform_state_file, config_file, functions={}):
+    def module_hcl_code(self, terraform_state_file, config_file, functions={}):
         with open(config_file, 'r') as f:
             config = yaml.safe_load(f)
 
@@ -845,19 +929,21 @@ class HCL:
 
         for resource in resources:
             if resource['type'] in config:  # Check if resource is root in the config
+                resource_config = config[resource['type']]
                 instance = self.process_resource_module(
                     resource, resources, config, functions)
+                instance['module'] = resource_config.get('terraform_module')
+                instance['version'] = resource_config.get(
+                    'terraform_module_version')
                 if instance:
                     instances.append(instance)
-
-        # The rest of the function...
 
         for instance in instances:
             if instance["attributes"]:
                 with open(f'{instance["type"]}-{instance["name"]}.tf', 'w') as file:
                     file.write(f'module "{instance["name"]}" {{\n')
-                    file.write(f'source  = "{module}"\n')
-                    file.write(f'version = "{version}"\n')
+                    file.write(f'source  = "{instance["module"]}"\n')
+                    file.write(f'version = "{instance["version"]}"\n')
                     for index, value in instance["attributes"].items():
                         file.write(f'{index} = {value}\n')
                     file.write('}\n')
