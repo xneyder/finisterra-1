@@ -699,14 +699,14 @@ class HCL:
                     arg = second_index.get('arg')
                     if arg:
                         second_index_value = func(
-                            resource_attributes, arg).rstrip()
+                            resource_attributes, arg)
                     else:
-                        second_index_value = func(resource_attributes).rstrip()
+                        second_index_value = func(resource_attributes)
                 else:
                     field_name = second_index.get('field')
                     if field_name:
                         second_index_value = self.get_value_from_tfstate(
-                            resource_attributes, field_name.split('.')).rstrip()
+                            resource_attributes, field_name.split('.'))
 
             root_attribute_key_value = None
             if parent_root_attribute_key_value:

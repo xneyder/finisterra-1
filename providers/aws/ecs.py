@@ -369,7 +369,7 @@ class ECS:
                     for service in services:
                         service_name = service["serviceName"]
 
-                        # if service_name != "spring-config-server":  # TO REMOVE
+                        # if service_name != "learning-media-service":  # TO REMOVE
                         #     continue  # TO REMOVE
                         service_arn = service["serviceArn"]
                         id = cluster_arn.split("/")[1] + "/" + service_name

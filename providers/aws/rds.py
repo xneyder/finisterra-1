@@ -37,9 +37,13 @@ class RDS:
         # aws_cloudwatch_log_group
         # aws_iam_role.enhanced_monitoring
         # aws_iam_role_policy_attachment.enhanced_monitoring
+        functions = {}
 
         self.hcl.refresh_state()
-        self.hcl.generate_hcl_file()
+        self.hcl.module_hcl_code("terraform.tfstate",
+                                 os.path.join(os.path.dirname(os.path.abspath(__file__)), "rds.yaml"), functions)
+        exit()
+        # self.hcl.generate_hcl_file()
         self.json_plan = self.hcl.json_plan
 
     def aws_db_instance(self):
@@ -72,7 +76,7 @@ class RDS:
                 self.aws_db_instance_automated_backups_replication(arn)
 
     def aws_db_option_group(self, option_group_name):
-        print("Processing DB Option Groups...")
+        print(f"Processing DB Option Group {option_group_name}")
 
         paginator = self.rds_client.get_paginator("describe_option_groups")
         for page in paginator.paginate():
@@ -93,7 +97,7 @@ class RDS:
                     "aws_db_option_group", option_group_name.replace("-", "_"), attributes)
 
     def aws_db_parameter_group(self, parameter_group_name):
-        print("Processing DB Parameter Groups...")
+        print(f"Processing DB Parameter Group {parameter_group_name}")
 
         paginator = self.rds_client.get_paginator(
             "describe_db_parameter_groups")
@@ -115,7 +119,7 @@ class RDS:
                     "aws_db_parameter_group", parameter_group_name.replace("-", "_"), attributes)
 
     def aws_db_subnet_group(self, db_subnet_group_name):
-        print("Processing DB Subnet Groups...")
+        print(f"Processing DB Subnet Groups {db_subnet_group_name}")
 
         paginator = self.rds_client.get_paginator("describe_db_subnet_groups")
         for page in paginator.paginate():
@@ -132,7 +136,8 @@ class RDS:
                     "aws_db_subnet_group", db_subnet_group_name.replace("-", "_"), attributes)
 
     def aws_db_instance_automated_backups_replication(self, source_instance_arn):
-        print("Processing DB Instance Automated Backups Replications...")
+        print(
+            f"Processing DB Instance Automated Backups Replication {source_instance_arn}")
 
         paginator = self.rds_client.get_paginator("describe_db_instances")
         for page in paginator.paginate():
