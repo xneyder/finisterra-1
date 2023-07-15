@@ -35,7 +35,7 @@ def main():
         "bootstrap_servers": KAFKA_BROKER.split(','),
         "value_deserializer": lambda v: json.loads(v.decode('utf-8')),
         "auto_offset_reset": 'earliest',
-        "group_id": "scan_worker",
+        "group_id": KAFKA_TOPIC,
         "max_poll_records": 1,
         "enable_auto_commit": False,
         "max_poll_interval_ms":  1800000  # 30 minutes in milliseconds

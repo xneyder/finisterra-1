@@ -188,7 +188,7 @@ class ECS:
         name = attributes.get('name')
         if path != "/":
             return f"{path}{name}"
-        return f"/{name}"
+        return f"{name}"
 
     def ecs(self):
         self.hcl.prepare_folder(os.path.join("generated", "ecs"))
@@ -227,6 +227,7 @@ class ECS:
         self.hcl.module_hcl_code("terraform.tfstate", os.path.join(
             os.path.dirname(os.path.abspath(__file__)), "aws_ecs_cluster.yaml"), functions)
 
+        exit()
         # self.hcl.generate_hcl_file()
         self.json_plan = self.hcl.json_plan
 
@@ -368,12 +369,12 @@ class ECS:
                     for service in services:
                         service_name = service["serviceName"]
 
-                        if service_name != "eureka-discovery-service":  # TO REMOVE
-                            continue  # TO REMOVE
+                        # if service_name != "spring-config-server":  # TO REMOVE
+                        #     continue  # TO REMOVE
                         service_arn = service["serviceArn"]
                         id = cluster_arn.split("/")[1] + "/" + service_name
 
-                        print(f"  Processing ECS Service: {service_name}")
+                        print(f"Processing ECS Service: {service_name}")
 
                         attributes = {
                             "id": id,
@@ -387,9 +388,14 @@ class ECS:
                         self.aws_appautoscaling_target(
                             cluster_name, service_name)
 
+                        # Call role for service
+                        if service.get('roleArn'):
+                            self.aws_iam_role(service['roleArn'], True)
+
                         # Call task definition for this service's task definition
-                        self.aws_ecs_task_definition(service['taskDefinition'])
-                        self.aws_iam_role(service['roleArn'], True)
+                        if service.get('taskDefinition'):
+                            self.aws_ecs_task_definition(
+                                service['taskDefinition'])
 
                 else:
                     print(f"Skipping cluster: {cluster['clusterName']}")

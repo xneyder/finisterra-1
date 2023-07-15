@@ -1,10 +1,11 @@
 aws_ecs_cluster:
-  terraform_module: "terraform-aws-modules/ecs/aws"
+  terraform_module: "../../../terraform-aws-modules/terraform-aws-ecs/modules/cluster/"
+  # terraform_module: "github.com/finisterra-io/terraform-aws-ecs//modules/cluster?ref=main"
   terraform_module_version: "5.2.0"
   keys:
     - name
   target_resource_name: this
-  target_submodule: module.cluster
+  # target_submodule: module.cluster
   defaults:
     create_cloudwatch_log_group: false
   fields:
@@ -59,7 +60,8 @@ aws_ecs_cluster:
   #   fields:
 
 aws_ecs_service:
-  terraform_module: "terraform-aws-modules/ecs/aws//modules/service"
+  terraform_module: "../../../terraform-aws-modules/terraform-aws-ecs/modules/service/"
+  # terraform_module: "github.com/finisterra-io/terraform-aws-ecs//modules/service?ref=main"
   terraform_module_version: "5.2.0"
   dict_to_hcl: true
   join:
@@ -73,6 +75,7 @@ aws_ecs_service:
     ignore_task_definition_changes: true
     create_task_definition: false
     enable_autoscaling: false
+    create_iam_role: false
   fields:
     name:
       field: name
@@ -169,6 +172,9 @@ aws_ecs_service:
       type: list
     create_security_group:
       function: check_subnet_ids
+    iam_role:
+      field: iam_role
+      type: string
 
   childs:
     aws_iam_role:
@@ -177,18 +183,17 @@ aws_ecs_service:
           function: join_path_role_name
       target_resource_name: service
       defaults:
-        create_iam_role: true
+        # create_iam_role: true
         iam_role_use_name_prefix: false
       fields:
+        create_iam_role:
+          unique: true
         iam_role_arn:
           field: arn
           type: string
         iam_role_name:
           field: name
           type: string
-        # iam_role_use_name_prefix:
-        #   field: name_prefix
-        #   type: string
         iam_role_path:
           field: path
           type: string
@@ -201,21 +206,37 @@ aws_ecs_service:
         iam_role_tags:
           field: tags
           type: map
-        iam_role_statements:
-          field: statements
-          type: map
       childs:
         aws_iam_role_policy_attachment:
           join:
             name:
               field: role
           target_resource_name: service
+          fields:
+            create_iam_role:
+              unique: true
           childs:
             aws_iam_policy:
               join:
                 policy_arn:
                   field: arn
               target_resource_name: service
+              fields:
+                create_iam_role:
+                  unique: true
+                iam_policy_name:
+                  field: name
+                  type: string
+                iam_policy_description:
+                  field: description
+                  type: string
+                iam_policy_path:
+                  field: path
+                  type: string
+                iam_policy_document:
+                  field: policy
+                  type: string
+                  multiline: true
 
     aws_ecs_task_definition:
       join:
@@ -239,8 +260,9 @@ aws_ecs_service:
           field: network_mode
           type: string
         container_definitions:
-          function: container_definitions
-          type: map
+          field: container_definitions
+          multiline: true
+          type: string
         cpu:
           field: cpu
           type: number
@@ -286,6 +308,9 @@ aws_ecs_service:
           field: container_definition_defaults
           type: map
           default: { enable_cloudwatch_logging: false }
+        task_definition_placement_constraints:
+          field: placement_constraints
+          type: list
 
       childs:
         # Tasks - IAM role
@@ -310,9 +335,11 @@ aws_ecs_service:
           target_resource_name: tasks
           # target_submodule: module.service
           defaults:
-            create_tasks_iam_role: true
+            # create_tasks_iam_role: true
             tasks_iam_role_use_name_prefix: false
           fields:
+            create_tasks_iam_role:
+              unique: true
             tasks_iam_role_arn:
               field: arn
               type: string
@@ -348,6 +375,8 @@ aws_ecs_service:
                 tasks_iam_role_policies:
                   function: tasks_iam_role_policies
                   type: string
+                create_tasks_iam_role:
+                  unique: true
 
         # Task execution IAM role
         # create_task_exec_iam_role               = try(each.value.create_task_exec_iam_role, true)
@@ -366,9 +395,11 @@ aws_ecs_service:
             execution_role_arn:
               function: get_arn
           target_resource_name: task_exec
-          defaults:
-            create_task_exec_iam_role: true
+          # defaults:
+          #   create_task_exec_iam_role: true
           fields:
+            create_task_exec_iam_role:
+              unique: true
             task_exec_iam_role_arn:
               field: arn
               type: string
@@ -404,6 +435,9 @@ aws_ecs_service:
                 task_exec_iam_role_policies:
                   function: tasks_iam_role_policies
                   type: string
+                create_task_exec_iam_role:
+                  unique: true
+
     aws_appautoscaling_target:
       join:
         name:

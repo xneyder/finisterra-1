@@ -27,6 +27,7 @@ class HCL:
         self.workspace_id = workspace_id
         self.modules = modules
         self.json_plan = {}
+        self.global_deployed_resources = []
 
         self.module_data = get_module_data(self.workspace_id)
 
@@ -517,25 +518,32 @@ class HCL:
             print(e)
             exit()
 
-    def get_value_from_tfstate(self, state_data, keys):
+    def get_value_from_tfstate(self, state_data, keys, type=None):
         try:
+            # TO_DO handle all cases
             key = keys[0]
-            if isinstance(state_data, list):
-                # Check if the list contains dictionaries
-                if all(isinstance(item, dict) for item in state_data):
-                    # Using json.dumps to ensure double quotes
-                    value = json.dumps(
-                        next((item[key] for item in state_data if key in item), None))
-                else:
-                    key = int(key)
-                    value = state_data[key]
-            else:
+            if type == "string":
                 value = state_data[key]
+                # if key == "container_definitions":
+                #     print('type', key)
+                #     print('value', value)
+            else:
+                if isinstance(state_data, list):
+                    # Check if the list contains dictionaries
+                    if all(isinstance(item, dict) for item in state_data):
+                        # Using json.dumps to ensure double quotes
+                        value = json.dumps(
+                            next((item[key] for item in state_data if key in item), None))
+                    else:
+                        key = int(key)
+                        value = state_data[key]
+                else:
+                    value = state_data[key]
 
             if len(keys) == 1:
                 return value
             else:
-                return self.get_value_from_tfstate(value, keys[1:])
+                return self.get_value_from_tfstate(value, keys[1:], type)
         except KeyError:
             print(
                 f"Warning: field '{'.'.join(keys)}' not found in state file.")
@@ -663,7 +671,6 @@ class HCL:
                 return original
 
             nonlocal root_attributes
-            created = False
             attributes = {}
             deployed_resources = []
             resource_type = resource['type']
@@ -683,22 +690,23 @@ class HCL:
             root_attribute = resource_config.get('root_attribute', "")
             second_index = resource_config.get('second_index', "")
             second_index_value = None
+            created = True
+
             if second_index:
                 func_name = second_index.get('function')
                 func = functions.get(func_name)
                 if func is not None:
                     arg = second_index.get('arg')
                     if arg:
-                        second_index_value = func(resource_attributes, arg)
+                        second_index_value = func(
+                            resource_attributes, arg).rstrip()
                     else:
-                        second_index_value = func(resource_attributes)
+                        second_index_value = func(resource_attributes).rstrip()
                 else:
                     field_name = second_index.get('field')
                     if field_name:
-                        second_index_value_tmp = self.get_value_from_tfstate(
-                            resource_attributes, field_name.split('.'))
-
-                        second_index_value = second_index_value_tmp.rstrip()
+                        second_index_value = self.get_value_from_tfstate(
+                            resource_attributes, field_name.split('.')).rstrip()
 
             root_attribute_key_value = None
             if parent_root_attribute_key_value:
@@ -729,7 +737,8 @@ class HCL:
 
             for field, field_info in fields_config.items():
                 value = None
-                multiline = False
+                unique = field_info.get('unique', False)
+                multiline = field_info.get('multiline', False)
                 default = field_info.get('default', 'N/A')
                 func_name = field_info.get('function')
                 field_type = field_info.get('type', None)
@@ -739,14 +748,23 @@ class HCL:
                     if func is not None:
                         value = None
                         arg = field_info.get('arg', '')
-                        multiline = field_info.get('multiline', '')
                         if arg:
                             value = func(resource_attributes, arg)
                         else:
                             value = func(resource_attributes)
+                elif unique:
+                    id = resource_attributes.get('id', '')
+                    matches = [resource for resource in self.global_deployed_resources if resource['resource_type']
+                               == resource_type and resource['id'] == id]
+                    if matches:
+                        value = False
+                        created = False
+                    else:
+                        value = True
+                        created = True
                 elif state_field:
                     value = self.get_value_from_tfstate(
-                        resource_attributes, state_field)
+                        resource_attributes, state_field, field_type)
 
                 defaulted = False
                 if value in [None, "", [], {}] and default is not 'N/A':
@@ -754,9 +772,14 @@ class HCL:
                     defaulted = True
 
                 if value not in [None, "", [], {}] or defaulted:
-                    created = True
                     if multiline:
+                        # print("=================")
+                        # print(value)
+                        # print("=================")
                         value = "<<EOF\n" + value + "\nEOF\n"
+                        # print("=================")
+                        # print(value)
+                        # print("=================")
                     if root_attribute and root_attribute_key_value:
                         if multiline:
                             attributes[root_attribute][root_attribute_key_value][field] = value
@@ -770,9 +793,17 @@ class HCL:
                             attributes[field] = self.string_repr(
                                 value, field_type)
 
-            created = True
             if created:
                 deployed_resources.append({
+                    'resource_type': resource_type,
+                    'resource_name': resource_name,
+                    'target_resource_name': target_resource_name,
+                    'target_submodule': target_submodule,
+                    'id': resource_attributes.get('id', ''),
+                    'index': root_attribute_key_value if root_attribute_key_value else '',
+                    'second_index_value': second_index_value if second_index_value else '',
+                })
+                self.global_deployed_resources.append({
                     'resource_type': resource_type,
                     'resource_name': resource_name,
                     'target_resource_name': target_resource_name,
@@ -960,6 +991,7 @@ class HCL:
             return []
 
     def module_hcl_code(self, terraform_state_file, config_file, functions={}):
+
         with open(config_file, 'r') as f:
             config = yaml.safe_load(f)
 
@@ -986,7 +1018,7 @@ class HCL:
                 with open(f'{instance["type"]}-{instance["name"]}.tf', 'w') as file:
                     file.write(f'module "{instance["name"]}" {{\n')
                     file.write(f'source  = "{instance["module"]}"\n')
-                    file.write(f'version = "{instance["version"]}"\n')
+                    # file.write(f'version = "{instance["version"]}"\n') # TO REMOVE COMMENT
                     if instance["full_dump"]:
                         file.write(instance["full_dump"]['attributes'])
                     else:
