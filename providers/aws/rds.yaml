@@ -152,7 +152,7 @@ aws_db_instance:
     db_instance_tags:
       field: db_instance_tags
   childs:
-    db_subnet_group:
+    aws_db_subnet_group:
       join:
         db_subnet_group_name:
           field: name
@@ -175,7 +175,7 @@ aws_db_instance:
         db_subnet_group_description:
           field: description
           type: string
-    db_parameter_group:
+    aws_db_parameter_group:
       join:
         parameter_group_name:
           field: name
@@ -201,7 +201,7 @@ aws_db_instance:
         parameters:
           field: parameters
           type: map
-    db_option_group:
+    aws_db_option_group:
       join:
         option_group_name:
           field: name
