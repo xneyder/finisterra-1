@@ -68,15 +68,29 @@ class RDS:
                 }
                 self.hcl.process_resource(
                     "aws_db_instance", instance_id.replace("-", "_"), attributes)
-                self.aws_db_option_group(instance.get('OptionGroupName'))
-                self.aws_db_parameter_group(
-                    instance.get('DBParameterGroupName'))
-                self.aws_db_subnet_group(instance.get('DBSubnetGroupName'))
+
+                db_option_group_name = instance.get(
+                    'OptionGroupMemberships', [{}])[0].get('OptionGroupName', None)
+                if db_option_group_name is not None:
+                    self.aws_db_option_group(db_option_group_name)
+
+                db_parameter_group_name = instance.get(
+                    'DBParameterGroups', [{}])[0].get('DBParameterGroupName', None)
+                if db_parameter_group_name is not None:
+                    self.aws_db_parameter_group(db_parameter_group_name)
+
+                db_subnet_group_name = instance.get(
+                    'DBSubnetGroup', {}).get('DBSubnetGroupName', None)
+                if db_subnet_group_name is not None:
+                    self.aws_db_subnet_group(db_subnet_group_name)
+
                 arn = instance.get("DBInstanceArn")
                 self.aws_db_instance_automated_backups_replication(arn)
 
     def aws_db_option_group(self, option_group_name):
         print(f"Processing DB Option Group {option_group_name}")
+        if option_group_name.startswith("default"):
+            return
 
         paginator = self.rds_client.get_paginator("describe_option_groups")
         for page in paginator.paginate():
@@ -98,6 +112,8 @@ class RDS:
 
     def aws_db_parameter_group(self, parameter_group_name):
         print(f"Processing DB Parameter Group {parameter_group_name}")
+        if parameter_group_name.startswith("default"):
+            return
 
         paginator = self.rds_client.get_paginator(
             "describe_db_parameter_groups")
@@ -120,6 +136,8 @@ class RDS:
 
     def aws_db_subnet_group(self, db_subnet_group_name):
         print(f"Processing DB Subnet Groups {db_subnet_group_name}")
+        if db_subnet_group_name.startswith("default"):
+            return
 
         paginator = self.rds_client.get_paginator("describe_db_subnet_groups")
         for page in paginator.paginate():

@@ -5,8 +5,12 @@ aws_db_instance:
   keys:
     - identifier
   target_resource_name: this
+  target_submodule: module.db_instance
   defaults:
     create_db_instance: true
+    create_db_subnet_group: false
+    create_db_parameter_group: false
+    create_db_option_group: false
 
   fields:
     identifier:
@@ -152,6 +156,80 @@ aws_db_instance:
       join:
         db_subnet_group_name:
           field: name
+      target_resource_name: this
+      target_submodule: module.db_subnet_group
+      defaults:
+        db_subnet_group_use_name_prefix: false
       fields:
-        logging:
-          field: logging
+        create_db_subnet_group:
+          unique: true
+        db_subnet_group_name:
+          field: name
+          type: string
+        subnet_ids:
+          field: subnet_ids
+          type: list
+        db_subnet_group_tags:
+          field: tags
+          type: map
+        db_subnet_group_description:
+          field: description
+          type: string
+    db_parameter_group:
+      join:
+        parameter_group_name:
+          field: name
+      target_resource_name: this
+      target_submodule: module.db_parameter_group
+      defaults:
+        parameter_group_use_name_prefix: false
+      fields:
+        create_db_parameter_group:
+          unique: true
+        parameter_group_name:
+          field: name
+          type: string
+        family:
+          field: family
+          type: string
+        parameter_group_description:
+          field: description
+          type: string
+        db_parameter_group_tags:
+          field: tags
+          type: map
+        parameters:
+          field: parameters
+          type: map
+    db_option_group:
+      join:
+        option_group_name:
+          field: name
+      target_resource_name: this
+      target_submodule: module.db_option_group
+      defaults:
+        option_group_use_name_prefix: false
+      fields:
+        create_db_option_group:
+          unique: true
+        option_group_name:
+          field: name
+          type: string
+        engine:
+          field: engine_name
+          type: string
+        major_engine_version:
+          field: major_engine_version
+          type: string
+        option_group_description:
+          field: description
+          type: string
+        option_group_tags:
+          field: tags
+          type: map
+        options:
+          field: options
+          type: list
+        option_group_timeouts:
+          field: timeouts
+          type: map
