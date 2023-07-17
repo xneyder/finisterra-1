@@ -63,14 +63,35 @@ class Dynamodb:
             return "index_write"
         return None
 
+    def aws_dyanmodb_target_name(self, attributes):
+        table_name = attributes.get("name", "")
+        service_namespace = 'dynamodb'
+        resource_id = f'table/{table_name}'
+        print(
+            f"Processing AppAutoScaling targets for DynamoDB Table: {table_name}")
+
+        try:
+            response = self.appautoscaling_client.describe_scalable_targets(
+                ServiceNamespace=service_namespace,
+                ResourceIds=[resource_id]
+            )
+            scalable_targets = response.get('ScalableTargets', [])
+            if len(scalable_targets) > 0:
+                return "autoscaled_gsi_ignore"
+            else:
+                return "this"
+        except Exception as e:
+            print(f"Error: {e}")
+            return "this"
+
     def autoscaling_read(self, attributes):
         if attributes.get("scalable_dimension", "") == "dynamodb:table:ReadCapacityUnits":
             target_tracking_scaling_policy_configuration = attributes.get(
                 "target_tracking_scaling_policy_configuration", [{}])[0]
             return {
-                "scale_in_cooldown": target_tracking_scaling_policy_configuration.get("scale_in_cooldown", ""),
-                "scale_out_cooldown": target_tracking_scaling_policy_configuration.get("scale_out_cooldown", ""),
-                "target_value": target_tracking_scaling_policy_configuration.get("target_value", ""),
+                key: target_tracking_scaling_policy_configuration.get(key)
+                for key in ["scale_in_cooldown", "scale_out_cooldown", "target_value"]
+                if target_tracking_scaling_policy_configuration.get(key) is not None
             }
         return None
 
@@ -79,9 +100,9 @@ class Dynamodb:
             target_tracking_scaling_policy_configuration = attributes.get(
                 "target_tracking_scaling_policy_configuration", [{}])[0]
             return {
-                "scale_in_cooldown": target_tracking_scaling_policy_configuration.get("scale_in_cooldown", ""),
-                "scale_out_cooldown": target_tracking_scaling_policy_configuration.get("scale_out_cooldown", ""),
-                "target_value": target_tracking_scaling_policy_configuration.get("target_value", ""),
+                key: target_tracking_scaling_policy_configuration.get(key)
+                for key in ["scale_in_cooldown", "scale_out_cooldown", "target_value"]
+                if target_tracking_scaling_policy_configuration.get(key) is not None
             }
         return None
 
@@ -114,6 +135,16 @@ class Dynamodb:
             return "index_read_policy"
         elif attributes.get("scalable_dimension", "") == "dynamodb:index:WriteCapacityUnits":
             return "index_write_policy"
+        return None
+
+    def autoscaling_read_enabled(self, attributes):
+        if attributes.get("scalable_dimension", "") == "dynamodb:table:ReadCapacityUnits":
+            return True
+        return None
+
+    def autoscaling_write_enabled(self, attributes):
+        if attributes.get("scalable_dimension", "") == "dynamodb:table:WriteCapacityUnits":
+            return True
         return None
 
     def dynamodb(self):
@@ -150,6 +181,9 @@ class Dynamodb:
             'table_write_policy_name': self.table_write_policy_name,
             'index_read_policy_name': self.index_read_policy_name,
             'index_write_policy_name': self.index_write_policy_name,
+            'autoscaling_read_enabled': self.autoscaling_read_enabled,
+            'autoscaling_write_enabled': self.autoscaling_write_enabled,
+            'aws_dyanmodb_target_name': self.aws_dyanmodb_target_name,
         }
         self.hcl.refresh_state()
 
@@ -169,7 +203,7 @@ class Dynamodb:
                 table_description = self.dynamodb_client.describe_table(
                     TableName=table_name)["Table"]
 
-                # if table_name != "media.ImageReference":
+                # if table_name != "notification.production.DeviceRegistration":
                 #     continue
 
                 print(f"  Processing DynamoDB Table: {table_name}")

@@ -4,7 +4,8 @@ aws_dynamodb_table:
   terraform_module_version: "3.3.0"
   keys:
     - name
-  target_resource_name: autoscaled_gsi_ignore
+  target_resource_name:
+    function: aws_dyanmodb_target_name
   defaults:
     autoscaling_enabled: false
     ignore_changes_global_secondary_index: true
@@ -88,6 +89,12 @@ aws_dynamodb_table:
       target_resource_name:
         function: aws_appautoscaling_target_name
       fields:
+        autoscaling_read_enabled:
+          function: autoscaling_read_enabled
+          type: bool
+        autoscaling_write_enabled:
+          function: autoscaling_write_enabled
+          type: bool
         read_capacity:
           field: min_capacity
           type: number
