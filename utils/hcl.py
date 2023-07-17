@@ -524,9 +524,6 @@ class HCL:
             key = keys[0]
             if type == "string":
                 value = state_data[key]
-                # if key == "container_definitions":
-                #     print('type', key)
-                #     print('value', value)
             else:
                 if isinstance(state_data, list):
                     # Check if the list contains dictionaries
@@ -686,6 +683,18 @@ class HCL:
             fields_config = resource_config.get('fields', {})
             target_resource_name = resource_config.get(
                 'target_resource_name', "")
+
+            # Check if target_resource_name is a dictionary and has a key called 'function'
+            if isinstance(target_resource_name, dict) and 'function' in target_resource_name:
+                func_name = target_resource_name.get('function')
+                func = functions.get(func_name)
+                if func is not None:
+                    arg = target_resource_name.get('arg')
+                    if arg:
+                        target_resource_name = func(resource_attributes, arg)
+                    else:
+                        target_resource_name = func(resource_attributes)
+
             target_submodule = resource_config.get('target_submodule', "")
             root_attribute = resource_config.get('root_attribute', "")
             second_index = resource_config.get('second_index', "")

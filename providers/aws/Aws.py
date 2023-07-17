@@ -552,13 +552,15 @@ class Aws:
     def dynamodb(self):
         dynamodb_client = self.session.client(
             "dynamodb", region_name=self.aws_region)
+        appautoscaling_client = self.session.client(
+            "application-autoscaling", region_name=self.aws_region)
 
         sts_client = self.session.client(
             "sts", region_name=self.aws_region)
 
         account_id = sts_client.get_caller_identity()['Account']
 
-        instance = Dynamodb(dynamodb_client, account_id, self.script_dir, self.provider_name,
+        instance = Dynamodb(dynamodb_client, appautoscaling_client, account_id, self.script_dir, self.provider_name,
                             self.schema_data, self.aws_region, self.s3Bucket,
                             self.dynamoDBTable, self.state_key, self.workspace_id, self.modules)
         instance.dynamodb()
