@@ -22,14 +22,41 @@ class ACM:
                        self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules)
         self.resource_list = {}
 
+    def get_field_from_attrs(self, attributes, arg):
+        keys = arg.split(".")
+        result = attributes
+        for key in keys:
+            if isinstance(result, list):
+                result = [sub_result.get(key, None) if isinstance(
+                    sub_result, dict) else None for sub_result in result]
+                if len(result) == 1:
+                    result = result[0]
+            else:
+                result = result.get(key, None)
+            if result is None:
+                return None
+        return result
+
     def acm(self):
         self.hcl.prepare_folder(os.path.join("generated", "acm"))
 
+        # aws_acm_certificate.this	resource
+        # aws_acm_certificate_validation.this	resource
+        # aws_route53_record.validation	resource
+
         self.aws_acm_certificate()
-        self.aws_acm_certificate_validation()
+
+        functions = {
+            'get_field_from_attrs': self.get_field_from_attrs,
+        }
 
         self.hcl.refresh_state()
-        self.hcl.generate_hcl_file()
+
+        self.hcl.module_hcl_code("terraform.tfstate", os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), "acm.yaml"), functions)
+
+        exit()
+
         self.json_plan = self.hcl.json_plan
 
     def aws_acm_certificate(self):
@@ -60,32 +87,19 @@ class ACM:
                 self.hcl.process_resource(
                     "aws_acm_certificate", cert_arn.replace("-", "_"), attributes)
 
-    def aws_acm_certificate_validation(self):
-        print("Processing ACM Certificate Validations...")
+                self.aws_acm_certificate_validation(cert_arn, cert_details)
 
-        paginator = self.acm_client.get_paginator("list_certificates")
-        for page in paginator.paginate():
-            for cert_summary in page["CertificateSummaryList"]:
-                cert_arn = cert_summary["CertificateArn"]
-                cert = self.acm_client.describe_certificate(
-                    CertificateArn=cert_arn)["Certificate"]
-                expiration_date = cert["NotAfter"]
+    def aws_acm_certificate_validation(self, cert_arn, cert):
+        print(f"  Processing ACM Certificate Validation: {cert_arn}")
 
-                # Skip expired certificates
-                if expiration_date < datetime.datetime.now(tz=datetime.timezone.utc):
-                    continue
+        attributes = {
+            "id": cert_arn,
+            "certificate_arn": cert_arn,
+        }
 
-                print(
-                    f"  Processing ACM Certificate Validation: {cert_arn}")
+        if "ResourceRecord" in cert["DomainValidationOptions"][0]:
+            attributes["validation_record_fqdns"] = [
+                cert["DomainValidationOptions"][0]["ResourceRecord"]["Name"]]
 
-                attributes = {
-                    "id": cert_arn,
-                    "certificate_arn": cert_arn,
-                }
-
-                if "ResourceRecord" in cert["DomainValidationOptions"][0]:
-                    attributes["validation_record_fqdns"] = [
-                        cert["DomainValidationOptions"][0]["ResourceRecord"]["Name"]]
-
-                self.hcl.process_resource(
-                    "aws_acm_certificate_validation", cert_arn.replace("-", "_"), attributes)
+        self.hcl.process_resource(
+            "aws_acm_certificate_validation", cert_arn.replace("-", "_"), attributes)

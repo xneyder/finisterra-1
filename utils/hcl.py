@@ -680,6 +680,25 @@ class HCL:
                 return attributes, deployed_resources
 
             resource_attributes = resource['instances'][0]['attributes']
+            skip_if = resource_config.get(
+                'skip_if', "")
+
+            # Check if skip_if is a dictionary and has a key called 'function'
+            if isinstance(skip_if, dict) and 'function' in skip_if:
+                func_name = skip_if.get('function')
+                func = functions.get(func_name)
+                if func is not None:
+                    arg = skip_if.get('arg')
+                    if arg:
+                        skip_if = func(resource_attributes, arg)
+                    else:
+                        skip_if = func(resource_attributes)
+
+            if skip_if:
+                print(
+                    f"Warning: condition not met {resource_type}. Skipping.")
+                return attributes, deployed_resources
+
             fields_config = resource_config.get('fields', {})
             target_resource_name = resource_config.get(
                 'target_resource_name', "")
@@ -1016,6 +1035,8 @@ class HCL:
                 resource_config = config[resource['type']]
                 instance = self.process_resource_module(
                     resource, resources, config, functions)
+                if not instance:
+                    continue
                 instance['module'] = resource_config.get('terraform_module')
                 instance['version'] = resource_config.get(
                     'terraform_module_version')

@@ -27,10 +27,12 @@ class SNS:
     def sns(self):
         self.hcl.prepare_folder(os.path.join("generated", "sns"))
 
-        self.aws_sns_platform_application()
-        self.aws_sns_sms_preferences()
+        # aws_sns_topic_data_protection_policy.this
+        # aws_sns_topic_subscription.this
+
+        # self.aws_sns_platform_application()
+        # self.aws_sns_sms_preferences()
         self.aws_sns_topic()
-        self.aws_sns_topic_policy()
         # self.aws_sns_topic_data_protection_policy() #Still to implment
         self.aws_sns_topic_subscription()  # permissions error
 
@@ -84,29 +86,48 @@ class SNS:
                 self.hcl.process_resource(
                     "aws_sns_topic", name.replace("-", "_"), attributes)
 
-    def aws_sns_topic_policy(self):
+                # Call aws_sns_topic_policy with the ARN as an argument
+                self.aws_sns_topic_policy(arn)
+                self.aws_sns_topic_data_protection_policy(arn)
+
+    def aws_sns_topic_policy(self, arn):
         print("Processing SNS Topic Policies...")
 
-        paginator = self.sns_client.get_paginator("list_topics")
-        for page in paginator.paginate():
-            for topic in page.get("Topics", []):
-                arn = topic["TopicArn"]
-                name = arn.split(":")[-1]
+        name = arn.split(":")[-1]
 
-                try:
-                    policy = self.sns_client.get_topic_attributes(
-                        TopicArn=arn)["Attributes"].get("Policy")
-                    if policy:
-                        attributes = {
-                            "id": arn,
-                            "arn": arn,
-                            "policy": policy,
-                        }
-                        self.hcl.process_resource(
-                            "aws_sns_topic_policy", f"{name}_policy".replace("-", "_"), attributes)
-                except Exception as e:
-                    print(
-                        f"Error retrieving SNS Topic Policy for {name}: {str(e)}")
+        try:
+            policy = self.sns_client.get_topic_attributes(
+                TopicArn=arn)["Attributes"].get("Policy")
+            if policy:
+                attributes = {
+                    "id": arn,
+                    "arn": arn,
+                    "policy": policy,
+                }
+                self.hcl.process_resource(
+                    "aws_sns_topic_policy", f"{name}_policy".replace("-", "_"), attributes)
+        except Exception as e:
+            print(f"Error retrieving SNS Topic Policy for {name}: {str(e)}")
+
+    def aws_sns_topic_data_protection_policy(self, arn):
+        print("Processing SNS Topic Data Protection Policies...")
+
+        name = arn.split(":")[-1]
+
+        try:
+            policy = self.sns_client.get_topic_attributes(
+                TopicArn=arn)["Attributes"].get("DataProtectionPolicy")
+            if policy:
+                attributes = {
+                    "id": arn,
+                    "arn": arn,
+                    "data_protection_policy": policy,
+                }
+                self.hcl.process_resource(
+                    "aws_sns_topic_data_protection_policy", f"{name}_data_protection_policy".replace("-", "_"), attributes)
+        except Exception as e:
+            print(
+                f"Error retrieving SNS Topic Data Protection Policy for {name}: {str(e)}")
 
     def aws_sns_topic_subscription(self):
         print("Processing SNS Topic Subscriptions...")

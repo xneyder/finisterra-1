@@ -1,0 +1,124 @@
+aws_ecr_repository:
+  # terraform_module: "terraform-aws-modules/aws/ecr"
+  terraform_module: "../../../terraform-aws-modules/terraform-aws-ecr"
+  terraform_module_version: "1.6.0"
+  keys:
+    - repository_name
+  target_resource_name: this
+  defaults:
+    attach_repository_policy: false
+    create_lifecycle_policy: false
+    repository_type: private
+    manage_registry_scanning_configuration: false
+    create_registry_replication_configuration: false
+  fields:
+    repository_name:
+      field: name
+      type: string
+    repository_image_tag_mutability:
+      field: image_tag_mutability
+      type: string
+    repository_encryption_type:
+      function: get_field_from_attrs
+      arg: encryption_configuration.encryption_type
+      type: string
+    repository_encryption_kms_key:
+      function: get_field_from_attrs
+      arg: encryption_configuration.kms_key
+      type: string
+    repository_force_delete:
+      field: force_delete
+    repository_image_scan_on_push:
+      function: get_field_from_attrs
+      arg: image_scanning_configuration.scan_on_push
+      type: bool
+    tags:
+      field: tags
+      type: map
+  childs:
+    aws_ecr_repository_policy:
+      join:
+        name:
+          field: repository
+      target_resource_name: this
+      defaults:
+        attach_repository_policy: true
+        create_repository_policy: false
+      fields:
+        repository_name:
+          field: name
+          type: string
+        repository_policy:
+          field: policy
+          type: string
+          multiline: true
+    aws_ecr_lifecycle_policy:
+      join:
+        name:
+          field: repository
+      target_resource_name: this
+      defaults:
+        create_lifecycle_policy: true
+      fields:
+        repository_name:
+          field: name
+          type: string
+        repository_policy:
+          field: policy
+          type: string
+          multiline: true
+
+aws_ecr_registry_policy:
+  # terraform_module: "terraform-aws-modules/aws/ecr"
+  terraform_module: "../../../terraform-aws-modules/terraform-aws-ecr"
+  terraform_module_version: "1.6.0"
+  target_resource_name: this
+  defaults:
+    create_registry_policy: true
+    create_repository: false
+  fields:
+    registry_policy:
+      field: policy
+      type: string
+      multiline: true
+
+aws_ecr_pull_through_cache_rule:
+  # terraform_module: "terraform-aws-modules/aws/ecr"
+  terraform_module: "../../../terraform-aws-modules/terraform-aws-ecr"
+  terraform_module_version: "1.6.0"
+  target_resource_name: this
+  defaults:
+    create_repository: false
+  fields:
+    registry_pull_through_cache_rules:
+      field: rules
+      type: list
+
+aws_ecr_registry_scanning_configuration:
+  # terraform_module: "terraform-aws-modules/aws/ecr"
+  terraform_module: "../../../terraform-aws-modules/terraform-aws-ecr"
+  terraform_module_version: "1.6.0"
+  target_resource_name: this
+  defaults:
+    manage_registry_scanning_configuration: true
+    create_repository: false
+  fields:
+    registry_scan_type:
+      field: scan_type
+      type: string
+    registry_scan_rules:
+      field: rules
+      type: list
+
+aws_ecr_replication_configuration:
+  # terraform_module: "terraform-aws-modules/aws/ecr"
+  terraform_module: "../../../terraform-aws-modules/terraform-aws-ecr"
+  terraform_module_version: "1.6.0"
+  target_resource_name: this
+  defaults:
+    create_registry_replication_configuration: true
+    create_repository: false
+  fields:
+    registry_replication_rules:
+      field: rules
+      type: list
