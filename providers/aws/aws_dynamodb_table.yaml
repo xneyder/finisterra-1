@@ -119,8 +119,17 @@ aws_dynamodb_table:
           target_resource_name:
             function: aws_appautoscaling_policy_name
           fields:
-            appautoscaling_policy_name:
-              field: name
+            table_read_policy_name:
+              function: table_read_policy_name
+              type: string
+            table_write_policy_name:
+              function: table_write_policy_name
+              type: string
+            index_read_policy_name:
+              function: index_read_policy_name
+              type: string
+            index_write_policy_name:
+              function: index_write_policy_name
               type: string
             autoscaling_read:
               function: autoscaling_read

@@ -65,20 +65,44 @@ class Dynamodb:
 
     def autoscaling_read(self, attributes):
         if attributes.get("scalable_dimension", "") == "dynamodb:table:ReadCapacityUnits":
+            target_tracking_scaling_policy_configuration = attributes.get(
+                "target_tracking_scaling_policy_configuration", [{}])[0]
             return {
-                "scale_in_cooldown": attributes.get("scale_in_cooldown", ""),
-                "scale_out_cooldown": attributes.get("scale_out_cooldown", ""),
-                "target_value": attributes.get("target_value", ""),
+                "scale_in_cooldown": target_tracking_scaling_policy_configuration.get("scale_in_cooldown", ""),
+                "scale_out_cooldown": target_tracking_scaling_policy_configuration.get("scale_out_cooldown", ""),
+                "target_value": target_tracking_scaling_policy_configuration.get("target_value", ""),
             }
         return None
 
     def autoscaling_write(self, attributes):
         if attributes.get("scalable_dimension", "") == "dynamodb:table:WriteCapacityUnits":
+            target_tracking_scaling_policy_configuration = attributes.get(
+                "target_tracking_scaling_policy_configuration", [{}])[0]
             return {
-                "scale_in_cooldown": attributes.get("scale_in_cooldown", ""),
-                "scale_out_cooldown": attributes.get("scale_out_cooldown", ""),
-                "target_value": attributes.get("target_value", ""),
+                "scale_in_cooldown": target_tracking_scaling_policy_configuration.get("scale_in_cooldown", ""),
+                "scale_out_cooldown": target_tracking_scaling_policy_configuration.get("scale_out_cooldown", ""),
+                "target_value": target_tracking_scaling_policy_configuration.get("target_value", ""),
             }
+        return None
+
+    def table_read_policy_name(self, attributes):
+        if attributes.get("scalable_dimension", "") == "dynamodb:table:ReadCapacityUnits":
+            return attributes.get("name", "")
+        return None
+
+    def table_write_policy_name(self, attributes):
+        if attributes.get("scalable_dimension", "") == "dynamodb:table:WriteCapacityUnits":
+            return attributes.get("name", "")
+        return None
+
+    def index_read_policy_name(self, attributes):
+        if attributes.get("scalable_dimension", "") == "dynamodb:index:ReadCapacityUnits":
+            return attributes.get("name", "")
+        return None
+
+    def index_write_policy_name(self, attributes):
+        if attributes.get("scalable_dimension", "") == "dynamodb:index:WriteCapacityUnits":
+            return attributes.get("name", "")
         return None
 
     def aws_appautoscaling_policy_name(self, attributes):
@@ -122,6 +146,10 @@ class Dynamodb:
             'autoscaling_read': self.autoscaling_read,
             'autoscaling_write': self.autoscaling_write,
             'aws_appautoscaling_policy_name': self.aws_appautoscaling_policy_name,
+            'table_read_policy_name': self.table_read_policy_name,
+            'table_write_policy_name': self.table_write_policy_name,
+            'index_read_policy_name': self.index_read_policy_name,
+            'index_write_policy_name': self.index_write_policy_name,
         }
         self.hcl.refresh_state()
 
@@ -141,8 +169,8 @@ class Dynamodb:
                 table_description = self.dynamodb_client.describe_table(
                     TableName=table_name)["Table"]
 
-                if table_name != "media.ImageReference":
-                    continue
+                # if table_name != "media.ImageReference":
+                #     continue
 
                 print(f"  Processing DynamoDB Table: {table_name}")
 
