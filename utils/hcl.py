@@ -602,7 +602,7 @@ class HCL:
         return None
 
     def match_fields(self, parent_attributes, child_attributes, join_field, functions):
-        print('join_field', join_field)
+        # print('join_field', join_field)
         if isinstance(join_field, tuple):
             parent_field, value_dict = join_field
             parent_field = parent_field.split('.')
@@ -625,10 +625,10 @@ class HCL:
                 child_field = value_dict.get('field', None)
                 if child_field:
                     child_field = child_field.split('.')
-                    print('parent', self.get_value_from_tfstate(
-                        parent_attributes, parent_field))
-                    print('child', self.get_value_from_tfstate(
-                        child_attributes, child_field))
+                    # print('parent', self.get_value_from_tfstate(
+                    #     parent_attributes, parent_field))
+                    # print('child', self.get_value_from_tfstate(
+                    #     child_attributes, child_field))
                     return self.get_value_from_tfstate(parent_attributes, parent_field) == self.get_value_from_tfstate(
                         child_attributes, child_field)
 

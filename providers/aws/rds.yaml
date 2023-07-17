@@ -87,6 +87,8 @@ aws_db_instance:
       field: blue_green_update
     snapshot_identifier:
       field: snapshot_identifier
+    final_snapshot_identifier:
+      field: final_snapshot_identifier
     copy_tags_to_snapshot:
       field: copy_tags_to_snapshot
     skip_final_snapshot:
@@ -233,3 +235,50 @@ aws_db_instance:
         option_group_timeouts:
           field: timeouts
           type: map
+    aws_cloudwatch_log_group:
+      join:
+        identifier:
+          function: cloudwatch_log_group_name
+      target_resource_name: this
+      target_submodule: module.db_instance
+      defaults:
+        create_cloudwatch_log_group: true
+      second_index:
+        function: get_log_group_name
+      fields:
+        cloudwatch_log_group_retention_in_days:
+          field: retention_in_days
+          type: number
+        cloudwatch_log_group_kms_key_id:
+          field: kms_key_id
+          type: string
+    aws_iam_role:
+      join:
+        monitoring_role_arn:
+          field: arn
+      target_resource_name: enhanced_monitoring
+      target_submodule: module.db_instance
+      defaults:
+        monitoring_role_use_name_prefix: false
+      fields:
+        create_monitoring_role:
+          unique: true
+        monitoring_role_name:
+          field: name
+          type: string
+        monitoring_role_description:
+          field: description
+          type: string
+        monitoring_role_permissions_boundary:
+          field: permissions_boundary
+          type: string
+      childs:
+        aws_iam_role_policy_attachment:
+          join:
+            name:
+              field: role
+          target_resource_name: enhanced_monitoring
+          target_submodule: module.db_instance
+          fields:
+            create_monitoring_role:
+              unique: true
