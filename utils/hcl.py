@@ -604,8 +604,11 @@ class HCL:
             parent_field, value_dict = join_field
             parent_field = parent_field.split('.')
             # get function name from the value_dict
+            join_function = value_dict.get('join_function')
+            join_func = functions.get(join_function)
             func_name = value_dict.get('function')
             func = functions.get(func_name)
+
             if func is not None:
                 arg = value_dict.get('arg')
                 child_value = None
@@ -618,6 +621,9 @@ class HCL:
                 # print('child value:', child_value)
                 if self.get_value_from_tfstate(parent_attributes, parent_field) == child_value:
                     return True
+            elif join_func is not None:
+                matches = join_func(parent_attributes, child_attributes)
+                return matches
             else:
                 child_field = value_dict.get('field', None)
                 if child_field:
@@ -721,20 +727,24 @@ class HCL:
             created = True
 
             if second_index:
-                func_name = second_index.get('function')
-                func = functions.get(func_name)
-                if func is not None:
-                    arg = second_index.get('arg')
-                    if arg:
-                        second_index_value = func(
-                            resource_attributes, arg)
-                    else:
-                        second_index_value = func(resource_attributes)
+                enabled = second_index.get('enabled', True)
+                if not enabled:
+                    second_index_value = "disabled"
                 else:
-                    field_name = second_index.get('field')
-                    if field_name:
-                        second_index_value = self.get_value_from_tfstate(
-                            resource_attributes, field_name.split('.'))
+                    func_name = second_index.get('function')
+                    func = functions.get(func_name)
+                    if func is not None:
+                        arg = second_index.get('arg')
+                        if arg:
+                            second_index_value = func(
+                                resource_attributes, arg)
+                        else:
+                            second_index_value = func(resource_attributes)
+                    else:
+                        field_name = second_index.get('field')
+                        if field_name:
+                            second_index_value = self.get_value_from_tfstate(
+                                resource_attributes, field_name.split('.'))
 
             root_attribute_key_value = None
             if parent_root_attribute_key_value:
@@ -1068,8 +1078,11 @@ class HCL:
 
                 second_index_str = "[0]"
                 if deployed_resource["second_index_value"]:
-                    second_index_str = '["' + \
-                        deployed_resource["second_index_value"]+'"]'
+                    if deployed_resource["second_index_value"] == "disabled":
+                        second_index_str = ""
+                    else:
+                        second_index_str = '["' + \
+                            deployed_resource["second_index_value"]+'"]'
 
                 resource_import_target = f'module.{instance["name"]}.{deployed_resource["target_submodule"]}{index_str}{deployed_resource["resource_type"]}.{deployed_resource["target_resource_name"]}{second_index_str}'
 

@@ -3,9 +3,10 @@ from utils.hcl import HCL
 
 
 class DocDb:
-    def __init__(self, docdb_client, script_dir, provider_name, schema_data, region, s3Bucket,
+    def __init__(self, docdb_client, ec2_client, script_dir, provider_name, schema_data, region, s3Bucket,
                  dynamoDBTable, state_key, workspace_id, modules):
         self.docdb_client = docdb_client
+        self.ec2_client = ec2_client
         self.transform_rules = {}
         self.provider_name = provider_name
         self.script_dir = script_dir
@@ -16,6 +17,21 @@ class DocDb:
         self.hcl = HCL(self.schema_data, self.provider_name,
                        self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules)
         self.resource_list = {}
+
+    def build_dict_var(self, attributes, arg):
+        key = attributes[arg]
+        result = {key: {}}
+        for k, v in attributes.items():
+            if v is not None:
+                result[key][k] = v
+        return result
+
+    def match_security_group(self, parent_attributes, child_attributes):
+        child_security_group_id = child_attributes.get("id", None)
+        for security_group in parent_attributes.get("vpc_security_group_ids", []):
+            if security_group == child_security_group_id:
+                return True
+        return False
 
     def docdb(self):
         self.hcl.prepare_folder(os.path.join("generated", "docdb"))
@@ -36,12 +52,19 @@ class DocDb:
         # self.aws_docdb_global_cluster()
 
         self.aws_docdb_cluster()
-        self.aws_docdb_cluster_instance()
-        self.aws_docdb_cluster_parameter_group()
-        self.aws_docdb_subnet_group()
+
+        functions = {
+            'build_dict_var': self.build_dict_var,
+            'match_security_group': self.match_security_group,
+        }
 
         self.hcl.refresh_state()
-        self.hcl.generate_hcl_file()
+
+        self.hcl.module_hcl_code("terraform.tfstate", os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), "docdb.yaml"), functions)
+
+        exit()
+
         self.json_plan = self.hcl.json_plan
 
     def aws_docdb_cluster(self):
@@ -60,13 +83,21 @@ class DocDb:
                     self.hcl.process_resource(
                         "aws_docdb_cluster", db_cluster["DBClusterIdentifier"].replace("-", "_"), attributes)
 
-    def aws_docdb_cluster_instance(self):
+                    # Call aws_docdb_cluster_instance with db_cluster as an argument
+                    self.aws_docdb_cluster_instance(db_cluster)
+
+                    # Call aws_security_group with the list of VpcSecurityGroups
+                    vpc_security_group_ids = [sg["VpcSecurityGroupId"]
+                                              for sg in db_cluster.get("VpcSecurityGroups", [])]
+                    self.aws_security_group(vpc_security_group_ids)
+
+    def aws_docdb_cluster_instance(self, db_cluster):
         print("Processing DocumentDB Cluster Instances...")
 
         paginator = self.docdb_client.get_paginator("describe_db_instances")
         for page in paginator.paginate():
             for db_instance in page["DBInstances"]:
-                if db_instance["Engine"] == "docdb":
+                if db_instance["Engine"] == "docdb" and db_instance["DBClusterIdentifier"] == db_cluster["DBClusterIdentifier"]:
                     print(
                         f"  Processing DocumentDB Cluster Instance: {db_instance['DBInstanceIdentifier']}")
 
@@ -84,26 +115,118 @@ class DocDb:
                     self.hcl.process_resource(
                         "aws_docdb_cluster_instance", db_instance["DBInstanceIdentifier"].replace("-", "_"), attributes)
 
-    def aws_docdb_cluster_parameter_group(self):
+                    # Call aws_docdb_cluster_parameter_group if db_instance's DBParameterGroupName matches parameter_group in DBClusterParameterGroups
+                    if db_instance.get('DBParameterGroups'):
+                        for param_group in db_instance['DBParameterGroups']:
+                            if param_group.get('DBParameterGroupName'):
+                                self.aws_docdb_cluster_parameter_group(
+                                    param_group['DBParameterGroupName'])
+
+                    # Call aws_docdb_subnet_group if DBSubnetGroup of db_instance matches subnet_group in DBSubnetGroups
+                    if db_instance.get('DBSubnetGroup', {}).get('DBSubnetGroupName'):
+                        self.aws_docdb_subnet_group(
+                            db_instance['DBSubnetGroup']['DBSubnetGroupName'])
+
+    def aws_docdb_cluster_parameter_group(self, parameter_group_name):
         print("Processing DocumentDB Cluster Parameter Groups...")
 
         paginator = self.docdb_client.get_paginator(
             "describe_db_cluster_parameter_groups")
         for page in paginator.paginate():
             for parameter_group in page["DBClusterParameterGroups"]:
-                # Check if it's a DocumentDB parameter group
-                if "docdb" in parameter_group["DBParameterGroupFamily"]:
-                    print(
-                        f"  Processing DocumentDB Cluster Parameter Group: {parameter_group['DBClusterParameterGroupName']}")
+                if parameter_group['DBClusterParameterGroupName'] == parameter_group_name:
+                    # Check if it's a DocumentDB parameter group
+                    if "docdb" in parameter_group["DBParameterGroupFamily"]:
+                        print(
+                            f"  Processing DocumentDB Cluster Parameter Group: {parameter_group['DBClusterParameterGroupName']}")
 
-                    attributes = {
-                        "id": parameter_group["DBClusterParameterGroupName"],
-                        "name": parameter_group["DBClusterParameterGroupName"],
-                        "family": parameter_group["DBParameterGroupFamily"],
-                        "description": parameter_group["Description"],
-                    }
-                    self.hcl.process_resource("aws_docdb_cluster_parameter_group",
-                                              parameter_group["DBClusterParameterGroupName"].replace("-", "_"), attributes)
+                        attributes = {
+                            "id": parameter_group["DBClusterParameterGroupName"],
+                            "name": parameter_group["DBClusterParameterGroupName"],
+                            "family": parameter_group["DBParameterGroupFamily"],
+                            "description": parameter_group["Description"],
+                        }
+                        self.hcl.process_resource("aws_docdb_cluster_parameter_group",
+                                                  parameter_group["DBClusterParameterGroupName"].replace("-", "_"), attributes)
+
+    def aws_docdb_subnet_group(self, subnet_group_name):
+        print("Processing DocumentDB Subnet Groups...")
+
+        paginator = self.docdb_client.get_paginator(
+            "describe_db_subnet_groups")
+        for page in paginator.paginate():
+            for subnet_group in page["DBSubnetGroups"]:
+                if subnet_group['DBSubnetGroupName'] == subnet_group_name:
+                    # Check if it's a DocumentDB subnet group
+                    if "DocumentDB" in subnet_group.get("DBSubnetGroupDescription", ""):
+                        print(
+                            f"  Processing DocumentDB Subnet Group: {subnet_group['DBSubnetGroupName']}")
+
+                        attributes = {
+                            "id": subnet_group["DBSubnetGroupName"],
+                            "name": subnet_group.get("DBSubnetGroupName", None),
+                            "description": subnet_group.get("DBSubnetGroupDescription", None),
+                            "subnet_ids": [subnet['SubnetIdentifier'] for subnet in subnet_group.get("Subnets", [])],
+                            "arn": subnet_group.get("DBSubnetGroupArn", None),
+                        }
+                        self.hcl.process_resource(
+                            "aws_docdb_subnet_group", subnet_group["DBSubnetGroupName"].replace("-", "_"), attributes)
+
+    def aws_security_group(self, security_group_ids):
+        print("Processing Security Groups...")
+
+        # Create a response dictionary to collect responses for all security groups
+        response = self.ec2_client.describe_security_groups(
+            GroupIds=security_group_ids
+        )
+
+        for security_group in response["SecurityGroups"]:
+            print(
+                f"  Processing Security Group: {security_group['GroupName']}")
+
+            attributes = {
+                "id": security_group["GroupId"],
+                "name": security_group["GroupName"],
+                "description": security_group.get("Description", ""),
+                "vpc_id": security_group.get("VpcId", ""),
+                "owner_id": security_group.get("OwnerId", ""),
+            }
+
+            self.hcl.process_resource(
+                "aws_security_group", security_group["GroupName"].replace("-", "_"), attributes)
+
+            # Process egress rules
+            for rule in security_group.get('IpPermissionsEgress', []):
+                self.aws_security_group_rule(
+                    'egress', security_group, rule)
+
+            # Process ingress rules
+            for rule in security_group.get('IpPermissions', []):
+                self.aws_security_group_rule(
+                    'ingress', security_group, rule)
+
+    def aws_security_group_rule(self, rule_type, security_group, rule):
+        # Rule identifiers are often constructed by combining security group id, rule type, protocol, ports and security group references
+        rule_id = f"{security_group['GroupId']}_{rule_type}_{rule.get('IpProtocol', 'all')}"
+        print(f"Processing Security Groups Rule {rule_id}...")
+        if rule.get('FromPort'):
+            rule_id += f"_{rule['FromPort']}"
+        if rule.get('ToPort'):
+            rule_id += f"_{rule['ToPort']}"
+
+        attributes = {
+            "id": rule_id,
+            "type": rule_type,
+            "security_group_id": security_group['GroupId'],
+            "protocol": rule.get('IpProtocol', '-1'),  # '-1' stands for 'all'
+            "from_port": rule.get('FromPort', 0),
+            "to_port": rule.get('ToPort', 0),
+            "cidr_blocks": [ip_range['CidrIp'] for ip_range in rule.get('IpRanges', [])],
+            "source_security_group_ids": [sg['GroupId'] for sg in rule.get('UserIdGroupPairs', [])]
+        }
+
+        self.hcl.process_resource(
+            "aws_security_group_rule", rule_id.replace("-", "_"), attributes)
 
     def aws_docdb_cluster_snapshot(self):
         print("Processing DocumentDB Cluster Snapshots...")
@@ -171,25 +294,3 @@ class DocDb:
                     }
                     self.hcl.process_resource(
                         "aws_docdb_global_cluster", cluster["GlobalClusterIdentifier"].replace("-", "_"), attributes)
-
-    def aws_docdb_subnet_group(self):
-        print("Processing DocumentDB Subnet Groups...")
-
-        paginator = self.docdb_client.get_paginator(
-            "describe_db_subnet_groups")
-        for page in paginator.paginate():
-            for subnet_group in page["DBSubnetGroups"]:
-                # Check if it's a DocumentDB subnet group
-                if "DocumentDB" in subnet_group.get("DBSubnetGroupDescription", ""):
-                    print(
-                        f"  Processing DocumentDB Subnet Group: {subnet_group['DBSubnetGroupName']}")
-
-                    attributes = {
-                        "id": subnet_group["DBSubnetGroupName"],
-                        "name": subnet_group.get("DBSubnetGroupName", None),
-                        "description": subnet_group.get("DBSubnetGroupDescription", None),
-                        "subnet_ids": [subnet['SubnetIdentifier'] for subnet in subnet_group.get("Subnets", [])],
-                        "arn": subnet_group.get("DBSubnetGroupArn", None),
-                    }
-                    self.hcl.process_resource(
-                        "aws_docdb_subnet_group", subnet_group["DBSubnetGroupName"].replace("-", "_"), attributes)

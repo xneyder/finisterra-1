@@ -508,8 +508,9 @@ class Aws:
     def docdb(self):
         docdb_client = self.session.client(
             "docdb", region_name=self.aws_region)
+        ec2_client = self.session.client("ec2", region_name=self.aws_region)
 
-        instance = DocDb(docdb_client, self.script_dir, self.provider_name,
+        instance = DocDb(docdb_client, ec2_client, self.script_dir, self.provider_name,
                          self.schema_data, self.aws_region, self.s3Bucket,
                          self.dynamoDBTable, self.state_key, self.workspace_id, self.modules)
         instance.docdb()
