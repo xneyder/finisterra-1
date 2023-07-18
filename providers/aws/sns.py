@@ -24,20 +24,44 @@ class SNS:
                        self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules)
         self.resource_list = {}
 
+    def build_subscriptions(self, attributes):
+        key = attributes['arn'].split(':')[-1]
+        result = {key: {}}
+        for k, v in attributes.items():
+            if v:
+                result[key][k] = v
+        return result
+
+    def get_key_from_arn(self, attributes):
+        key = attributes['arn'].split(':')[-1]
+        return key
+
+    def signature_version(self, attributes):
+        signature_version = attributes.get("signature_version", None)
+        if signature_version != 0:
+            return signature_version
+        return None
+
     def sns(self):
         self.hcl.prepare_folder(os.path.join("generated", "sns"))
-
-        # aws_sns_topic_data_protection_policy.this
-        # aws_sns_topic_subscription.this
 
         # self.aws_sns_platform_application()
         # self.aws_sns_sms_preferences()
         self.aws_sns_topic()
-        # self.aws_sns_topic_data_protection_policy() #Still to implment
-        self.aws_sns_topic_subscription()  # permissions error
+
+        functions = {
+            'build_subscriptions': self.build_subscriptions,
+            'signature_version': self.signature_version,
+            'get_key_from_arn': self.get_key_from_arn,
+        }
 
         self.hcl.refresh_state()
-        self.hcl.generate_hcl_file()
+
+        self.hcl.module_hcl_code("terraform.tfstate", os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), "sns.yaml"), functions)
+
+        exit()
+
         self.json_plan = self.hcl.json_plan
 
     def aws_sns_platform_application(self):
@@ -77,6 +101,9 @@ class SNS:
             for topic in page.get("Topics", []):
                 arn = topic["TopicArn"]
                 name = arn.split(":")[-1]
+
+                # if name != 'learning-mediaAssetModified':
+                #     continue
                 print(f"  Processing SNS Topic: {name}")
 
                 attributes = {
@@ -86,9 +113,9 @@ class SNS:
                 self.hcl.process_resource(
                     "aws_sns_topic", name.replace("-", "_"), attributes)
 
-                # Call aws_sns_topic_policy with the ARN as an argument
                 self.aws_sns_topic_policy(arn)
                 self.aws_sns_topic_data_protection_policy(arn)
+                self.aws_sns_topic_subscription(arn)
 
     def aws_sns_topic_policy(self, arn):
         print("Processing SNS Topic Policies...")
@@ -129,28 +156,30 @@ class SNS:
             print(
                 f"Error retrieving SNS Topic Data Protection Policy for {name}: {str(e)}")
 
-    def aws_sns_topic_subscription(self):
+    def aws_sns_topic_subscription(self, topic_arn):
         print("Processing SNS Topic Subscriptions...")
 
         paginator = self.sns_client.get_paginator("list_subscriptions")
         for page in paginator.paginate():
             for subscription in page.get("Subscriptions", []):
-                arn = subscription["SubscriptionArn"]
-                if arn == "PendingConfirmation":
-                    continue
-                name = arn.split(":")[-1]
-                print(f"  Processing SNS Topic Subscription: {name}")
+                # Process only subscriptions for the given topic ARN
+                if subscription["TopicArn"] == topic_arn:
+                    arn = subscription["SubscriptionArn"]
+                    if arn == "PendingConfirmation":
+                        continue
+                    name = arn.split(":")[-1]
+                    print(f"  Processing SNS Topic Subscription: {name}")
 
-                attributes = {
-                    "id": arn,
-                    "arn": arn,
-                    "topic_arn": subscription["TopicArn"],
-                    "protocol": subscription["Protocol"],
-                    "endpoint": subscription["Endpoint"],
-                }
+                    attributes = {
+                        "id": arn,
+                        "arn": arn,
+                        "topic_arn": subscription["TopicArn"],
+                        "protocol": subscription["Protocol"],
+                        "endpoint": subscription["Endpoint"],
+                    }
 
-                if subscription.get("FilterPolicy"):
-                    attributes["filter_policy"] = subscription["FilterPolicy"]
+                    if subscription.get("FilterPolicy"):
+                        attributes["filter_policy"] = subscription["FilterPolicy"]
 
-                self.hcl.process_resource(
-                    "aws_sns_topic_subscription", name.replace("-", "_"), attributes)
+                    self.hcl.process_resource(
+                        "aws_sns_topic_subscription", name.replace("-", "_"), attributes)

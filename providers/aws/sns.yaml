@@ -1,0 +1,95 @@
+aws_sns_topic:
+  # terraform_module: "terraform-aws-modules/aws/sns"
+  terraform_module: "../../../terraform-aws-modules/terraform-aws-sns"
+  terraform_module_version: "5.3.0"
+  target_resource_name: this
+  defaults:
+    use_name_prefix: false
+    create_topic_policy: false
+    create_topic_policy_document: false
+  fields:
+    name:
+      field: name
+      type: string
+    application_feedback:
+      field: application_feedback
+      type: map
+    content_based_deduplication:
+      field: content_based_deduplication
+      type: string
+    delivery_policy:
+      field: delivery_policy
+      type: string
+      multiline: true
+    display_name:
+      field: display_name
+      type: string
+    fifo_topic:
+      field: fifo_topic
+      type: string
+    signature_version:
+      function: signature_version
+      type: number
+    tracing_config:
+      field: tracing_config
+      type: string
+    firehose_feedback:
+      field: firehose_feedback
+      type: map
+    http_feedback:
+      field: http_feedback
+      type: map
+    kms_master_key_id:
+      field: kms_master_key_id
+      type: string
+    lambda_feedback:
+      field: lambda_feedback
+      type: map
+    topic_policy:
+      field: policy
+      type: string
+      multiline: true
+    sqs_feedback:
+      field: sqs_feedback
+      type: map
+    tags:
+      field: tags
+      type: map
+  childs:
+    aws_sns_topic_policy:
+      join:
+        arn:
+          field: arn
+      target_resource_name: this
+      defaults:
+        create_topic_policy: true
+        create_topic_policy_document: false
+      fields:
+        aws_sns_topic_policy:
+          field: policy
+          type: string
+          multiline: true
+
+    aws_sns_topic_subscription:
+      join:
+        arn:
+          field: topic_arn
+      defaults:
+        create_subscription: true
+      second_index:
+        function: get_key_from_arn
+      target_resource_name: this
+      fields:
+        subscriptions:
+          function: build_subscriptions
+
+    aws_sns_topic_data_protection_policy:
+      join:
+        arn:
+          field: arn
+      target_resource_name: this
+      fields:
+        data_protection_policy:
+          field: policy
+          type: string
+          multiline: true
