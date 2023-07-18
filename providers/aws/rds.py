@@ -58,7 +58,6 @@ class RDS:
         self.hcl.refresh_state()
         self.hcl.module_hcl_code("terraform.tfstate",
                                  os.path.join(os.path.dirname(os.path.abspath(__file__)), "rds.yaml"), functions)
-        exit()
         # self.hcl.generate_hcl_file()
         self.json_plan = self.hcl.json_plan
 

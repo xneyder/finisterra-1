@@ -190,7 +190,6 @@ class Dynamodb:
         self.hcl.module_hcl_code("terraform.tfstate", os.path.join(
             os.path.dirname(os.path.abspath(__file__)), "aws_dynamodb_table.yaml"), functions)
 
-        exit()
         # self.hcl.generate_hcl_file()
         self.json_plan = self.hcl.json_plan
 
