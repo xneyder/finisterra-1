@@ -180,7 +180,7 @@ def main():
                     provider.guardduty()
                 elif provider_group_code == 'iam':
                     provider.iam()
-                elif provider_group_code == 'DISABLED---kms':  # FIXME: This is not working
+                elif provider_group_code == 'kms':  # FIXME: This is not working
                     provider.kms()
                 elif provider_group_code == 'DISABLED---aws_lambda':  # FIXME: I can not get the code location
                     provider.aws_lambda()

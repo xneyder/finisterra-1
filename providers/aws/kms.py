@@ -28,17 +28,26 @@ class KMS:
     def kms(self):
         self.hcl.prepare_folder(os.path.join("generated", "kms"))
 
+        # aws_kms_alias.this
+        # aws_kms_external_key.this
+        # aws_kms_grant.this
+        # aws_kms_key.this
+        # aws_kms_replica_external_key.this
+        # aws_kms_replica_key.this
+
         self.aws_kms_alias()  # Always permissions error
         # self.aws_kms_ciphertext() # not needed as it not strored and it is just to encryopt data
-        self.aws_kms_custom_key_store()
+        # self.aws_kms_custom_key_store()
         self.aws_kms_external_key()
         self.aws_kms_grant()  # tf refresh gets stuck
         self.aws_kms_key()  # Always permissions error
-        self.aws_kms_key_policy()
+        # self.aws_kms_key_policy()
         self.aws_kms_replica_external_key()
         self.aws_kms_replica_key()
 
         self.hcl.refresh_state()
+
+        exit()
         self.hcl.generate_hcl_file()
         self.json_plan = self.hcl.json_plan
 

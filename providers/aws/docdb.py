@@ -20,12 +20,24 @@ class DocDb:
     def docdb(self):
         self.hcl.prepare_folder(os.path.join("generated", "docdb"))
 
+        # aws_docdb_cluster.default
+        # aws_docdb_cluster_instance.default
+        # aws_docdb_cluster_parameter_group.default
+        # aws_docdb_subnet_group.default
+        # aws_security_group.default
+        # aws_security_group_rule.allow_ingress_from_self
+        # aws_security_group_rule.egress
+        # aws_security_group_rule.ingress_cidr_blocks
+        # aws_security_group_rule.ingress_security_groups
+        # random_password.password
+
+        # self.aws_docdb_cluster_snapshot() #disbale because it can be too long and not really needed for modules
+        # self.aws_docdb_event_subscription()
+        # self.aws_docdb_global_cluster()
+
         self.aws_docdb_cluster()
         self.aws_docdb_cluster_instance()
         self.aws_docdb_cluster_parameter_group()
-        # self.aws_docdb_cluster_snapshot() #disbale because it can be too long and not really needed for modules
-        self.aws_docdb_event_subscription()
-        self.aws_docdb_global_cluster()
         self.aws_docdb_subnet_group()
 
         self.hcl.refresh_state()
