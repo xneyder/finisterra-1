@@ -1090,8 +1090,13 @@ class HCL:
                 # print(resource_import_target)
                 # subprocess.run(
                 #     ["terraform", "import", resource_import_target, deployed_resource["id"]])
-                subprocess.run(
-                    ["terraform", "state", "mv", "-backup=/dev/null", resource_import_source, resource_import_target])
+                # subprocess.run(
+                #     ["terraform", "state", "mv", "-backup=/dev/null", resource_import_source, resource_import_target])
+
+                # Write to moved.tf file
+                with open('moved.tf', 'a') as file:  # 'a' is for append mode
+                    file.write(
+                        f'moved {{\n  from = {resource_import_source}\n  to   = {resource_import_target}\n}}\n\n')
 
         print("Formatting HCL files...")
         subprocess.run(["terraform", "fmt"], check=True)
