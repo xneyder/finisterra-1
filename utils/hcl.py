@@ -669,6 +669,24 @@ class HCL:
                         except json.JSONDecodeError:
                             # If conversion fails, it's not a 'stringified' dictionary, so just overwrite
                             original[key] = value
+                    # elif isinstance(value, str) and (isinstance(original.get(key), list) or original.get(key) is None):
+                    #     try:
+                    #         # Check if the string can be converted to a list
+                    #         update_value_list = json.loads(value)
+
+                    #         # If conversion is successful, extend the original list
+                    #         if isinstance(update_value_list, list):
+                    #             # print('original[key]', original[key])
+                    #             if original.get(key) is not None:
+                    #                 original[key].extend(update_value_list)
+                    #             else:
+                    #                 original[key] = update_value_list
+                    #         else:
+                    #             original[key] = value
+
+                    #     except json.JSONDecodeError:
+                    #         # If conversion fails, it's not a 'stringified' list, so just overwrite
+                    #         original[key] = value
                     else:
                         original[key] = value
                 return original
@@ -946,9 +964,6 @@ class HCL:
 
             return hcl_lines
 
-        def convert_dict_to_hcl(input_dict):
-            return '\n'.join(dict_to_hcl(input_dict))
-
         def value_to_hcl(value):
             def escape_special_characters(input_str):
                 return input_str.replace("\\", "\\\\")
@@ -1006,9 +1021,6 @@ class HCL:
         # remove duplicates by converting to a set
         full_dump = {}
         if config[resource['type']].get('dict_to_hcl', False):
-            # full_dump = convert_dict_to_hcl({'attributes': attributes})
-            # print(full_dump)
-            # exit()
             for key, value in attributes.items():
                 if not str(value).startswith('<<EOF'):
                     # print("===========================")

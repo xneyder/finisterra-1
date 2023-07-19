@@ -72,68 +72,157 @@ class VPC:
                        self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules)
         self.resource_list = {}
 
+    def get_field_from_attrs(self, attributes, arg):
+        keys = arg.split(".")
+        result = attributes
+        for key in keys:
+            if isinstance(result, list):
+                result = [sub_result.get(key, None) if isinstance(
+                    sub_result, dict) else None for sub_result in result]
+                if len(result) == 1:
+                    result = result[0]
+            else:
+                result = result.get(key, None)
+            if result is None:
+                return None
+        return result
+
+    def is_subnet_public(self, attributes, arg):
+        subnet_id = attributes.get('id')
+        route_tables = self.ec2_client.describe_route_tables(
+            Filters=[{'Name': 'association.subnet-id', 'Values': [subnet_id]}])
+        for route_table in route_tables['RouteTables']:
+            for route in route_table['Routes']:
+                if route.get('GatewayId', '').startswith('igw-'):
+                    return True
+        return False
+
+    def is_subnet_private(self, attributes, arg):
+        subnet_id = attributes.get('id')
+        route_tables = self.ec2_client.describe_route_tables(
+            Filters=[{'Name': 'association.subnet-id', 'Values': [subnet_id]}])
+        for route_table in route_tables['RouteTables']:
+            for route in route_table['Routes']:
+                if route.get('GatewayId', '').startswith('igw-'):
+                    return False
+        return True
+
+    def to_array(self, attributes, arg):
+        return [attributes.get(arg, None)]
+
     def vpc(self):
         self.hcl.prepare_folder(os.path.join("generated", "vpc"))
 
+        # aws_cloudwatch_log_group.flow_log
+        # aws_customer_gateway.this
+        # aws_default_network_acl.this
+        # aws_default_route_table.default
+        # aws_default_security_group.this
+        # aws_default_vpc.this
+        # aws_egress_only_internet_gateway.this
+        # aws_eip.nat
+        # aws_flow_log.this
+        # aws_iam_policy.vpc_flow_log_cloudwatch
+        # aws_iam_role.vpc_flow_log_cloudwatch
+        # aws_iam_role_policy_attachment.vpc_flow_log_cloudwatch
+        # aws_internet_gateway.this
+        # aws_nat_gateway.this
+        # aws_network_acl.private
+        # aws_network_acl.public
+        # aws_network_acl_rule.private_inbound
+        # aws_network_acl_rule.private_outbound
+        # aws_network_acl_rule.public_inbound
+        # aws_network_acl_rule.public_outbound
+        # aws_route.private_dns64_nat_gateway
+        # aws_route.private_ipv6_egress
+        # aws_route.private_nat_gateway
+        # aws_route.public_internet_gateway
+        # aws_route.public_internet_gateway_ipv6
+        # aws_route_table.private
+        # aws_route_table.public
+        # aws_route_table_association.private
+        # aws_route_table_association.public
+        # aws_subnet.private
+        # aws_subnet.public
+        # aws_vpc.this
+        # aws_vpc_dhcp_options.this
+        # aws_vpc_dhcp_options_association.this
+        # aws_vpc_ipv4_cidr_block_association.this
+        # aws_vpn_gateway.this
+        # aws_vpn_gateway_attachment.this
+        # aws_vpn_gateway_route_propagation.private
+        # aws_vpn_gateway_route_propagation.public
+
         self.aws_vpc()
-        self.aws_subnet()
-        self.aws_default_network_acl()
-        self.aws_default_route_table()
-        # self.aws_default_security_group() # is a spacial blocking it until a client asks for it
-        self.aws_default_vpc()
-        self.aws_default_subnet()
-        # self.aws_default_vpc_dhcp_options() # no boto3 filter
-        # self.aws_ec2_managed_prefix_list() # Conflicts with aws_ec2_managed_prefix_list_entry
 
-        if "gov" not in self.region:
-            self.aws_ec2_network_insights_analysis()
-            self.aws_ec2_network_insights_path()
+        # self.aws_default_network_acl()
+        # self.aws_default_route_table()
+        # # self.aws_default_security_group() # is a spacial blocking it until a client asks for it
+        # self.aws_default_vpc()
+        # self.aws_default_subnet()
+        # # self.aws_default_vpc_dhcp_options() # no boto3 filter
+        # # self.aws_ec2_managed_prefix_list() # Conflicts with aws_ec2_managed_prefix_list_entry
 
-        self.aws_ec2_subnet_cidr_reservation()
-        self.aws_ec2_traffic_mirror_filter()
-        self.aws_ec2_traffic_mirror_filter_rule()
-        self.aws_ec2_traffic_mirror_session()
-        self.aws_ec2_traffic_mirror_target()
-        self.aws_egress_only_internet_gateway()
-        self.aws_flow_log()
-        self.aws_internet_gateway()
-        self.aws_internet_gateway_attachment()
-        self.aws_main_route_table_association()
-        self.aws_nat_gateway()
-        self.aws_network_acl()
-        # self.aws_network_acl_association() # We are using inline rules
-        # self.aws_network_acl_rule() # We are using inline rules
-        # self.aws_network_interface() #Blocking because is called from aws_nat_gateway
-        # self.aws_network_interface_attachment() #will need ot be used from ec2
-        # self.aws_network_interface_sg_attachment()  #will need ot be used from ec2
-        self.aws_route()
-        self.aws_route_table()
-        self.aws_route_table_association()
-        # self.aws_security_group() # will be use on other modules
-        # self.aws_security_group_rule() conflicts with aws_vpc_security_group_egress_rule, and aws_vpc_security_group_ingress_rule
-        # self.aws_vpc_dhcp_options() # blocked for now until a customer asks for it
-        # self.aws_vpc_dhcp_options_association() # blocked for now until a customer asks for it
-        self.aws_vpc_endpoint()
-        self.aws_vpc_endpoint_connection_accepter()
-        self.aws_vpc_endpoint_connection_notification()
-        self.aws_vpc_endpoint_policy()
-        self.aws_vpc_endpoint_route_table_association()
-        # terraform refresh comes empty with resources that are not found in amazon
-        self.aws_vpc_endpoint_security_group_association()
-        self.aws_vpc_endpoint_service()
-        self.aws_vpc_endpoint_service_allowed_principal()
-        self.aws_vpc_endpoint_subnet_association()
-        # self.aws_vpc_ipv4_cidr_block_association() # blocked for now until a customer asks for it
-        # self.aws_vpc_ipv6_cidr_block_association() # blocked for now until a customer asks for it
-        # self.aws_vpc_network_performance_metric_subscription() #no boto3 lib
-        self.aws_vpc_peering_connection()
-        self.aws_vpc_peering_connection_accepter()
-        self.aws_vpc_peering_connection_options()
-        # self.aws_vpc_security_group_egress_rule() #manage it from other modules
+        # if "gov" not in self.region:
+        #     self.aws_ec2_network_insights_analysis()
+        #     self.aws_ec2_network_insights_path()
+
+        # self.aws_ec2_subnet_cidr_reservation()
+        # self.aws_ec2_traffic_mirror_filter()
+        # self.aws_ec2_traffic_mirror_filter_rule()
+        # self.aws_ec2_traffic_mirror_session()
+        # self.aws_ec2_traffic_mirror_target()
+        # self.aws_egress_only_internet_gateway()
+        # self.aws_flow_log()
+        # self.aws_internet_gateway()
+        # self.aws_internet_gateway_attachment()
+        # self.aws_main_route_table_association()
+        # self.aws_nat_gateway()
+        # self.aws_network_acl()
+        # # self.aws_network_acl_association() # We are using inline rules
+        # # self.aws_network_acl_rule() # We are using inline rules
+        # # self.aws_network_interface() #Blocking because is called from aws_nat_gateway
+        # # self.aws_network_interface_attachment() #will need ot be used from ec2
+        # # self.aws_network_interface_sg_attachment()  #will need ot be used from ec2
+        # self.aws_route()
+        # self.aws_route_table()
+        # self.aws_route_table_association()
+        # # self.aws_security_group() # will be use on other modules
+        # # self.aws_security_group_rule() conflicts with aws_vpc_security_group_egress_rule, and aws_vpc_security_group_ingress_rule
+        # # self.aws_vpc_dhcp_options() # blocked for now until a customer asks for it
+        # # self.aws_vpc_dhcp_options_association() # blocked for now until a customer asks for it
+        # self.aws_vpc_endpoint()
+        # self.aws_vpc_endpoint_connection_accepter()
+        # self.aws_vpc_endpoint_connection_notification()
+        # self.aws_vpc_endpoint_policy()
+        # self.aws_vpc_endpoint_route_table_association()
+        # # terraform refresh comes empty with resources that are not found in amazon
+        # self.aws_vpc_endpoint_security_group_association()
+        # self.aws_vpc_endpoint_service()
+        # self.aws_vpc_endpoint_service_allowed_principal()
+        # self.aws_vpc_endpoint_subnet_association()
+        # # self.aws_vpc_ipv4_cidr_block_association() # blocked for now until a customer asks for it
+        # # self.aws_vpc_ipv6_cidr_block_association() # blocked for now until a customer asks for it
+        # # self.aws_vpc_network_performance_metric_subscription() #no boto3 lib
+        # self.aws_vpc_peering_connection()
+        # self.aws_vpc_peering_connection_accepter()
+        # self.aws_vpc_peering_connection_options()
+        # # self.aws_vpc_security_group_egress_rule() #manage it from other modules
         # self.aws_vpc_security_group_ingress_rule() #manage it from other modules
 
+        functions = {
+            'get_field_from_attrs': self.get_field_from_attrs,
+            'is_subnet_public': self.is_subnet_public,
+            'is_subnet_private': self.is_subnet_private,
+            'to_array': self.to_array,
+        }
         self.hcl.refresh_state()
-        self.hcl.generate_hcl_file()
+
+        self.hcl.module_hcl_code("terraform.tfstate", os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), "vpc.yaml"), functions)
+
+        exit()
+        # self.hcl.generate_hcl_file()
         self.json_plan = self.hcl.json_plan
 
     def aws_vpc(self):
@@ -153,37 +242,29 @@ class VPC:
                 self.resource_list['aws_vpc'][vpc_id.replace(
                     "-", "_")] = attributes
 
-    def aws_subnet(self):
+                self.aws_subnet(vpc)  # pass the vpc
+
+    def aws_subnet(self, vpc):
         print("Processing Subnets...")
         self.resource_list['aws_subnet'] = {}
-        # Retrieve the default VPC
-        default_vpc = None
-        vpcs = self.ec2_client.describe_vpcs()["Vpcs"]
-        for vpc in vpcs:
-            if vpc.get("IsDefault", False):
-                default_vpc = vpc
-                break
+
+        vpc_id = vpc["VpcId"]
 
         subnets = self.ec2_client.describe_subnets()["Subnets"]
         for subnet in subnets:
-            vpc_id = subnet["VpcId"]
-
-            # Skip processing if the subnet belongs to the default VPC
-            if default_vpc and vpc_id == default_vpc["VpcId"]:
-                continue
-
-            subnet_id = subnet["SubnetId"]
-            print(f"    Processing Subnet: {subnet_id}")
-            attributes = {
-                "id": subnet_id,
-                "vpc_id": vpc_id,
-                "cidr_block": subnet["CidrBlock"],
-                "availability_zone": subnet["AvailabilityZone"],
-            }
-            self.hcl.process_resource(
-                "aws_subnet", subnet_id.replace("-", "_"), attributes)
-            self.resource_list['aws_subnet'][subnet_id.replace(
-                "-", "_")] = attributes
+            if subnet["VpcId"] == vpc_id:
+                subnet_id = subnet["SubnetId"]
+                print(f"    Processing Subnet: {subnet_id}")
+                attributes = {
+                    "id": subnet_id,
+                    "vpc_id": vpc_id,
+                    "cidr_block": subnet["CidrBlock"],
+                    "availability_zone": subnet["AvailabilityZone"],
+                }
+                self.hcl.process_resource(
+                    "aws_subnet", subnet_id.replace("-", "_"), attributes)
+                self.resource_list['aws_subnet'][subnet_id.replace(
+                    "-", "_")] = attributes
 
     def aws_default_network_acl(self):
         print("Processing Default Network ACLs...")

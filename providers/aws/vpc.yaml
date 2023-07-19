@@ -1,0 +1,92 @@
+aws_vpc:
+  # terraform_module: "terraform-aws-modules/aws/vpc"
+  terraform_module: "../../../terraform-aws-modules/terraform-aws-vpc"
+  terraform_module_version: "5.1.0"
+  target_resource_name: this
+  defaults:
+    enable_dhcp_options: false
+
+  fields:
+    name:
+      function: get_field_from_attrs
+      arg: tags.name
+      type: string
+    cidr:
+      field: cidr_block
+      type: string
+    ipv4_ipam_pool_id:
+      field: ipv4_ipam_pool_id
+      type: string
+    ipv4_netmask_length:
+      field: ipv4_netmask_length
+      type: number
+    ipv6_cidr:
+      field: ipv6_cidr_block
+      type: string
+    ipv6_ipam_pool_id:
+      field: ipv6_ipam_pool_id
+      type: string
+    ipv6_netmask_length:
+      field: ipv6_netmask_length
+      type: number
+    ipv6_cidr_block_network_border_group:
+      field: ipv6_cidr_block_network_border_group
+      type: string
+    instance_tenancy:
+      field: instance_tenancy
+      type: string
+    enable_dns_hostnames:
+      field: enable_dns_hostnames
+      type: bool
+    enable_dns_support:
+      field: enable_dns_support
+      type: bool
+    enable_network_address_usage_metrics:
+      field: enable_network_address_usage_metrics
+      type: bool
+    tags:
+      field: tags
+      type: map
+  childs:
+    aws_subnet:
+      join:
+        id:
+          field: vpc_id
+      skip_if:
+        function: is_subnet_private
+        arg: vpc_id
+      target_resource_name: public
+      fields:
+        public_subnet_assign_ipv6_address_on_creation:
+          field: assign_ipv6_address_on_creation
+          type: bool
+        azs:
+          function: to_array
+          arg: availability_zone
+          type: list
+        public_subnets:
+          function: to_array
+          arg: cidr_block
+          type: list
+        public_subnet_enable_dns64:
+          field: enable_dns64
+          type: bool
+        public_subnet_enable_resource_name_dns_aaaa_record_on_launch:
+          field: enable_resource_name_dns_aaaa_record_on_launch
+          type: bool
+        public_subnet_enable_resource_name_dns_a_record_on_launch:
+          field: enable_resource_name_dns_a_record_on_launch
+          type: bool
+        public_subnet_ipv6_native:
+          field: ipv6_native
+          type: bool
+        map_public_ip_on_launch:
+          field: map_public_ip_on_launch
+          type: bool
+        public_subnet_private_dns_hostname_type_on_launch:
+          field: private_dns_hostname_type_on_launch
+          type: string
+        # public_subnet_tags_per_az:
+        #   function: to_array
+        #   arg: tags
+        #   type: list
