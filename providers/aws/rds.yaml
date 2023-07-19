@@ -1,6 +1,7 @@
 aws_db_instance:
   # terraform_module: "terraform-aws-modules/rds/aws"
-  terraform_module: "../../../terraform-aws-modules/terraform-aws-rds"
+  # terraform_module: "../../../terraform-aws-modules/terraform-aws-rds"
+  terraform_module: "github.com/finisterra-io/terraform-aws-rds.git"
   terraform_module_version: "6.1.0"
   keys:
     - identifier
@@ -11,6 +12,7 @@ aws_db_instance:
     create_db_subnet_group: false
     create_db_parameter_group: false
     create_db_option_group: false
+    manage_master_user_password: false
 
   fields:
     identifier:
@@ -49,8 +51,6 @@ aws_db_instance:
       field: iam_database_authentication_enabled
     custom_iam_instance_profile:
       field: custom_iam_instance_profile
-    manage_master_user_password:
-      field: manage_master_user_password
     master_user_secret_kms_key_id:
       field: master_user_secret_kms_key_id
     vpc_security_group_ids:
@@ -93,8 +93,6 @@ aws_db_instance:
       field: copy_tags_to_snapshot
     skip_final_snapshot:
       field: skip_final_snapshot
-    final_snapshot_identifier_prefix:
-      field: final_snapshot_identifier_prefix
     performance_insights_enabled:
       field: performance_insights_enabled
     performance_insights_retention_period:
@@ -115,16 +113,6 @@ aws_db_instance:
       field: monitoring_interval
     monitoring_role_arn:
       field: monitoring_role_arn
-    monitoring_role_name:
-      field: monitoring_role_name
-    monitoring_role_use_name_prefix:
-      field: monitoring_role_use_name_prefix
-    monitoring_role_description:
-      field: monitoring_role_description
-    create_monitoring_role:
-      field: create_monitoring_role
-    monitoring_role_permissions_boundary:
-      field: monitoring_role_permissions_boundary
     character_set_name:
       field: character_set_name
     nchar_character_set_name:
@@ -133,12 +121,6 @@ aws_db_instance:
       field: timezone
     enabled_cloudwatch_logs_exports:
       field: enabled_cloudwatch_logs_exports
-    create_cloudwatch_log_group:
-      field: create_cloudwatch_log_group
-    cloudwatch_log_group_retention_in_days:
-      field: cloudwatch_log_group_retention_in_days
-    cloudwatch_log_group_kms_key_id:
-      field: cloudwatch_log_group_kms_key_id
     timeouts:
       field: timeouts
     deletion_protection:
@@ -152,7 +134,7 @@ aws_db_instance:
     tags:
       field: tags
     db_instance_tags:
-      field: db_instance_tags
+      field: tags
   childs:
     aws_db_subnet_group:
       join:

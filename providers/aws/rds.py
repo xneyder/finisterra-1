@@ -80,6 +80,9 @@ class RDS:
 
                 attributes = {
                     "id": instance_id,
+                    "apply_immediately": False,
+                    "delete_automated_backups": True,
+                    "skip_final_snapshot": False,
                 }
                 self.hcl.process_resource(
                     "aws_db_instance", instance_id.replace("-", "_"), attributes)
