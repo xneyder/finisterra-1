@@ -1,6 +1,7 @@
 aws_ecr_repository:
   # terraform_module: "terraform-aws-modules/aws/ecr"
-  terraform_module: "../../../terraform-aws-modules/terraform-aws-ecr"
+  # terraform_module: "../../../terraform-aws-modules/terraform-aws-ecr"
+  terraform_module: "github.com/finisterra-io/terraform-aws-ecr.git?ref=main"
   terraform_module_version: "1.6.0"
   keys:
     - repository_name
@@ -22,7 +23,7 @@ aws_ecr_repository:
       function: get_field_from_attrs
       arg: encryption_configuration.encryption_type
       type: string
-    repository_encryption_kms_key:
+    repository_kms_key:
       function: get_field_from_attrs
       arg: encryption_configuration.kms_key
       type: string
@@ -68,6 +69,21 @@ aws_ecr_repository:
           type: string
           multiline: true
 
+    aws_ecr_registry_scanning_configuration:
+      join:
+        id:
+          field: id
+      target_resource_name: this
+      defaults:
+        manage_registry_scanning_configuration: true
+      fields:
+        registry_scan_type:
+          field: scan_type
+          type: string
+        registry_scan_rules:
+          field: rules
+          type: list
+
 aws_ecr_registry_policy:
   # terraform_module: "terraform-aws-modules/aws/ecr"
   terraform_module: "../../../terraform-aws-modules/terraform-aws-ecr"
@@ -91,22 +107,6 @@ aws_ecr_pull_through_cache_rule:
     create_repository: false
   fields:
     registry_pull_through_cache_rules:
-      field: rules
-      type: list
-
-aws_ecr_registry_scanning_configuration:
-  # terraform_module: "terraform-aws-modules/aws/ecr"
-  terraform_module: "../../../terraform-aws-modules/terraform-aws-ecr"
-  terraform_module_version: "1.6.0"
-  target_resource_name: this
-  defaults:
-    manage_registry_scanning_configuration: true
-    create_repository: false
-  fields:
-    registry_scan_type:
-      field: scan_type
-      type: string
-    registry_scan_rules:
       field: rules
       type: list
 

@@ -1,6 +1,7 @@
 aws_s3_bucket:
   # terraform_module: "terraform-aws-modules/s3-bucket/aws"
-  terraform_module: "../../../terraform-aws-modules/terraform-aws-s3-bucket"
+  # terraform_module: "../../../terraform-aws-modules/terraform-aws-s3-bucket"
+  terraform_module: "github.com/finisterra-io/terraform-aws-s3-bucket.git?ref=main"
   terraform_module_version: "3.14.0"
   keys:
     - bucket

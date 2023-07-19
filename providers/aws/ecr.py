@@ -44,7 +44,6 @@ class ECR:
         if "gov" not in self.region:
             self.aws_ecr_registry_policy()
             self.aws_ecr_pull_through_cache_rule()
-            self.aws_ecr_registry_scanning_configuration()
             self.aws_ecr_replication_configuration()
 
         functions = {
@@ -66,9 +65,6 @@ class ECR:
             repository_name = repo["repositoryName"]
             repository_arn = repo["repositoryArn"]
 
-            # if repository_name != "market-subscription-service":
-            #     continue
-
             print(f"  Processing ECR Repository: {repository_name}")
 
             attributes = {
@@ -78,9 +74,12 @@ class ECR:
             self.hcl.process_resource(
                 "aws_ecr_repository", repository_name.replace("-", "_"), attributes)
 
-            self.aws_ecr_repository_policy(
-                repository_name)
+            self.aws_ecr_repository_policy(repository_name)
             self.aws_ecr_lifecycle_policy(repository_name)
+
+            if "gov" not in self.region:
+                # Call to the aws_ecr_registry_scanning_configuration function
+                self.aws_ecr_registry_scanning_configuration(repo)
 
     def aws_ecr_repository_policy(self, repository_name):
         print(f"Processing ECR Repository Policy for: {repository_name}")
@@ -161,23 +160,19 @@ class ECR:
                     self.hcl.process_resource(
                         "aws_ecr_pull_through_cache_rule", repository_name.replace("-", "_"), attributes)
 
-    def aws_ecr_registry_scanning_configuration(self):
-        print("Processing ECR Registry Scanning Configurations...")
+    def aws_ecr_registry_scanning_configuration(self, repo):
+        repository_name = repo["repositoryName"]
+        image_scanning_config = repo["imageScanningConfiguration"]
 
-        repositories = self.ecr_client.describe_repositories()["repositories"]
-        for repo in repositories:
-            repository_name = repo["repositoryName"]
-            image_scanning_config = repo["imageScanningConfiguration"]
+        print(
+            f"  Processing ECR Registry Scanning Configuration for repository: {repository_name}")
 
-            print(
-                f"  Processing ECR Registry Scanning Configuration for repository: {repository_name}")
-
-            attributes = {
-                "id": repository_name,
-                "scan_on_push": image_scanning_config["scanOnPush"],
-            }
-            self.hcl.process_resource(
-                "aws_ecr_registry_scanning_configuration", repository_name.replace("-", "_"), attributes)
+        attributes = {
+            "id": repository_name,
+            "scan_on_push": image_scanning_config["scanOnPush"],
+        }
+        self.hcl.process_resource(
+            "aws_ecr_registry_scanning_configuration", repository_name.replace("-", "_"), attributes)
 
     def aws_ecr_replication_configuration(self):
         print("Processing ECR Replication Configurations...")

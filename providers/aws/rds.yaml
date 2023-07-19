@@ -1,7 +1,7 @@
 aws_db_instance:
   # terraform_module: "terraform-aws-modules/rds/aws"
   # terraform_module: "../../../terraform-aws-modules/terraform-aws-rds"
-  terraform_module: "github.com/finisterra-io/terraform-aws-rds.git"
+  terraform_module: "github.com/finisterra-io/terraform-aws-rds.git?ref=main"
   terraform_module_version: "6.1.0"
   keys:
     - identifier
