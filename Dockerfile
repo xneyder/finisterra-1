@@ -29,10 +29,10 @@ RUN git config --global user.email "code@finisterra.io" && \
     git config --global user.name "finisterra"
 
 # Install Terraform 1.0.5
-RUN curl -O https://releases.hashicorp.com/terraform/1.0.5/terraform_1.0.5_linux_amd64.zip \
-    && unzip terraform_1.0.5_linux_amd64.zip \
+RUN curl -O https://releases.hashicorp.com/terraform/1.5.3/terraform_1.5.3_linux_amd64.zip \
+    && unzip terraform_1.5.3_linux_amd64.zip \
     && mv terraform /usr/local/bin/ \
-    && rm terraform_1.0.5_linux_amd64.zip
+    && rm terraform_1.5.3_linux_amd64.zip
 
 # Make Python 3.9 as the default python version
 RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.9 1

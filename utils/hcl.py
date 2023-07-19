@@ -823,7 +823,7 @@ class HCL:
                         resource_attributes, state_field, field_type)
 
                 defaulted = False
-                if value in [None, "", [], {}] and default is not 'N/A':
+                if value in [None, "", [], {}] and default != 'N/A':
                     value = default
                     defaulted = True
 
