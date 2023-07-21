@@ -136,6 +136,14 @@ class VPC:
         tags = attributes.get('tags', {})
         return {availability_zone: tags}
 
+    def init_fields(self, attributes):
+        self.private_subnets = {}
+        self.public_subnets = {}
+        self.public_subnets_len = 0
+        self.private_subnets_len = 0
+
+        return None
+
     def get_subnet_index_private(self, attributes, arg):
         subnet_id = attributes.get(arg)
         if subnet_id not in self.private_subnets:
@@ -377,6 +385,7 @@ class VPC:
             'format_ingress_rules': self.format_ingress_rules,
             'format_egress_rules': self.format_egress_rules,
             'format_network_acl_rules': self.format_network_acl_rules,
+            'init_fields': self.init_fields,
             # 'match_igw_route': self.match_igw_route,
         }
         self.hcl.refresh_state()

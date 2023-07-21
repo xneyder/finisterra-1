@@ -8,6 +8,9 @@ aws_vpc:
     create_igw: false
 
   fields:
+    init:
+      function: init_fields
+      type: string
     name:
       function: get_field_from_attrs
       arg: tags.name
