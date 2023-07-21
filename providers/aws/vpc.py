@@ -71,6 +71,10 @@ class VPC:
         self.hcl = HCL(self.schema_data, self.provider_name,
                        self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules)
         self.resource_list = {}
+        self.public_subnets = {}
+        self.private_subnets = {}
+        self.public_subnets_len = 0
+        self.private_subnets_len = 0
 
     def get_field_from_attrs(self, attributes, arg):
         keys = arg.split(".")
@@ -107,8 +111,101 @@ class VPC:
                     return False
         return True
 
+    def is_route_table(self, attributes, arg):
+        route_table_id = attributes.get('id')
+        route_table = self.ec2_client.describe_route_tables(
+            RouteTableIds=[route_table_id])['RouteTables'][0]
+
+        for route in route_table['Routes']:
+            if route.get('GatewayId', '').startswith('igw-'):
+                if arg == 'public':
+                    return True
+                else:
+                    return False
+
+        if arg == 'public':
+            return False
+        else:
+            return True
+
     def to_array(self, attributes, arg):
         return [attributes.get(arg, None)]
+
+    def build_tags_per_az(self, attributes):
+        availability_zone = attributes.get('availability_zone')
+        tags = attributes.get('tags', {})
+        return {availability_zone: tags}
+
+    def get_subnet_index_private(self, attributes, arg):
+        subnet_id = attributes.get(arg)
+        if subnet_id not in self.private_subnets:
+            self.private_subnets[subnet_id] = self.private_subnets_len
+            self.private_subnets_len += 1
+
+        if arg == "subnet_id":  # this is an association so save the route table for later
+            route_table_id = attributes.get('route_table_id')
+            if 'association' not in self.private_subnets:
+                self.private_subnets['association'] = {}
+            self.private_subnets['association'][route_table_id] = self.private_subnets_len
+
+        return self.private_subnets[subnet_id]
+
+    def get_subnet_index_public(self, attributes, arg):
+        subnet_id = attributes.get(arg)
+        if subnet_id not in self.public_subnets:
+            self.public_subnets[subnet_id] = self.public_subnets_len
+            self.public_subnets_len += 1
+
+        if arg == "subnet_id":  # this is an association so save the route table for later
+            route_table_id = attributes.get('route_table_id')
+            if 'association' not in self.public_subnets:
+                self.public_subnets['association'] = {}
+            self.public_subnets['association'][route_table_id] = self.public_subnets_len
+
+        return self.public_subnets[subnet_id]
+
+    def get_aws_route_id_public(self, attributes, arg):
+        route_table_id = attributes.get(arg)
+        print()
+        return self.public_subnets['association'].get(route_table_id, None)
+
+    # def get_subnet_index(self, attributes, arg):
+    #     subnet_id = attributes.get('subnet_id', None)
+    #     if not subnet_id:
+    #         subnet_id = attributes.get('id')
+    #     if arg == 'public':
+    #         if subnet_id not in self.public_subnets:
+    #             self.public_subnets[subnet_id] = self.public_subnets_len
+    #             self.public_subnets_len += 1
+    #         return self.public_subnets[subnet_id]
+    #     elif arg == 'private':
+    #         if subnet_id not in self.private_subnets:
+    #             self.private_subnets[subnet_id] = self.private_subnets_len
+    #             self.private_subnets_len += 1
+    #         return self.private_subnets[subnet_id]
+
+    def bigger_than_zero(self, attributes, arg):
+        value = attributes.get(arg, None)
+        if value > 0:
+            return value
+        return None
+
+    # def match_igw_route(self, parent_attributes, child_attributes):
+    #     aws_route_table_id = child_attributes.get("id")
+    #     igw_id = parent_attributes.get("id")
+
+    #     # Get the details of the route table
+    #     route_table = self.ec2_client.describe_route_tables(
+    #         RouteTableIds=[aws_route_table_id])['RouteTables'][0]
+
+    #     # Iterate through each route in the route table
+    #     for route in route_table['Routes']:
+    #         # Check if the route's GatewayId matches the igw_id
+    #         if route.get('GatewayId', '') == igw_id:
+    #             return True  # return True if a match is found
+
+    #     # If no match is found after checking all routes, return False
+    #     return False
 
     def vpc(self):
         self.hcl.prepare_folder(os.path.join("generated", "vpc"))
@@ -215,6 +312,13 @@ class VPC:
             'is_subnet_public': self.is_subnet_public,
             'is_subnet_private': self.is_subnet_private,
             'to_array': self.to_array,
+            'build_tags_per_az': self.build_tags_per_az,
+            # 'get_subnet_index': self.get_subnet_index,
+            'bigger_than_zero': self.bigger_than_zero,
+            'get_subnet_index_private': self.get_subnet_index_private,
+            'get_subnet_index_public': self.get_subnet_index_public,
+            'get_aws_route_id_public': self.get_aws_route_id_public,
+            # 'match_igw_route': self.match_igw_route,
         }
         self.hcl.refresh_state()
 
@@ -243,6 +347,8 @@ class VPC:
                     "-", "_")] = attributes
 
                 self.aws_subnet(vpc)  # pass the vpc
+                self.aws_internet_gateway(vpc_id)  # pass the vpc_id
+                self.aws_route_table(vpc_id)
 
     def aws_subnet(self, vpc):
         print("Processing Subnets...")
@@ -264,6 +370,30 @@ class VPC:
                 self.hcl.process_resource(
                     "aws_subnet", subnet_id.replace("-", "_"), attributes)
                 self.resource_list['aws_subnet'][subnet_id.replace(
+                    "-", "_")] = attributes
+
+                self.aws_route_table_association(subnet_id)
+
+    def aws_internet_gateway(self, vpc_id):
+        print("Processing Internet Gateways...")
+        self.resource_list['aws_internet_gateway'] = {}
+        internet_gateways = self.ec2_client.describe_internet_gateways()[
+            "InternetGateways"]
+
+        for igw in internet_gateways:
+            igw_id = igw["InternetGatewayId"]
+            attached_vpc_id = igw["Attachments"][0]["VpcId"] if igw["Attachments"] else ""
+
+            if attached_vpc_id == vpc_id:
+                print(f"  Processing Internet Gateway: {igw_id}")
+
+                attributes = {
+                    "id": igw_id,
+                    "vpc_id": attached_vpc_id,
+                }
+                self.hcl.process_resource(
+                    "aws_internet_gateway", igw_id.replace("-", "_"), attributes)
+                self.resource_list['aws_internet_gateway'][igw_id.replace(
                     "-", "_")] = attributes
 
     def aws_default_network_acl(self):
@@ -670,28 +800,6 @@ class VPC:
             self.resource_list['aws_flow_log'][flow_log_id.replace(
                 "-", "_")] = attributes
 
-    def aws_internet_gateway(self):
-        print("Processing Internet Gateways...")
-        self.resource_list['aws_internet_gateway'] = {}
-        internet_gateways = self.ec2_client.describe_internet_gateways()[
-            "InternetGateways"]
-
-        for igw in internet_gateways:
-            igw_id = igw["InternetGatewayId"]
-            print(f"  Processing Internet Gateway: {igw_id}")
-
-            # Assuming there is only one attachment per internet gateway
-            vpc_id = igw["Attachments"][0]["VpcId"] if igw["Attachments"] else ""
-
-            attributes = {
-                "id": igw_id,
-                "vpc_id": vpc_id,
-            }
-            self.hcl.process_resource(
-                "aws_internet_gateway", igw_id.replace("-", "_"), attributes)
-            self.resource_list['aws_internet_gateway'][igw_id.replace(
-                "-", "_")] = attributes
-
     def aws_internet_gateway_attachment(self):
         print("Processing Internet Gateway Attachments...")
         self.resource_list['aws_internet_gateway_attachment'] = {}
@@ -953,63 +1061,66 @@ class VPC:
                                           f"{eni_id.replace('-', '_')}-{sg_id.replace('-', '_')}", attributes)
                 self.resource_list
 
-    def aws_route(self):
-        print("Processing Routes...")
-        self.resource_list['aws_route'] = {}
-        route_tables = self.ec2_client.describe_route_tables()["RouteTables"]
-
-        for rt in route_tables:
-            route_table_id = rt["RouteTableId"]
-
-            for route in rt["Routes"]:
-                destination = route.get("DestinationCidrBlock", route.get(
-                    "DestinationIpv6CidrBlock", ""))
-                if destination:
-                    # Ignoring local route
-                    if route.get("GatewayId", "") == "local":
-                        continue
-
-                    print(
-                        f"  Processing Route in Route Table: {route_table_id} for destination: {destination}")
-
-                    attributes = {
-                        "id": f"{route_table_id}-{destination.replace('/', '-')}",
-                        "route_table_id": route_table_id,
-                        "destination_cidr_block": route.get("DestinationCidrBlock", ""),
-                        "destination_ipv6_cidr_block": route.get("DestinationIpv6CidrBlock", ""),
-                        "gateway_id": route.get("GatewayId", ""),
-                        "nat_gateway_id": route.get("NatGatewayId", ""),
-                        "instance_id": route.get("InstanceId", ""),
-                        "egress_only_gateway_id": route.get("EgressOnlyInternetGatewayId", ""),
-                        "transit_gateway_id": route.get("TransitGatewayId", ""),
-                        "local_gateway_id": route.get("LocalGatewayId", ""),
-                    }
-                    self.hcl.process_resource(
-                        "aws_route", f"{route_table_id.replace('-', '_')}-{destination.replace('/', '-')}", attributes)
-                    self.resource_list['aws_route'][
-                        f"{route_table_id.replace('-', '_')}-{destination.replace('/', '-')}"] = attributes
-
-    def aws_route_table(self):
+    def aws_route_table(self, vpc_id):
         print("Processing Route Tables...")
         self.resource_list['aws_route_table'] = {}
         route_tables = self.ec2_client.describe_route_tables()["RouteTables"]
 
         for rt in route_tables:
-            route_table_id = rt["RouteTableId"]
-            vpc_id = rt["VpcId"]
-            print(
-                f"  Processing Route Table: {route_table_id} for VPC: {vpc_id}")
+            if rt['VpcId'] == vpc_id:
+                route_table_id = rt["RouteTableId"]
+                print(
+                    f"  Processing Route Table: {route_table_id} for VPC: {vpc_id}")
 
-            attributes = {
-                "id": route_table_id,
-                "vpc_id": vpc_id,
-            }
-            self.hcl.process_resource(
-                "aws_route_table", route_table_id.replace("-", "_"), attributes)
-            self.resource_list['aws_route_table'][route_table_id.replace(
-                "-", "_")] = attributes
+                attributes = {
+                    "id": route_table_id,
+                    "vpc_id": vpc_id,
+                }
+                self.hcl.process_resource(
+                    "aws_route_table", route_table_id.replace("-", "_"), attributes)
+                self.resource_list['aws_route_table'][route_table_id.replace(
+                    "-", "_")] = attributes
 
-    def aws_route_table_association(self):
+                self.aws_route(route_table_id)  # pass the route_table_id
+
+    def aws_route(self, route_table_id):
+        print("Processing Routes...")
+        self.resource_list['aws_route'] = {}
+        route_tables = self.ec2_client.describe_route_tables()["RouteTables"]
+
+        for rt in route_tables:
+            rt_route_table_id = rt["RouteTableId"]
+
+            if rt_route_table_id == route_table_id:  # only process routes of the provided route_table_id
+                for route in rt["Routes"]:
+                    destination = route.get("DestinationCidrBlock", route.get(
+                        "DestinationIpv6CidrBlock", ""))
+                    if destination:
+                        # Ignoring local route
+                        if route.get("GatewayId", "") == "local":
+                            continue
+
+                        print(
+                            f"  Processing Route in Route Table: {route_table_id} for destination: {destination}")
+
+                        attributes = {
+                            "id": f"{route_table_id}-{destination.replace('/', '-')}",
+                            "route_table_id": route_table_id,
+                            "destination_cidr_block": route.get("DestinationCidrBlock", ""),
+                            "destination_ipv6_cidr_block": route.get("DestinationIpv6CidrBlock", ""),
+                            "gateway_id": route.get("GatewayId", ""),
+                            "nat_gateway_id": route.get("NatGatewayId", ""),
+                            "instance_id": route.get("InstanceId", ""),
+                            "egress_only_gateway_id": route.get("EgressOnlyInternetGatewayId", ""),
+                            "transit_gateway_id": route.get("TransitGatewayId", ""),
+                            "local_gateway_id": route.get("LocalGatewayId", ""),
+                        }
+                        self.hcl.process_resource(
+                            "aws_route", f"{route_table_id.replace('-', '_')}-{destination.replace('/', '-')}", attributes)
+                        self.resource_list['aws_route'][
+                            f"{route_table_id.replace('-', '_')}-{destination.replace('/', '-')}"] = attributes
+
+    def aws_route_table_association(self, subnet_id):
         print("Processing Route Table Associations...")
         self.resource_list['aws_route_table_association'] = {}
         route_tables = self.ec2_client.describe_route_tables()["RouteTables"]
@@ -1018,9 +1129,9 @@ class VPC:
             route_table_id = rt["RouteTableId"]
 
             for assoc in rt["Associations"]:
-                if not assoc.get("Main"):
+                # check the subnet_id
+                if not assoc.get("Main") and assoc["SubnetId"] == subnet_id:
                     assoc_id = assoc["RouteTableAssociationId"]
-                    subnet_id = assoc["SubnetId"]
                     print(
                         f"  Processing Route Table Association: {assoc_id} for Route Table: {route_table_id}")
 

@@ -568,14 +568,6 @@ class HCL:
                 escaped_value = re.sub(r'\$\{(\w+)\}', r'\1', value)
                 return f'"{escaped_value}"'
 
-    # def is_field_set(self, state, arg):
-    #     # convert the string to a dict
-    #     input_string = state.get(arg, '')
-    #     if input_string != '':
-    #         return True
-    #     else:
-    #         return False
-
     def find_resource_config(self, config, resource_type):
         resource_config = config.get(resource_type)
 
@@ -663,30 +655,16 @@ class HCL:
                             update_value_dict = json.loads(value)
 
                             # If conversion is successful, merge the dictionaries
-                            original[key] = json.dumps(deep_update(
-                                original_value_dict, update_value_dict))
+                            if isinstance(original_value_dict, list):
+                                original_value_dict.extend(update_value_dict)
+                                original[key] = json.dumps(original_value_dict)
+                            else:
+                                original[key] = json.dumps(deep_update(
+                                    original_value_dict, update_value_dict))
 
                         except json.JSONDecodeError:
                             # If conversion fails, it's not a 'stringified' dictionary, so just overwrite
                             original[key] = value
-                    # elif isinstance(value, str) and (isinstance(original.get(key), list) or original.get(key) is None):
-                    #     try:
-                    #         # Check if the string can be converted to a list
-                    #         update_value_list = json.loads(value)
-
-                    #         # If conversion is successful, extend the original list
-                    #         if isinstance(update_value_list, list):
-                    #             # print('original[key]', original[key])
-                    #             if original.get(key) is not None:
-                    #                 original[key].extend(update_value_list)
-                    #             else:
-                    #                 original[key] = update_value_list
-                    #         else:
-                    #             original[key] = value
-
-                    #     except json.JSONDecodeError:
-                    #         # If conversion fails, it's not a 'stringified' list, so just overwrite
-                    #         original[key] = value
                     else:
                         original[key] = value
                 return original
@@ -740,29 +718,7 @@ class HCL:
 
             target_submodule = resource_config.get('target_submodule', "")
             root_attribute = resource_config.get('root_attribute', "")
-            second_index = resource_config.get('second_index', "")
-            second_index_value = None
             created = True
-
-            if second_index:
-                enabled = second_index.get('enabled', True)
-                if not enabled:
-                    second_index_value = "disabled"
-                else:
-                    func_name = second_index.get('function')
-                    func = functions.get(func_name)
-                    if func is not None:
-                        arg = second_index.get('arg')
-                        if arg:
-                            second_index_value = func(
-                                resource_attributes, arg)
-                        else:
-                            second_index_value = func(resource_attributes)
-                    else:
-                        field_name = second_index.get('field')
-                        if field_name:
-                            second_index_value = self.get_value_from_tfstate(
-                                resource_attributes, field_name.split('.'))
 
             root_attribute_key_value = None
             if parent_root_attribute_key_value:
@@ -850,6 +806,28 @@ class HCL:
                                 value, field_type)
 
             if created:
+                second_index = resource_config.get('second_index', "")
+                second_index_value = None
+                if second_index:
+                    enabled = second_index.get('enabled', True)
+                    if not enabled:
+                        second_index_value = "disabled"
+                    else:
+                        func_name = second_index.get('function')
+                        func = functions.get(func_name)
+                        if func is not None:
+                            arg = second_index.get('arg')
+                            if arg:
+                                second_index_value = func(
+                                    resource_attributes, arg)
+                            else:
+                                second_index_value = func(resource_attributes)
+                        else:
+                            field_name = second_index.get('field')
+                            if field_name:
+                                second_index_value = self.get_value_from_tfstate(
+                                    resource_attributes, field_name.split('.'))
+
                 deployed_resources.append({
                     'resource_type': resource_type,
                     'resource_name': resource_name,
@@ -1093,8 +1071,12 @@ class HCL:
                     if deployed_resource["second_index_value"] == "disabled":
                         second_index_str = ""
                     else:
-                        second_index_str = '["' + \
-                            deployed_resource["second_index_value"]+'"]'
+                        if isinstance(deployed_resource["second_index_value"], int):
+                            second_index_str = \
+                                f'[{deployed_resource["second_index_value"]}]'
+                        else:
+                            second_index_str = '["' + \
+                                deployed_resource["second_index_value"]+'"]'
 
                 resource_import_target = f'module.{instance["name"]}.{deployed_resource["target_submodule"]}{index_str}{deployed_resource["resource_type"]}.{deployed_resource["target_resource_name"]}{second_index_str}'
 
