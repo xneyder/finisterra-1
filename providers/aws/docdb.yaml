@@ -1,6 +1,7 @@
 aws_docdb_cluster:
   # terraform_module: "terraform-aws-modules/rds/documentdb-cluster"
-  terraform_module: "../../../terraform-aws-modules/terraform-aws-documentdb-cluster"
+  # terraform_module: "../../../terraform-aws-modules/terraform-aws-documentdb-cluster"
+  terraform_module: "github.com/finisterra-io/terraform-aws-documentdb-cluster.git?ref=main"
   terraform_module_version: "0.20.0"
   target_resource_name: default
   defaults:

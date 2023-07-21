@@ -146,7 +146,7 @@ class VPC:
             route_table_id = attributes.get('route_table_id')
             if 'association' not in self.private_subnets:
                 self.private_subnets['association'] = {}
-            self.private_subnets['association'][route_table_id] = self.private_subnets_len
+            self.private_subnets['association'][route_table_id] = self.private_subnets[subnet_id]
 
         return self.private_subnets[subnet_id]
 
@@ -160,14 +160,25 @@ class VPC:
             route_table_id = attributes.get('route_table_id')
             if 'association' not in self.public_subnets:
                 self.public_subnets['association'] = {}
-            self.public_subnets['association'][route_table_id] = self.public_subnets_len
+            self.public_subnets['association'][route_table_id] = self.public_subnets[subnet_id]
 
         return self.public_subnets[subnet_id]
 
     def get_aws_route_id_public(self, attributes, arg):
         route_table_id = attributes.get(arg)
-        print()
         return self.public_subnets['association'].get(route_table_id, None)
+
+    def get_aws_route_id_private(self, attributes, arg):
+        route_table_id = attributes.get(arg)
+        return self.private_subnets['association'].get(route_table_id, None)
+
+    def build_dict_var(self, attributes, arg):
+        key = attributes[arg]
+        result = {key: {}}
+        for k, v in attributes.items():
+            if v is not None:
+                result[key][k] = v
+        return result
 
     # def get_subnet_index(self, attributes, arg):
     #     subnet_id = attributes.get('subnet_id', None)
@@ -189,6 +200,49 @@ class VPC:
         if value > 0:
             return value
         return None
+
+    def format_ingress_rules(self, attributes):
+        ingress_dict = attributes.get('ingress', [])
+        formatted_ingress = []
+        for ingress_rule in ingress_dict:
+            ingress_rule['cidr_blocks'] = ','.join(ingress_rule['cidr_blocks'])
+            ingress_rule['ipv6_cidr_blocks'] = ','.join(
+                ingress_rule['ipv6_cidr_blocks'])
+            ingress_rule['prefix_list_ids'] = ','.join(
+                ingress_rule['prefix_list_ids'])
+            ingress_rule['security_groups'] = ','.join(
+                ingress_rule['security_groups'])
+            formatted_ingress.append(ingress_rule)
+        return formatted_ingress
+
+    def format_egress_rules(self, attributes):
+        egress_dict = attributes.get('egress', [])
+        formatted_egress = []
+        for egress_rule in egress_dict:
+            egress_rule['cidr_blocks'] = ','.join(egress_rule['cidr_blocks'])
+            egress_rule['ipv6_cidr_blocks'] = ','.join(
+                egress_rule['ipv6_cidr_blocks'])
+            egress_rule['prefix_list_ids'] = ','.join(
+                egress_rule['prefix_list_ids'])
+            egress_rule['security_groups'] = ','.join(
+                egress_rule['security_groups'])
+            formatted_egress.append(egress_rule)
+        return formatted_egress
+
+    def format_network_acl_rules(self, attributes, arg):
+        input_dict = attributes.get(arg, [])
+        formatted_input = []
+        for input_rule in input_dict:
+            # create a copy so as not to mutate the original rule
+            input_rule = input_rule.copy()
+            for key in ['cidr_block', 'ipv6_cidr_block', 'icmp_code', 'icmp_type']:
+                if key in input_rule and input_rule[key] == "":
+                    # remove the key-value pair from the dictionary
+                    del input_rule[key]
+                elif key in input_rule:
+                    input_rule[key] = str(input_rule[key])
+            formatted_input.append(input_rule)
+        return formatted_input
 
     # def match_igw_route(self, parent_attributes, child_attributes):
     #     aws_route_table_id = child_attributes.get("id")
@@ -318,6 +372,11 @@ class VPC:
             'get_subnet_index_private': self.get_subnet_index_private,
             'get_subnet_index_public': self.get_subnet_index_public,
             'get_aws_route_id_public': self.get_aws_route_id_public,
+            'get_aws_route_id_private': self.get_aws_route_id_private,
+            'build_dict_var': self.build_dict_var,
+            'format_ingress_rules': self.format_ingress_rules,
+            'format_egress_rules': self.format_egress_rules,
+            'format_network_acl_rules': self.format_network_acl_rules,
             # 'match_igw_route': self.match_igw_route,
         }
         self.hcl.refresh_state()
@@ -349,6 +408,12 @@ class VPC:
                 self.aws_subnet(vpc)  # pass the vpc
                 self.aws_internet_gateway(vpc_id)  # pass the vpc_id
                 self.aws_route_table(vpc_id)
+                # call aws_default_route_table with vpc_id
+                self.aws_default_route_table(vpc_id)
+                # call aws_default_network_acl with vpc_id
+                self.aws_default_network_acl(vpc_id)
+                # call aws_default_security_group with vpc_id
+                self.aws_default_security_group(vpc_id)
 
     def aws_subnet(self, vpc):
         print("Processing Subnets...")
@@ -373,6 +438,7 @@ class VPC:
                     "-", "_")] = attributes
 
                 self.aws_route_table_association(subnet_id)
+                self.aws_nat_gateway(subnet_id)  # pass the subnet_id
 
     def aws_internet_gateway(self, vpc_id):
         print("Processing Internet Gateways...")
@@ -396,15 +462,46 @@ class VPC:
                 self.resource_list['aws_internet_gateway'][igw_id.replace(
                     "-", "_")] = attributes
 
-    def aws_default_network_acl(self):
+                route_tables = self.ec2_client.describe_route_tables()[
+                    "RouteTables"]
+
+                for rt in route_tables:
+                    for route in rt["Routes"]:
+                        if route.get("GatewayId", "") == igw_id:  # match the GatewayId
+                            # pass the route_table_id and the route
+                            self.aws_route(rt["RouteTableId"], route)
+
+    def aws_default_route_table(self, vpc_id):
+        print("Processing Default Route Tables...")
+        self.resource_list['aws_default_route_table'] = {}
+        route_tables = self.ec2_client.describe_route_tables(
+            Filters=[{"Name": "association.main", "Values": ["true"]},
+                     {"Name": "vpc-id", "Values": [vpc_id]}]  # Filter for the given vpc_id
+        )["RouteTables"]
+
+        for route_table in route_tables:
+            route_table_id = route_table["RouteTableId"]
+            print(
+                f"  Processing Default Route Table: {route_table_id} for VPC: {vpc_id}")
+
+            attributes = {
+                "id": route_table_id,
+                "vpc_id": vpc_id,
+            }
+            self.hcl.process_resource(
+                "aws_default_route_table", route_table_id.replace("-", "_"), attributes)
+            self.resource_list['aws_default_route_table'][route_table_id.replace(
+                "-", "_")] = attributes
+
+    def aws_default_network_acl(self, vpc_id):
         print("Processing Default Network ACLs...")
         self.resource_list['aws_default_network_acl'] = {}
         network_acls = self.ec2_client.describe_network_acls(
-            Filters=[{"Name": "default", "Values": ["true"]}]
+            Filters=[{"Name": "default", "Values": ["true"]},
+                     {"Name": "vpc-id", "Values": [vpc_id]}]  # Filter for the given vpc_id
         )["NetworkAcls"]
         for network_acl in network_acls:
             network_acl_id = network_acl["NetworkAclId"]
-            vpc_id = network_acl["VpcId"]
             default_network_acl_id = network_acl["NetworkAclId"]
             print(
                 f"  Processing Default Network ACL: {network_acl_id} for VPC: {vpc_id}")
@@ -419,37 +516,15 @@ class VPC:
             self.resource_list['aws_default_network_acl'][network_acl_id.replace(
                 "-", "_")] = attributes
 
-    def aws_default_route_table(self):
-        print("Processing Default Route Tables...")
-        self.resource_list['aws_default_route_table'] = {}
-        route_tables = self.ec2_client.describe_route_tables(
-            Filters=[{"Name": "association.main", "Values": ["true"]}]
-        )["RouteTables"]
-
-        for route_table in route_tables:
-            vpc_id = route_table["VpcId"]
-            route_table_id = route_table["RouteTableId"]
-            print(
-                f"  Processing Default Route Table: {route_table_id} for VPC: {vpc_id}")
-
-            attributes = {
-                "id": route_table_id,
-                "vpc_id": vpc_id,
-            }
-            self.hcl.process_resource(
-                "aws_default_route_table", route_table_id.replace("-", "_"), attributes)
-            self.resource_list['aws_default_route_table'][route_table_id.replace(
-                "-", "_")] = attributes
-
-    def aws_default_security_group(self):
+    def aws_default_security_group(self, vpc_id):
         print("Processing Default Security Groups...")
         self.resource_list['aws_default_security_group'] = {}
         security_groups = self.ec2_client.describe_security_groups(
-            Filters=[{"Name": "group-name", "Values": ["default"]}]
+            Filters=[{"Name": "group-name", "Values": ["default"]},
+                     {"Name": "vpc-id", "Values": [vpc_id]}]  # Filter for the given vpc_id
         )["SecurityGroups"]
 
         for security_group in security_groups:
-            vpc_id = security_group["VpcId"]
             security_group_id = security_group["GroupId"]
             print(
                 f"  Processing Default Security Group: {security_group_id} for VPC: {vpc_id}")
@@ -849,10 +924,11 @@ class VPC:
                     self.resource_list['aws_main_route_table_association'][assoc_id.replace(
                         "-", "_")] = attributes
 
-    def aws_nat_gateway(self):
+    def aws_nat_gateway(self, subnet_id):
         print("Processing NAT Gateways...")
         self.resource_list['aws_nat_gateway'] = {}
-        nat_gateways = self.ec2_client.describe_nat_gateways()["NatGateways"]
+        nat_gateways = self.ec2_client.describe_nat_gateways(
+            Filters=[{'Name': 'subnet-id', 'Values': [subnet_id]}])["NatGateways"]
 
         for nat_gw in nat_gateways:
             nat_gw_id = nat_gw["NatGatewayId"]
@@ -875,42 +951,44 @@ class VPC:
                 self.resource_list['aws_nat_gateway'][nat_gw_id.replace(
                     "-", "_")] = attributes
 
-                # Process associated EIP
-                self.aws_eip(nat_gw_id)
+                # Process associated EIPs
+                for address in nat_gw["NatGatewayAddresses"]:
+                    self.aws_eip(address["AllocationId"])
 
-    def aws_eip(self, nat_gw_id):
-        print("Processing Elastic IPs associated with NAT Gateway: ", nat_gw_id)
+                route_tables = self.ec2_client.describe_route_tables()[
+                    "RouteTables"]
 
-        nat_gw = self.ec2_client.describe_nat_gateways(
-            NatGatewayIds=[nat_gw_id])["NatGateways"][0]
-        allocation_id = nat_gw["NatGatewayAddresses"][0]["AllocationId"]
+                for rt in route_tables:
+                    for route in rt["Routes"]:
+                        if route.get("NatGatewayId", "") == nat_gw_id:  # match the NatGatewayId
+                            # pass the route_table_id and the route
+                            self.aws_route(rt["RouteTableId"], route)
 
-        eips = self.ec2_client.describe_addresses()
-        eips["Addresses"] = [eip for eip in eips["Addresses"]
-                             if eip["AllocationId"] == allocation_id]
+    def aws_eip(self, allocation_id):
+        print("Processing Elastic IPs associated with NAT Gateway: ", allocation_id)
 
-        for eip in eips["Addresses"]:
-            allocation_id = eip["AllocationId"]
-            print(f"  Processing Elastic IP: {allocation_id}")
+        eip = self.ec2_client.describe_addresses(
+            AllocationIds=[allocation_id])["Addresses"][0]
+        print(f"  Processing Elastic IP: {allocation_id}")
 
-            attributes = {
-                "id": allocation_id,
-                "public_ip": eip["PublicIp"],
-            }
+        attributes = {
+            "id": allocation_id,
+            "public_ip": eip["PublicIp"],
+        }
 
-            if "InstanceId" in eip:
-                attributes["instance"] = eip["InstanceId"]
+        if "InstanceId" in eip:
+            attributes["instance"] = eip["InstanceId"]
 
-            if "NetworkInterfaceId" in eip:
-                attributes["network_interface"] = eip["NetworkInterfaceId"]
-                # call aws_network_interface method for the associated network interface
-                self.aws_network_interface(eip["NetworkInterfaceId"])
+        # if "NetworkInterfaceId" in eip:
+        #     attributes["network_interface"] = eip["NetworkInterfaceId"]
+        #     # call aws_network_interface method for the associated network interface
+        #     self.aws_network_interface(eip["NetworkInterfaceId"])
 
-            if "PrivateIpAddress" in eip:
-                attributes["private_ip"] = eip["PrivateIpAddress"]
+        if "PrivateIpAddress" in eip:
+            attributes["private_ip"] = eip["PrivateIpAddress"]
 
-            self.hcl.process_resource(
-                "aws_eip", allocation_id.replace("-", "_"), attributes)
+        self.hcl.process_resource(
+            "aws_eip", allocation_id.replace("-", "_"), attributes)
 
     def aws_network_acl(self):
         print("Processing Network ACLs...")
@@ -1068,6 +1146,11 @@ class VPC:
 
         for rt in route_tables:
             if rt['VpcId'] == vpc_id:
+                # Ignore if it's the default route table
+                associations = rt.get('Associations', [])
+                if any(assoc.get('Main', False) for assoc in associations):
+                    continue
+
                 route_table_id = rt["RouteTableId"]
                 print(
                     f"  Processing Route Table: {route_table_id} for VPC: {vpc_id}")
@@ -1081,44 +1164,36 @@ class VPC:
                 self.resource_list['aws_route_table'][route_table_id.replace(
                     "-", "_")] = attributes
 
-                self.aws_route(route_table_id)  # pass the route_table_id
+                # self.aws_route(route_table_id)  # pass the route_table_id
 
-    def aws_route(self, route_table_id):
-        print("Processing Routes...")
+    def aws_route(self, route_table_id, route):
         self.resource_list['aws_route'] = {}
-        route_tables = self.ec2_client.describe_route_tables()["RouteTables"]
+        destination = route.get("DestinationCidrBlock",
+                                route.get("DestinationIpv6CidrBlock", ""))
+        if destination:
+            if route.get("GatewayId", "") == "local":  # Ignoring local route
+                return
 
-        for rt in route_tables:
-            rt_route_table_id = rt["RouteTableId"]
+            print(
+                f"  Processing Route in Route Table: {route_table_id} for destination: {destination}")
 
-            if rt_route_table_id == route_table_id:  # only process routes of the provided route_table_id
-                for route in rt["Routes"]:
-                    destination = route.get("DestinationCidrBlock", route.get(
-                        "DestinationIpv6CidrBlock", ""))
-                    if destination:
-                        # Ignoring local route
-                        if route.get("GatewayId", "") == "local":
-                            continue
+            attributes = {
+                "id": f"{route_table_id}-{destination.replace('/', '-')}",
+                "route_table_id": route_table_id,
+                "destination_cidr_block": route.get("DestinationCidrBlock", ""),
+                "destination_ipv6_cidr_block": route.get("DestinationIpv6CidrBlock", ""),
+                "gateway_id": route.get("GatewayId", ""),
+                "nat_gateway_id": route.get("NatGatewayId", ""),
+                "instance_id": route.get("InstanceId", ""),
+                "egress_only_gateway_id": route.get("EgressOnlyInternetGatewayId", ""),
+                "transit_gateway_id": route.get("TransitGatewayId", ""),
+                "local_gateway_id": route.get("LocalGatewayId", ""),
+            }
+            self.hcl.process_resource(
+                "aws_route", f"{route_table_id.replace('-', '_')}-{destination.replace('/', '-')}", attributes)
 
-                        print(
-                            f"  Processing Route in Route Table: {route_table_id} for destination: {destination}")
-
-                        attributes = {
-                            "id": f"{route_table_id}-{destination.replace('/', '-')}",
-                            "route_table_id": route_table_id,
-                            "destination_cidr_block": route.get("DestinationCidrBlock", ""),
-                            "destination_ipv6_cidr_block": route.get("DestinationIpv6CidrBlock", ""),
-                            "gateway_id": route.get("GatewayId", ""),
-                            "nat_gateway_id": route.get("NatGatewayId", ""),
-                            "instance_id": route.get("InstanceId", ""),
-                            "egress_only_gateway_id": route.get("EgressOnlyInternetGatewayId", ""),
-                            "transit_gateway_id": route.get("TransitGatewayId", ""),
-                            "local_gateway_id": route.get("LocalGatewayId", ""),
-                        }
-                        self.hcl.process_resource(
-                            "aws_route", f"{route_table_id.replace('-', '_')}-{destination.replace('/', '-')}", attributes)
-                        self.resource_list['aws_route'][
-                            f"{route_table_id.replace('-', '_')}-{destination.replace('/', '-')}"] = attributes
+            self.resource_list['aws_route'][
+                f"{route_table_id.replace('-', '_')}-{destination.replace('/', '-')}"] = attributes
 
     def aws_route_table_association(self, subnet_id):
         print("Processing Route Table Associations...")

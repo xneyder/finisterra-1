@@ -50,6 +50,60 @@ aws_vpc:
       field: tags
       type: map
   childs:
+    aws_default_route_table:
+      join:
+        id:
+          field: vpc_id
+      target_resource_name: default
+      defaults:
+        manage_default_route_table: true
+      fields:
+        default_route_table_propagating_vgws:
+          field: propagating_vgws
+          type: list
+        default_route_table_route:
+          field: route
+          type: list
+        default_route_table_tags:
+          field: tags
+          type: map
+    aws_default_network_acl:
+      join:
+        id:
+          field: vpc_id
+      target_resource_name: this
+      defaults:
+        manage_default_network_acl: true
+      fields:
+        default_network_acl_egress:
+          function: format_network_acl_rules
+          arg: egress
+          type: list
+        default_network_acl_ingress:
+          function: format_network_acl_rules
+          arg: ingress
+          type: list
+        default_network_acl_tags:
+          field: tags
+          type: map
+    aws_default_security_group:
+      join:
+        id:
+          field: vpc_id
+      target_resource_name: this
+      defaults:
+        manage_default_security_group: true
+      fields:
+        default_security_group_egress:
+          function: format_egress_rules
+          type: list
+        default_security_group_ingress:
+          function: format_ingress_rules
+          type: list
+        default_security_group_tags:
+          field: tags
+          type: map
+
     aws_subnet_public:
       resource_type: aws_subnet
       join:
@@ -110,6 +164,45 @@ aws_vpc:
                 route_table_id:
                   field: id
               target_resource_name: public
+        aws_nat_gateway:
+          join:
+            id:
+              field: subnet_id
+          target_resource_name: this
+          defaults:
+            enable_nat_gateway: true
+          second_index:
+            field: id
+          fields:
+            nat_gateways:
+              function: build_dict_var
+              arg: id
+              type: map
+          childs:
+            aws_eip:
+              join:
+                allocation_id:
+                  field: allocation_id
+              target_resource_name: nat
+              second_index:
+                field: allocation_id
+              fields:
+                eips:
+                  function: build_dict_var
+                  arg: allocation_id
+                  type: map
+            aws_route:
+              join:
+                id:
+                  field: nat_gateway_id
+              target_resource_name: private_nat_gateway
+              second_index:
+                field: id
+              fields:
+                nat_gateway_routes:
+                  function: build_dict_var
+                  arg: id
+                  type: map
 
     aws_subnet_private:
       resource_type: aws_subnet
@@ -169,8 +262,8 @@ aws_vpc:
                   field: id
               target_resource_name: private
               second_index:
-                function: get_aws_route_id_public
-                arg: route_table_id
+                function: get_aws_route_id_private
+                arg: id
 
     aws_internet_gateway:
       join:

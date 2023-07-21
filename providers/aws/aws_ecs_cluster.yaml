@@ -1,6 +1,6 @@
 aws_ecs_cluster:
-  terraform_module: "../../../terraform-aws-modules/terraform-aws-ecs/modules/cluster/"
-  # terraform_module: "github.com/finisterra-io/terraform-aws-ecs//modules/cluster?ref=main"
+  # terraform_module: "../../../terraform-aws-modules/terraform-aws-ecs/modules/cluster/"
+  terraform_module: "github.com/finisterra-io/terraform-aws-ecs//modules/cluster?ref=main"
   terraform_module_version: "5.2.0"
   keys:
     - name
@@ -60,8 +60,8 @@ aws_ecs_cluster:
   #   fields:
 
 aws_ecs_service:
-  terraform_module: "../../../terraform-aws-modules/terraform-aws-ecs/modules/service/"
-  # terraform_module: "github.com/finisterra-io/terraform-aws-ecs//modules/service?ref=main"
+  # terraform_module: "../../../terraform-aws-modules/terraform-aws-ecs/modules/service/"
+  terraform_module: "github.com/finisterra-io/terraform-aws-ecs//modules/service?ref=main"
   terraform_module_version: "5.2.0"
   dict_to_hcl: true
   join:

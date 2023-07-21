@@ -1,6 +1,7 @@
 aws_sqs_queue:
   # terraform_module: "terraform-aws-modules/aws/sqs"
-  terraform_module: "../../../terraform-aws-modules/terraform-aws-sqs"
+  # terraform_module: "../../../terraform-aws-modules/terraform-aws-sqs"
+  terraform_module: "github.com/finisterra-io/terraform-aws-sqs.git?ref=main"
   terraform_module_version: "4.0.1"
   target_resource_name: this
   defaults:
