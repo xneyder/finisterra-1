@@ -1,6 +1,7 @@
 aws_vpc:
   # terraform_module: "terraform-aws-modules/aws/vpc"
   terraform_module: "../../../terraform-aws-modules/terraform-aws-vpc"
+  # terraform_module: "github.com/finisterra-io/terraform-aws-vpc.git?ref=main"
   terraform_module_version: "5.1.0"
   target_resource_name: this
   defaults:
@@ -178,7 +179,7 @@ aws_vpc:
             field: id
           fields:
             nat_gateways:
-              function: build_dict_var
+              function: build_nat_gateways
               arg: id
               type: map
           childs:
@@ -191,7 +192,7 @@ aws_vpc:
                 field: allocation_id
               fields:
                 eips:
-                  function: build_dict_var
+                  function: build_eips
                   arg: allocation_id
                   type: map
             aws_route:
@@ -203,7 +204,7 @@ aws_vpc:
                 field: id
               fields:
                 nat_gateway_routes:
-                  function: build_dict_var
+                  function: build_nat_gateway_routes
                   arg: id
                   type: map
 
@@ -285,3 +286,48 @@ aws_vpc:
             id:
               field: gateway_id
           target_resource_name: public_internet_gateway
+
+    aws_network_acl:
+      join:
+        id:
+          field: vpc_id
+      target_resource_name: this
+      second_index:
+        field: id
+      fields:
+        aws_network_acls:
+          function: build_aws_network_acls
+          arg: id
+          type: map
+      childs:
+        aws_network_acl_rule:
+          join:
+            id:
+              field: network_acl_id
+          target_resource_name: ingress
+          second_index:
+            field: id
+          skip_if:
+            function: is_network_acl_rule_egress
+            arg: network_acl_id
+          fields:
+            aws_network_acl_ingress_rules:
+              function: build_aws_network_acl_rules
+              arg: id
+              type: map
+        aws_network_acl_rule_egress:
+          resource_type: aws_network_acl_rule
+          join:
+            id:
+              field: network_acl_id
+          target_resource_name: egress
+          second_index:
+            field: id
+          skip_if:
+            function: is_network_acl_rule_ingress
+            arg: network_acl_id
+          fields:
+            aws_network_acl_egress_rules:
+              function: build_aws_network_acl_rules
+              arg: id
+              type: map
