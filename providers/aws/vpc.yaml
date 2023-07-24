@@ -331,3 +331,104 @@ aws_vpc:
               function: build_aws_network_acl_rules
               arg: id
               type: map
+
+    aws_flow_log:
+      join:
+        id:
+          field: vpc_id
+      target_resource_name: this
+      defaults:
+        enable_flow_log: true
+      second_index:
+        field: id
+      fields:
+        aws_flow_logs:
+          function: build_aws_flow_logs
+          arg: id
+          type: map
+      childs:
+        aws_cloudwatch_log_group:
+          join:
+            log_group_name:
+              field: name
+          target_resource_name: flow_log
+          fields:
+            create_flow_log_cloudwatch_log_group:
+              unique: true
+            flow_log_cloudwatch_log_group_name:
+              field: name
+              type: string
+            flow_log_cloudwatch_log_group_kms_key_id:
+              field: kms_key_id
+              type: string
+            flow_log_cloudwatch_log_group_retention_in_days:
+              field: retention_in_days
+              type: number
+            flow_log_cloudwatch_log_group_tags:
+              field: tags
+              type: map
+
+        aws_iam_role:
+          join:
+            name:
+              join_function: join_aws_flow_log_iam_role_name
+          target_resource_name: vpc_flow_log_cloudwatch
+          fields:
+            create_flow_log_cloudwatch_iam_role:
+              unique: true
+            flow_aws_iam_role_name:
+              field: name
+              type: string
+            flow_aws_iam_role_name_prefix:
+              field: name_prefix
+              type: string
+            flow_aws_iam_role_assume_role_policy:
+              field: assume_role_policy
+              type: string
+              multiline: true
+            flow_aws_iam_role_permissions_boundary:
+              field: permissions_boundary
+              type: string
+            flow_aws_iam_role_description:
+              field: description
+              type: string
+            flow_aws_iam_role_path:
+              field: path
+              type: string
+          childs:
+            aws_iam_role_policy_attachment:
+              join:
+                name:
+                  field: role
+              target_resource_name: vpc_flow_log_cloudwatch
+              fields:
+                create_flow_log_cloudwatch_iam_role:
+                  unique: true
+              childs:
+                aws_iam_policy:
+                  join:
+                    policy_arn:
+                      field: arn
+                  target_resource_name: vpc_flow_log_cloudwatch
+                  fields:
+                    create_flow_log_cloudwatch_iam_role:
+                      unique: true
+                    flow_iam_policy_name:
+                      field: name
+                      type: string
+                    flow_iam_policy_description:
+                      field: description
+                      type: string
+                    flow_name_prefix:
+                      field: name_prefix
+                      type: string
+                    flow_iam_policy_path:
+                      field: path
+                      type: string
+                    flow_iam_policy_document:
+                      field: policy
+                      type: string
+                      multiline: true
+                    flow_policy_tags:
+                      field: tags
+                      type: map

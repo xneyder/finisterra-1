@@ -4,9 +4,11 @@ from utils.filesystem import create_backend_file
 
 
 class VPC:
-    def __init__(self, ec2_client, script_dir, provider_name, schema_data, region, s3Bucket,
+    def __init__(self, ec2_client, iam_client, logs_client, script_dir, provider_name, schema_data, region, s3Bucket,
                  dynamoDBTable, state_key, workspace_id, modules):
         self.ec2_client = ec2_client
+        self.iam_client = iam_client
+        self.logs_client = logs_client
         self.transform_rules = {
             "aws_vpc": {
                 "hcl_drop_fields": {"ipv6_netmask_length": 0},
@@ -228,6 +230,30 @@ class VPC:
                 result[key][k] = val
         return result
 
+    def build_aws_flow_logs(self, attributes, arg):
+        key = attributes[arg]
+        result = {key: {}}
+        for k in ['log_destination', 'log_destination_type', 'log_format',
+                  'iam_role_arn', 'traffic_type', 'max_aggregation_interval',
+                  'destination_options',  'tags']:
+            val = attributes.get(k)
+            if val not in [None, "", [], {}]:
+                if isinstance(val, str):
+                    val = val.replace('${', '$${')
+                result[key][k] = val
+        return result
+
+    def build_aws_iam_roles(self, attributes, arg):
+        key = attributes[arg]
+        result = {key: {}}
+        for k in ['name', 'name_prefix', 'assume_role_policy', 'permissions_boundary', 'description', 'path']:
+            val = attributes.get(k)
+            if val not in [None, "", [], {}]:
+                if isinstance(val, str):
+                    val = val.replace('${', '$${')
+                result[key][k] = val
+        return result
+
     def bigger_than_zero(self, attributes, arg):
         value = attributes.get(arg, None)
         if value > 0:
@@ -283,18 +309,18 @@ class VPC:
     def is_network_acl_rule_ingress(self, attributes, arg):
         return not attributes.get('egress', False)
 
+    def join_aws_flow_log_iam_role_name(self, parent_attributes, child_attributes):
+        flow_name = parent_attributes.get('iam_role_arn').split('/')[-1]
+        iam_role_name = child_attributes.get('name')
+        if flow_name == iam_role_name:
+            return True
+        return False
+
     def vpc(self):
         self.hcl.prepare_folder(os.path.join("generated", "vpc"))
 
-        # aws_network_acl.private
-        # aws_network_acl.public
-        # aws_network_acl_rule.private_inbound
-        # aws_network_acl_rule.private_outbound
-        # aws_network_acl_rule.public_inbound
-        # aws_network_acl_rule.public_outbound
-
-        # aws_cloudwatch_log_group.flow_log
         # aws_flow_log.this
+        # aws_cloudwatch_log_group.flow_log
         # aws_iam_policy.vpc_flow_log_cloudwatch
         # aws_iam_role.vpc_flow_log_cloudwatch
         # aws_iam_role_policy_attachment.vpc_flow_log_cloudwatch
@@ -338,6 +364,9 @@ class VPC:
             'build_eips': self.build_eips,
             'build_nat_gateway_routes': self.build_nat_gateway_routes,
             'build_aws_network_acl_rules': self.build_aws_network_acl_rules,
+            'build_aws_flow_logs': self.build_aws_flow_logs,
+            'build_aws_iam_roles': self.build_aws_iam_roles,
+            'join_aws_flow_log_iam_role_name': self.join_aws_flow_log_iam_role_name,
 
         }
         self.hcl.refresh_state()
@@ -376,6 +405,8 @@ class VPC:
                 self.aws_default_security_group(vpc_id)
                 # call aws_network_acl with vpc_id
                 self.aws_network_acl(vpc_id)
+                # call aws_flow_log with vpc_id
+                self.aws_flow_log(vpc_id)
 
     def aws_subnet(self, vpc):
         print("Processing Subnets...")
@@ -813,29 +844,133 @@ class VPC:
             self.resource_list['aws_egress_only_internet_gateway'][egress_only_igw_id.replace(
                 "-", "_")] = attributes
 
-    def aws_flow_log(self):
+    def aws_flow_log(self, vpc_id):
         print("Processing Flow Logs...")
         self.resource_list['aws_flow_log'] = {}
         flow_logs = self.ec2_client.describe_flow_logs()["FlowLogs"]
 
         for flow_log in flow_logs:
-            flow_log_id = flow_log["FlowLogId"]
-            print(f"  Processing Flow Log: {flow_log_id}")
+            # Filter out flow_logs not associated with the vpc_id
+            if flow_log["ResourceId"] == vpc_id:
+                flow_log_id = flow_log["FlowLogId"]
+                print(f"  Processing Flow Log: {flow_log_id}")
 
+                attributes = {
+                    "id": flow_log_id,
+                    "resource_id": flow_log["ResourceId"],
+                    "traffic_type": flow_log.get("TrafficType", ""),
+                    "log_destination_type": flow_log.get("LogDestinationType", ""),
+                    "log_destination": flow_log.get("LogDestination", ""),
+                    "log_group_name": flow_log.get("LogGroupName", ""),
+                    "iam_role_arn": flow_log.get("DeliverLogsPermissionArn", ""),
+                    "max_aggregation_interval": flow_log.get("MaxAggregationInterval", ""),
+                }
+                self.hcl.process_resource(
+                    "aws_flow_log", flow_log_id.replace("-", "_"), attributes)
+                self.resource_list['aws_flow_log'][flow_log_id.replace(
+                    "-", "_")] = attributes
+                # Check if the log destination type is 'cloudwatch-logs'
+                if attributes["log_destination_type"] == "cloud-watch-logs":
+                    # If so, process a CloudWatch Log Group
+                    self.aws_cloudwatch_log_group(attributes["log_group_name"])
+
+                # If IAM role ARN is provided, process the IAM role
+                if attributes["iam_role_arn"]:
+                    # Assuming the role ARN ends with the role name
+                    role_name = attributes["iam_role_arn"]
+                    self.aws_iam_role(role_name)
+
+    def aws_iam_role(self, role_arn):
+        # the role name is the last part of the ARN
+        role_name = role_arn.split('/')[-1]
+
+        role = self.iam_client.get_role(RoleName=role_name)
+        print(f"Processing IAM Role: {role_name}")
+
+        attributes = {
+            "id": role_name,
+            # "name": role['Role']['RoleName'],
+            # "arn": role['Role']['Arn'],
+            # "description": role['Role']['Description'],
+            # "assume_role_policy": role['Role']['AssumeRolePolicyDocument'],
+        }
+        self.hcl.process_resource(
+            "aws_iam_role", role_name.replace("-", "_"), attributes)
+
+        # After processing the role, process the policies attached to it
+        self.aws_iam_role_policy_attachment(role_name)
+
+    def aws_iam_role_policy_attachment(self, role_name):
+        print(
+            f"Processing IAM Role Policy Attachment for Role: {role_name}...")
+        self.resource_list['aws_iam_role_policy_attachment'] = {}
+
+        try:
+            attached_policies = self.iam_client.list_attached_role_policies(
+                RoleName=role_name)
+            for policy in attached_policies['AttachedPolicies']:
+                policy_arn = policy['PolicyArn']
+                id = f"{role_name}_{policy['PolicyName']}"
+                attributes = {
+                    "id": id,
+                    "role": role_name,
+                    "policy_arn": policy_arn
+                }
+
+                self.hcl.process_resource(
+                    "aws_iam_role_policy_attachment", id.replace("-", "_"), attributes)
+                self.resource_list['aws_iam_role_policy_attachment'][id.replace(
+                    "-", "_")] = attributes
+
+                # Call the aws_iam_policy function with the policy ARN
+                self.aws_iam_policy(policy_arn)
+
+        except self.iam_client.exceptions.NoSuchEntityException:
+            print(f"  Role: {role_name} does not exist.")
+
+    def aws_iam_policy(self, policy_arn):
+        print(f"Processing IAM Policy: {policy_arn}...")
+        self.resource_list['aws_iam_policy'] = {}
+
+        try:
+            policy = self.iam_client.get_policy(PolicyArn=policy_arn)
             attributes = {
-                "id": flow_log_id,
-                "resource_id": flow_log["ResourceId"],
-                "traffic_type": flow_log.get("TrafficType", ""),
-                "log_destination_type": flow_log.get("LogDestinationType", ""),
-                "log_destination": flow_log.get("LogDestination", ""),
-                "log_group_name": flow_log.get("LogGroupName", ""),
-                "iam_role_arn": flow_log.get("DeliverLogsPermissionArn", ""),
-                "max_aggregation_interval": flow_log.get("MaxAggregationInterval", ""),
+                "id": policy['Policy']['Arn'],
+                "arn": policy['Policy']['Arn'],
+                "name": policy['Policy']['PolicyName'],
+                # add more attributes as needed
             }
+
             self.hcl.process_resource(
-                "aws_flow_log", flow_log_id.replace("-", "_"), attributes)
-            self.resource_list['aws_flow_log'][flow_log_id.replace(
+                "aws_iam_policy", policy['Policy']['PolicyName'].replace("-", "_"), attributes)
+            self.resource_list['aws_iam_policy'][policy['Policy']['PolicyName'].replace(
                 "-", "_")] = attributes
+        except self.iam_client.exceptions.NoSuchEntityException:
+            print(f"  Policy: {policy_arn} does not exist.")
+
+    def aws_cloudwatch_log_group(self, log_group_name):
+        print(f"Processing CloudWatch Log Group: {log_group_name}...")
+        self.resource_list['aws_cloudwatch_log_group'] = {}
+
+        paginator = self.logs_client.get_paginator("describe_log_groups")
+        for page in paginator.paginate(logGroupNamePrefix=log_group_name):
+            for log_group in page["logGroups"]:
+                if log_group["logGroupName"] == log_group_name:
+                    print(
+                        f"  Processing CloudWatch Log Group: {log_group_name}")
+
+                    attributes = {
+                        "id": log_group_name,
+                        "name": log_group_name,
+                    }
+
+                    self.hcl.process_resource(
+                        "aws_cloudwatch_log_group", log_group_name.replace("-", "_"), attributes)
+                    self.resource_list['aws_cloudwatch_log_group'][log_group_name.replace(
+                        "-", "_")] = attributes
+                    return
+
+        print(f"  Log group: {log_group_name} does not exist.")
 
     def aws_internet_gateway_attachment(self):
         print("Processing Internet Gateway Attachments...")

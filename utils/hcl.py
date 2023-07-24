@@ -565,7 +565,8 @@ class HCL:
                 return json.loads(value)
             except json.JSONDecodeError:
                 value = value.replace('\n', '')
-                escaped_value = re.sub(r'\$\{(\w+)\}', r'\1', value)
+                escaped_value = value.replace('${', '$${')
+                # escaped_value = re.sub(r'\$\{(\w+)\}', r'\1', value)
                 return f'"{escaped_value}"'
 
     def find_resource_config(self, config, resource_type):
@@ -764,19 +765,32 @@ class HCL:
                             value = func(resource_attributes, arg)
                         else:
                             value = func(resource_attributes)
-                elif unique:
+                elif state_field:
+                    value = self.get_value_from_tfstate(
+                        resource_attributes, state_field, field_type)
+
+                if unique:
                     id = resource_attributes.get('id', '')
                     matches = [resource for resource in self.global_deployed_resources if resource['resource_type']
                                == resource_type and resource['id'] == id]
                     if matches:
-                        value = False
+                        if field_type == "map":
+                            value = {}
+                        elif field_type == "list":
+                            value = []
+                        elif field_type == "bool":
+                            value = False
+                        elif field_type == "string":
+                            value = ""
+                        else:
+                            value = None
                         created = False
                     else:
-                        value = True
+                        if value:
+                            value = value
+                        else:
+                            value = True
                         created = True
-                elif state_field:
-                    value = self.get_value_from_tfstate(
-                        resource_attributes, state_field, field_type)
 
                 defaulted = False
                 if value in [None, "", [], {}] and default != 'N/A':
