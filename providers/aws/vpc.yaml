@@ -168,6 +168,11 @@ aws_vpc:
                 route_table_id:
                   field: id
               target_resource_name: public
+              fields:
+                public_route_table_tags:
+                  function: escape_dict_contents
+                  arg: tags
+                  type: map
         aws_nat_gateway:
           join:
             id:
@@ -268,6 +273,11 @@ aws_vpc:
               second_index:
                 function: get_aws_route_id_private
                 arg: id
+              fields:
+                private_route_table_tags:
+                  function: escape_dict_contents
+                  arg: tags
+                  type: map
 
     aws_internet_gateway:
       join:

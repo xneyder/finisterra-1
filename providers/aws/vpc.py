@@ -1,6 +1,7 @@
 import os
 from utils.hcl import HCL
 from utils.filesystem import create_backend_file
+import json
 
 
 class VPC:
@@ -243,6 +244,15 @@ class VPC:
                 result[key][k] = val
         return result
 
+    def escape_dict_contents(self, attributes, arg):
+        data_dict = attributes[arg]
+        # convert data_dict to str
+        data_str = json.dumps(data_dict)
+        data_str = data_str.replace('${', '$${')
+        # convert data_str back to dict
+        result = json.loads(data_str)
+        return result
+
     def build_aws_iam_roles(self, attributes, arg):
         key = attributes[arg]
         result = {key: {}}
@@ -367,6 +377,7 @@ class VPC:
             'build_aws_flow_logs': self.build_aws_flow_logs,
             'build_aws_iam_roles': self.build_aws_iam_roles,
             'join_aws_flow_log_iam_role_name': self.join_aws_flow_log_iam_role_name,
+            'escape_dict_contents': self.escape_dict_contents,
 
         }
         self.hcl.refresh_state()
