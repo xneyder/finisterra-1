@@ -238,10 +238,9 @@ class VPC:
                   'iam_role_arn', 'traffic_type', 'max_aggregation_interval',
                   'destination_options',  'tags']:
             val = attributes.get(k)
-            if val not in [None, "", [], {}]:
-                if isinstance(val, str):
-                    val = val.replace('${', '$${')
-                result[key][k] = val
+            if isinstance(val, str):
+                val = val.replace('${', '$${')
+            result[key][k] = val
         return result
 
     def escape_dict_contents(self, attributes, arg):
@@ -939,6 +938,9 @@ class VPC:
 
                 # Call the aws_iam_policy function with the policy ARN
                 self.aws_iam_policy(policy_arn)
+
+                # Process only one policy for now
+                return
 
         except self.iam_client.exceptions.NoSuchEntityException:
             print(f"  Role: {role_name} does not exist.")
