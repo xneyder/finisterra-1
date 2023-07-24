@@ -275,9 +275,9 @@ aws_vpc:
                 arg: id
               fields:
                 private_route_table_tags:
-                  function: escape_dict_contents
+                  function: escape_dict_contents_to_array
                   arg: tags
-                  type: map
+                  type: list
 
     aws_internet_gateway:
       join:
