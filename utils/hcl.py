@@ -548,16 +548,16 @@ class HCL:
 
     def string_repr(self, value, field_type=None):
         if value is None:
-            return json.dumps(value)
+            return json.dumps(value, indent=2)
         elif isinstance(value, bool):
             return "true" if value else "false"
         elif isinstance(value, (list)):
             if field_type == "map":
                 if len(value) == 1:
-                    return json.dumps(value[0], indent=4)
-            return json.dumps(value)
+                    return json.dumps(value[0], indent=2)
+            return json.dumps(value, indent=2)
         elif isinstance(value, (dict)):
-            return json.dumps(value, indent=4)
+            return json.dumps(value, indent=2)
         elif isinstance(value, (int, float)):
             return str(value)
         else:
@@ -658,10 +658,11 @@ class HCL:
                             # If conversion is successful, merge the dictionaries
                             if isinstance(original_value_dict, list):
                                 original_value_dict.extend(update_value_dict)
-                                original[key] = json.dumps(original_value_dict)
+                                original[key] = json.dumps(
+                                    original_value_dict, indent=2)
                             else:
                                 original[key] = json.dumps(deep_update(
-                                    original_value_dict, update_value_dict))
+                                    original_value_dict, update_value_dict), indent=2)
 
                         except json.JSONDecodeError:
                             # If conversion fails, it's not a 'stringified' dictionary, so just overwrite

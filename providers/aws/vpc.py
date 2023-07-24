@@ -338,9 +338,6 @@ class VPC:
     def vpc(self):
         self.hcl.prepare_folder(os.path.join("generated", "vpc"))
 
-        # aws_vpc_dhcp_options.this
-        # aws_vpc_dhcp_options_association.this
-
         # aws_customer_gateway.this
         # aws_default_vpc.this
         # aws_egress_only_internet_gateway.this
