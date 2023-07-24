@@ -338,11 +338,8 @@ class VPC:
     def vpc(self):
         self.hcl.prepare_folder(os.path.join("generated", "vpc"))
 
-        # aws_flow_log.this
-        # aws_cloudwatch_log_group.flow_log
-        # aws_iam_policy.vpc_flow_log_cloudwatch
-        # aws_iam_role.vpc_flow_log_cloudwatch
-        # aws_iam_role_policy_attachment.vpc_flow_log_cloudwatch
+        # aws_vpc_dhcp_options.this
+        # aws_vpc_dhcp_options_association.this
 
         # aws_customer_gateway.this
         # aws_default_vpc.this
@@ -350,8 +347,6 @@ class VPC:
         # aws_route.private_dns64_nat_gateway
         # aws_route.private_ipv6_egress
         # aws_route.public_internet_gateway_ipv6
-        # aws_vpc_dhcp_options.this
-        # aws_vpc_dhcp_options_association.this
         # aws_vpc_ipv4_cidr_block_association.this
         # aws_vpn_gateway.this
         # aws_vpn_gateway_attachment.this
@@ -428,6 +423,8 @@ class VPC:
                 self.aws_network_acl(vpc_id)
                 # call aws_flow_log with vpc_id
                 self.aws_flow_log(vpc_id)
+                # call aws_vpc_dhcp_options with vpc_id
+                self.aws_vpc_dhcp_options_association(vpc_id)
 
     def aws_subnet(self, vpc):
         print("Processing Subnets...")
@@ -1419,52 +1416,49 @@ class VPC:
     #                 self.hcl.process_resource(
     #                     "aws_security_group_rule", rule_id.replace("-", "_"), attributes)
 
-    def aws_vpc_dhcp_options(self):
+    def aws_vpc_dhcp_options(self, dhcp_options_id):
         print("Processing VPC DHCP Options...")
         self.resource_list['aws_vpc_dhcp_options'] = {}
-        dhcp_options_list = self.ec2_client.describe_dhcp_options()[
-            "DhcpOptions"]
+        dhcp_options = self.ec2_client.describe_dhcp_options(
+            DhcpOptionsIds=[dhcp_options_id])["DhcpOptions"][0]
 
-        for dhcp_options in dhcp_options_list:
-            dhcp_options_id = dhcp_options["DhcpOptionsId"]
-            print(f"  Processing VPC DHCP Options: {dhcp_options_id}")
+        print(f"  Processing VPC DHCP Options: {dhcp_options_id}")
 
-            attributes = {
-                "id": dhcp_options_id,
-                "tags": {tag["Key"]: tag["Value"] for tag in dhcp_options.get("Tags", [])},
-            }
-            for config in dhcp_options["DhcpConfigurations"]:
-                key = config["Key"]
-                values = [value["Value"] for value in config["Values"]]
-                attributes[key.lower()] = values
+        attributes = {
+            "id": dhcp_options_id,
+            "tags": {tag["Key"]: tag["Value"] for tag in dhcp_options.get("Tags", [])},
+        }
+        for config in dhcp_options["DhcpConfigurations"]:
+            key = config["Key"]
+            values = [value["Value"] for value in config["Values"]]
+            attributes[key.lower()] = values
 
-            self.hcl.process_resource(
-                "aws_vpc_dhcp_options", dhcp_options_id.replace("-", "_"), attributes)
-            self.resource_list['aws_vpc_dhcp_options'][dhcp_options_id.replace(
-                "-", "_")] = attributes
+        self.hcl.process_resource(
+            "aws_vpc_dhcp_options", dhcp_options_id.replace("-", "_"), attributes)
+        self.resource_list['aws_vpc_dhcp_options'][dhcp_options_id.replace(
+            "-", "_")] = attributes
 
-    def aws_vpc_dhcp_options_association(self):
+    def aws_vpc_dhcp_options_association(self, vpc_id):
         print("Processing VPC DHCP Options Associations...")
         self.resource_list['aws_vpc_dhcp_options_association'] = {}
-        vpcs = self.ec2_client.describe_vpcs()["Vpcs"]
+        vpc = self.ec2_client.describe_vpcs(VpcIds=[vpc_id])["Vpcs"][0]
+        dhcp_options_id = vpc["DhcpOptionsId"]
+        if dhcp_options_id != "default":
+            print(
+                f"  Processing VPC DHCP Options Association: {dhcp_options_id} for VPC: {vpc_id}")
 
-        for vpc in vpcs:
-            vpc_id = vpc["VpcId"]
-            dhcp_options_id = vpc["DhcpOptionsId"]
-            if dhcp_options_id != "default":
-                print(
-                    f"  Processing VPC DHCP Options Association: {dhcp_options_id} for VPC: {vpc_id}")
+            assoc_id = f"{dhcp_options_id}-{vpc_id}"
+            attributes = {
+                "id": assoc_id,
+                "vpc_id": vpc_id,
+                "dhcp_options_id": dhcp_options_id,
+            }
+            self.hcl.process_resource(
+                "aws_vpc_dhcp_options_association", assoc_id.replace("-", "_"), attributes)
+            self.resource_list['aws_vpc_dhcp_options_association'][assoc_id.replace(
+                "-", "_")] = attributes
 
-                assoc_id = f"{dhcp_options_id}-{vpc_id}"
-                attributes = {
-                    "id": assoc_id,
-                    "vpc_id": vpc_id,
-                    "dhcp_options_id": dhcp_options_id,
-                }
-                self.hcl.process_resource(
-                    "aws_vpc_dhcp_options_association", assoc_id.replace("-", "_"), attributes)
-                self.resource_list['aws_vpc_dhcp_options_association'][assoc_id.replace(
-                    "-", "_")] = attributes
+            self.aws_vpc_dhcp_options(dhcp_options_id)
 
     def aws_vpc_endpoint(self):
         print("Processing VPC Endpoints...")

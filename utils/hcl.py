@@ -554,10 +554,10 @@ class HCL:
         elif isinstance(value, (list)):
             if field_type == "map":
                 if len(value) == 1:
-                    return json.dumps(value[0])
+                    return json.dumps(value[0], indent=4)
             return json.dumps(value)
         elif isinstance(value, (dict)):
-            return json.dumps(value)
+            return json.dumps(value, indent=4)
         elif isinstance(value, (int, float)):
             return str(value)
         else:

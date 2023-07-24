@@ -442,3 +442,42 @@ aws_vpc:
                     flow_policy_tags:
                       field: tags
                       type: map
+
+    aws_vpc_dhcp_options_association:
+      join:
+        id:
+          field: vpc_id
+      target_resource_name: this
+      defaults:
+        enable_dhcp_options_association: true
+      fields:
+        dhcp_options_id:
+          field: dhcp_options_id
+          type: string
+      childs:
+        aws_vpc_dhcp_options:
+          join:
+            dhcp_options_id:
+              field: id
+          target_resource_name: this
+          fields:
+            enable_dhcp_options:
+              unique: true
+            dhcp_options_domain_name:
+              field: domain_name
+              type: string
+            dhcp_options_domain_name_servers:
+              field: domain_name_servers
+              type: list
+            dhcp_options_netbios_name_servers:
+              field: netbios_name_servers
+              type: list
+            dhcp_options_netbios_node_type:
+              field: netbios_node_type
+              type: string
+            dhcp_options_ntp_servers:
+              field: ntp_servers
+              type: list
+            dhcp_options_tags:
+              field: tags
+              type: map
