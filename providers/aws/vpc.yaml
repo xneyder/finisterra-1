@@ -1,7 +1,7 @@
 aws_vpc:
   # terraform_module: "terraform-aws-modules/aws/vpc"
-  terraform_module: "../../../terraform-aws-modules/terraform-aws-vpc"
-  # terraform_module: "github.com/finisterra-io/terraform-aws-vpc.git?ref=main"
+  # terraform_module: "../../../terraform-aws-modules/terraform-aws-vpc"
+  terraform_module: "github.com/finisterra-io/terraform-aws-vpc.git?ref=main"
   terraform_module_version: "5.1.0"
   target_resource_name: this
   defaults:
