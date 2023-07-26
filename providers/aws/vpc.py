@@ -212,19 +212,6 @@ class VPC:
         _, nat_gateway_name = self.public_subnets['allocations'][allocation_id]
         return nat_gateway_name
 
-    def get_cidr_by_subnet_id(self, attributes):
-        subnet_id = attributes.get('subnet_id')
-        for key in self.public_subnets[subnet_id].keys():
-            return key
-
-    def get_cidr_by_route_table_id(self, attributes):
-        route_table_id = attributes.get('id')
-        print('route_table_id', route_table_id)
-        print(self.public_subnets['association'])
-        subnet_id = self.public_subnets['association'][route_table_id]
-        for key in self.public_subnets[subnet_id].keys():
-            return key
-
     def get_public_route_table_association_index(self, attributes, arg):
         route_table_id = attributes.get(arg)
         route_table_name = self.public_route_table_ids[route_table_id]
@@ -305,78 +292,11 @@ class VPC:
         route_table_name = self.private_route_table_ids[route_table_id]
         return route_table_name
 
-    def get_subnet_index_private(self, attributes, arg):
-        subnet_id = attributes.get(arg)
-        if subnet_id not in self.private_subnets:
-            self.private_subnets[subnet_id] = self.private_subnets_len
-            self.private_subnets_len += 1
-
-        if arg == "subnet_id":  # this is an association so save the route table for later
-            route_table_id = attributes.get('route_table_id')
-            if 'association' not in self.private_subnets:
-                self.private_subnets['association'] = {}
-            self.private_subnets['association'][route_table_id] = self.private_subnets[subnet_id]
-
-        return self.private_subnets[subnet_id]
-
-    def get_subnet_index_public(self, attributes, arg):
-        subnet_id = attributes.get(arg)
-        if subnet_id not in self.public_subnets:
-            self.public_subnets[subnet_id] = self.public_subnets_len
-            self.public_subnets_len += 1
-
-        if arg == "subnet_id":  # this is an association so save the route table for later
-            route_table_id = attributes.get('route_table_id')
-            if 'association' not in self.public_subnets:
-                self.public_subnets['association'] = {}
-            self.public_subnets['association'][route_table_id] = self.public_subnets[subnet_id]
-
-        return self.public_subnets[subnet_id]
-
-    def get_aws_route_id_public(self, attributes, arg):
-        route_table_id = attributes.get(arg)
-        return self.public_subnets['association'].get(route_table_id, None)
-
-    def get_aws_route_id_private(self, attributes, arg):
-        route_table_id = attributes.get(arg)
-        return self.private_subnets['association'].get(route_table_id, None)
-
-    def build_dict_var(self, attributes, arg):
-        key = attributes[arg]
-        result = {key: {}}
-        for k, v in attributes.items():
-            if v is not None:
-                result[key][k] = v
-        return result
-
     def build_aws_network_acls(self, attributes, arg):
         key = attributes[arg]
         result = {key: {}}
         result[key]['subnet_ids'] = attributes.get('subnet_ids')
         result[key]['tags'] = attributes.get('tags')
-        return result
-
-    def build_nat_gateways(self, attributes, arg):
-        key = attributes[arg]
-        result = {key: {}}
-        result[key]['allocation_id'] = attributes.get('allocation_id')
-        result[key]['subnet_id'] = attributes.get('subnet_id')
-        result[key]['tags'] = attributes.get('tags')
-        return result
-
-    def build_eips(self, attributes, arg):
-        key = attributes[arg]
-        result = {key: {}}
-        result[key]['tags'] = attributes.get('tags')
-        return result
-
-    def build_nat_gateway_routes(self, attributes, arg):
-        key = attributes[arg]
-        result = {key: {}}
-        result[key]['route_table_id'] = attributes.get('route_table_id')
-        result[key]['destination_cidr_block'] = attributes.get(
-            'destination_cidr_block')
-        result[key]['nat_gateway_id'] = attributes.get('nat_gateway_id')
         return result
 
     def build_aws_network_acl_rules(self, attributes, arg):
@@ -407,25 +327,6 @@ class VPC:
         data_str = data_str.replace('${', '$${')
         # convert data_str back to dict
         result = json.loads(data_str)
-        return result
-
-    def escape_dict_contents_to_array(self, data_dict):
-        # convert data_dict to str
-        data_str = json.dumps(data_dict)
-        data_str = data_str.replace('${', '$${')
-        # convert data_str back to dict
-        result = json.loads(data_str)
-        return [result]
-
-    def build_aws_iam_roles(self, attributes, arg):
-        key = attributes[arg]
-        result = {key: {}}
-        for k in ['name', 'name_prefix', 'assume_role_policy', 'permissions_boundary', 'description', 'path']:
-            val = attributes.get(k)
-            if val not in [None, "", [], {}]:
-                if isinstance(val, str):
-                    val = val.replace('${', '$${')
-                result[key][k] = val
         return result
 
     def bigger_than_zero(self, attributes, arg):
@@ -513,11 +414,6 @@ class VPC:
             'is_subnet_private': self.is_subnet_private,
             'to_array': self.to_array,
             'bigger_than_zero': self.bigger_than_zero,
-            'get_subnet_index_private': self.get_subnet_index_private,
-            'get_subnet_index_public': self.get_subnet_index_public,
-            'get_aws_route_id_public': self.get_aws_route_id_public,
-            'get_aws_route_id_private': self.get_aws_route_id_private,
-            'build_dict_var': self.build_dict_var,
             'format_ingress_rules': self.format_ingress_rules,
             'format_egress_rules': self.format_egress_rules,
             'format_network_acl_rules': self.format_network_acl_rules,
@@ -525,20 +421,14 @@ class VPC:
             'is_network_acl_rule_egress': self.is_network_acl_rule_egress,
             'is_network_acl_rule_ingress': self.is_network_acl_rule_ingress,
             'build_aws_network_acls': self.build_aws_network_acls,
-            'build_nat_gateways': self.build_nat_gateways,
-            'build_eips': self.build_eips,
-            'build_nat_gateway_routes': self.build_nat_gateway_routes,
             'build_aws_network_acl_rules': self.build_aws_network_acl_rules,
             'build_aws_flow_logs': self.build_aws_flow_logs,
-            'build_aws_iam_roles': self.build_aws_iam_roles,
             'join_aws_flow_log_iam_role_name': self.join_aws_flow_log_iam_role_name,
             'add_public_subnet': self.add_public_subnet,
             'add_nat_gateway': self.add_nat_gateway,
             'add_eip': self.add_eip,
-            'get_cidr_by_subnet_id': self.get_cidr_by_subnet_id,
             'add_public_route_table_association': self.add_public_route_table_association,
             'add_public_route_table': self.add_public_route_table,
-            'get_cidr_by_route_table_id': self.get_cidr_by_route_table_id,
             'get_public_route_table_association_index': self.get_public_route_table_association_index,
             'get_public_route_table_id': self.get_public_route_table_id,
             'add_private_subnet': self.add_private_subnet,
@@ -1537,56 +1427,6 @@ class VPC:
                 "aws_security_group", sg_id.replace("-", "_"), attributes)
             self.resource_list['aws_security_group'][sg_id.replace(
                 "-", "_")] = attributes
-
-    # def aws_security_group_rule(self):
-    #     print("Processing Security Group Rules...")
-    #     security_groups = self.ec2_client.describe_security_groups()[
-    #         "SecurityGroups"]
-
-    #     for sg in security_groups:
-    #         sg_id = sg["GroupId"]
-
-    #         for rule in sg["IpPermissions"]:
-    #             ip_protocol = rule["IpProtocol"]
-    #             from_port = rule.get("FromPort", "")
-    #             to_port = rule.get("ToPort", "")
-
-    #             for ip_range in rule["IpRanges"]:
-    #                 cidr_ip = ip_range["CidrIp"]
-    #                 print(
-    #                     f"  Processing Security Group Rule: {sg_id} {ip_protocol} {from_port}-{to_port} {cidr_ip}")
-
-    #                 rule_id = f"{sg_id}-{ip_protocol}-{from_port}-{to_port}-{cidr_ip.replace('/', '-')}"
-    #                 attributes = {
-    #                     "id": rule_id,
-    #                     "security_group_id": sg_id,
-    #                     "type": "ingress",
-    #                     "protocol": ip_protocol,
-    #                     "cidr_blocks": [cidr_ip],
-    #                 }
-    #                 self.hcl.process_resource(
-    #                     "aws_security_group_rule", rule_id.replace("-", "_"), attributes)
-
-    #         for rule in sg["IpPermissionsEgress"]:
-    #             ip_protocol = rule["IpProtocol"]
-    #             from_port = rule.get("FromPort", "")
-    #             to_port = rule.get("ToPort", "")
-
-    #             for ip_range in rule["IpRanges"]:
-    #                 cidr_ip = ip_range["CidrIp"]
-    #                 print(
-    #                     f"  Processing Security Group Rule: {sg_id} {ip_protocol} {from_port}-{to_port} {cidr_ip}")
-
-    #                 rule_id = f"{sg_id}-{ip_protocol}-{from_port}-{to_port}-{cidr_ip.replace('/', '-')}"
-    #                 attributes = {
-    #                     "id": rule_id,
-    #                     "security_group_id": sg_id,
-    #                     "type": "egress",
-    #                     "protocol": ip_protocol,
-    #                     "cidr_blocks": [cidr_ip],
-    #                 }
-    #                 self.hcl.process_resource(
-    #                     "aws_security_group_rule", rule_id.replace("-", "_"), attributes)
 
     def aws_vpc_dhcp_options(self, dhcp_options_id):
         print("Processing VPC DHCP Options...")
