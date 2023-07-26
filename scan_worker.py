@@ -170,8 +170,10 @@ def main():
                     provider.elbv2()
                 elif provider_group_code == 'elb':
                     provider.elb()
-                elif provider_group_code == 'elasticache':
-                    provider.elasticache()
+                elif provider_group_code == 'elasticache_redis':
+                    provider.elasticache_redis()
+                # elif provider_group_code == 'elasticache_memcached':
+                #     provider.elasticache_memcached()
                 elif provider_group_code == 'elasticbeanstalk':
                     provider.elasticbeanstalk()
                 elif provider_group_code == 'es':

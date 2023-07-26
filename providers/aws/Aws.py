@@ -24,7 +24,7 @@ from providers.aws.vpn_client import VpnClient
 from providers.aws.docdb import DocDb
 from providers.aws.opensearch import Opensearch
 from providers.aws.es import ES
-from providers.aws.elasticache import Elasticache
+from providers.aws.elasticache_redis import ElasticacheRedis
 from providers.aws.dynamodb import Dynamodb
 from providers.aws.cognito_identity import CognitoIdentity
 from providers.aws.cognito_idp import CognitoIDP
@@ -542,14 +542,14 @@ class Aws:
         self.json_plan = instance.json_plan
         self.resource_list['es'] = instance.resource_list
 
-    def elasticache(self):
+    def elasticache_redis(self):
         elasticache_client = self.session.client(
             "elasticache", region_name=self.aws_region)
 
-        instance = Elasticache(elasticache_client, self.script_dir, self.provider_name,
-                               self.schema_data, self.aws_region, self.s3Bucket,
-                               self.dynamoDBTable, self.state_key, self.workspace_id, self.modules)
-        instance.elasticache()
+        instance = ElasticacheRedis(elasticache_client, self.script_dir, self.provider_name,
+                                    self.schema_data, self.aws_region, self.s3Bucket,
+                                    self.dynamoDBTable, self.state_key, self.workspace_id, self.modules)
+        instance.elasticache_redis()
         self.json_plan = instance.json_plan
         self.resource_list['elasticache'] = instance.resource_list
 
