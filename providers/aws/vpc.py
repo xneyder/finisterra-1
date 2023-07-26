@@ -118,30 +118,8 @@ class VPC:
                     return False
         return True
 
-    def is_route_table(self, attributes, arg):
-        route_table_id = attributes.get('id')
-        route_table = self.ec2_client.describe_route_tables(
-            RouteTableIds=[route_table_id])['RouteTables'][0]
-
-        for route in route_table['Routes']:
-            if route.get('GatewayId', '').startswith('igw-'):
-                if arg == 'public':
-                    return True
-                else:
-                    return False
-
-        if arg == 'public':
-            return False
-        else:
-            return True
-
     def to_array(self, attributes, arg):
         return [attributes.get(arg, None)]
-
-    def build_tags_per_az(self, attributes):
-        availability_zone = attributes.get('availability_zone')
-        tags = attributes.get('tags', {})
-        return {availability_zone: tags}
 
     def init_fields(self, attributes):
         self.private_subnets = {}
@@ -222,6 +200,7 @@ class VPC:
         route_table_id = attributes.get('id')
         route_table_name = self.public_route_table_ids[route_table_id]
         tags = attributes.get('tags', {})
+        tags = self.escape_dict_contents(tags)
         return {route_table_name: {"tags": tags}}
 
     def get_nat_gateway_index(self, attributes):
@@ -295,6 +274,7 @@ class VPC:
         route_table_id = attributes.get('id')
         route_table_name = self.private_route_table_ids[route_table_id]
         tags = attributes.get('tags', {})
+        tags = self.escape_dict_contents(tags)
         self.private_route_tables[route_table_name] = {
             "tags": tags, "nat_gateway_attached": ""}
         return {route_table_name: self.private_route_tables[route_table_name]}
@@ -421,8 +401,7 @@ class VPC:
             result[key][k] = val
         return result
 
-    def escape_dict_contents(self, attributes, arg):
-        data_dict = attributes[arg]
+    def escape_dict_contents(self, data_dict):
         # convert data_dict to str
         data_str = json.dumps(data_dict)
         data_str = data_str.replace('${', '$${')
@@ -430,8 +409,7 @@ class VPC:
         result = json.loads(data_str)
         return result
 
-    def escape_dict_contents_to_array(self, attributes, arg):
-        data_dict = attributes[arg]
+    def escape_dict_contents_to_array(self, data_dict):
         # convert data_dict to str
         data_str = json.dumps(data_dict)
         data_str = data_str.replace('${', '$${')
@@ -534,7 +512,6 @@ class VPC:
             'is_subnet_public': self.is_subnet_public,
             'is_subnet_private': self.is_subnet_private,
             'to_array': self.to_array,
-            'build_tags_per_az': self.build_tags_per_az,
             'bigger_than_zero': self.bigger_than_zero,
             'get_subnet_index_private': self.get_subnet_index_private,
             'get_subnet_index_public': self.get_subnet_index_public,
@@ -555,8 +532,6 @@ class VPC:
             'build_aws_flow_logs': self.build_aws_flow_logs,
             'build_aws_iam_roles': self.build_aws_iam_roles,
             'join_aws_flow_log_iam_role_name': self.join_aws_flow_log_iam_role_name,
-            'escape_dict_contents': self.escape_dict_contents,
-            'escape_dict_contents_to_array': self.escape_dict_contents_to_array,
             'add_public_subnet': self.add_public_subnet,
             'add_nat_gateway': self.add_nat_gateway,
             'add_eip': self.add_eip,

@@ -293,50 +293,50 @@ aws_vpc:
             function: get_public_route_table_id
             arg: route_table_id
 
-    # aws_network_acl:
-    #   join:
-    #     id:
-    #       field: vpc_id
-    #   target_resource_name: this
-    #   second_index:
-    #     field: id
-    #   fields:
-    #     aws_network_acls:
-    #       function: build_aws_network_acls
-    #       arg: id
-    #       type: map
-    #   childs:
-    #     aws_network_acl_rule:
-    #       join:
-    #         id:
-    #           field: network_acl_id
-    #       target_resource_name: ingress
-    #       second_index:
-    #         field: id
-    #       skip_if:
-    #         function: is_network_acl_rule_egress
-    #         arg: network_acl_id
-    #       fields:
-    #         aws_network_acl_ingress_rules:
-    #           function: build_aws_network_acl_rules
-    #           arg: id
-    #           type: map
-    #     aws_network_acl_rule_egress:
-    #       resource_type: aws_network_acl_rule
-    #       join:
-    #         id:
-    #           field: network_acl_id
-    #       target_resource_name: egress
-    #       second_index:
-    #         field: id
-    #       skip_if:
-    #         function: is_network_acl_rule_ingress
-    #         arg: network_acl_id
-    #       fields:
-    #         aws_network_acl_egress_rules:
-    #           function: build_aws_network_acl_rules
-    #           arg: id
-    #           type: map
+    aws_network_acl:
+      join:
+        id:
+          field: vpc_id
+      target_resource_name: this
+      second_index:
+        field: id
+      fields:
+        aws_network_acls:
+          function: build_aws_network_acls
+          arg: id
+          type: map
+      childs:
+        aws_network_acl_rule:
+          join:
+            id:
+              field: network_acl_id
+          target_resource_name: ingress
+          second_index:
+            field: id
+          skip_if:
+            function: is_network_acl_rule_egress
+            arg: network_acl_id
+          fields:
+            aws_network_acl_ingress_rules:
+              function: build_aws_network_acl_rules
+              arg: id
+              type: map
+        aws_network_acl_rule_egress:
+          resource_type: aws_network_acl_rule
+          join:
+            id:
+              field: network_acl_id
+          target_resource_name: egress
+          second_index:
+            field: id
+          skip_if:
+            function: is_network_acl_rule_ingress
+            arg: network_acl_id
+          fields:
+            aws_network_acl_egress_rules:
+              function: build_aws_network_acl_rules
+              arg: id
+              type: map
 
     aws_flow_log:
       join:
@@ -446,10 +446,6 @@ aws_vpc:
       target_resource_name: this
       defaults:
         enable_dhcp_options_association: true
-      # fields:
-      #   dhcp_options_id:
-      #     field: dhcp_options_id
-      #     type: string
       childs:
         aws_vpc_dhcp_options:
           join:
@@ -459,6 +455,9 @@ aws_vpc:
           fields:
             enable_dhcp_options:
               unique: true
+            dhcp_options_id:
+              field: id
+              type: string
             dhcp_options_domain_name:
               field: domain_name
               type: string
