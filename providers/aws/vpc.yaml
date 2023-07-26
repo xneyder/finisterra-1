@@ -108,6 +108,68 @@ aws_vpc:
           field: tags
           type: map
 
+    aws_subnet_private:
+      resource_type: aws_subnet
+      join:
+        id:
+          field: vpc_id
+      skip_if:
+        function: is_subnet_public
+        arg: vpc_id
+      second_index:
+        field: cidr_block
+      target_resource_name: private
+      fields:
+        private_subnet_assign_ipv6_address_on_creation:
+          field: assign_ipv6_address_on_creation
+          type: bool
+        azs:
+          function: to_array
+          arg: availability_zone
+          type: list
+        private_subnets:
+          function: add_private_subnet
+          type: map
+        private_subnet_enable_dns64:
+          field: enable_dns64
+          type: bool
+        private_subnet_enable_resource_name_dns_aaaa_record_on_launch:
+          field: enable_resource_name_dns_aaaa_record_on_launch
+          type: bool
+        private_subnet_enable_resource_name_dns_a_record_on_launch:
+          field: enable_resource_name_dns_a_record_on_launch
+          type: bool
+        private_subnet_ipv6_native:
+          field: ipv6_native
+          type: bool
+        private_subnet_private_dns_hostname_type_on_launch:
+          field: private_dns_hostname_type_on_launch
+          type: string
+      childs:
+        aws_route_table_association:
+          join:
+            id:
+              field: subnet_id
+          target_resource_name: private
+          second_index:
+            function: get_private_route_table_association_index
+          fields:
+            private_subnets:
+              function: add_private_route_table_association
+          childs:
+            aws_route_table:
+              join:
+                route_table_id:
+                  field: id
+              target_resource_name: private
+              second_index:
+                function: get_private_route_table_id
+                arg: id
+              fields:
+                private_route_tables:
+                  function: add_private_route_table
+                  type: map
+
     aws_subnet_public:
       resource_type: aws_subnet
       join:
@@ -117,8 +179,7 @@ aws_vpc:
         function: is_subnet_private
         arg: vpc_id
       second_index:
-        function: get_subnet_index_public
-        arg: id
+        field: cidr_block
       target_resource_name: public
       fields:
         public_subnet_assign_ipv6_address_on_creation:
@@ -129,9 +190,8 @@ aws_vpc:
           arg: availability_zone
           type: list
         public_subnets:
-          function: to_array
-          arg: cidr_block
-          type: list
+          function: add_public_subnet
+          type: map
         public_subnet_enable_dns64:
           field: enable_dns64
           type: bool
@@ -150,9 +210,6 @@ aws_vpc:
         public_subnet_private_dns_hostname_type_on_launch:
           field: private_dns_hostname_type_on_launch
           type: string
-        public_subnet_tags_per_az:
-          function: build_tags_per_az
-          type: map
       childs:
         aws_route_table_association:
           join:
@@ -160,19 +217,24 @@ aws_vpc:
               field: subnet_id
           target_resource_name: public
           second_index:
-            function: get_subnet_index_public
-            arg: subnet_id
+            function: get_public_route_table_association_index
+            arg: route_table_id
+          fields:
+            public_subnets:
+              function: add_public_route_table_association
           childs:
             aws_route_table:
               join:
                 route_table_id:
                   field: id
               target_resource_name: public
+              second_index:
+                function: get_public_route_table_id
+                arg: id
               fields:
-                public_route_table_tags:
-                  function: escape_dict_contents
-                  arg: tags
-                  type: map
+                public_route_tables:
+                  function: add_public_route_table
+                  type: list
         aws_nat_gateway:
           join:
             id:
@@ -181,11 +243,10 @@ aws_vpc:
           defaults:
             enable_nat_gateway: true
           second_index:
-            field: id
+            function: get_nat_gateway_index
           fields:
-            nat_gateways:
-              function: build_nat_gateways
-              arg: id
+            public_subnets:
+              function: add_nat_gateway
               type: map
           childs:
             aws_eip:
@@ -194,11 +255,10 @@ aws_vpc:
                   field: allocation_id
               target_resource_name: nat
               second_index:
-                field: allocation_id
+                function: get_eip_index
               fields:
-                eips:
-                  function: build_eips
-                  arg: allocation_id
+                public_subnets:
+                  function: add_eip
                   type: map
             aws_route:
               join:
@@ -206,78 +266,11 @@ aws_vpc:
                   field: nat_gateway_id
               target_resource_name: private_nat_gateway
               second_index:
-                field: id
+                function: get_nat_gateway_private_route_id
               fields:
-                nat_gateway_routes:
-                  function: build_nat_gateway_routes
-                  arg: id
+                private_route_tables:
+                  function: add_nat_gateway_private_route
                   type: map
-
-    aws_subnet_private:
-      resource_type: aws_subnet
-      join:
-        id:
-          field: vpc_id
-      skip_if:
-        function: is_subnet_public
-        arg: vpc_id
-      second_index:
-        function: get_subnet_index_private
-        arg: id
-      target_resource_name: private
-      fields:
-        private_subnet_assign_ipv6_address_on_creation:
-          field: assign_ipv6_address_on_creation
-          type: bool
-        azs:
-          function: to_array
-          arg: availability_zone
-          type: list
-        private_subnets:
-          function: to_array
-          arg: cidr_block
-          type: list
-        private_subnet_enable_dns64:
-          field: enable_dns64
-          type: bool
-        private_subnet_enable_resource_name_dns_aaaa_record_on_launch:
-          field: enable_resource_name_dns_aaaa_record_on_launch
-          type: bool
-        private_subnet_enable_resource_name_dns_a_record_on_launch:
-          field: enable_resource_name_dns_a_record_on_launch
-          type: bool
-        private_subnet_ipv6_native:
-          field: ipv6_native
-          type: bool
-        private_subnet_private_dns_hostname_type_on_launch:
-          field: private_dns_hostname_type_on_launch
-          type: string
-        private_subnet_tags_per_az:
-          function: build_tags_per_az
-          type: map
-      childs:
-        aws_route_table_association:
-          join:
-            id:
-              field: subnet_id
-          target_resource_name: private
-          second_index:
-            function: get_subnet_index_private
-            arg: subnet_id
-          childs:
-            aws_route_table:
-              join:
-                route_table_id:
-                  field: id
-              target_resource_name: private
-              second_index:
-                function: get_aws_route_id_private
-                arg: id
-              fields:
-                private_route_table_tags:
-                  function: escape_dict_contents_to_array
-                  arg: tags
-                  type: list
 
     aws_internet_gateway:
       join:
@@ -296,51 +289,54 @@ aws_vpc:
             id:
               field: gateway_id
           target_resource_name: public_internet_gateway
+          second_index:
+            function: get_public_route_table_id
+            arg: route_table_id
 
-    aws_network_acl:
-      join:
-        id:
-          field: vpc_id
-      target_resource_name: this
-      second_index:
-        field: id
-      fields:
-        aws_network_acls:
-          function: build_aws_network_acls
-          arg: id
-          type: map
-      childs:
-        aws_network_acl_rule:
-          join:
-            id:
-              field: network_acl_id
-          target_resource_name: ingress
-          second_index:
-            field: id
-          skip_if:
-            function: is_network_acl_rule_egress
-            arg: network_acl_id
-          fields:
-            aws_network_acl_ingress_rules:
-              function: build_aws_network_acl_rules
-              arg: id
-              type: map
-        aws_network_acl_rule_egress:
-          resource_type: aws_network_acl_rule
-          join:
-            id:
-              field: network_acl_id
-          target_resource_name: egress
-          second_index:
-            field: id
-          skip_if:
-            function: is_network_acl_rule_ingress
-            arg: network_acl_id
-          fields:
-            aws_network_acl_egress_rules:
-              function: build_aws_network_acl_rules
-              arg: id
-              type: map
+    # aws_network_acl:
+    #   join:
+    #     id:
+    #       field: vpc_id
+    #   target_resource_name: this
+    #   second_index:
+    #     field: id
+    #   fields:
+    #     aws_network_acls:
+    #       function: build_aws_network_acls
+    #       arg: id
+    #       type: map
+    #   childs:
+    #     aws_network_acl_rule:
+    #       join:
+    #         id:
+    #           field: network_acl_id
+    #       target_resource_name: ingress
+    #       second_index:
+    #         field: id
+    #       skip_if:
+    #         function: is_network_acl_rule_egress
+    #         arg: network_acl_id
+    #       fields:
+    #         aws_network_acl_ingress_rules:
+    #           function: build_aws_network_acl_rules
+    #           arg: id
+    #           type: map
+    #     aws_network_acl_rule_egress:
+    #       resource_type: aws_network_acl_rule
+    #       join:
+    #         id:
+    #           field: network_acl_id
+    #       target_resource_name: egress
+    #       second_index:
+    #         field: id
+    #       skip_if:
+    #         function: is_network_acl_rule_ingress
+    #         arg: network_acl_id
+    #       fields:
+    #         aws_network_acl_egress_rules:
+    #           function: build_aws_network_acl_rules
+    #           arg: id
+    #           type: map
 
     aws_flow_log:
       join:
@@ -350,11 +346,11 @@ aws_vpc:
       defaults:
         enable_flow_log: true
       second_index:
-        field: id
+        field: log_destination_type
       fields:
         aws_flow_logs:
           function: build_aws_flow_logs
-          arg: id
+          arg: log_destination_type
           type: map
       childs:
         aws_cloudwatch_log_group:
@@ -450,10 +446,10 @@ aws_vpc:
       target_resource_name: this
       defaults:
         enable_dhcp_options_association: true
-      fields:
-        dhcp_options_id:
-          field: dhcp_options_id
-          type: string
+      # fields:
+      #   dhcp_options_id:
+      #     field: dhcp_options_id
+      #     type: string
       childs:
         aws_vpc_dhcp_options:
           join:

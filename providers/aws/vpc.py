@@ -78,6 +78,10 @@ class VPC:
         self.private_subnets = {}
         self.public_subnets_len = 0
         self.private_subnets_len = 0
+        self.public_route_table_ids = {}
+        self.private_route_table_ids = {}
+        self.public_nat_gateway_ids = {}
+        self.private_route_tables = {}
 
     def get_field_from_attrs(self, attributes, arg):
         keys = arg.split(".")
@@ -142,10 +146,184 @@ class VPC:
     def init_fields(self, attributes):
         self.private_subnets = {}
         self.public_subnets = {}
+        self.public_route_table_ids = {}
+        self.private_route_table_ids = {}
         self.public_subnets_len = 0
         self.private_subnets_len = 0
+        self.public_nat_gateway_ids = {}
+        self.private_route_tables = {}
 
         return None
+
+    def add_public_subnet(self, attributes):
+        subnet_id = attributes.get('id')
+        cidr_block = attributes.get('cidr_block')
+        availability_zone = attributes.get('availability_zone')
+        tags = attributes.get('tags', {})
+        ipv6_cidr_block = attributes.get('ipv6_cidr_block')
+        self.public_subnets[subnet_id] = {
+            cidr_block: {
+                'az': availability_zone,
+                'ipv6_cidr_block': ipv6_cidr_block,
+                'tags': tags,
+                'route_tables': [],
+                'nat_gateway': {}
+            }
+        }
+        return self.public_subnets[subnet_id]
+
+    def add_nat_gateway(self, attributes):
+        nat_gateway_id = attributes.get('id')
+        if nat_gateway_id not in self.public_nat_gateway_ids:
+            nat_gateway_name = 'nat_gateway_' + \
+                str(len(self.public_nat_gateway_ids))
+            self.public_nat_gateway_ids[nat_gateway_id] = nat_gateway_name
+        else:
+            nat_gateway_name = self.public_nat_gateway_ids[nat_gateway_id]
+
+        subnet_id = attributes.get('subnet_id')
+        allocation_id = attributes.get('allocation_id')
+        if 'allocations' not in self.public_subnets:
+            self.public_subnets['allocations'] = {}
+        self.public_subnets['allocations'][allocation_id] = [
+            subnet_id, nat_gateway_name]
+
+        for key in self.public_subnets[subnet_id].keys():
+            self.public_subnets[subnet_id][key]['nat_gateway'][nat_gateway_name] = {'tags': attributes.get(
+                'tags', {}), 'eip_tags': {}}
+        return self.public_subnets[subnet_id]
+
+    def add_eip(self, attributes):
+        allocation_id = attributes.get('allocation_id')
+        subnet_id, nat_gateway_name = self.public_subnets['allocations'][allocation_id]
+        for key in self.public_subnets[subnet_id].keys():
+            self.public_subnets[subnet_id][key]["nat_gateway"][nat_gateway_name]['eip_tags'] = attributes.get(
+                'tags', {})
+        return self.public_subnets[subnet_id]
+
+    def add_public_route_table_association(self, attributes):
+        route_table_id = attributes.get('route_table_id')
+        if route_table_id not in self.public_route_table_ids:
+            route_table_name = 'public_route_table_' + \
+                str(len(self.public_route_table_ids))
+            self.public_route_table_ids[route_table_id] = route_table_name
+        else:
+            route_table_name = self.public_route_table_ids[route_table_id]
+
+        subnet_id = attributes.get('subnet_id')
+        if 'association' not in self.public_subnets:
+            self.public_subnets['association'] = {}
+        for key in self.public_subnets[subnet_id].keys():
+            self.public_subnets[subnet_id][key]['route_tables'].append(
+                route_table_name)
+        return self.public_subnets[subnet_id]
+
+    def add_public_route_table(self, attributes):
+        route_table_id = attributes.get('id')
+        route_table_name = self.public_route_table_ids[route_table_id]
+        tags = attributes.get('tags', {})
+        return {route_table_name: {"tags": tags}}
+
+    def get_nat_gateway_index(self, attributes):
+        nat_gateway_id = attributes.get('id')
+        return self.public_nat_gateway_ids[nat_gateway_id]
+
+    def get_eip_index(self, attributes):
+        allocation_id = attributes.get('allocation_id')
+        _, nat_gateway_name = self.public_subnets['allocations'][allocation_id]
+        return nat_gateway_name
+
+    def get_cidr_by_subnet_id(self, attributes):
+        subnet_id = attributes.get('subnet_id')
+        for key in self.public_subnets[subnet_id].keys():
+            return key
+
+    def get_cidr_by_route_table_id(self, attributes):
+        route_table_id = attributes.get('id')
+        print('route_table_id', route_table_id)
+        print(self.public_subnets['association'])
+        subnet_id = self.public_subnets['association'][route_table_id]
+        for key in self.public_subnets[subnet_id].keys():
+            return key
+
+    def get_public_route_table_association_index(self, attributes, arg):
+        route_table_id = attributes.get(arg)
+        route_table_name = self.public_route_table_ids[route_table_id]
+        subnet_id = attributes.get('subnet_id')
+        for key in self.public_subnets[subnet_id].keys():
+            return key+"-"+route_table_name
+
+    def get_public_route_table_id(self, attributes, arg):
+        route_table_id = attributes.get(arg)
+        route_table_name = self.public_route_table_ids[route_table_id]
+        return route_table_name
+
+    def add_private_subnet(self, attributes):
+        subnet_id = attributes.get('id')
+        cidr_block = attributes.get('cidr_block')
+        availability_zone = attributes.get('availability_zone')
+        tags = attributes.get('tags', {})
+        ipv6_cidr_block = attributes.get('ipv6_cidr_block')
+        self.private_subnets[subnet_id] = {
+            cidr_block: {
+                'az': availability_zone,
+                'ipv6_cidr_block': ipv6_cidr_block,
+                'tags': tags,
+                'route_tables': []
+            }
+        }
+        return self.private_subnets[subnet_id]
+
+    def add_private_route_table_association(self, attributes):
+        route_table_id = attributes.get('route_table_id')
+        if route_table_id not in self.private_route_table_ids:
+            route_table_name = 'private_route_table_' + \
+                str(len(self.private_route_table_ids))
+            self.private_route_table_ids[route_table_id] = route_table_name
+        else:
+            route_table_name = self.private_route_table_ids[route_table_id]
+
+        subnet_id = attributes.get('subnet_id')
+        if 'association' not in self.private_subnets:
+            self.private_subnets['association'] = {}
+        for key in self.private_subnets[subnet_id].keys():
+            self.private_subnets[subnet_id][key]['route_tables'].append(
+                route_table_name)
+        return self.private_subnets[subnet_id]
+
+    def add_private_route_table(self, attributes):
+        route_table_id = attributes.get('id')
+        route_table_name = self.private_route_table_ids[route_table_id]
+        tags = attributes.get('tags', {})
+        self.private_route_tables[route_table_name] = {
+            "tags": tags, "nat_gateway_attached": ""}
+        return {route_table_name: self.private_route_tables[route_table_name]}
+
+    def add_nat_gateway_private_route(self, attributes):
+        route_table_id = attributes.get('route_table_id')
+        route_table_name = self.private_route_table_ids[route_table_id]
+        nat_gateway_id = attributes.get('nat_gateway_id')
+        nat_gateway_name = self.public_nat_gateway_ids[nat_gateway_id]
+
+        self.private_route_tables[route_table_name]["nat_gateway_attached"] = nat_gateway_name
+        return {route_table_name: self.private_route_tables[route_table_name]}
+
+    def get_nat_gateway_private_route_id(self, attributes):
+        route_table_id = attributes.get('route_table_id')
+        route_table_name = self.private_route_table_ids[route_table_id]
+        return route_table_name+"-0.0.0.0/0"
+
+    def get_private_route_table_association_index(self, attributes):
+        route_table_id = attributes.get('route_table_id')
+        route_table_name = self.private_route_table_ids[route_table_id]
+        subnet_id = attributes.get('subnet_id')
+        for key in self.private_subnets[subnet_id].keys():
+            return key+"-"+route_table_name
+
+    def get_private_route_table_id(self, attributes, arg):
+        route_table_id = attributes.get(arg)
+        route_table_name = self.private_route_table_ids[route_table_id]
+        return route_table_name
 
     def get_subnet_index_private(self, attributes, arg):
         subnet_id = attributes.get(arg)
@@ -379,6 +557,26 @@ class VPC:
             'join_aws_flow_log_iam_role_name': self.join_aws_flow_log_iam_role_name,
             'escape_dict_contents': self.escape_dict_contents,
             'escape_dict_contents_to_array': self.escape_dict_contents_to_array,
+            'add_public_subnet': self.add_public_subnet,
+            'add_nat_gateway': self.add_nat_gateway,
+            'add_eip': self.add_eip,
+            'get_cidr_by_subnet_id': self.get_cidr_by_subnet_id,
+            'add_public_route_table_association': self.add_public_route_table_association,
+            'add_public_route_table': self.add_public_route_table,
+            'get_cidr_by_route_table_id': self.get_cidr_by_route_table_id,
+            'get_public_route_table_association_index': self.get_public_route_table_association_index,
+            'get_public_route_table_id': self.get_public_route_table_id,
+            'add_private_subnet': self.add_private_subnet,
+            'add_private_route_table_association': self.add_private_route_table_association,
+            'add_private_route_table': self.add_private_route_table,
+            'get_private_route_table_association_index': self.get_private_route_table_association_index,
+            'get_private_route_table_id': self.get_private_route_table_id,
+            'get_nat_gateway_index': self.get_nat_gateway_index,
+            'get_eip_index': self.get_eip_index,
+            'add_nat_gateway_private_route': self.add_nat_gateway_private_route,
+            'get_nat_gateway_private_route_id': self.get_nat_gateway_private_route_id,
+
+
 
         }
         self.hcl.refresh_state()
