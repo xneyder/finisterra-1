@@ -63,6 +63,11 @@ class AwsLambda:
         role_name = role_arn.split('/')[-1]  # Extract role name from ARN
         return role_name
 
+    def get_policy_name(self, attributes, arg):
+        policy_arn = attributes.get(arg)
+        policy_name = policy_arn.split('/')[-1]
+        return policy_name
+
     def cloudwatch_log_group_name(self, attributes):
         # The name is expected to be in the format /aws/ecs/{cluster_name}
         name = attributes.get('name')
@@ -73,6 +78,9 @@ class AwsLambda:
                 return parts[-1]  # return 'cluster_name'
         # In case the name doesn't match the expected format, return None or you could return some default value
         return None
+
+    def to_list(self, attributes, arg):
+        return [attributes.get(arg)]
 
     def aws_lambda(self):
         self.hcl.prepare_folder(os.path.join("generated", "aws_lambda"))
@@ -103,6 +111,8 @@ class AwsLambda:
             'get_field_from_attrs': self.get_field_from_attrs,
             'get_role_name': self.get_role_name,
             'cloudwatch_log_group_name': self.cloudwatch_log_group_name,
+            'get_policy_name': self.get_policy_name,
+            'to_list': self.to_list,
         }
 
         self.hcl.refresh_state()
@@ -199,30 +209,80 @@ class AwsLambda:
         except Exception as e:
             print(f"Error processing IAM role: {role_name}: {str(e)}")
 
+    def aws_iam_role_policy_attachment(self, role_name, aws_iam_policy=False):
+        print(
+            f"Processing IAM Role Policy Attachments for role: {role_name}...")
+
+        try:
+            paginator = self.iam_client.get_paginator(
+                'list_attached_role_policies')
+            for page in paginator.paginate(RoleName=role_name):
+                for policy in page['AttachedPolicies']:
+                    print(
+                        f"  Processing IAM Role Policy Attachment: {policy['PolicyName']} for role: {role_name}")
+
+                    resource_name = f"{role_name}-{policy['PolicyName']}"
+                    attributes = {
+                        "id": f"{role_name}/{policy['PolicyArn']}",
+                        "role": role_name,
+                        "policy_arn": policy['PolicyArn']
+                    }
+                    self.hcl.process_resource(
+                        "aws_iam_role_policy_attachment", resource_name, attributes)
+
+                    if aws_iam_policy:
+                        self.aws_iam_policy(policy['PolicyArn'])
+
+        except Exception as e:
+            print(
+                f"Error processing IAM role policy attachments for role: {role_name}: {str(e)}")
+
+    def aws_iam_policy(self, policy_arn):
+        print(f"Processing IAM Policy: {policy_arn}...")
+
+        try:
+            response = self.iam_client.get_policy(PolicyArn=policy_arn)
+            policy = response.get('Policy', {})
+
+            if policy:
+                print(f"  Processing IAM Policy: {policy_arn}")
+
+                attributes = {
+                    "id": policy_arn,
+                    "arn": policy_arn,
+                    "name": policy['PolicyName'],
+                    "path": policy['Path'],
+                    "description": policy.get('Description', ''),
+                }
+                self.hcl.process_resource(
+                    "aws_iam_policy", policy['PolicyName'], attributes)
+            else:
+                print(f"No IAM Policy found with ARN: {policy_arn}")
+
+        except Exception as e:
+            print(f"Error processing IAM Policy: {policy_arn}: {str(e)}")
+
     def aws_cloudwatch_log_group(self, log_group_name):
         print(f"Processing CloudWatch Log Group for Lambda function...")
 
-        # Fetch log groups
-        log_groups = self.logs_client.describe_log_groups()['logGroups']
+        paginator = self.logs_client.get_paginator('describe_log_groups')
 
-        for log_group in log_groups:
-            if log_group['logGroupName'] == log_group_name:
-                print(
-                    f"  Processing CloudWatch Log Group: {log_group_name}")
+        for page in paginator.paginate():
+            for log_group in page['logGroups']:
+                if log_group['logGroupName'] == log_group_name:
+                    print(
+                        f"  Processing CloudWatch Log Group: {log_group_name}")
 
-                # Prepare the attributes
-                attributes = {
-                    "id": log_group_name,
-                    "name": log_group_name,
-                    # "retention_in_days": log_group['retentionInDays'],
-                    # # KMS key ID is optional and may not always be present
-                    # "kms_key_id": log_group.get('kmsKeyId', '')
-                }
+                    # Prepare the attributes
+                    attributes = {
+                        "id": log_group_name,
+                        "name": log_group_name,
+                    }
 
-                # Process the resource
-                self.hcl.process_resource(
-                    "aws_cloudwatch_log_group", log_group_name.replace("/", "_"), attributes)
-                return  # End the function once we've found the matching log group
+                    # Process the resource
+                    self.hcl.process_resource(
+                        "aws_cloudwatch_log_group", log_group_name.replace("/", "_"), attributes)
+                    return  # End the function once we've found the matching log group
 
         print(
             f"  Warning: No matching CloudWatch Log Group found for Lambda function: {log_group_name}")

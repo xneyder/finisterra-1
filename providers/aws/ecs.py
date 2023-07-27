@@ -255,37 +255,30 @@ class ECS:
             self.aws_ecs_capacity_provider(cluster_name)
             self.aws_ecs_service(cluster_name)
 
-    def aws_cloudwatch_log_group(self, cluster_name):
-        print("Processing CloudWatch Log Group for ECS Cluster...")
+    def aws_cloudwatch_log_group(self, log_group_name):
+        print(f"Processing CloudWatch Log Group for Lambda function...")
 
-        # The log group name should match this format
-        expected_log_group_name = f"/aws/ecs/{cluster_name}"
+        paginator = self.logs_client.get_paginator('describe_log_groups')
 
-        # Fetch log groups
-        log_groups = self.logs_client.describe_log_groups()['logGroups']
+        for page in paginator.paginate():
+            for log_group in page['logGroups']:
+                if log_group['logGroupName'] == log_group_name:
+                    print(
+                        f"  Processing CloudWatch Log Group: {log_group_name}")
 
-        for log_group in log_groups:
-            log_group_name = log_group['logGroupName']
-            if log_group_name == expected_log_group_name:
-                print(
-                    f"  Processing CloudWatch Log Group: {log_group_name} for ECS Cluster: {cluster_name}")
+                    # Prepare the attributes
+                    attributes = {
+                        "id": log_group_name,
+                        "name": log_group_name,
+                    }
 
-                # Prepare the attributes
-                attributes = {
-                    "id": log_group_name,
-                    "name": log_group_name,
-                    # "retention_in_days": log_group['retentionInDays'],
-                    # # KMS key ID is optional and may not always be present
-                    # "kms_key_id": log_group.get('kmsKeyId', '')
-                }
-
-                # Process the resource
-                self.hcl.process_resource(
-                    "aws_cloudwatch_log_group", cluster_name.replace("-", "_"), attributes)
-                return  # End the function once we've found the matching log group
+                    # Process the resource
+                    self.hcl.process_resource(
+                        "aws_cloudwatch_log_group", log_group_name.replace("/", "_"), attributes)
+                    return  # End the function once we've found the matching log group
 
         print(
-            f"  Warning: No matching CloudWatch Log Group found for ECS Cluster: {cluster_name}")
+            f"  Warning: No matching CloudWatch Log Group found for Lambda function: {log_group_name}")
 
     def aws_ecs_cluster_capacity_providers(self, cluster_name):
         print("Processing ECS Cluster Capacity Providers for the specified cluster...")
