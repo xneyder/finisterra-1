@@ -90,6 +90,19 @@ aws_lambda_function:
       arg: ephemeral_storage.size
       type: number
   childs:
+    aws_cloudwatch_log_group:
+      join:
+        function_name:
+          function: cloudwatch_log_group_name
+      target_resource_name: module.cloudwatch_log_group.aws_cloudwatch_log_group.default
+      fields:
+        cloudwatch_logs_kms_key_arn:
+          field: kms_key_arn
+          type: string
+        cloudwatch_logs_retention_in_days:
+          field: retention_in_days
+          type: number
+
     aws_iam_role:
       join:
         role:

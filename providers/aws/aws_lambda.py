@@ -20,10 +20,11 @@ def convert_to_terraform_format(env_variables_dict):
 
 
 class AwsLambda:
-    def __init__(self, lambda_client, iam_client, script_dir, provider_name, schema_data, region, s3Bucket,
+    def __init__(self, lambda_client, iam_client, logs_client, script_dir, provider_name, schema_data, region, s3Bucket,
                  dynamoDBTable, state_key, workspace_id, modules):
         self.lambda_client = lambda_client
         self.iam_client = iam_client
+        self.logs_client = logs_client
         self.transform_rules = {
             "aws_lambda_function": {
                 "hcl_apply_function_dict": {
@@ -62,6 +63,17 @@ class AwsLambda:
         role_name = role_arn.split('/')[-1]  # Extract role name from ARN
         return role_name
 
+    def cloudwatch_log_group_name(self, attributes):
+        # The name is expected to be in the format /aws/ecs/{cluster_name}
+        name = attributes.get('name')
+        if name is not None:
+            # split the string by '/' and take the last part as the cluster_name
+            parts = name.split('/')
+            if len(parts) > 2:
+                return parts[-1]  # return 'cluster_name'
+        # In case the name doesn't match the expected format, return None or you could return some default value
+        return None
+
     def aws_lambda(self):
         self.hcl.prepare_folder(os.path.join("generated", "aws_lambda"))
 
@@ -90,6 +102,7 @@ class AwsLambda:
         functions = {
             'get_field_from_attrs': self.get_field_from_attrs,
             'get_role_name': self.get_role_name,
+            'cloudwatch_log_group_name': self.cloudwatch_log_group_name,
         }
 
         self.hcl.refresh_state()
@@ -161,6 +174,10 @@ class AwsLambda:
 
             self.aws_iam_role(function_details["Configuration"]["Role"])
 
+            # Process the CloudWatch Log Group for this Lambda function
+            log_group_name = f"/aws/lambda/{function_name}"
+            self.aws_cloudwatch_log_group(log_group_name)
+
     def aws_iam_role(self, role_arn, aws_iam_policy=False):
         print(f"Processing IAM Role: {role_arn}...")
 
@@ -181,6 +198,34 @@ class AwsLambda:
                 role['RoleName'], aws_iam_policy)
         except Exception as e:
             print(f"Error processing IAM role: {role_name}: {str(e)}")
+
+    def aws_cloudwatch_log_group(self, log_group_name):
+        print(f"Processing CloudWatch Log Group for Lambda function...")
+
+        # Fetch log groups
+        log_groups = self.logs_client.describe_log_groups()['logGroups']
+
+        for log_group in log_groups:
+            if log_group['logGroupName'] == log_group_name:
+                print(
+                    f"  Processing CloudWatch Log Group: {log_group_name}")
+
+                # Prepare the attributes
+                attributes = {
+                    "id": log_group_name,
+                    "name": log_group_name,
+                    # "retention_in_days": log_group['retentionInDays'],
+                    # # KMS key ID is optional and may not always be present
+                    # "kms_key_id": log_group.get('kmsKeyId', '')
+                }
+
+                # Process the resource
+                self.hcl.process_resource(
+                    "aws_cloudwatch_log_group", log_group_name.replace("/", "_"), attributes)
+                return  # End the function once we've found the matching log group
+
+        print(
+            f"  Warning: No matching CloudWatch Log Group found for Lambda function: {log_group_name}")
 
     def aws_lambda_alias(self):
         print("Processing Lambda Aliases...")

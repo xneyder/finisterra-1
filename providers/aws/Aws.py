@@ -764,7 +764,10 @@ class Aws:
         iam_client = self.session.client(
             "iam", region_name=self.aws_region)
 
-        instance = AwsLambda(lambda_client, iam_client, self.script_dir, self.provider_name,
+        logs_client = self.session.client(
+            "logs", region_name=self.aws_region)
+
+        instance = AwsLambda(lambda_client, iam_client, logs_client, self.script_dir, self.provider_name,
                              self.schema_data, self.aws_region, self.s3Bucket,
                              self.dynamoDBTable, self.state_key, self.workspace_id, self.modules)
         instance.aws_lambda()
