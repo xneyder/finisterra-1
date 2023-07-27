@@ -2,7 +2,8 @@ import os
 from utils.hcl import HCL
 import botocore
 import json
-import urllib.parse
+import http.client
+from urllib.parse import urlparse
 
 
 def convert_to_terraform_format(env_variables_dict):
@@ -19,9 +20,10 @@ def convert_to_terraform_format(env_variables_dict):
 
 
 class AwsLambda:
-    def __init__(self, lambda_client, script_dir, provider_name, schema_data, region, s3Bucket,
+    def __init__(self, lambda_client, iam_client, script_dir, provider_name, schema_data, region, s3Bucket,
                  dynamoDBTable, state_key, workspace_id, modules):
         self.lambda_client = lambda_client
+        self.iam_client = iam_client
         self.transform_rules = {
             "aws_lambda_function": {
                 "hcl_apply_function_dict": {
@@ -40,23 +42,145 @@ class AwsLambda:
                        self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules)
         self.resource_list = {}
 
+    def get_field_from_attrs(self, attributes, arg):
+        keys = arg.split(".")
+        result = attributes
+        for key in keys:
+            if isinstance(result, list):
+                result = [sub_result.get(key, None) if isinstance(
+                    sub_result, dict) else None for sub_result in result]
+                if len(result) == 1:
+                    result = result[0]
+            else:
+                result = result.get(key, None)
+            if result is None:
+                return None
+        return result
+
+    def get_role_name(self, attributes, arg):
+        role_arn = attributes.get(arg)
+        role_name = role_arn.split('/')[-1]  # Extract role name from ARN
+        return role_name
+
     def aws_lambda(self):
         self.hcl.prepare_folder(os.path.join("generated", "aws_lambda"))
 
-        self.aws_lambda_alias()
-        # self.aws_lambda_code_signing_config()  #Permission error
-        self.aws_lambda_event_source_mapping()
+        # aws_iam_policy.ssm
+        # aws_iam_role.this
+        # aws_iam_role_policy_attachment.cloudwatch_insights
+        # aws_iam_role_policy_attachment.cloudwatch_logs
+        # aws_iam_role_policy_attachment.custom
+        # aws_iam_role_policy_attachment.ssm
+        # aws_iam_role_policy_attachment.vpc_access
+        # aws_iam_role_policy_attachment.xray
+        # aws_lambda_function.this
+
         self.aws_lambda_function()
-        self.aws_lambda_function_event_invoke_config()
-        # self.aws_lambda_function_url() #Permission error
-        self.aws_lambda_layer_version()
-        self.aws_lambda_layer_version_permission()
-        self.aws_lambda_permission()
-        self.aws_lambda_provisioned_concurrency_config()
+
+        # self.aws_lambda_alias()
+        # # self.aws_lambda_code_signing_config()  #Permission error
+        # self.aws_lambda_event_source_mapping()
+        # self.aws_lambda_function_event_invoke_config()
+        # # self.aws_lambda_function_url() #Permission error
+        # self.aws_lambda_layer_version()
+        # self.aws_lambda_layer_version_permission()
+        # self.aws_lambda_permission()
+        # self.aws_lambda_provisioned_concurrency_config()
+
+        functions = {
+            'get_field_from_attrs': self.get_field_from_attrs,
+            'get_role_name': self.get_role_name,
+        }
 
         self.hcl.refresh_state()
-        self.hcl.generate_hcl_file()
+
+        self.hcl.module_hcl_code("terraform.tfstate", os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), "aws_lambda.yaml"), functions)
+
+        exit()
+
         self.json_plan = self.hcl.json_plan
+
+    def aws_lambda_function(self):
+        print("Processing Lambda Functions...")
+
+        functions = self.lambda_client.list_functions()["Functions"]
+
+        for function in functions:
+            function_name = function["FunctionName"]
+
+            if function_name != "learning-image-encoder-function":
+                continue
+
+            print(f"  Processing Lambda Function: {function_name}")
+
+            # Get more detailed information about the function
+            function_details = self.lambda_client.get_function(
+                FunctionName=function_name)
+
+            s3_bucket = ''
+            s3_key = ''
+
+            # Check if function's code is stored in S3
+            if 'Code' in function_details:
+                if 'S3Bucket' in function_details['Code']:
+                    s3_bucket = function_details['Code']['S3Bucket']
+                if 'S3Key' in function_details['Code']:
+                    s3_key = function_details['Code']['S3Key']
+
+            # Download the function's deployment package
+            code_url = function_details['Code']['Location']
+            url_parts = urlparse(code_url)
+
+            conn = http.client.HTTPSConnection(url_parts.netloc)
+            conn.request("GET", url_parts.path)
+            response = conn.getresponse()
+
+            filename = f"{function_name}.zip"
+            with open(filename, "wb") as f:
+                f.write(response.read())
+
+            print(f"  Lambda Function code saved as: {filename}")
+
+            attributes = {
+                "id": function_details["Configuration"]["FunctionArn"],
+                "function_name": function_name,
+                "runtime": function_details["Configuration"]["Runtime"],
+                "role": function_details["Configuration"]["Role"],
+                "handler": function_details["Configuration"]["Handler"],
+                "timeout": function_details["Configuration"]["Timeout"],
+                "memory_size": function_details["Configuration"]["MemorySize"],
+                "description": function_details["Configuration"].get("Description", ""),
+                "publish": False,
+                "s3_bucket": s3_bucket,
+                "s3_key": s3_key,
+                "filename": filename,  # Add filename to the attributes
+            }
+            self.hcl.process_resource(
+                "aws_lambda_function", function_name.replace("-", "_"), attributes)
+
+            self.aws_iam_role(function_details["Configuration"]["Role"])
+
+    def aws_iam_role(self, role_arn, aws_iam_policy=False):
+        print(f"Processing IAM Role: {role_arn}...")
+
+        role_name = role_arn.split('/')[-1]  # Extract role name from ARN
+
+        try:
+            role = self.iam_client.get_role(RoleName=role_name)['Role']
+
+            print(f"  Processing IAM Role: {role['Arn']}")
+
+            attributes = {
+                "id": role['RoleName'],
+            }
+            self.hcl.process_resource(
+                "aws_iam_role", role['RoleName'], attributes)
+            # Process IAM role policy attachments for the role
+            self.aws_iam_role_policy_attachment(
+                role['RoleName'], aws_iam_policy)
+        except Exception as e:
+            print(f"Error processing IAM role: {role_name}: {str(e)}")
 
     def aws_lambda_alias(self):
         print("Processing Lambda Aliases...")
@@ -125,45 +249,6 @@ class AwsLambda:
                 }
                 self.hcl.process_resource(
                     "aws_lambda_event_source_mapping", mapping_id.replace("-", "_"), attributes)
-
-    def aws_lambda_function(self):
-        print("Processing Lambda Functions...")
-
-        functions = self.lambda_client.list_functions()["Functions"]
-
-        for function in functions:
-            function_name = function["FunctionName"]
-            print(f"  Processing Lambda Function: {function_name}")
-
-            # Get more detailed information about the function
-            function_details = self.lambda_client.get_function(
-                FunctionName=function_name)['Configuration']
-
-            s3_bucket = ''
-            s3_key = ''
-
-            # Check if function's code is stored in S3
-            if 'Code' in function_details:
-                if 'S3Bucket' in function_details['Code']:
-                    s3_bucket = function_details['Code']['S3Bucket']
-                if 'S3Key' in function_details['Code']:
-                    s3_key = function_details['Code']['S3Key']
-
-            attributes = {
-                "id": function_details["FunctionArn"],
-                "function_name": function_name,
-                "runtime": function_details["Runtime"],
-                "role": function_details["Role"],
-                "handler": function_details["Handler"],
-                "timeout": function_details["Timeout"],
-                "memory_size": function_details["MemorySize"],
-                "description": function_details.get("Description", ""),
-                "publish": False,
-                "s3_bucket": s3_bucket,
-                "s3_key": s3_key,
-            }
-            self.hcl.process_resource(
-                "aws_lambda_function", function_name.replace("-", "_"), attributes)
 
     def aws_lambda_function_event_invoke_config(self):
         print("Processing Lambda Function Event Invoke Configs...")

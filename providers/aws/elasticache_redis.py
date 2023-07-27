@@ -81,8 +81,6 @@ class ElasticacheRedis:
         self.hcl.module_hcl_code("terraform.tfstate", os.path.join(
             os.path.dirname(os.path.abspath(__file__)), "elasticcache_redis.yaml"), functions)
 
-        exit()
-
         self.json_plan = self.hcl.json_plan
 
     # def aws_elasticache_cluster(self):

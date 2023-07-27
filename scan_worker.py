@@ -184,7 +184,7 @@ def main():
                     provider.iam()
                 elif provider_group_code == 'kms':  # FIXME: This is not working
                     provider.kms()
-                elif provider_group_code == 'DISABLED---aws_lambda':  # FIXME: I can not get the code location
+                elif provider_group_code == 'aws_lambda':  # FIXME: I can not get the code location
                     provider.aws_lambda()
                 elif provider_group_code == 'opensearch':
                     provider.opensearch()
@@ -196,9 +196,9 @@ def main():
                     provider.sns()
                 elif provider_group_code == 'sqs':
                     provider.sqs()
-                elif provider_group_code == 'DISABLED---ssm':  # FIXME: Check how to handle the insecure values
+                elif provider_group_code == 'ssm':  # FIXME: Check how to handle the insecure values
                     provider.ssm()
-                elif provider_group_code == 'DISABLED---secretsmanager':  # FIXME: Check how to handle the insecure values
+                elif provider_group_code == 'secretsmanager':  # FIXME: Check how to handle the insecure values
                     provider.secretsmanager()
                 elif provider_group_code == 'vpn_client':
                     provider.vpn_client()

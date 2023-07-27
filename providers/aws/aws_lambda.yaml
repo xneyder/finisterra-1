@@ -1,0 +1,141 @@
+aws_lambda_function:
+  # terraform_module: "../../../terraform-aws-modules/terraform-aws-lambda-function"
+  terraform_module: "github.com/finisterra-io/terraform-aws-lambda-function.git?ref=main"
+  terraform_module_version: "0.20.0"
+  target_resource_name: this
+  defaults:
+    enabled: true
+    create_iam_role: false
+  fields:
+    architectures:
+      field: architectures
+      type: list
+    description:
+      field: description
+      type: string
+    filename:
+      field: filename
+      type: string
+    function_name:
+      field: function_name
+      type: string
+    handler:
+      field: handler
+      type: string
+    image_uri:
+      field: image_uri
+      type: string
+    kms_key_arn:
+      field: kms_key_arn
+      type: string
+    layers:
+      field: layers
+      type: list
+    memory_size:
+      field: memory_size
+      type: number
+    package_type:
+      field: package_type
+      type: string
+    publish:
+      field: publish
+      type: bool
+    reserved_concurrent_executions:
+      field: reserved_concurrent_executions
+      type: number
+    iam_role_name:
+      function: get_role_name
+      arg: role
+      type: string
+    runtime:
+      field: runtime
+      type: string
+    s3_bucket:
+      field: s3_bucket
+      type: string
+    s3_key:
+      field: s3_key
+      type: string
+    s3_object_version:
+      field: s3_object_version
+      type: string
+    source_code_hash:
+      field: source_code_hash
+      type: string
+    tags:
+      field: tags
+      type: map
+    timeout:
+      field: timeout
+      type: number
+    dead_letter_config_target_arn:
+      function: get_field_from_attrs
+      arg: dead_letter_config.target_arn
+      type: string
+    lambda_environment:
+      field: environment
+      type: map
+    image_config:
+      field: image_config
+      type: map
+    tracing_config_mode:
+      function: get_field_from_attrs
+      arg: tracing_config.mode
+      type: string
+    vpc_config:
+      field: vpc_config
+      type: map
+    ephemeral_storage_size:
+      function: get_field_from_attrs
+      arg: ephemeral_storage.size
+      type: number
+  childs:
+    aws_iam_role:
+      join:
+        role:
+          field: arn
+      target_resource_name: this
+      fields:
+        create_iam_role:
+          unique: true
+        iam_role_name:
+          field: name
+          type: string
+        iam_role_permissions_boundary:
+          field: permissions_boundary
+          type: string
+        assume_role_policy:
+          field: assume_role_policy
+          type: string
+          multiline: true
+      # childs:
+      #   aws_iam_role_policy_attachment:
+      #     join:
+      #       name:
+      #         field: role
+      #     target_resource_name: service
+      #     fields:
+      #       create_iam_role:
+      #         unique: true
+      #     childs:
+      #       aws_iam_policy:
+      #         join:
+      #           policy_arn:
+      #             field: arn
+      #         target_resource_name: service
+      #         fields:
+      #           create_iam_role:
+      #             unique: true
+      #           iam_policy_name:
+      #             field: name
+      #             type: string
+      #           iam_policy_description:
+      #             field: description
+      #             type: string
+      #           iam_policy_path:
+      #             field: path
+      #             type: string
+      #           iam_policy_document:
+      #             field: policy
+      #             type: string
+      #             multiline: true
