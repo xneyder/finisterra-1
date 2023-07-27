@@ -120,8 +120,6 @@ class AwsLambda:
         self.hcl.module_hcl_code("terraform.tfstate", os.path.join(
             os.path.dirname(os.path.abspath(__file__)), "aws_lambda.yaml"), functions)
 
-        exit()
-
         self.json_plan = self.hcl.json_plan
 
     def aws_lambda_function(self):
