@@ -3,9 +3,10 @@ from utils.hcl import HCL
 
 
 class ElasticacheRedis:
-    def __init__(self, elasticache_client, script_dir, provider_name, schema_data, region, s3Bucket,
+    def __init__(self, elasticache_client, ec2_client, script_dir, provider_name, schema_data, region, s3Bucket,
                  dynamoDBTable, state_key, workspace_id, modules):
         self.elasticache_client = elasticache_client
+        self.ec2_client = ec2_client
         self.transform_rules = {
             "aws_elasticache_replication_group": {
                 "hcl_keep_fields": {"description": True},
@@ -31,6 +32,28 @@ class ElasticacheRedis:
                        self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules)
         self.resource_list = {}
 
+    def match_security_group(self, parent_attributes, child_attributes):
+        child_security_group_id = child_attributes.get("id", None)
+        for security_group in parent_attributes.get("security_group_ids", []):
+            if security_group == child_security_group_id:
+                return True
+        return False
+
+    def auto_minor_version_upgrade(self, attributes):
+        auto_minor_version_upgrade = attributes.get(
+            "auto_minor_version_upgrade", None)
+        if auto_minor_version_upgrade:
+            return bool(auto_minor_version_upgrade)
+        return None
+
+    def build_dict_var(self, attributes, arg):
+        key = attributes[arg]
+        result = {key: {}}
+        for k, v in attributes.items():
+            if v is not None:
+                result[key][k] = v
+        return result
+
     def elasticache_redis(self):
         self.hcl.prepare_folder(os.path.join("generated", "elasticache"))
 
@@ -47,13 +70,16 @@ class ElasticacheRedis:
         # self.aws_elasticache_user_group()
         # self.aws_elasticache_user_group_association()
 
-        functions = {}
+        functions = {
+            'match_security_group': self.match_security_group,
+            'auto_minor_version_upgrade': self.auto_minor_version_upgrade,
+            'build_dict_var': self.build_dict_var,
+        }
 
         self.hcl.refresh_state()
 
-        exit()
         self.hcl.module_hcl_code("terraform.tfstate", os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), "elasticcache.yaml"), functions)
+            os.path.dirname(os.path.abspath(__file__)), "elasticcache_redis.yaml"), functions)
 
         exit()
 
@@ -133,6 +159,7 @@ class ElasticacheRedis:
                 # Track processed subnet and parameter groups to avoid duplicates
                 processed_subnet_groups = set()
                 processed_parameter_groups = set()
+                processed_security_groups = set()
 
                 # Process the member Cache Clusters
                 for cache_cluster_id in replication_group["MemberClusters"]:
@@ -150,6 +177,15 @@ class ElasticacheRedis:
                             cache_cluster["CacheParameterGroup"]["CacheParameterGroupName"])
                         processed_parameter_groups.add(
                             cache_cluster["CacheParameterGroup"]["CacheParameterGroupName"])
+
+                    # Processing Security Groups
+                    if "SecurityGroups" in cache_cluster:
+                        for sg in cache_cluster["SecurityGroups"]:
+                            if sg['Status'] == 'active' and sg['SecurityGroupId'] not in processed_security_groups:
+                                self.aws_security_group(
+                                    [sg['SecurityGroupId']])
+                                processed_security_groups.add(
+                                    sg['SecurityGroupId'])
 
                 self.hcl.process_resource(
                     "aws_elasticache_replication_group", replication_group["ReplicationGroupId"].replace("-", "_"), attributes)
@@ -188,6 +224,62 @@ class ElasticacheRedis:
 
             self.hcl.process_resource(
                 "aws_elasticache_subnet_group", subnet_group["CacheSubnetGroupName"].replace("-", "_"), attributes)
+
+    def aws_security_group(self, security_group_ids):
+        print("Processing Security Groups...")
+
+        # Create a response dictionary to collect responses for all security groups
+        response = self.ec2_client.describe_security_groups(
+            GroupIds=security_group_ids
+        )
+
+        for security_group in response["SecurityGroups"]:
+            print(
+                f"  Processing Security Group: {security_group['GroupName']}")
+
+            attributes = {
+                "id": security_group["GroupId"],
+                "name": security_group["GroupName"],
+                "description": security_group.get("Description", ""),
+                "vpc_id": security_group.get("VpcId", ""),
+                "owner_id": security_group.get("OwnerId", ""),
+            }
+
+            self.hcl.process_resource(
+                "aws_security_group", security_group["GroupName"].replace("-", "_"), attributes)
+
+            # Process egress rules
+            for rule in security_group.get('IpPermissionsEgress', []):
+                self.aws_security_group_rule(
+                    'egress', security_group, rule)
+
+            # Process ingress rules
+            for rule in security_group.get('IpPermissions', []):
+                self.aws_security_group_rule(
+                    'ingress', security_group, rule)
+
+    def aws_security_group_rule(self, rule_type, security_group, rule):
+        # Rule identifiers are often constructed by combining security group id, rule type, protocol, ports and security group references
+        rule_id = f"{security_group['GroupId']}_{rule_type}_{rule.get('IpProtocol', 'all')}"
+        print(f"Processing Security Groups Rule {rule_id}...")
+        if rule.get('FromPort'):
+            rule_id += f"_{rule['FromPort']}"
+        if rule.get('ToPort'):
+            rule_id += f"_{rule['ToPort']}"
+
+        attributes = {
+            "id": rule_id,
+            "type": rule_type,
+            "security_group_id": security_group['GroupId'],
+            "protocol": rule.get('IpProtocol', '-1'),  # '-1' stands for 'all'
+            "from_port": rule.get('FromPort', 0),
+            "to_port": rule.get('ToPort', 0),
+            "cidr_blocks": [ip_range['CidrIp'] for ip_range in rule.get('IpRanges', [])],
+            "source_security_group_ids": [sg['GroupId'] for sg in rule.get('UserIdGroupPairs', [])]
+        }
+
+        self.hcl.process_resource(
+            "aws_security_group_rule", rule_id.replace("-", "_"), attributes)
 
     # def aws_elasticache_user(self):
     #     print("Processing ElastiCache Users...")

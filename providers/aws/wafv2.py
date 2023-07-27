@@ -21,170 +21,175 @@ class Wafv2:
     def wafv2(self):
         self.hcl.prepare_folder(os.path.join("generated", "wafv2"))
 
-        self.aws_wafv2_ip_set()
-        self.aws_wafv2_regex_pattern_set()
-        self.aws_wafv2_rule_group()
+        # aws_wafv2_web_acl.default
+        # aws_wafv2_web_acl_association.default
+        # aws_wafv2_web_acl_logging_configuration.default
+
+        # self.aws_wafv2_ip_set()
+        # self.aws_wafv2_regex_pattern_set()
+        # self.aws_wafv2_rule_group()
         self.aws_wafv2_web_acl()
-        self.aws_wafv2_web_acl_association()
-        self.aws_wafv2_web_acl_logging_configuration()
+        # self.aws_wafv2_web_acl_association()
+        # self.aws_wafv2_web_acl_logging_configuration()
 
         self.hcl.refresh_state()
-        self.hcl.generate_hcl_file()
+
+        functions = {}
+
+        exit()
+        self.hcl.module_hcl_code("terraform.tfstate", os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), "wafv2.yaml"), functions)
+
+        exit()
         self.json_plan = self.hcl.json_plan
 
-    def aws_wafv2_ip_set(self):
-        print("Processing WAFv2 IP Sets...")
+    # def aws_wafv2_ip_set(self):
+    #     print("Processing WAFv2 IP Sets...")
 
-        scope = 'REGIONAL'
-        ip_sets = self.wafv2_client.list_ip_sets(Scope=scope)["IPSets"]
+    #     scope = 'REGIONAL'
+    #     ip_sets = self.wafv2_client.list_ip_sets(Scope=scope)["IPSets"]
 
-        for ip_set in ip_sets:
-            ip_set_id = ip_set["Id"]
-            print(f"  Processing WAFv2 IP Set: {ip_set_id}")
+    #     for ip_set in ip_sets:
+    #         ip_set_id = ip_set["Id"]
+    #         print(f"  Processing WAFv2 IP Set: {ip_set_id}")
 
-            ip_set_info = self.wafv2_client.get_ip_set(
-                Id=ip_set_id, Scope=scope)["IPSet"]
-            attributes = {
-                "id": ip_set_id,
-                "name": ip_set_info["Name"],
-                "description": ip_set_info.get("Description", ""),
-                "scope": scope,
-            }
-            self.hcl.process_resource(
-                "aws_wafv2_ip_set", ip_set_id.replace("-", "_"), attributes)
+    #         ip_set_info = self.wafv2_client.get_ip_set(
+    #             Id=ip_set_id, Scope=scope)["IPSet"]
+    #         attributes = {
+    #             "id": ip_set_id,
+    #             "name": ip_set_info["Name"],
+    #             "description": ip_set_info.get("Description", ""),
+    #             "scope": scope,
+    #         }
+    #         self.hcl.process_resource(
+    #             "aws_wafv2_ip_set", ip_set_id.replace("-", "_"), attributes)
 
-    def aws_wafv2_regex_pattern_set(self):
-        print("Processing WAFv2 Regex Pattern Sets...")
+    # def aws_wafv2_regex_pattern_set(self):
+    #     print("Processing WAFv2 Regex Pattern Sets...")
 
-        scope = 'REGIONAL'
-        regex_pattern_sets = self.wafv2_client.list_regex_pattern_sets(Scope=scope)[
-            "RegexPatternSets"]
+    #     scope = 'REGIONAL'
+    #     regex_pattern_sets = self.wafv2_client.list_regex_pattern_sets(Scope=scope)[
+    #         "RegexPatternSets"]
 
-        for regex_pattern_set in regex_pattern_sets:
-            regex_pattern_set_id = regex_pattern_set["Id"]
-            print(
-                f"  Processing WAFv2 Regex Pattern Set: {regex_pattern_set_id}")
+    #     for regex_pattern_set in regex_pattern_sets:
+    #         regex_pattern_set_id = regex_pattern_set["Id"]
+    #         print(
+    #             f"  Processing WAFv2 Regex Pattern Set: {regex_pattern_set_id}")
 
-            regex_pattern_set_info = self.wafv2_client.get_regex_pattern_set(
-                Id=regex_pattern_set_id, Scope=scope)["RegexPatternSet"]
-            attributes = {
-                "id": regex_pattern_set_id,
-                "name": regex_pattern_set_info["Name"],
-                "description": regex_pattern_set_info.get("Description", ""),
-                "scope": scope,
-            }
-            self.hcl.process_resource(
-                "aws_wafv2_regex_pattern_set", regex_pattern_set_id.replace("-", "_"), attributes)
+    #         regex_pattern_set_info = self.wafv2_client.get_regex_pattern_set(
+    #             Id=regex_pattern_set_id, Scope=scope)["RegexPatternSet"]
+    #         attributes = {
+    #             "id": regex_pattern_set_id,
+    #             "name": regex_pattern_set_info["Name"],
+    #             "description": regex_pattern_set_info.get("Description", ""),
+    #             "scope": scope,
+    #         }
+    #         self.hcl.process_resource(
+    #             "aws_wafv2_regex_pattern_set", regex_pattern_set_id.replace("-", "_"), attributes)
 
-    def aws_wafv2_rule_group(self):
-        print("Processing WAFv2 Rule Groups...")
+    # def aws_wafv2_rule_group(self):
+    #     print("Processing WAFv2 Rule Groups...")
 
-        scope = 'REGIONAL'
-        rule_groups = self.wafv2_client.list_rule_groups(Scope=scope)[
-            "RuleGroups"]
+    #     scope = 'REGIONAL'
+    #     rule_groups = self.wafv2_client.list_rule_groups(Scope=scope)[
+    #         "RuleGroups"]
 
-        for rule_group in rule_groups:
-            rule_group_id = rule_group["Id"]
-            print(f"  Processing WAFv2 Rule Group: {rule_group_id}")
+    #     for rule_group in rule_groups:
+    #         rule_group_id = rule_group["Id"]
+    #         print(f"  Processing WAFv2 Rule Group: {rule_group_id}")
 
-            rule_group_info = self.wafv2_client.get_rule_group(
-                Id=rule_group_id, Scope=scope)["RuleGroup"]
-            attributes = {
-                "id": rule_group_id,
-                "name": rule_group_info["Name"],
-                "description": rule_group_info.get("Description", ""),
-                "scope": scope,
-            }
-            self.hcl.process_resource(
-                "aws_wafv2_rule_group", rule_group_id.replace("-", "_"), attributes)
+    #         rule_group_info = self.wafv2_client.get_rule_group(
+    #             Id=rule_group_id, Scope=scope)["RuleGroup"]
+    #         attributes = {
+    #             "id": rule_group_id,
+    #             "name": rule_group_info["Name"],
+    #             "description": rule_group_info.get("Description", ""),
+    #             "scope": scope,
+    #         }
+    #         self.hcl.process_resource(
+    #             "aws_wafv2_rule_group", rule_group_id.replace("-", "_"), attributes)
 
     def aws_wafv2_web_acl(self):
         print("Processing WAFv2 Web ACLs...")
 
-        scope = 'REGIONAL'
-        web_acls = self.wafv2_client.list_web_acls(Scope=scope)["WebACLs"]
+        # iterate through both scopes
+        for scope in ['REGIONAL', 'CLOUDFRONT']:
+            web_acls = self.wafv2_client.list_web_acls(Scope=scope)["WebACLs"]
 
-        for web_acl in web_acls:
-            web_acl_id = web_acl["Id"]
-            web_acl_name = web_acl["Name"]
-            print(f"  Processing WAFv2 Web ACL: {web_acl_id}")
+            for web_acl in web_acls:
+                web_acl_id = web_acl["Id"]
+                web_acl_name = web_acl["Name"]
+                print(f"  Processing WAFv2 Web ACL: {web_acl_id}")
 
-            web_acl_info = self.wafv2_client.get_web_acl(
-                Id=web_acl_id, Name=web_acl_name, Scope=scope)["WebACL"]
-            attributes = {
-                "id": web_acl_id,
-                "name": web_acl_info["Name"],
-                "description": web_acl_info.get("Description", ""),
-                "scope": scope,
-            }
-            self.hcl.process_resource(
-                "aws_wafv2_web_acl", web_acl_id.replace("-", "_"), attributes)
+                web_acl_info = self.wafv2_client.get_web_acl(
+                    Id=web_acl_id, Name=web_acl_name, Scope=scope)["WebACL"]
+                attributes = {
+                    "id": web_acl_id,
+                    "name": web_acl_info["Name"],
+                    "description": web_acl_info.get("Description", ""),
+                    "scope": scope,
+                }
+                self.hcl.process_resource(
+                    "aws_wafv2_web_acl", web_acl_id.replace("-", "_"), attributes)
 
-    def aws_wafv2_web_acl_association(self):
+                # call the other functions with appropriate arguments
+                self.aws_wafv2_web_acl_association(web_acl_id)
+                self.aws_wafv2_web_acl_logging_configuration(
+                    web_acl_id, web_acl_info["ARN"])
+
+    def aws_wafv2_web_acl_association(self, web_acl_id):
         print("Processing WAFv2 Web ACL Associations...")
 
-        scope = 'REGIONAL'
-        web_acls = self.wafv2_client.list_web_acls(Scope=scope)["WebACLs"]
+        # Iterate over Application Load Balancers (ALBs)
+        alb_paginator = self.elbv2_client.get_paginator(
+            'describe_load_balancers')
+        alb_iterator = alb_paginator.paginate()
 
-        for web_acl in web_acls:
-            web_acl_id = web_acl["Id"]
+        for alb_page in alb_iterator:
+            for alb in alb_page['LoadBalancers']:
+                resource_arn = alb['LoadBalancerArn']
+                try:
+                    association = self.wafv2_client.get_web_acl_for_resource(
+                        ResourceArn=resource_arn
+                    )
+                    if 'WebACL' in association and association['WebACL']['Id'] == web_acl_id:
+                        association_id = f"{web_acl_id},{resource_arn}"
+                        print(
+                            f"  Processing WAFv2 Web ACL Association: {association_id}")
 
-            # Iterate over Application Load Balancers (ALBs)
-            alb_paginator = self.elbv2_client.get_paginator(
-                'describe_load_balancers')
-            alb_iterator = alb_paginator.paginate()
+                        attributes = {
+                            "id": association_id,
+                            "web_acl_id": web_acl_id,
+                            "resource_arn": resource_arn,
+                        }
+                        self.hcl.process_resource(
+                            "aws_wafv2_web_acl_association", association_id.replace("-", "_"), attributes)
+                except Exception as e:
+                    if e.response['Error']['Code'] == 'WAFNonexistentItemException':
+                        pass
+                    else:
+                        raise e
 
-            for alb_page in alb_iterator:
-                for alb in alb_page['LoadBalancers']:
-                    resource_arn = alb['LoadBalancerArn']
-                    try:
-                        association = self.wafv2_client.get_web_acl_for_resource(
-                            ResourceArn=resource_arn
-                        )
-                        if 'WebACL' in association and association['WebACL']['Id'] == web_acl_id:
-                            association_id = f"{web_acl_id},{resource_arn}"
-                            print(
-                                f"  Processing WAFv2 Web ACL Association: {association_id}")
-
-                            attributes = {
-                                "id": association_id,
-                                "web_acl_id": web_acl_id,
-                                "resource_arn": resource_arn,
-                            }
-                            self.hcl.process_resource(
-                                "aws_wafv2_web_acl_association", association_id.replace("-", "_"), attributes)
-                    except Exception as e:
-                        if e.response['Error']['Code'] == 'WAFNonexistentItemException':
-                            pass
-                        else:
-                            raise e
-
-    def aws_wafv2_web_acl_logging_configuration(self):
+    def aws_wafv2_web_acl_logging_configuration(self, web_acl_id, web_acl_arn):
         print("Processing WAFv2 Web ACL Logging Configurations...")
 
-        scope = 'REGIONAL'
-        web_acls = self.wafv2_client.list_web_acls(Scope=scope)["WebACLs"]
+        try:
+            logging_config = self.wafv2_client.get_logging_configuration(ResourceArn=web_acl_arn)[
+                "LoggingConfiguration"]
+            log_destination_configs = logging_config["LogDestinationConfigs"]
 
-        for web_acl in web_acls:
-            web_acl_id = web_acl["Id"]
-
-            try:
-                logging_config = self.wafv2_client.get_logging_configuration(ResourceArn=web_acl["ARN"])[
-                    "LoggingConfiguration"]
-                log_destination_configs = logging_config["LogDestinationConfigs"]
-
-                for index, log_destination in enumerate(log_destination_configs):
-                    config_id = f"{web_acl_id}-{index}"
-                    print(
-                        f"  Processing WAFv2 Web ACL Logging Configuration: {config_id}")
-
-                    attributes = {
-                        "id": config_id,
-                        "web_acl_id": web_acl_id,
-                        "log_destination_configs": log_destination_configs,
-                    }
-                    self.hcl.process_resource(
-                        "aws_wafv2_web_acl_logging_configuration", config_id.replace("-", "_"), attributes)
-            except self.wafv2_client.exceptions.WAFNonexistentItemException:
+            for index, log_destination in enumerate(log_destination_configs):
+                config_id = f"{web_acl_id}-{index}"
                 print(
-                    f"  No logging configuration found for Web ACL: {web_acl_id}")
+                    f"  Processing WAFv2 Web ACL Logging Configuration: {config_id}")
+
+                attributes = {
+                    "id": config_id,
+                    "web_acl_id": web_acl_id,
+                    "log_destination_configs": log_destination_configs,
+                }
+                self.hcl.process_resource(
+                    "aws_wafv2_web_acl_logging_configuration", config_id.replace("-", "_"), attributes)
+        except self.wafv2_client.exceptions.WAFNonexistentItemException:
+            print(
+                f"  No logging configuration found for Web ACL: {web_acl_id}")

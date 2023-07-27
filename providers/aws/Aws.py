@@ -545,8 +545,9 @@ class Aws:
     def elasticache_redis(self):
         elasticache_client = self.session.client(
             "elasticache", region_name=self.aws_region)
+        ec2_client = self.session.client("ec2", region_name=self.aws_region)
 
-        instance = ElasticacheRedis(elasticache_client, self.script_dir, self.provider_name,
+        instance = ElasticacheRedis(elasticache_client, ec2_client, self.script_dir, self.provider_name,
                                     self.schema_data, self.aws_region, self.s3Bucket,
                                     self.dynamoDBTable, self.state_key, self.workspace_id, self.modules)
         instance.elasticache_redis()
