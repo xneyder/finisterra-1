@@ -132,8 +132,8 @@ class AwsLambda:
         for function in functions:
             function_name = function["FunctionName"]
 
-            if function_name != "learning-image-encoder-function":
-                continue
+            # if function_name != "learning-image-encoder-function":
+            #     continue
 
             print(f"  Processing Lambda Function: {function_name}")
 

@@ -94,11 +94,11 @@ aws_lambda_function:
       join:
         function_name:
           function: cloudwatch_log_group_name
-      target_submodule: module.cloudwatch_log_group
+      # target_submodule: module.cloudwatch_log_group
       target_resource_name: default
       fields:
         cloudwatch_logs_kms_key_arn:
-          field: kms_key_arn
+          field: kms_key_id
           type: string
         cloudwatch_logs_retention_in_days:
           field: retention_in_days
@@ -125,6 +125,9 @@ aws_lambda_function:
           field: assume_role_policy
           type: string
           multiline: true
+        iam_role_description:
+          field: description
+          type: string
       childs:
         aws_iam_role_policy_attachment:
           join:
@@ -134,6 +137,8 @@ aws_lambda_function:
           second_index:
             field: policy_arn
           fields:
+            create_iam_role:
+              unique: true
             iam_policy_arns:
               function: to_list
               arg: policy_arn
