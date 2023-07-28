@@ -18,16 +18,37 @@ class ElasticBeanstalk:
                        self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules)
         self.resource_list = {}
 
+    def get_field_from_attrs(self, attributes, arg):
+        keys = arg.split(".")
+        result = attributes
+        for key in keys:
+            if isinstance(result, list):
+                result = [sub_result.get(key, None) if isinstance(
+                    sub_result, dict) else None for sub_result in result]
+                if len(result) == 1:
+                    result = result[0]
+            else:
+                result = result.get(key, None)
+            if result is None:
+                return None
+        return result
+
     def elasticbeanstalk(self):
         self.hcl.prepare_folder(os.path.join("generated", "elasticbeanstalk"))
 
         self.aws_elastic_beanstalk_application()
-        # self.aws_elastic_beanstalk_application_version() #There is not terraform import for this resource
-        # self.aws_elastic_beanstalk_configuration_template() #There is not terraform import for this resource
-        self.aws_elastic_beanstalk_environment()
+        # self.aws_elastic_beanstalk_environment()
+
+        functions = {
+            'get_field_from_attrs': self.get_field_from_attrs,
+        }
 
         self.hcl.refresh_state()
-        self.hcl.generate_hcl_file()
+
+        self.hcl.module_hcl_code("terraform.tfstate", os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), "elasticbeanstalk.yaml"), functions)
+        exit()
+
         self.json_plan = self.hcl.json_plan
 
     def aws_elastic_beanstalk_application(self):

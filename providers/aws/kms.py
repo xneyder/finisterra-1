@@ -35,15 +35,16 @@ class KMS:
         # aws_kms_replica_external_key.this
         # aws_kms_replica_key.this
 
-        self.aws_kms_alias()  # Always permissions error
-        # self.aws_kms_ciphertext() # not needed as it not strored and it is just to encryopt data
-        # self.aws_kms_custom_key_store()
+        self.aws_kms_key()
+        self.aws_kms_alias()
         self.aws_kms_external_key()
-        self.aws_kms_grant()  # tf refresh gets stuck
-        self.aws_kms_key()  # Always permissions error
-        # self.aws_kms_key_policy()
+        self.aws_kms_grant()
         self.aws_kms_replica_external_key()
         self.aws_kms_replica_key()
+
+        # self.aws_kms_ciphertext() # not needed as it not strored and it is just to encryopt data
+        # self.aws_kms_custom_key_store()
+        # self.aws_kms_key_policy()
 
         self.hcl.refresh_state()
 
@@ -173,6 +174,10 @@ class KMS:
                     key_metadata = self.kms_client.describe_key(KeyId=key_id)[
                         "KeyMetadata"]
 
+                    # Skip this key if it is not customer-managed
+                    if key_metadata["KeyManager"] != "CUSTOMER":
+                        continue
+
                     print(f"  Processing KMS Key: {key_id}")
 
                     attributes = {
@@ -187,7 +192,7 @@ class KMS:
                     self.hcl.process_resource(
                         "aws_kms_key", key_id.replace("-", "_"), attributes)
                 except botocore.exceptions.ClientError as e:
-                    print(f"  Error processing KMS Grant: {e}")
+                    print(f"  Error processing KMS Key: {e}")
 
     def aws_kms_key_policy(self):
         print("Processing KMS Key Policies...")

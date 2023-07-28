@@ -1,0 +1,29 @@
+aws_elastic_beanstalk_application:
+  terraform_module: "../../../terraform-aws-modules/terraform-aws-elastic-beanstalk-application"
+  # terraform_module: "github.com/finisterra-io/terraform-aws-elastic-beanstalk-application.git?ref=main"
+  terraform_module_version: "0.20.0"
+  target_resource_name: default
+  defaults:
+    enabled: true
+  fields:
+    name:
+      field: name
+      type: string
+    description:
+      field: description
+      type: string
+    tags:
+      field: tags
+      type: map
+    appversion_lifecycle_service_role_arn:
+      function: get_field_from_attrs
+      arg: appversion_lifecycle.service_role_arn
+      type: string
+    appversion_lifecycle_max_count:
+      function: get_field_from_attrs
+      arg: appversion_lifecycle.max_count
+      type: number
+    appversion_lifecycle_delete_source_from_s3:
+      function: get_field_from_attrs
+      arg: appversion_lifecycle.delete_source_from_s3
+      type: bool
