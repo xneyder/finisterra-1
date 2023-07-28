@@ -1,6 +1,6 @@
 aws_sfn_state_machine:
-  terraform_module: "../../../terraform-aws-modules/terraform-aws-step-functions"
-  # terraform_module: "github.com/finisterra-io/terraform-aws-step-functions.git?ref=main"
+  # terraform_module: "../../../terraform-aws-modules/terraform-aws-step-functions"
+  terraform_module: "github.com/finisterra-io/terraform-aws-step-functions.git?ref=main"
   terraform_module_version: "5.1.0"
   target_resource_name: this
   defaults:
