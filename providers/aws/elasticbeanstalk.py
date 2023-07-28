@@ -230,8 +230,8 @@ class ElasticBeanstalk:
         for env in environments:
             env_id = env["EnvironmentId"]
 
-            if env_id != "e-asi52zmcu8":
-                continue
+            # if env_id != "e-asi52zmcu8":
+            #     continue
             print(f"  Processing Elastic Beanstalk Environment: {env_id}")
 
             attributes = {
