@@ -790,8 +790,12 @@ class Aws:
             "elasticbeanstalk", region_name=self.aws_region)
         iam_client = self.session.client(
             "iam", region_name=self.aws_region)
+        autoscaling_client = self.session.client(
+            "autoscaling", region_name=self.aws_region)
+        ec2_client = self.session.client(
+            "ec2", region_name=self.aws_region)
 
-        instance = ElasticBeanstalk(elasticbeanstalk_client, iam_client, self.script_dir, self.provider_name,
+        instance = ElasticBeanstalk(elasticbeanstalk_client, iam_client, autoscaling_client, ec2_client, self.script_dir, self.provider_name,
                                     self.schema_data, self.aws_region, self.s3Bucket,
                                     self.dynamoDBTable, self.state_key, self.workspace_id, self.modules)
         instance.elasticbeanstalk()

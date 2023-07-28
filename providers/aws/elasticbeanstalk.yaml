@@ -38,9 +38,8 @@ aws_elastic_beanstalk_environment:
     create_service_role: false
     create_ec2_role: false
     create_instance_profile: false
+    create_security_group: false
   fields:
-    # dummy:
-    #   function: init_fields
     name:
       field: name
       type: string
@@ -156,4 +155,39 @@ aws_elastic_beanstalk_environment:
             ec2_iam_policy_arns:
               function: to_list
               arg: policy_arn
+              type: list
+    aws_security_group:
+      join:
+        id:
+          join_function: join_sg
+      target_resource_name: default
+      fields:
+        create_security_group:
+          unique: true
+        security_group_name:
+          field: name
+          type: string
+        vpc_id:
+          field: vpc_id
+          type: string
+        security_group_description:
+          field: description
+          type: string
+        security_group_tags:
+          field: tags
+          type: map
+      childs:
+        aws_security_group_rule:
+          join:
+            id:
+              field: security_group_id
+          create_security_group:
+            unique: true
+          target_resource_name: default
+          second_index:
+            field: id
+          fields:
+            security_group_rules:
+              function: build_dict_var
+              arg: id
               type: list
