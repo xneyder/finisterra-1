@@ -206,6 +206,9 @@ def main():
                     provider.wafv2()
                 elif provider_group_code == 'route53':
                     provider.route53()
+                elif provider_group_code == 'stepfunction':
+                    provider.stepfunction()
+
                 else:
                     update_scan_status(scan_id, "FAILED")
                     break

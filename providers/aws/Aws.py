@@ -47,6 +47,7 @@ from providers.aws.kms import KMS
 from providers.aws.elasticbeanstalk import ElasticBeanstalk
 from providers.aws.elb import ELB
 from providers.aws.elbv2 import ELBV2
+from providers.aws.stepfunction import StepFunction
 
 
 class Aws:
@@ -823,3 +824,20 @@ class Aws:
         instance.elbv2()
         self.json_plan = instance.json_plan
         self.resource_list['elbv2'] = instance.resource_list
+
+    def stepfunction(self):
+        stepfunction_client = self.session.client(
+            "stepfunctions", region_name=self.aws_region)
+
+        iam_client = self.session.client(
+            "iam", region_name=self.aws_region)
+
+        logs_client = self.session.client(
+            "logs", region_name=self.aws_region)
+
+        instance = StepFunction(stepfunction_client, iam_client, logs_client, self.script_dir, self.provider_name,
+                                self.schema_data, self.aws_region, self.s3Bucket,
+                                self.dynamoDBTable, self.state_key, self.workspace_id, self.modules)
+        instance.stepfunction()
+        self.json_plan = instance.json_plan
+        self.resource_list['stepfunction'] = instance.resource_list
