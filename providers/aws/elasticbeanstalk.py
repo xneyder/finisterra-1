@@ -4,9 +4,10 @@ import botocore
 
 
 class ElasticBeanstalk:
-    def __init__(self, elasticbeanstalk_client, script_dir, provider_name, schema_data, region, s3Bucket,
+    def __init__(self, elasticbeanstalk_client, iam_client, script_dir, provider_name, schema_data, region, s3Bucket,
                  dynamoDBTable, state_key, workspace_id, modules):
         self.elasticbeanstalk_client = elasticbeanstalk_client
+        self.iam_client = iam_client
         self.transform_rules = {}
         self.provider_name = provider_name
         self.script_dir = script_dir
@@ -17,6 +18,8 @@ class ElasticBeanstalk:
         self.hcl = HCL(self.schema_data, self.provider_name,
                        self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules)
         self.resource_list = {}
+        self.service_roles = {}
+        self.ec2_roles = {}
 
     def get_field_from_attrs(self, attributes, arg):
         keys = arg.split(".")
@@ -33,14 +36,37 @@ class ElasticBeanstalk:
                 return None
         return result
 
+    def join_service_iam_role(self, parent_attributes, child_attributes):
+        env_id = parent_attributes.get("id")
+        role = child_attributes.get("name")
+        if role in self.service_roles:
+            if self.service_roles[role] == env_id:
+                return True
+        return False
+
+    def join_ec2_iam_role(self, parent_attributes, child_attributes):
+        env_id = parent_attributes.get("id")
+        role = child_attributes.get("name")
+        # print(role, env_id, self.ec2_roles)
+        if role in self.ec2_roles:
+            if self.ec2_roles[role] == env_id:
+                return True
+        return False
+
+    def to_list(self, attributes, arg):
+        return [attributes.get(arg)]
+
     def elasticbeanstalk(self):
         self.hcl.prepare_folder(os.path.join("generated", "elasticbeanstalk"))
 
-        self.aws_elastic_beanstalk_application()
-        # self.aws_elastic_beanstalk_environment()
+        # self.aws_elastic_beanstalk_application()
+        self.aws_elastic_beanstalk_environment()
 
         functions = {
             'get_field_from_attrs': self.get_field_from_attrs,
+            'to_list': self.to_list,
+            'join_service_iam_role': self.join_service_iam_role,
+            'join_ec2_iam_role': self.join_ec2_iam_role,
         }
 
         self.hcl.refresh_state()
@@ -162,6 +188,9 @@ class ElasticBeanstalk:
 
         for env in environments:
             env_id = env["EnvironmentId"]
+
+            if env_id != "e-asi52zmcu8":
+                continue
             print(f"  Processing Elastic Beanstalk Environment: {env_id}")
 
             attributes = {
@@ -172,3 +201,82 @@ class ElasticBeanstalk:
             }
             self.hcl.process_resource(
                 "aws_elastic_beanstalk_environment", env_id, attributes)
+
+            # Retrieve the environment configuration details
+            config_settings = self.elasticbeanstalk_client.describe_configuration_settings(
+                ApplicationName=env["ApplicationName"],
+                EnvironmentName=env["EnvironmentName"]
+            )
+
+            # Process the Service Role
+            service_role = None
+            for option_setting in config_settings['ConfigurationSettings'][0]['OptionSettings']:
+                if option_setting['OptionName'] == 'ServiceRole':
+                    service_role = option_setting['Value']
+
+            # Process IAM roles
+            if service_role:
+                self.service_roles[service_role] = env_id
+                self.aws_iam_role(service_role)
+
+            # Process the EC2 Role
+            ec2_instance_profile = None
+            for option_setting in config_settings['ConfigurationSettings'][0]['OptionSettings']:
+                if option_setting['OptionName'] == 'IamInstanceProfile':
+                    ec2_instance_profile = option_setting['Value']
+
+            if ec2_instance_profile:
+                instance_profile = self.iam_client.get_instance_profile(
+                    InstanceProfileName=ec2_instance_profile)
+                ec2_role = instance_profile['InstanceProfile']['Roles'][0]['Arn']
+                self.ec2_roles[ec2_role.split('/')[-1]] = env_id
+                self.aws_iam_role(ec2_role)
+
+    def aws_iam_role(self, role_arn, aws_iam_policy=False):
+        print(f"Processing IAM Role: {role_arn}...")
+
+        role_name = role_arn.split('/')[-1]  # Extract role name from ARN
+
+        try:
+            role = self.iam_client.get_role(RoleName=role_name)['Role']
+
+            print(f"  Processing IAM Role: {role['Arn']}")
+
+            attributes = {
+                "id": role['RoleName'],
+            }
+            self.hcl.process_resource(
+                "aws_iam_role", role['RoleName'], attributes)
+            # Process IAM role policy attachments for the role
+            self.aws_iam_role_policy_attachment(
+                role['RoleName'], aws_iam_policy)
+        except Exception as e:
+            print(f"Error processing IAM role: {role_name}: {str(e)}")
+
+    def aws_iam_role_policy_attachment(self, role_name, aws_iam_policy=False):
+        print(
+            f"Processing IAM Role Policy Attachments for role: {role_name}...")
+
+        try:
+            paginator = self.iam_client.get_paginator(
+                'list_attached_role_policies')
+            for page in paginator.paginate(RoleName=role_name):
+                for policy in page['AttachedPolicies']:
+                    print(
+                        f"  Processing IAM Role Policy Attachment: {policy['PolicyName']} for role: {role_name}")
+
+                    resource_name = f"{role_name}-{policy['PolicyName']}"
+                    attributes = {
+                        "id": f"{role_name}/{policy['PolicyArn']}",
+                        "role": role_name,
+                        "policy_arn": policy['PolicyArn']
+                    }
+                    self.hcl.process_resource(
+                        "aws_iam_role_policy_attachment", resource_name, attributes)
+
+                    if aws_iam_policy:
+                        self.aws_iam_policy(policy['PolicyArn'])
+
+        except Exception as e:
+            print(
+                f"Error processing IAM role policy attachments for role: {role_name}: {str(e)}")

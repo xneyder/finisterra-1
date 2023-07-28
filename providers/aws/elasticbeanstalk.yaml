@@ -27,3 +27,115 @@ aws_elastic_beanstalk_application:
       function: get_field_from_attrs
       arg: appversion_lifecycle.delete_source_from_s3
       type: bool
+
+aws_elastic_beanstalk_environment:
+  terraform_module: "../../../terraform-aws-modules/terraform-aws-elastic-beanstalk-environment"
+  # terraform_module: "github.com/finisterra-io/terraform-aws-elastic-beanstalk-environment.git?ref=main"
+  terraform_module_version: "0.20.0"
+  target_resource_name: default
+  defaults:
+    enabled: true
+    create_service_role: false
+    create_ec2_role: false
+  fields:
+    name:
+      field: name
+      type: string
+    elastic_beanstalk_application_name:
+      field: application
+      type: string
+    description:
+      field: description
+      type: string
+    tier:
+      field: tier
+      type: string
+    solution_stack_name:
+      field: solution_stack_name
+      type: string
+    wait_for_ready_timeout:
+      field: wait_for_ready_timeout
+      type: number
+    version_label:
+      field: version_label
+      type: string
+    tags:
+      field: tags
+      type: map
+    settings:
+      field: setting
+      type: list
+  childs:
+    aws_iam_role:
+      join:
+        name:
+          join_function: join_service_iam_role
+      target_resource_name: service
+      fields:
+        create_service_role:
+          unique: true
+        service_iam_role_name:
+          field: name
+          type: string
+        service_iam_role_assume_role_policy:
+          field: assume_role_policy
+          type: string
+          multiline: true
+        service_iam_role_description:
+          field: description
+          type: string
+        service_iam_role_tags:
+          field: tags
+          type: map
+      childs:
+        aws_iam_role_policy_attachment:
+          join:
+            name:
+              field: role
+          target_resource_name: service
+          second_index:
+            field: policy_arn
+          fields:
+            create_service_role:
+              unique: true
+            service_iam_policy_arns:
+              function: to_list
+              arg: policy_arn
+              type: list
+    aws_iam_role_ec2:
+      resource_type: aws_iam_role
+      join:
+        name:
+          join_function: join_ec2_iam_role
+      target_resource_name: ec2
+      fields:
+        create_ec2_role:
+          unique: true
+        ec2_iam_role_name:
+          field: name
+          type: string
+        ec2_iam_role_assume_role_policy:
+          field: assume_role_policy
+          type: string
+          multiline: true
+        ec2_iam_role_description:
+          field: description
+          type: string
+        ec2_iam_role_tags:
+          field: tags
+          type: map
+      childs:
+        aws_iam_role_policy_attachment:
+          join:
+            name:
+              field: role
+          target_resource_name: ec2
+          second_index:
+            field: policy_arn
+          fields:
+            create_ec2_role:
+              unique: true
+            ec2_iam_policy_arns:
+              function: to_list
+              arg: policy_arn
+              type: list

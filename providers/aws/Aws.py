@@ -788,8 +788,10 @@ class Aws:
     def elasticbeanstalk(self):
         elasticbeanstalk_client = self.session.client(
             "elasticbeanstalk", region_name=self.aws_region)
+        iam_client = self.session.client(
+            "iam", region_name=self.aws_region)
 
-        instance = ElasticBeanstalk(elasticbeanstalk_client, self.script_dir, self.provider_name,
+        instance = ElasticBeanstalk(elasticbeanstalk_client, iam_client, self.script_dir, self.provider_name,
                                     self.schema_data, self.aws_region, self.s3Bucket,
                                     self.dynamoDBTable, self.state_key, self.workspace_id, self.modules)
         instance.elasticbeanstalk()
