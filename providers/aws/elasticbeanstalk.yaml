@@ -37,7 +37,10 @@ aws_elastic_beanstalk_environment:
     enabled: true
     create_service_role: false
     create_ec2_role: false
+    create_instance_profile: false
   fields:
+    # dummy:
+    #   function: init_fields
     name:
       field: name
       type: string
@@ -102,6 +105,21 @@ aws_elastic_beanstalk_environment:
               function: to_list
               arg: policy_arn
               type: list
+    aws_iam_instance_profile:
+      join:
+        name:
+          join_function: join_ec2_instance_profile
+      target_resource_name: ec2
+      fields:
+        create_instance_profile:
+          unique: true
+        instance_profile_name:
+          field: name
+          type: string
+        instance_profile_tags:
+          field: tags
+          type: map
+
     aws_iam_role_ec2:
       resource_type: aws_iam_role
       join:

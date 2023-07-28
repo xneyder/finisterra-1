@@ -20,6 +20,13 @@ class ElasticBeanstalk:
         self.resource_list = {}
         self.service_roles = {}
         self.ec2_roles = {}
+        self.insatce_profiles = {}
+
+    def init_fields(self, attributes):
+        self.service_roles = {}
+        self.ec2_roles = {}
+        self.insatce_profiles = {}
+        return None
 
     def get_field_from_attrs(self, attributes, arg):
         keys = arg.split(".")
@@ -53,6 +60,15 @@ class ElasticBeanstalk:
                 return True
         return False
 
+    def join_ec2_instance_profile(self, parent_attributes, child_attributes):
+        env_id = parent_attributes.get("id")
+        name = child_attributes.get("name")
+        # print(role, env_id, self.ec2_roles)
+        if name in self.insatce_profiles:
+            if self.insatce_profiles[name] == env_id:
+                return True
+        return False
+
     def to_list(self, attributes, arg):
         return [attributes.get(arg)]
 
@@ -63,10 +79,12 @@ class ElasticBeanstalk:
         self.aws_elastic_beanstalk_environment()
 
         functions = {
+            'init_fields': self.init_fields,
             'get_field_from_attrs': self.get_field_from_attrs,
             'to_list': self.to_list,
             'join_service_iam_role': self.join_service_iam_role,
             'join_ec2_iam_role': self.join_ec2_iam_role,
+            'join_ec2_instance_profile': self.join_ec2_instance_profile,
         }
 
         self.hcl.refresh_state()
@@ -189,8 +207,8 @@ class ElasticBeanstalk:
         for env in environments:
             env_id = env["EnvironmentId"]
 
-            if env_id != "e-asi52zmcu8":
-                continue
+            # if env_id != "e-asi52zmcu8":
+            #     continue
             print(f"  Processing Elastic Beanstalk Environment: {env_id}")
 
             attributes = {
@@ -226,6 +244,8 @@ class ElasticBeanstalk:
                     ec2_instance_profile = option_setting['Value']
 
             if ec2_instance_profile:
+                self.insatce_profiles[ec2_instance_profile] = env_id
+                self.aws_iam_instance_profile(ec2_instance_profile)
                 instance_profile = self.iam_client.get_instance_profile(
                     InstanceProfileName=ec2_instance_profile)
                 ec2_role = instance_profile['InstanceProfile']['Roles'][0]['Arn']
@@ -280,3 +300,26 @@ class ElasticBeanstalk:
         except Exception as e:
             print(
                 f"Error processing IAM role policy attachments for role: {role_name}: {str(e)}")
+
+    def aws_iam_instance_profile(self, instance_profile_name):
+        print(f"Processing IAM Instance Profile: {instance_profile_name}...")
+
+        try:
+            instance_profile = self.iam_client.get_instance_profile(
+                InstanceProfileName=instance_profile_name)['InstanceProfile']
+
+            print(
+                f"  Processing IAM Instance Profile: {instance_profile['Arn']}")
+
+            attributes = {
+                "id": instance_profile['InstanceProfileName'],
+                "name": instance_profile['InstanceProfileName'],
+                "path": instance_profile['Path'],
+                "roles": [role['RoleName'] for role in instance_profile['Roles']],
+                "arn": instance_profile['Arn'],
+            }
+            self.hcl.process_resource(
+                "aws_iam_instance_profile", instance_profile['InstanceProfileName'], attributes)
+        except Exception as e:
+            print(
+                f"Error processing IAM Instance Profile: {instance_profile_name}: {str(e)}")
