@@ -5,7 +5,7 @@ aws_vpc:
   terraform_module_version: "5.1.0"
   target_resource_name: this
   defaults:
-    enable_dhcp_options: false
+    create_dhcp_options: false
     create_igw: false
 
   fields:
@@ -123,10 +123,10 @@ aws_vpc:
         private_subnet_assign_ipv6_address_on_creation:
           field: assign_ipv6_address_on_creation
           type: bool
-        azs:
-          function: to_array
-          arg: availability_zone
-          type: list
+        # azs:
+        #   function: to_array
+        #   arg: availability_zone
+        #   type: list
         private_subnets:
           function: add_private_subnet
           type: map
@@ -185,10 +185,10 @@ aws_vpc:
         public_subnet_assign_ipv6_address_on_creation:
           field: assign_ipv6_address_on_creation
           type: bool
-        azs:
-          function: to_array
-          arg: availability_zone
-          type: list
+        # azs:
+        #   function: to_array
+        #   arg: availability_zone
+        #   type: list
         public_subnets:
           function: add_public_subnet
           type: map
@@ -299,11 +299,11 @@ aws_vpc:
           field: vpc_id
       target_resource_name: this
       second_index:
-        field: id
+        function: get_network_acl_id
+        arg: id
       fields:
         aws_network_acls:
-          function: build_aws_network_acls
-          arg: id
+          function: add_network_acl
           type: map
       childs:
         aws_network_acl_rule:
@@ -312,14 +312,14 @@ aws_vpc:
               field: network_acl_id
           target_resource_name: ingress
           second_index:
-            field: id
+            function: get_network_acl_rule_id
+            arg: network_acl_id
           skip_if:
             function: is_network_acl_rule_egress
             arg: network_acl_id
           fields:
-            aws_network_acl_ingress_rules:
-              function: build_aws_network_acl_rules
-              arg: id
+            aws_network_acls:
+              function: add_network_acl_ingress_rule
               type: map
         aws_network_acl_rule_egress:
           resource_type: aws_network_acl_rule
@@ -328,14 +328,14 @@ aws_vpc:
               field: network_acl_id
           target_resource_name: egress
           second_index:
-            field: id
+            function: get_network_acl_rule_id
+            arg: network_acl_id
           skip_if:
             function: is_network_acl_rule_ingress
             arg: network_acl_id
           fields:
-            aws_network_acl_egress_rules:
-              function: build_aws_network_acl_rules
-              arg: id
+            aws_network_acls:
+              function: add_network_acl_egress_rule
               type: map
 
     aws_flow_log:
@@ -453,11 +453,11 @@ aws_vpc:
               field: id
           target_resource_name: this
           fields:
-            enable_dhcp_options:
+            create_dhcp_options:
               unique: true
-            dhcp_options_id:
-              field: id
-              type: string
+            # dhcp_options_id:
+            #   field: id
+            #   type: string
             dhcp_options_domain_name:
               field: domain_name
               type: string

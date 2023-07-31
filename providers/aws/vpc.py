@@ -82,6 +82,8 @@ class VPC:
         self.private_route_table_ids = {}
         self.public_nat_gateway_ids = {}
         self.private_route_tables = {}
+        self.network_acl_ids = {}
+        self.network_acls = {}
 
     def get_field_from_attrs(self, attributes, arg):
         keys = arg.split(".")
@@ -130,6 +132,8 @@ class VPC:
         self.private_subnets_len = 0
         self.public_nat_gateway_ids = {}
         self.private_route_tables = {}
+        self.network_acl_ids = {}
+        self.network_acls = {}
 
         return None
 
@@ -170,6 +174,62 @@ class VPC:
             self.public_subnets[subnet_id][key]['nat_gateway'][nat_gateway_name] = {'tags': attributes.get(
                 'tags', {}), 'eip_tags': {}}
         return self.public_subnets[subnet_id]
+
+    def add_network_acl(self, attributes):
+        nacl_id = attributes.get('id')
+        if nacl_id not in self.network_acl_ids:
+            nacl_name = 'network_acl_' + \
+                str(len(self.network_acl_ids))
+            self.network_acl_ids[nacl_id] = nacl_name
+        else:
+            nacl_name = self.network_acl_ids[nacl_id]
+
+        subnet_ids_ = attributes.get('subnet_ids')
+        subnet_list_name = []
+        for subnet_id in subnet_ids_:
+            if subnet_id in self.public_subnets:
+                for key in self.public_subnets[subnet_id].keys():
+                    subnet_list_name.append(key)
+            elif subnet_id in self.private_subnets:
+                for key in self.private_subnets[subnet_id].keys():
+                    subnet_list_name.append(key)
+        self.network_acls[nacl_name] = {
+            'subnet_ids': subnet_list_name, 'tags': attributes.get('tags', {}), 'ingress_rules': {}, 'egress_rules': {}}
+        return {nacl_name: self.network_acls[nacl_name]}
+
+    def get_network_acl_id(self, attributes, arg):
+        nacl_id = attributes.get(arg)
+        nacl_name = self.network_acl_ids[nacl_id]
+        return nacl_name
+
+    def get_network_acl_rule_id(self, attributes, arg):
+        nacl_id = attributes.get(arg)
+        nacl_name = self.network_acl_ids[nacl_id]
+        return nacl_name+'_'+str(attributes.get('rule_number'))
+
+    def add_network_acl_ingress_rule(self, attributes):
+        nacl_id = attributes.get('network_acl_id')
+        nacl_name = self.network_acl_ids[nacl_id]
+        rule = {}
+        for k in ['rule_number', 'protocol', 'rule_action', 'cidr_block',
+                  'icmp_code', 'icmp_type', 'ipv6_cidr_block', 'from_port', 'to_port']:
+            val = attributes.get(k)
+            if val not in [None, "", [], {}]:
+                rule[k] = val
+        self.network_acls[nacl_name]['ingress_rules'][rule['rule_number']] = rule
+        return {nacl_name: self.network_acls[nacl_name]}
+
+    def add_network_acl_egress_rule(self, attributes):
+        nacl_id = attributes.get('network_acl_id')
+        nacl_name = self.network_acl_ids[nacl_id]
+        rule = {}
+        for k in ['rule_number', 'protocol', 'rule_action', 'cidr_block',
+                  'icmp_code', 'icmp_type', 'ipv6_cidr_block', 'from_port', 'to_port']:
+            val = attributes.get(k)
+            if val not in [None, "", [], {}]:
+                rule[k] = val
+        self.network_acls[nacl_name]['egress_rules'][rule['rule_number']] = rule
+        return {nacl_name: self.network_acls[nacl_name]}
 
     def add_eip(self, attributes):
         allocation_id = attributes.get('allocation_id')
@@ -302,7 +362,7 @@ class VPC:
     def build_aws_network_acl_rules(self, attributes, arg):
         key = attributes[arg]
         result = {key: {}}
-        for k in ['network_acl_id', 'rule_number', 'protocol', 'rule_action', 'cidr_block',
+        for k in ['rule_number', 'protocol', 'rule_action', 'cidr_block',
                   'icmp_code', 'icmp_type', 'ipv6_cidr_block', 'from_port', 'to_port']:
             val = attributes.get(k)
             if val not in [None, "", [], {}]:
@@ -440,6 +500,11 @@ class VPC:
             'get_eip_index': self.get_eip_index,
             'add_nat_gateway_private_route': self.add_nat_gateway_private_route,
             'get_nat_gateway_private_route_id': self.get_nat_gateway_private_route_id,
+            'add_network_acl': self.add_network_acl,
+            'add_network_acl_ingress_rule': self.add_network_acl_ingress_rule,
+            'add_network_acl_egress_rule': self.add_network_acl_egress_rule,
+            'get_network_acl_id': self.get_network_acl_id,
+            'get_network_acl_rule_id': self.get_network_acl_rule_id,
 
 
 
@@ -448,6 +513,8 @@ class VPC:
 
         self.hcl.module_hcl_code("terraform.tfstate", os.path.join(
             os.path.dirname(os.path.abspath(__file__)), "vpc.yaml"), functions)
+
+        # exit()
 
         self.json_plan = self.hcl.json_plan
 
