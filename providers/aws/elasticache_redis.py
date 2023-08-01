@@ -55,7 +55,7 @@ class ElasticacheRedis:
         return result
 
     def elasticache_redis(self):
-        self.hcl.prepare_folder(os.path.join("generated", "elasticache"))
+        self.hcl.prepare_folder(os.path.join("generated", "elasticache_redis"))
 
         # aws_cloudwatch_metric_alarm.cache_cpu
         # aws_cloudwatch_metric_alarm.cache_memory

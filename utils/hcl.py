@@ -1063,7 +1063,8 @@ class HCL:
 
         for instance in instances:
             if instance["attributes"]:
-                instance["name"] = instance["name"].replace('"', '')
+                instance["name"] = instance["name"].replace(
+                    '"', '').replace(" ", "_")
                 with open(f'{instance["type"]}-{instance["name"]}.tf', 'w') as file:
                     file.write(
                         f'module "{instance["type"]}-{instance["name"]}" {{\n')

@@ -77,11 +77,6 @@ class StepFunction:
         self.hcl.module_hcl_code("terraform.tfstate", os.path.join(
             os.path.dirname(os.path.abspath(__file__)), "stepfunction.yaml"), functions)
 
-        exit()
-
-        self.hcl.module_hcl_code("terraform.tfstate", os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), "stepfunction.yaml"), functions)
-
         self.json_plan = self.hcl.json_plan
 
     def aws_sfn_state_machine(self):
