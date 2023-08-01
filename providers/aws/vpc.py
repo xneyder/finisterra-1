@@ -76,14 +76,13 @@ class VPC:
         self.resource_list = {}
         self.public_subnets = {}
         self.private_subnets = {}
-        self.public_subnets_len = 0
-        self.private_subnets_len = 0
         self.public_route_table_ids = {}
         self.private_route_table_ids = {}
         self.public_nat_gateway_ids = {}
         self.private_route_tables = {}
         self.network_acl_ids = {}
         self.network_acls = {}
+        self.dhcp_options_domain_name = {}
 
     def get_field_from_attrs(self, attributes, arg):
         keys = arg.split(".")
@@ -99,6 +98,10 @@ class VPC:
             if result is None:
                 return None
         return result
+
+    def get_dhcp_options_domain_name(self, attributes):
+        assoc_id = attributes.get('id')
+        return self.dhcp_options_domain_name[assoc_id]
 
     def is_subnet_public(self, attributes, arg):
         subnet_id = attributes.get('id')
@@ -128,12 +131,11 @@ class VPC:
         self.public_subnets = {}
         self.public_route_table_ids = {}
         self.private_route_table_ids = {}
-        self.public_subnets_len = 0
-        self.private_subnets_len = 0
         self.public_nat_gateway_ids = {}
         self.private_route_tables = {}
         self.network_acl_ids = {}
         self.network_acls = {}
+        # self.dhcp_options_domain_name = {}
 
         return None
 
@@ -211,24 +213,29 @@ class VPC:
         nacl_id = attributes.get('network_acl_id')
         nacl_name = self.network_acl_ids[nacl_id]
         rule = {}
-        for k in ['rule_number', 'protocol', 'rule_action', 'cidr_block',
-                  'icmp_code', 'icmp_type', 'ipv6_cidr_block', 'from_port', 'to_port']:
-            val = attributes.get(k)
-            if val not in [None, "", [], {}]:
-                rule[k] = val
-        self.network_acls[nacl_name]['ingress_rules'][rule['rule_number']] = rule
+        # Rulenumber must be in range 1..32766
+        if attributes.get('rule_number') < 32767:
+            for k in ['rule_number', 'protocol', 'rule_action', 'cidr_block',
+                      'icmp_code', 'icmp_type', 'ipv6_cidr_block', 'from_port', 'to_port']:
+                val = attributes.get(k)
+                if val not in [None, "", [], {}]:
+                    rule[k] = val
+            self.network_acls[nacl_name]['ingress_rules'][rule['rule_number']] = rule
         return {nacl_name: self.network_acls[nacl_name]}
 
     def add_network_acl_egress_rule(self, attributes):
         nacl_id = attributes.get('network_acl_id')
         nacl_name = self.network_acl_ids[nacl_id]
         rule = {}
-        for k in ['rule_number', 'protocol', 'rule_action', 'cidr_block',
-                  'icmp_code', 'icmp_type', 'ipv6_cidr_block', 'from_port', 'to_port']:
-            val = attributes.get(k)
-            if val not in [None, "", [], {}]:
-                rule[k] = val
-        self.network_acls[nacl_name]['egress_rules'][rule['rule_number']] = rule
+
+        # Rulenumber must be in range 1..32766
+        if attributes.get('rule_number') < 32767:
+            for k in ['rule_number', 'protocol', 'rule_action', 'cidr_block',
+                      'icmp_code', 'icmp_type', 'ipv6_cidr_block', 'from_port', 'to_port']:
+                val = attributes.get(k)
+                if val not in [None, "", [], {}]:
+                    rule[k] = val
+            self.network_acls[nacl_name]['egress_rules'][rule['rule_number']] = rule
         return {nacl_name: self.network_acls[nacl_name]}
 
     def add_eip(self, attributes):
@@ -505,6 +512,8 @@ class VPC:
             'add_network_acl_egress_rule': self.add_network_acl_egress_rule,
             'get_network_acl_id': self.get_network_acl_id,
             'get_network_acl_rule_id': self.get_network_acl_rule_id,
+            'get_dhcp_options_domain_name': self.get_dhcp_options_domain_name,
+
 
 
 
@@ -1291,6 +1300,8 @@ class VPC:
             if network_acl["NetworkAclId"] == network_acl_id:
                 for entry in network_acl["Entries"]:
                     rule_number = entry["RuleNumber"]
+                    if rule_number == 32767:
+                        continue
                     rule_action = entry["RuleAction"]
                     rule_egress = entry["Egress"]
                     print(
@@ -1536,7 +1547,17 @@ class VPC:
             self.resource_list['aws_vpc_dhcp_options_association'][assoc_id.replace(
                 "-", "_")] = attributes
 
-            self.aws_vpc_dhcp_options(dhcp_options_id)
+            # Get the DHCP options details
+            dhcp_options = self.ec2_client.describe_dhcp_options(
+                DhcpOptionsIds=[dhcp_options_id])
+            for option in dhcp_options['DhcpOptions']:
+                for config in option['DhcpConfigurations']:
+                    if config['Key'] == 'domain-name':
+                        # save the domain name
+                        self.dhcp_options_domain_name[assoc_id] = config['Values'][0]['Value']
+                        break
+
+            # self.aws_vpc_dhcp_options(dhcp_options_id)
 
     def aws_vpc_endpoint(self):
         print("Processing VPC Endpoints...")

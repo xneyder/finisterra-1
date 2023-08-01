@@ -751,7 +751,7 @@ class HCL:
 
             for field, field_info in fields_config.items():
                 value = None
-                unique = field_info.get('unique', False)
+                unique = field_info.get('unique', "N/A")
                 multiline = field_info.get('multiline', False)
                 default = field_info.get('default', 'N/A')
                 func_name = field_info.get('function')
@@ -770,7 +770,7 @@ class HCL:
                     value = self.get_value_from_tfstate(
                         resource_attributes, state_field, field_type)
 
-                if unique:
+                if unique != "N/A":
                     id = resource_attributes.get('id', '')
                     matches = [resource for resource in self.global_deployed_resources if resource['resource_type']
                                == resource_type and resource['id'] == id]
@@ -790,7 +790,7 @@ class HCL:
                         if value:
                             value = value
                         else:
-                            value = True
+                            value = unique
                         created = True
 
                 defaulted = False
@@ -1023,9 +1023,12 @@ class HCL:
                     # print("===========================")
 
         if attributes or deployed_resources:
+            resoource_name = attributes.get('name', None)
+            if not resoource_name:
+                resoource_name = resource['name']
             return {
                 "type": resource['type'],
-                "name": resource['name'],
+                "name": resoource_name,
                 "attributes": attributes,
                 "full_dump": full_dump,
                 "deployed_resources": deployed_resources
@@ -1060,8 +1063,10 @@ class HCL:
 
         for instance in instances:
             if instance["attributes"]:
+                instance["name"] = instance["name"].replace('"', '')
                 with open(f'{instance["type"]}-{instance["name"]}.tf', 'w') as file:
-                    file.write(f'module "{instance["name"]}" {{\n')
+                    file.write(
+                        f'module "{instance["type"]}-{instance["name"]}" {{\n')
                     file.write(f'source  = "{instance["module"]}"\n')
                     # file.write(f'version = "{instance["version"]}"\n') # TO REMOVE COMMENT
                     if instance["full_dump"]:
@@ -1093,7 +1098,7 @@ class HCL:
                             second_index_str = '["' + \
                                 deployed_resource["second_index_value"]+'"]'
 
-                resource_import_target = f'module.{instance["name"]}.{deployed_resource["target_submodule"]}{index_str}{deployed_resource["resource_type"]}.{deployed_resource["target_resource_name"]}{second_index_str}'
+                resource_import_target = f'module.{instance["type"]}-{instance["name"]}.{deployed_resource["target_submodule"]}{index_str}{deployed_resource["resource_type"]}.{deployed_resource["target_resource_name"]}{second_index_str}'
 
                 # print(resource_import_source)
                 # print(resource_import_target)
