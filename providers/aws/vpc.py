@@ -559,6 +559,8 @@ class VPC:
                 self.aws_flow_log(vpc_id)
                 # call aws_vpc_dhcp_options with vpc_id
                 self.aws_vpc_dhcp_options_association(vpc_id)
+                # Nat Gateway
+                self.aws_nat_gateway(vpc_id)
 
     def aws_subnet(self, vpc):
         print("Processing Subnets...")
@@ -583,7 +585,6 @@ class VPC:
                     "-", "_")] = attributes
 
                 self.aws_route_table_association(subnet_id)
-                self.aws_nat_gateway(subnet_id)  # pass the subnet_id
 
     def aws_internet_gateway(self, vpc_id):
         print("Processing Internet Gateways...")
@@ -1176,45 +1177,58 @@ class VPC:
                     self.resource_list['aws_main_route_table_association'][assoc_id.replace(
                         "-", "_")] = attributes
 
-    def aws_nat_gateway(self, subnet_id):
-        print("Processing NAT Gateways...")
+    def aws_nat_gateway(self, vpc_id):
+        print("Processing NAT Gateways for VPC: ", vpc_id)
         self.resource_list['aws_nat_gateway'] = {}
-        nat_gateways = self.ec2_client.describe_nat_gateways(
-            Filters=[{'Name': 'subnet-id', 'Values': [subnet_id]}])["NatGateways"]
 
-        for nat_gw in nat_gateways:
-            nat_gw_id = nat_gw["NatGatewayId"]
-            nat_gw_state = nat_gw["State"]
+        # Describe all subnets for the given VPC
+        subnets = self.ec2_client.describe_subnets(
+            Filters=[{'Name': 'vpc-id', 'Values': [vpc_id]}])['Subnets']
 
-            if nat_gw_state == "available":  # Add this condition
-                print(f"  Processing NAT Gateway: {nat_gw_id}")
+        # Process NAT gateways for each subnet
+        for subnet in subnets:
+            subnet_id = subnet['SubnetId']
+            nat_gateways = self.ec2_client.describe_nat_gateways(
+                Filters=[{'Name': 'subnet-id', 'Values': [subnet_id]}])["NatGateways"]
 
-                attributes = {
-                    "id": nat_gw_id,
-                    "subnet_id": nat_gw["SubnetId"],
-                    "allocation_id": nat_gw["NatGatewayAddresses"][0]["AllocationId"],
-                    "network_interface_id": nat_gw["NatGatewayAddresses"][0]["NetworkInterfaceId"],
-                    "private_ip": nat_gw["NatGatewayAddresses"][0]["PrivateIp"],
-                    "public_ip": nat_gw["NatGatewayAddresses"][0]["PublicIp"],
-                }
+            # Sort the NAT gateways by CreateTime
+            nat_gateways = sorted(
+                nat_gateways, key=lambda ng: ng['CreateTime'])
 
-                self.hcl.process_resource(
-                    "aws_nat_gateway", nat_gw_id.replace("-", "_"), attributes)
-                self.resource_list['aws_nat_gateway'][nat_gw_id.replace(
-                    "-", "_")] = attributes
+            for nat_gw in nat_gateways:
+                nat_gw_id = nat_gw["NatGatewayId"]
+                nat_gw_state = nat_gw["State"]
 
-                # Process associated EIPs
-                for address in nat_gw["NatGatewayAddresses"]:
-                    self.aws_eip(address["AllocationId"])
+                if nat_gw_state == "available":  # Add this condition
+                    print(f"  Processing NAT Gateway: {nat_gw_id}")
 
-                route_tables = self.ec2_client.describe_route_tables()[
-                    "RouteTables"]
+                    attributes = {
+                        "id": nat_gw_id,
+                        "subnet_id": nat_gw["SubnetId"],
+                        "allocation_id": nat_gw["NatGatewayAddresses"][0]["AllocationId"],
+                        "network_interface_id": nat_gw["NatGatewayAddresses"][0]["NetworkInterfaceId"],
+                        "private_ip": nat_gw["NatGatewayAddresses"][0]["PrivateIp"],
+                        "public_ip": nat_gw["NatGatewayAddresses"][0]["PublicIp"],
+                    }
 
-                for rt in route_tables:
-                    for route in rt["Routes"]:
-                        if route.get("NatGatewayId", "") == nat_gw_id:  # match the NatGatewayId
-                            # pass the route_table_id and the route
-                            self.aws_route(rt["RouteTableId"], route)
+                    self.hcl.process_resource(
+                        "aws_nat_gateway", nat_gw_id.replace("-", "_"), attributes)
+                    self.resource_list['aws_nat_gateway'][nat_gw_id.replace(
+                        "-", "_")] = attributes
+
+                    # Process associated EIPs
+                    for address in nat_gw["NatGatewayAddresses"]:
+                        self.aws_eip(address["AllocationId"])
+
+                    route_tables = self.ec2_client.describe_route_tables()[
+                        "RouteTables"]
+
+                    for rt in route_tables:
+                        for route in rt["Routes"]:
+                            # match the NatGatewayId
+                            if route.get("NatGatewayId", "") == nat_gw_id:
+                                # pass the route_table_id and the route
+                                self.aws_route(rt["RouteTableId"], route)
 
     def aws_eip(self, allocation_id):
         print("Processing Elastic IPs associated with NAT Gateway: ", allocation_id)
