@@ -27,7 +27,7 @@ def cors_config_transform(value):
 
 class CloudFront:
     def __init__(self, cloudfront_client, script_dir, provider_name, schema_data, region, s3Bucket,
-                 dynamoDBTable, state_key, workspace_id, modules):
+                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id, aws_partition):
         self.cloudfront_client = cloudfront_client
         self.transform_rules = {
             "aws_cloudfront_response_headers_policy": {

@@ -4,7 +4,7 @@ from utils.hcl import HCL
 
 class SNS:
     def __init__(self, sns_client, script_dir, provider_name, schema_data, region, s3Bucket,
-                 dynamoDBTable, state_key, workspace_id, modules):
+                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id, aws_partition):
         self.sns_client = sns_client
         self.transform_rules = {
             "aws_sns_topic_policy": {
@@ -18,6 +18,8 @@ class SNS:
         self.script_dir = script_dir
         self.schema_data = schema_data
         self.region = region
+        self.aws_account_id = aws_account_id
+        self.aws_partition = aws_partition
         self.workspace_id = workspace_id
         self.modules = modules
         self.hcl = HCL(self.schema_data, self.provider_name,
@@ -58,7 +60,7 @@ class SNS:
         self.hcl.refresh_state()
 
         self.hcl.module_hcl_code("terraform.tfstate", os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), "sns.yaml"), functions)
+            os.path.dirname(os.path.abspath(__file__)), "sns.yaml"), functions, self.region, self.aws_account_id, self.aws_partition)
 
         self.json_plan = self.hcl.json_plan
 

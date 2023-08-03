@@ -6,7 +6,7 @@ import json
 
 class VPC:
     def __init__(self, ec2_client, iam_client, logs_client, script_dir, provider_name, schema_data, region, s3Bucket,
-                 dynamoDBTable, state_key, workspace_id, modules):
+                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id, aws_partition):
         self.ec2_client = ec2_client
         self.iam_client = iam_client
         self.logs_client = logs_client
@@ -69,6 +69,9 @@ class VPC:
         self.script_dir = script_dir
         self.schema_data = schema_data
         self.region = region
+        self.aws_account_id = aws_account_id
+        self.aws_partition = aws_partition
+
         self.workspace_id = workspace_id
         self.modules = modules
         self.hcl = HCL(self.schema_data, self.provider_name,
@@ -383,6 +386,8 @@ class VPC:
                   'iam_role_arn', 'traffic_type', 'max_aggregation_interval',
                   'destination_options',  'tags']:
             val = attributes.get(k)
+            if k == "log_destination" and "s3" in val:
+                val = val.split(":")[-1]
             if isinstance(val, str):
                 val = val.replace('${', '$${')
             result[key][k] = val
@@ -521,7 +526,7 @@ class VPC:
         self.hcl.refresh_state()
 
         self.hcl.module_hcl_code("terraform.tfstate", os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), "vpc.yaml"), functions)
+            os.path.dirname(os.path.abspath(__file__)), "vpc.yaml"), functions, self.region, self.aws_account_id, self.aws_partition)
 
         # exit()
 
@@ -1412,6 +1417,9 @@ class VPC:
         print("Processing Route Tables...")
         self.resource_list['aws_route_table'] = {}
         route_tables = self.ec2_client.describe_route_tables()["RouteTables"]
+
+        # Sort the route_tables list based on CreationTime
+        route_tables.sort(key=lambda rt: rt.get('CreateTime', ''))
 
         for rt in route_tables:
             if rt['VpcId'] == vpc_id:

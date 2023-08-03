@@ -4,7 +4,7 @@ from utils.hcl import HCL
 
 class Backup:
     def __init__(self, backup_client, script_dir, provider_name, schema_data, region, s3Bucket,
-                 dynamoDBTable, state_key, workspace_id, modules):
+                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id, aws_partition):
         self.backup_client = backup_client
         self.transform_rules = {}
         self.provider_name = provider_name

@@ -4,7 +4,7 @@ from utils.hcl import HCL
 
 class Cloudmap:
     def __init__(self, cloudmap_client, route53_client, script_dir, provider_name, schema_data, region, s3Bucket,
-                 dynamoDBTable, state_key, workspace_id, modules):
+                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id, aws_partition):
         self.cloudmap_client = cloudmap_client
         self.route53_client = route53_client
         self.transform_rules = {

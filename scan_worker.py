@@ -122,6 +122,13 @@ def main():
                 provider.set_boto3_session(
                     id_token, role_arn, session_duration, aws_region)
 
+                sts_client = provider.session.client(
+                    "sts", region_name=provider.aws_region)
+                account_details = sts_client.get_caller_identity()
+                provider.aws_account_id = account_details['Account']
+
+                provider.aws_partition = 'aws-us-gov' if 'gov' in provider.aws_region else 'aws'
+
                 if provider_group_code == 'vpc':
                     provider.vpc()
                 elif provider_group_code == 'acm':

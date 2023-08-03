@@ -4,7 +4,7 @@ from utils.hcl import HCL
 
 class RDS:
     def __init__(self, rds_client, logs_client, iam_client, script_dir, provider_name, schema_data, region, s3Bucket,
-                 dynamoDBTable, state_key, workspace_id, modules):
+                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id, aws_partition):
         self.rds_client = rds_client
         self.logs_client = logs_client
         self.iam_client = iam_client
@@ -25,6 +25,8 @@ class RDS:
         self.schema_data = schema_data
 
         self.region = region
+        self.aws_account_id = aws_account_id
+        self.aws_partition = aws_partition
         self.workspace_id = workspace_id
         self.modules = modules
         self.hcl = HCL(self.schema_data, self.provider_name,
@@ -57,7 +59,7 @@ class RDS:
 
         self.hcl.refresh_state()
         self.hcl.module_hcl_code("terraform.tfstate",
-                                 os.path.join(os.path.dirname(os.path.abspath(__file__)), "rds.yaml"), functions)
+                                 os.path.join(os.path.dirname(os.path.abspath(__file__)), "rds.yaml"), functions, self.region, self.aws_account_id, self.aws_partition)
         # self.hcl.generate_hcl_file()
         self.json_plan = self.hcl.json_plan
 

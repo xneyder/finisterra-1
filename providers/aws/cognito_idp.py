@@ -4,7 +4,7 @@ from utils.hcl import HCL
 
 class CognitoIDP:
     def __init__(self, cognito_idp_client, script_dir, provider_name, schema_data, region, s3Bucket,
-                 dynamoDBTable, state_key, workspace_id, modules):
+                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id, aws_partition):
         self.cognito_idp_client = cognito_idp_client
         self.transform_rules = {
             "aws_cognito_user": {

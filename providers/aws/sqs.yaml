@@ -68,7 +68,6 @@ aws_sqs_queue:
       fields:
         aws_sqs_queue_policy:
           field: policy
-          type: string
           multiline: true
 
     aws_sqs_queue_redrive_policy:
@@ -79,7 +78,6 @@ aws_sqs_queue:
       fields:
         redrive_policy:
           field: redrive_policy
-          type: string
           multiline: true
 
     aws_sqs_queue_redrive_allow_policy:
@@ -90,7 +88,6 @@ aws_sqs_queue:
       fields:
         redrive_allow_policy:
           field: redrive_allow_policy
-          type: string
           multiline: true
 
     aws_sqs_queue:
@@ -146,7 +143,6 @@ aws_sqs_queue:
           fields:
             aws_sqs_queue_policy_dlq:
               field: policy
-              type: string
               multiline: true
         aws_sqs_queue_redrive_allow_policy:
           join:
@@ -156,5 +152,4 @@ aws_sqs_queue:
           fields:
             dlq_redrive_allow_policy:
               field: redrive_allow_policy
-              type: string
               multiline: true

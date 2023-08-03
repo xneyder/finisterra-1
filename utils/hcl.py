@@ -3,7 +3,7 @@ import subprocess
 import os
 import re
 import shutil
-from utils.filesystem import create_version_file, create_backend_file
+from utils.filesystem import create_version_file, create_backend_file, create_data_file, create_locals_file
 from utils.terraform import Terraform
 import yaml
 import re
@@ -508,6 +508,8 @@ class HCL:
             self.create_folder(generated_path)
             os.chdir(generated_path)
             create_version_file()
+            create_data_file()
+            create_locals_file(self.region)
             destination_folder = os.getcwd()
             print("Copying Terraform init files...")
             shutil.copytree(temp_dir, os.path.join(
@@ -803,7 +805,9 @@ class HCL:
                         # print("=================")
                         # print(value)
                         # print("=================")
-                        value = "<<EOF\n" + value + "\nEOF\n"
+
+                        value = "<<EOF\n" + \
+                            json.dumps(json.loads(value), indent=4) + "\nEOF\n"
                         # print("=================")
                         # print(value)
                         # print("=================")
@@ -1036,7 +1040,7 @@ class HCL:
         else:
             return []
 
-    def module_hcl_code(self, terraform_state_file, config_file, functions={}):
+    def module_hcl_code(self, terraform_state_file, config_file, functions={}, aws_region="", aws_account_id="", aws_partition=""):
 
         with open(config_file, 'r') as f:
             config = yaml.safe_load(f)
@@ -1064,7 +1068,7 @@ class HCL:
         for instance in instances:
             if instance["attributes"]:
                 instance["name"] = instance["name"].replace(
-                    '"', '').replace(" ", "_")
+                    '"', '').replace(" ", "_").replace(".", "_")
                 with open(f'{instance["type"]}-{instance["name"]}.tf', 'w') as file:
                     file.write(
                         f'module "{instance["type"]}-{instance["name"]}" {{\n')
@@ -1074,6 +1078,16 @@ class HCL:
                         file.write(instance["full_dump"]['attributes'])
                     else:
                         for index, value in instance["attributes"].items():
+                            if aws_account_id:
+                                value = re.sub(r'\b' + aws_account_id +
+                                               r'\b', "${local.aws_account_id}", value)
+                            if aws_region:
+                                value = re.sub(r'\b' + aws_region +
+                                               r'\b', "${local.aws_region}", value)
+                            if aws_partition:
+                                value = re.sub(
+                                    r'\barn:' + aws_partition + r':\b', "arn:${local.aws_partition}:", value)
+
                             file.write(f'{index} = {value}\n')
                     file.write('}\n')
 

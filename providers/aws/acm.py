@@ -5,7 +5,7 @@ import datetime
 
 class ACM:
     def __init__(self, acm_client, script_dir, provider_name, schema_data, region, s3Bucket,
-                 dynamoDBTable, state_key, workspace_id, modules):
+                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id, aws_partition):
         self.acm_client = acm_client
         self.transform_rules = {
             "aws_acm_certificate": {
@@ -16,6 +16,8 @@ class ACM:
         self.script_dir = script_dir
         self.schema_data = schema_data
         self.region = region
+        self.aws_account_id = aws_account_id
+        self.aws_partition = aws_partition
         self.workspace_id = workspace_id
         self.modules = modules
         self.hcl = HCL(self.schema_data, self.provider_name,
@@ -53,7 +55,7 @@ class ACM:
         self.hcl.refresh_state()
 
         self.hcl.module_hcl_code("terraform.tfstate", os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), "acm.yaml"), functions)
+            os.path.dirname(os.path.abspath(__file__)), "acm.yaml"), functions, self.region, self.aws_account_id, self.aws_partition)
 
         self.json_plan = self.hcl.json_plan
 

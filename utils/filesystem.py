@@ -23,3 +23,20 @@ def create_backend_file(bucket: str, key: str, region: str, dynamodb_table: str)
         backend_file.write('    encrypt        = true\n')
         backend_file.write('  }\n')
         backend_file.write('}\n')
+
+
+def create_data_file():
+    with open("data.tf", "w") as data_file:
+        data_file.write('data "aws_caller_identity" "current" {}\n')
+        data_file.write('data "aws_region" "current" {}\n')
+
+
+def create_locals_file(region):
+    with open("locals.tf", "w") as locals_file:
+        locals_file.write('locals {\n')
+        locals_file.write('  aws_region = data.aws_region.current.name\n')
+        locals_file.write(
+            '  aws_account_id = data.aws_caller_identity.current.account_id\n')
+        aws_partition = 'aws-us-gov' if 'gov' in region else 'aws'
+        locals_file.write(f'  aws_partition = "{aws_partition}"\n')
+        locals_file.write('}\n')

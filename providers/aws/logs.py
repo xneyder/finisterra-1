@@ -4,7 +4,7 @@ from utils.hcl import HCL
 
 class Logs:
     def __init__(self, logs_client, script_dir, provider_name, schema_data, region, s3Bucket,
-                 dynamoDBTable, state_key, workspace_id, modules):
+                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id, aws_partition):
         self.logs_client = logs_client
         self.transform_rules = {
             "aws_cloudwatch_log_resource_policy": {
