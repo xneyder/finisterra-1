@@ -4,7 +4,7 @@ from utils.hcl import HCL
 
 class Opensearch:
     def __init__(self, opensearch_client, script_dir, provider_name, schema_data, region, s3Bucket,
-                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id, aws_partition):
+                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id):
         self.opensearch_client = opensearch_client
         self.transform_rules = {
             "aws_opensearch_domain_policy": {

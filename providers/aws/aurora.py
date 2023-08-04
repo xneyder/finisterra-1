@@ -4,7 +4,7 @@ from utils.hcl import HCL
 
 class RDS:
     def __init__(self, rds_client, script_dir, provider_name, schema_data, region, s3Bucket,
-                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id, aws_partition):
+                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id):
         self.rds_client = rds_client
         self.transform_rules = {
             "aws_db_parameter_group": {

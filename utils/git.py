@@ -160,7 +160,7 @@ class Git:
         self.create_gitignore_file(self.destination_dir)
 
         # Create a digest file with a random hash
-        self.create_digest_file(self.destination_dir)
+        # self.create_digest_file(self.destination_dir)
 
         # Stage and commit the changes
         self.repo.git.add(all=True)

@@ -338,7 +338,7 @@ class Aws:
             "route53", region_name=self.aws_region)
         instance = Route53(route53_client, self.script_dir, self.provider_name,
                            self.schema_data, self.aws_region, self.s3Bucket,
-                           self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id, self.aws_partition)
+                           self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.route53()
         self.json_plan = instance.json_plan
         self.resource_list['route53'] = instance.resource_list
@@ -350,7 +350,7 @@ class Aws:
             "logs", region_name=self.aws_region)
         instance = VPC(ec2_client, iam_client, logs_client, self.script_dir, self.provider_name,
                        self.schema_data, self.aws_region, self.s3Bucket,
-                       self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id, self.aws_partition)
+                       self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.vpc()
         self.json_plan = instance.json_plan
         self.resource_list['vpc'] = instance.resource_list
@@ -369,7 +369,7 @@ class Aws:
             "s3", region_name=self.aws_region)
         instance = S3(s3_client, self.script_dir, self.provider_name,
                       self.schema_data, self.aws_region, self.s3Bucket,
-                      self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id, self.aws_partition)
+                      self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.s3()
         self.json_plan = instance.json_plan
         self.resource_list['s3'] = instance.resource_list
@@ -379,7 +379,7 @@ class Aws:
             "iam", region_name=self.aws_region)
         instance = IAM(iam_client, self.script_dir, self.provider_name,
                        self.schema_data, self.aws_region, self.s3Bucket,
-                       self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id, self.aws_partition)
+                       self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.iam()
         self.json_plan = instance.json_plan
         self.resource_list['iam'] = instance.resource_list
@@ -389,7 +389,7 @@ class Aws:
             "acm", region_name=self.aws_region)
         instance = ACM(acm_client, self.script_dir, self.provider_name,
                        self.schema_data, self.aws_region, self.s3Bucket,
-                       self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id, self.aws_partition)
+                       self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.acm()
         self.json_plan = instance.json_plan
         self.resource_list['acm'] = instance.resource_list
@@ -399,7 +399,7 @@ class Aws:
             "cloudfront", region_name=self.aws_region)
         instance = CloudFront(cloudfront_client, self.script_dir, self.provider_name,
                               self.schema_data, self.aws_region, self.s3Bucket,
-                              self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id, self.aws_partition)
+                              self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.cloudfront()
         self.json_plan = instance.json_plan
         self.resource_list['cloudfront'] = instance.resource_list
@@ -411,7 +411,7 @@ class Aws:
             "autoscaling", region_name=self.aws_region)
         instance = EC2(ec2_client, autoscaling_client, self.script_dir, self.provider_name,
                        self.schema_data, self.aws_region, self.s3Bucket,
-                       self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id, self.aws_partition)
+                       self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.ec2()
         self.json_plan = instance.json_plan
         self.resource_list['ec2'] = instance.resource_list
@@ -425,7 +425,7 @@ class Aws:
             "autoscaling", region_name=self.aws_region)
         instance = EBS(ec2_client, kms_client, autoscaling_client, self.script_dir, self.provider_name,
                        self.schema_data, self.aws_region, self.s3Bucket,
-                       self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id, self.aws_partition)
+                       self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.ebs()
         self.json_plan = instance.json_plan
         self.resource_list['ebs'] = instance.resource_list
@@ -435,7 +435,7 @@ class Aws:
             "ecr", region_name=self.aws_region)
         instance = ECR(ecr_client, self.script_dir, self.provider_name,
                        self.schema_data, self.aws_region, self.s3Bucket,
-                       self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id, self.aws_partition)
+                       self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.ecr()
         self.json_plan = instance.json_plan
         self.resource_list['ecr'] = instance.resource_list
@@ -445,7 +445,7 @@ class Aws:
             "ecr-public", region_name="us-east-1")
         instance = ECR_PUBLIC(ecr_public_client, self.script_dir, self.provider_name,
                               self.schema_data, self.aws_region, self.s3Bucket,
-                              self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id, self.aws_partition)
+                              self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.ecr_public()
         self.json_plan = instance.json_plan
         self.resource_list['ecr_public'] = instance.resource_list
@@ -464,7 +464,7 @@ class Aws:
 
         instance = ECS(ecs_client, logs_client, appautoscaling_client, iam_client, self.script_dir, self.provider_name,
                        self.schema_data, self.aws_region, self.s3Bucket,
-                       self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id, self.aws_partition)
+                       self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.ecs()
         self.json_plan = instance.json_plan
         self.resource_list['ecs'] = instance.resource_list
@@ -474,7 +474,7 @@ class Aws:
             "efs", region_name=self.aws_region)
         instance = EFS(efs_client, self.script_dir, self.provider_name,
                        self.schema_data, self.aws_region, self.s3Bucket,
-                       self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id, self.aws_partition)
+                       self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.efs()
         self.json_plan = instance.json_plan
         self.resource_list['efs'] = instance.resource_list
@@ -484,7 +484,7 @@ class Aws:
             "eks", region_name=self.aws_region)
         instance = EKS(eks_client, self.script_dir, self.provider_name,
                        self.schema_data, self.aws_region, self.s3Bucket,
-                       self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id, self.aws_partition)
+                       self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.eks()
         self.json_plan = instance.json_plan
         self.resource_list['eks'] = instance.resource_list
@@ -495,7 +495,7 @@ class Aws:
 
         instance = AutoScaling(autoscaling_client, self.script_dir, self.provider_name,
                                self.schema_data, self.aws_region, self.s3Bucket,
-                               self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id, self.aws_partition)
+                               self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.autoscaling()
         self.json_plan = instance.json_plan
         self.resource_list['autoscaling'] = instance.resource_list
@@ -506,7 +506,7 @@ class Aws:
 
         instance = VpnClient(ec2_client, self.script_dir, self.provider_name,
                              self.schema_data, self.aws_region, self.s3Bucket,
-                             self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id, self.aws_partition)
+                             self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.vpn_client()
         self.json_plan = instance.json_plan
         self.resource_list['vpn_client'] = instance.resource_list
@@ -518,7 +518,7 @@ class Aws:
 
         instance = DocDb(docdb_client, ec2_client, self.script_dir, self.provider_name,
                          self.schema_data, self.aws_region, self.s3Bucket,
-                         self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id, self.aws_partition)
+                         self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.docdb()
         self.json_plan = instance.json_plan
         self.resource_list['docdb'] = instance.resource_list
@@ -529,7 +529,7 @@ class Aws:
 
         instance = Opensearch(opensearch_client, self.script_dir, self.provider_name,
                               self.schema_data, self.aws_region, self.s3Bucket,
-                              self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id, self.aws_partition)
+                              self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.opensearch()
         self.json_plan = instance.json_plan
         self.resource_list['opensearch'] = instance.resource_list
@@ -540,7 +540,7 @@ class Aws:
 
         instance = ES(es_client, self.script_dir, self.provider_name,
                       self.schema_data, self.aws_region, self.s3Bucket,
-                      self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id, self.aws_partition)
+                      self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.es()
         self.json_plan = instance.json_plan
         self.resource_list['es'] = instance.resource_list
@@ -552,7 +552,7 @@ class Aws:
 
         instance = ElasticacheRedis(elasticache_client, ec2_client, self.script_dir, self.provider_name,
                                     self.schema_data, self.aws_region, self.s3Bucket,
-                                    self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id, self.aws_partition)
+                                    self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.elasticache_redis()
         self.json_plan = instance.json_plan
         self.resource_list['elasticache'] = instance.resource_list
@@ -570,7 +570,7 @@ class Aws:
 
         instance = Dynamodb(dynamodb_client, appautoscaling_client, account_id, self.script_dir, self.provider_name,
                             self.schema_data, self.aws_region, self.s3Bucket,
-                            self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id, self.aws_partition)
+                            self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.dynamodb()
         self.json_plan = instance.json_plan
         self.resource_list['dynamodb'] = instance.resource_list
@@ -581,7 +581,7 @@ class Aws:
 
         instance = CognitoIdentity(cognito_identity_client, self.script_dir, self.provider_name,
                                    self.schema_data, self.aws_region, self.s3Bucket,
-                                   self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id, self.aws_partition)
+                                   self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.cognito_identity()
         self.json_plan = instance.json_plan
         self.resource_list['cognito_identity'] = instance.resource_list
@@ -592,7 +592,7 @@ class Aws:
 
         instance = CognitoIDP(cognito_idp_client, self.script_dir, self.provider_name,
                               self.schema_data, self.aws_region, self.s3Bucket,
-                              self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id, self.aws_partition)
+                              self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.cognito_idp()
         self.json_plan = instance.json_plan
         self.resource_list['cognito_idp'] = instance.resource_list
@@ -603,7 +603,7 @@ class Aws:
 
         instance = Logs(logs_client, self.script_dir, self.provider_name,
                         self.schema_data, self.aws_region, self.s3Bucket,
-                        self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id, self.aws_partition)
+                        self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.logs()
         self.json_plan = instance.json_plan
         self.resource_list['logs'] = instance.resource_list
@@ -614,7 +614,7 @@ class Aws:
 
         instance = Cloudwatch(cloudwatch_client, self.script_dir, self.provider_name,
                               self.schema_data, self.aws_region, self.s3Bucket,
-                              self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id, self.aws_partition)
+                              self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.cloudwatch()
         self.json_plan = instance.json_plan
         self.resource_list['cloudwatch'] = instance.resource_list
@@ -625,7 +625,7 @@ class Aws:
 
         instance = Cloudtrail(cloudtrail_client, self.script_dir, self.provider_name,
                               self.schema_data, self.aws_region, self.s3Bucket,
-                              self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id, self.aws_partition)
+                              self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.cloudtrail()
         self.json_plan = instance.json_plan
         self.resource_list['cloudtrail'] = instance.resource_list
@@ -639,7 +639,7 @@ class Aws:
 
         instance = Cloudmap(cloudmap_client, route53_client, self.script_dir, self.provider_name,
                             self.schema_data, self.aws_region, self.s3Bucket,
-                            self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id, self.aws_partition)
+                            self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.cloudmap()
         self.json_plan = instance.json_plan
         self.resource_list['cloudmap'] = instance.resource_list
@@ -650,7 +650,7 @@ class Aws:
 
         instance = Backup(backup_client, self.script_dir, self.provider_name,
                           self.schema_data, self.aws_region, self.s3Bucket,
-                          self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id, self.aws_partition)
+                          self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.backup()
         self.json_plan = instance.json_plan
         self.resource_list['backup'] = instance.resource_list
@@ -661,7 +661,7 @@ class Aws:
 
         instance = Guardduty(guardduty_client, self.script_dir, self.provider_name,
                              self.schema_data, self.aws_region, self.s3Bucket,
-                             self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id, self.aws_partition)
+                             self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.guardduty()
         self.json_plan = instance.json_plan
         self.resource_list['guardduty'] = instance.resource_list
@@ -672,7 +672,7 @@ class Aws:
 
         instance = Apigateway(apigateway_client, self.script_dir, self.provider_name,
                               self.schema_data, self.aws_region, self.s3Bucket,
-                              self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id, self.aws_partition)
+                              self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.apigateway()
         self.json_plan = instance.json_plan
         self.resource_list['apigateway'] = instance.resource_list
@@ -683,7 +683,7 @@ class Aws:
 
         instance = Apigatewayv2(apigatewayv2_client, self.script_dir, self.provider_name,
                                 self.schema_data, self.aws_region, self.s3Bucket,
-                                self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id, self.aws_partition)
+                                self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.apigatewayv2()
         self.json_plan = instance.json_plan
         self.resource_list['apigatewayv2'] = instance.resource_list
@@ -697,7 +697,7 @@ class Aws:
 
         instance = Wafv2(wafv2_client, elbv2_client, self.script_dir, self.provider_name,
                          self.schema_data, self.aws_region, self.s3Bucket,
-                         self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id, self.aws_partition)
+                         self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.wafv2()
         self.json_plan = instance.json_plan
         self.resource_list['wafv2'] = instance.resource_list
@@ -708,7 +708,7 @@ class Aws:
 
         instance = Secretsmanager(secretsmanager_client, self.script_dir, self.provider_name,
                                   self.schema_data, self.aws_region, self.s3Bucket,
-                                  self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id, self.aws_partition)
+                                  self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.secretsmanager()
         self.json_plan = instance.json_plan
         self.resource_list['secretsmanager'] = instance.resource_list
@@ -719,7 +719,7 @@ class Aws:
 
         instance = SSM(ssm_client, self.script_dir, self.provider_name,
                        self.schema_data, self.aws_region, self.s3Bucket,
-                       self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id, self.aws_partition)
+                       self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.ssm()
         self.json_plan = instance.json_plan
         self.resource_list['ssm'] = instance.resource_list
@@ -730,7 +730,7 @@ class Aws:
 
         instance = SQS(sqs_client, self.script_dir, self.provider_name,
                        self.schema_data, self.aws_region, self.s3Bucket,
-                       self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id, self.aws_partition)
+                       self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.sqs()
         self.json_plan = instance.json_plan
         self.resource_list['sqs'] = instance.resource_list
@@ -741,7 +741,7 @@ class Aws:
 
         instance = SNS(sns_client, self.script_dir, self.provider_name,
                        self.schema_data, self.aws_region, self.s3Bucket,
-                       self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id, self.aws_partition)
+                       self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.sns()
         self.json_plan = instance.json_plan
         self.resource_list['sns'] = instance.resource_list
@@ -756,7 +756,7 @@ class Aws:
 
         instance = RDS(rds_client, logs_client, iam_client, self.script_dir, self.provider_name,
                        self.schema_data, self.aws_region, self.s3Bucket,
-                       self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id, self.aws_partition)
+                       self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.rds()
         self.json_plan = instance.json_plan
         self.resource_list['rds'] = instance.resource_list
@@ -772,7 +772,7 @@ class Aws:
 
         instance = AwsLambda(lambda_client, iam_client, logs_client, self.script_dir, self.provider_name,
                              self.schema_data, self.aws_region, self.s3Bucket,
-                             self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id, self.aws_partition)
+                             self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.aws_lambda()
         self.json_plan = instance.json_plan
         self.resource_list['aws_lambda'] = instance.resource_list
@@ -783,7 +783,7 @@ class Aws:
 
         instance = KMS(kms_client, self.script_dir, self.provider_name,
                        self.schema_data, self.aws_region, self.s3Bucket,
-                       self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id, self.aws_partition)
+                       self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.kms()
         self.json_plan = instance.json_plan
         self.resource_list['kms'] = instance.resource_list
@@ -800,7 +800,7 @@ class Aws:
 
         instance = ElasticBeanstalk(elasticbeanstalk_client, iam_client, autoscaling_client, ec2_client, self.script_dir, self.provider_name,
                                     self.schema_data, self.aws_region, self.s3Bucket,
-                                    self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id, self.aws_partition)
+                                    self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.elasticbeanstalk()
         self.json_plan = instance.json_plan
         self.resource_list['elasticbeanstalk'] = instance.resource_list
@@ -811,7 +811,7 @@ class Aws:
 
         instance = ELB(elb_client, self.script_dir, self.provider_name,
                        self.schema_data, self.aws_region, self.s3Bucket,
-                       self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id, self.aws_partition)
+                       self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.elb()
         self.json_plan = instance.json_plan
         self.resource_list['elb'] = instance.resource_list
@@ -822,7 +822,7 @@ class Aws:
 
         instance = ELBV2(elbv2_client, self.script_dir, self.provider_name,
                          self.schema_data, self.aws_region, self.s3Bucket,
-                         self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id, self.aws_partition)
+                         self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.elbv2()
         self.json_plan = instance.json_plan
         self.resource_list['elbv2'] = instance.resource_list
@@ -839,7 +839,7 @@ class Aws:
 
         instance = StepFunction(stepfunction_client, iam_client, logs_client, self.script_dir, self.provider_name,
                                 self.schema_data, self.aws_region, self.s3Bucket,
-                                self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id, self.aws_partition)
+                                self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.stepfunction()
         self.json_plan = instance.json_plan
         self.resource_list['stepfunction'] = instance.resource_list

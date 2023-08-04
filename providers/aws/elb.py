@@ -4,7 +4,7 @@ from utils.hcl import HCL
 
 class ELB:
     def __init__(self, elb_client, script_dir, provider_name, schema_data, region, s3Bucket,
-                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id, aws_partition):
+                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id):
         self.elb_client = elb_client
         self.transform_rules = {}
         self.provider_name = provider_name

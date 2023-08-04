@@ -6,7 +6,7 @@ import json
 
 class VPC:
     def __init__(self, ec2_client, iam_client, logs_client, script_dir, provider_name, schema_data, region, s3Bucket,
-                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id, aws_partition):
+                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id):
         self.ec2_client = ec2_client
         self.iam_client = iam_client
         self.logs_client = logs_client
@@ -70,7 +70,7 @@ class VPC:
         self.schema_data = schema_data
         self.region = region
         self.aws_account_id = aws_account_id
-        self.aws_partition = aws_partition
+        
 
         self.workspace_id = workspace_id
         self.modules = modules
@@ -386,8 +386,8 @@ class VPC:
                   'iam_role_arn', 'traffic_type', 'max_aggregation_interval',
                   'destination_options',  'tags']:
             val = attributes.get(k)
-            if k == "log_destination" and "s3" in val:
-                val = val.split(":")[-1]
+            # if k == "log_destination" and "s3" in val:
+            #     val = val.split(":")[-1]
             if isinstance(val, str):
                 val = val.replace('${', '$${')
             result[key][k] = val
@@ -526,7 +526,7 @@ class VPC:
         self.hcl.refresh_state()
 
         self.hcl.module_hcl_code("terraform.tfstate", os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), "vpc.yaml"), functions, self.region, self.aws_account_id, self.aws_partition)
+            os.path.dirname(os.path.abspath(__file__)), "vpc.yaml"), functions, self.region, self.aws_account_id)
 
         # exit()
 

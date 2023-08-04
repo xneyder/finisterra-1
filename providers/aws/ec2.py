@@ -4,7 +4,7 @@ from utils.hcl import HCL
 
 class EC2:
     def __init__(self, ec2_client, autoscaling_client,  script_dir, provider_name, schema_data, region, s3Bucket,
-                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id, aws_partition):
+                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id):
         self.ec2_client = ec2_client
         self.autoscaling_client = autoscaling_client
         self.transform_rules = {

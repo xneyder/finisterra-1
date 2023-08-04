@@ -4,7 +4,7 @@ from utils.hcl import HCL
 
 class Dynamodb:
     def __init__(self, dynamodb_client, appautoscaling_client, account_id, script_dir, provider_name, schema_data, region, s3Bucket,
-                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id, aws_partition):
+                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id):
         self.dynamodb_client = dynamodb_client
         self.appautoscaling_client = appautoscaling_client
         self.account_id = account_id
@@ -25,7 +25,7 @@ class Dynamodb:
         self.schema_data = schema_data
         self.region = region
         self.aws_account_id = aws_account_id
-        self.aws_partition = aws_partition
+        
         self.workspace_id = workspace_id
         self.modules = modules
         self.hcl = HCL(self.schema_data, self.provider_name,
@@ -190,7 +190,7 @@ class Dynamodb:
         self.hcl.refresh_state()
 
         self.hcl.module_hcl_code("terraform.tfstate", os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), "aws_dynamodb_table.yaml"), functions, self.region, self.aws_account_id, self.aws_partition)
+            os.path.dirname(os.path.abspath(__file__)), "aws_dynamodb_table.yaml"), functions, self.region, self.aws_account_id)
 
         # self.hcl.generate_hcl_file()
         self.json_plan = self.hcl.json_plan

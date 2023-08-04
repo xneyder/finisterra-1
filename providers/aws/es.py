@@ -4,7 +4,7 @@ from utils.hcl import HCL
 
 class ES:
     def __init__(self, es_client, script_dir, provider_name, schema_data, region, s3Bucket,
-                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id, aws_partition):
+                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id):
         self.es_client = es_client
         self.transform_rules = {
             "aws_elasticsearch_domain_policy": {

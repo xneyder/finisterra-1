@@ -127,8 +127,6 @@ def main():
                 account_details = sts_client.get_caller_identity()
                 provider.aws_account_id = account_details['Account']
 
-                provider.aws_partition = 'aws-us-gov' if 'gov' in provider.aws_region else 'aws'
-
                 if provider_group_code == 'vpc':
                     provider.vpc()
                 elif provider_group_code == 'acm':

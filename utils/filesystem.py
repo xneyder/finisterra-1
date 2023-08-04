@@ -31,12 +31,12 @@ def create_data_file():
         data_file.write('data "aws_region" "current" {}\n')
 
 
-def create_locals_file(region):
+def create_locals_file():
     with open("locals.tf", "w") as locals_file:
         locals_file.write('locals {\n')
         locals_file.write('  aws_region = data.aws_region.current.name\n')
         locals_file.write(
             '  aws_account_id = data.aws_caller_identity.current.account_id\n')
-        aws_partition = 'aws-us-gov' if 'gov' in region else 'aws'
-        locals_file.write(f'  aws_partition = "{aws_partition}"\n')
+        locals_file.write(
+            f'  aws_partition = can(regex("gov", local.aws_region)) ? "aws-us-gov" : "aws"\n')
         locals_file.write('}\n')

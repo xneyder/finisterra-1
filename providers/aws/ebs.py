@@ -4,7 +4,7 @@ from utils.hcl import HCL
 
 class EBS:
     def __init__(self, ec2_client, kms_client, autoscaling_client, script_dir, provider_name, schema_data, region, s3Bucket,
-                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id, aws_partition):
+                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id):
         self.ec2_client = ec2_client
         self.kms_client = kms_client
         self.autoscaling_client = autoscaling_client

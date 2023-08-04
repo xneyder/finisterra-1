@@ -9,8 +9,7 @@ import yaml
 import re
 from db.terraform_module_instance import get_module_data
 from collections import OrderedDict
-import concurrent.futures
-import ast
+import hashlib
 
 
 class HCL:
@@ -509,7 +508,7 @@ class HCL:
             os.chdir(generated_path)
             create_version_file()
             create_data_file()
-            create_locals_file(self.region)
+            create_locals_file()
             destination_folder = os.getcwd()
             print("Copying Terraform init files...")
             shutil.copytree(temp_dir, os.path.join(
@@ -1027,12 +1026,17 @@ class HCL:
                     # print("===========================")
 
         if attributes or deployed_resources:
-            resoource_name = attributes.get('name', None)
+            name_field = config.get("name_field", "name")
+            resoource_name = attributes.get(name_field, None)
+            replace_name = True
             if not resoource_name:
                 resoource_name = resource['name']
+                replace_name = False
             return {
                 "type": resource['type'],
                 "name": resoource_name,
+                "replace_name": replace_name,
+                "name_field": name_field,
                 "attributes": attributes,
                 "full_dump": full_dump,
                 "deployed_resources": deployed_resources
@@ -1040,7 +1044,7 @@ class HCL:
         else:
             return []
 
-    def module_hcl_code(self, terraform_state_file, config_file, functions={}, aws_region="", aws_account_id="", aws_partition=""):
+    def module_hcl_code(self, terraform_state_file, config_file, functions={}, aws_region="", aws_account_id=""):
 
         with open(config_file, 'r') as f:
             config = yaml.safe_load(f)
@@ -1067,11 +1071,27 @@ class HCL:
 
         for instance in instances:
             if instance["attributes"]:
-                instance["name"] = instance["name"].replace(
+
+                module_instance_name = instance["name"].replace(
                     '"', '').replace(" ", "_").replace(".", "_")
-                with open(f'{instance["type"]}-{instance["name"]}.tf', 'w') as file:
+                module_instance_name = f'{instance["type"]}-{module_instance_name}'
+
+                name_value = ""
+                name_field = ""
+
+                with open(f'{module_instance_name}.tf', 'w') as file:
+                    if instance["replace_name"]:
+                        name_value = instance["name"].replace('"', '')
+                        hash_value = hashlib.sha256(
+                            name_value.encode()).hexdigest()[:10]
+                        name_field = f'{instance["name_field"]}_{hash_value}'
+                        file.write(f'locals {{\n')
+                        file.write(
+                            f'{name_field} = "{name_value}"\n')
+                        file.write(f'}}\n\n')
+
                     file.write(
-                        f'module "{instance["type"]}-{instance["name"]}" {{\n')
+                        f'module "{module_instance_name}" {{\n')
                     file.write(f'source  = "{instance["module"]}"\n')
                     # file.write(f'version = "{instance["version"]}"\n') # TO REMOVE COMMENT
                     if instance["full_dump"]:
@@ -1082,17 +1102,29 @@ class HCL:
                                 value = re.sub(r'\b' + aws_account_id +
                                                r'\b', "${local.aws_account_id}", value)
                             if aws_region:
-                                value = re.sub(r'\b' + aws_region +
-                                               r'\b', "${local.aws_region}", value)
-                            if aws_partition:
+                                value = re.sub(
+                                    r'\b(' + aws_region + r')(?=[a-z]?\b)', "${local.aws_region}", value)
+                                aws_partition = 'aws-us-gov' if 'gov' in aws_region else 'aws'
                                 value = re.sub(
                                     r'\barn:' + aws_partition + r':\b', "arn:${local.aws_partition}:", value)
+
+                            if instance["replace_name"]:
+                                value = re.sub(
+                                    r'\"' + name_value + r'\"', "local." + name_field, value)
+
+                            if instance["replace_name"]:
+                                value = re.sub(
+                                    r'\b' + name_value + r'\b', "${local."+name_field+"}", value)
 
                             file.write(f'{index} = {value}\n')
                     file.write('}\n')
 
         subprocess.run(["terraform", "init"], check=True)
         for instance in instances:
+            module_instance_name = instance["name"].replace(
+                '"', '').replace(" ", "_").replace(".", "_")
+            module_instance_name = f'{instance["type"]}-{module_instance_name}'
+
             for deployed_resource in instance["deployed_resources"]:
                 resource_import_source = f'{deployed_resource["resource_type"]}.{deployed_resource["resource_name"]}'
                 index_str = ""
@@ -1113,7 +1145,7 @@ class HCL:
                             second_index_str = '["' + \
                                 deployed_resource["second_index_value"]+'"]'
 
-                resource_import_target = f'module.{instance["type"]}-{instance["name"]}.{deployed_resource["target_submodule"]}{index_str}{deployed_resource["resource_type"]}.{deployed_resource["target_resource_name"]}{second_index_str}'
+                resource_import_target = f'module.{module_instance_name}.{deployed_resource["target_submodule"]}{index_str}{deployed_resource["resource_type"]}.{deployed_resource["target_resource_name"]}{second_index_str}'
 
                 # print(resource_import_source)
                 # print(resource_import_target)
