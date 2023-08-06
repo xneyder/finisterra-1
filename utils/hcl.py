@@ -754,6 +754,7 @@ class HCL:
                 value = None
                 unique = field_info.get('unique', "N/A")
                 multiline = field_info.get('multiline', False)
+                jsonencode = field_info.get('jsonencode', False)
                 default = field_info.get('default', 'N/A')
                 func_name = field_info.get('function')
                 field_type = field_info.get('type', None)
@@ -801,15 +802,11 @@ class HCL:
 
                 if value not in [None, "", [], {}] or defaulted:
                     if multiline:
-                        # print("=================")
-                        # print(value)
-                        # print("=================")
-
                         value = "<<EOF\n" + \
                             json.dumps(json.loads(value), indent=4) + "\nEOF\n"
-                        # print("=================")
-                        # print(value)
-                        # print("=================")
+                    if jsonencode:
+                        value = "jsonencode(" + \
+                            json.dumps(json.loads(value), indent=4) + ")\n"
                     if root_attribute and root_attribute_key_value:
                         if multiline:
                             attributes[root_attribute][root_attribute_key_value][field] = value
@@ -817,7 +814,7 @@ class HCL:
                             attributes[root_attribute][root_attribute_key_value][field] = self.string_repr(
                                 value, field_type)
                     else:
-                        if multiline:
+                        if multiline or jsonencode:
                             attributes[field] = value
                         else:
                             attributes[field] = self.string_repr(
@@ -1000,14 +997,14 @@ class HCL:
                         hcl_str += "null\n"
                     # check for "true" or "false" strings
                     elif escaped_value.lower() in ["true", "false"]:
-                        hcl_str += f"{escaped_value}\n"
+                        hcl_str += f"{escaped_value}"
                     else:
                         hcl_str += (escaped_value if escaped_value.startswith(
                             "\"") and escaped_value.endswith("\"") else "\"" + escaped_value + "\"") + "\n"
                 elif isinstance(value, bool):
                     hcl_str += f"{str(value).lower()}\n"
                 else:
-                    hcl_str += f"{value}\n"
+                    hcl_str += f"{value}"
             return hcl_str
 
         attributes, deployed_resources = process_resource(
@@ -1018,7 +1015,7 @@ class HCL:
         full_dump = {}
         if config[resource['type']].get('dict_to_hcl', False):
             for key, value in attributes.items():
-                if not str(value).startswith('<<EOF'):
+                if not str(value).startswith('<<EOF') and not str(value).startswith('jsonencode('):
                     # print("===========================")
                     # print(key, value)
                     attributes[key] = value_to_hcl(value)
@@ -1071,6 +1068,8 @@ class HCL:
 
         for instance in instances:
             if instance["attributes"]:
+
+                instance["name"] = instance["name"].replace("\n", "")
 
                 module_instance_name = instance["name"].replace(
                     '"', '').replace(" ", "_").replace(".", "_")

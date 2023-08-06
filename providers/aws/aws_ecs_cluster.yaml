@@ -5,6 +5,7 @@ aws_ecs_cluster:
   keys:
     - name
   target_resource_name: this
+  name_field: cluster_name
   # target_submodule: module.cluster
   defaults:
     create_cloudwatch_log_group: false
@@ -261,7 +262,7 @@ aws_ecs_service:
           type: string
         container_definitions:
           field: container_definitions
-          multiline: true
+          jsonencode: true
           type: string
         cpu:
           field: cpu
