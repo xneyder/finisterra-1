@@ -3,6 +3,7 @@ aws_elasticache_replication_group:
   terraform_module: "github.com/finisterra-io/terraform-aws-elasticache-redis.git?ref=main"
   terraform_module_version: "0.20.0"
   target_resource_name: default
+  name_field: replication_group_id
   defaults:
     enabled: true
     # cloudwatch_metric_alarms_enabled: false
@@ -119,8 +120,9 @@ aws_elasticache_replication_group:
         subnet_group_description:
           field: description
           type: string
-        subnets:
-          field: subnet_ids
+        subnet_names:
+          function: get_subnet_names
+          arg: subnet_ids
           type: list
         subnet_group_tags:
           field: tags
@@ -161,9 +163,13 @@ aws_elasticache_replication_group:
         security_group_name:
           field: name
           type: string
-        vpc_id:
-          field: vpc_id
+        # vpc_id:
+        #   field: vpc_id
+        #   type: string
+        vpc_name:
+          function: get_vpc_name
           type: string
+          arg: vpc_id
         security_group_description:
           field: description
           type: string
@@ -182,6 +188,6 @@ aws_elasticache_replication_group:
             create_security_group:
               unique: true
             security_group_rules:
-              function: build_dict_var
+              function: get_security_group_rules
               arg: id
               type: list

@@ -997,14 +997,14 @@ class HCL:
                         hcl_str += "null\n"
                     # check for "true" or "false" strings
                     elif escaped_value.lower() in ["true", "false"]:
-                        hcl_str += f"{escaped_value}"
+                        hcl_str += f"{escaped_value}\n"
                     else:
                         hcl_str += (escaped_value if escaped_value.startswith(
                             "\"") and escaped_value.endswith("\"") else "\"" + escaped_value + "\"") + "\n"
                 elif isinstance(value, bool):
                     hcl_str += f"{str(value).lower()}\n"
                 else:
-                    hcl_str += f"{value}"
+                    hcl_str += f"{value}\n"
             return hcl_str
 
         attributes, deployed_resources = process_resource(

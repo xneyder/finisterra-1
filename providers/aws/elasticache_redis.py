@@ -27,7 +27,7 @@ class ElasticacheRedis:
         self.schema_data = schema_data
         self.region = region
         self.aws_account_id = aws_account_id
-        
+
         self.workspace_id = workspace_id
         self.modules = modules
         self.hcl = HCL(self.schema_data, self.provider_name,
@@ -56,6 +56,39 @@ class ElasticacheRedis:
                 result[key][k] = v
         return result
 
+    def get_subnet_names(self, attributes, arg):
+        subnet_ids = attributes.get(arg)
+        subnet_names = []
+        for subnet_id in subnet_ids:
+            response = self.ec2_client.describe_subnets(SubnetIds=[subnet_id])
+
+            # Depending on how your subnets are tagged, you may need to adjust this line.
+            # This assumes you have a tag 'Name' for your subnet names.
+            subnet_name = next(
+                (tag['Value'] for tag in response['Subnets'][0]['Tags'] if tag['Key'] == 'Name'), None)
+
+            if subnet_name:
+                subnet_names.append(subnet_name)
+
+        return subnet_names
+
+    def get_vpc_name(self, attributes, arg):
+        vpc_id = attributes.get(arg)
+        response = self.ec2_client.describe_vpcs(VpcIds=[vpc_id])
+        vpc_name = next(
+            (tag['Value'] for tag in response['Vpcs'][0]['Tags'] if tag['Key'] == 'Name'), None)
+        return vpc_name
+
+    def get_security_group_rules(self, attributes, arg):
+        key = attributes[arg]
+        result = {key: {}}
+        for k in ['type', 'description', 'from_port', 'to_port', 'protocol', 'cidr_blocks']:
+            val = attributes.get(k)
+            if isinstance(val, str):
+                val = val.replace('${', '$${')
+            result[key][k] = val
+        return result
+
     def elasticache_redis(self):
         self.hcl.prepare_folder(os.path.join("generated", "elasticache_redis"))
 
@@ -76,6 +109,9 @@ class ElasticacheRedis:
             'match_security_group': self.match_security_group,
             'auto_minor_version_upgrade': self.auto_minor_version_upgrade,
             'build_dict_var': self.build_dict_var,
+            'get_subnet_names': self.get_subnet_names,
+            'get_vpc_name': self.get_vpc_name,
+            'get_security_group_rules': self.get_security_group_rules,
         }
 
         self.hcl.refresh_state()
