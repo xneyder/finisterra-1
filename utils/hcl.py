@@ -1026,7 +1026,7 @@ class HCL:
                     # print("===========================")
 
         if attributes or deployed_resources:
-            name_field = config.get("name_field", "name")
+            name_field = config[resource['type']].get("name_field", "name")
             resoource_name = attributes.get(name_field, None)
             replace_name = True
             if not resoource_name:

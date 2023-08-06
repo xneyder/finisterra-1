@@ -3,6 +3,7 @@ aws_s3_bucket:
   # terraform_module: "../../../terraform-aws-modules/terraform-aws-s3-bucket"
   terraform_module: "github.com/finisterra-io/terraform-aws-s3-bucket.git?ref=main"
   terraform_module_version: "3.14.0"
+  name_field: bucket
   keys:
     - bucket
   target_resource_name: this
@@ -149,11 +150,15 @@ aws_s3_bucket:
       target_resource_name: this
       defaults:
         attach_policy: true
+        block_public_policy: false
+        ignore_public_acls: false
+        restrict_public_buckets: false
       fields:
         policy:
           function: aws_s3_bucket_policy_policy
           arg: policy
           multiline: true
+
         # attach_policy:
         #   function: is_field_set
         #   arg: policy

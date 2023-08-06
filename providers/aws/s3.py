@@ -47,7 +47,7 @@ class S3:
         self.schema_data = schema_data
         self.region = region
         self.aws_account_id = aws_account_id
-        
+
         self.workspace_id = workspace_id
         self.modules = modules
         self.hcl = HCL(self.schema_data, self.provider_name,
@@ -232,6 +232,9 @@ class S3:
 
         for bucket in all_buckets:
             bucket_name = bucket["Name"]
+
+            # if bucket_name != "allogy-gov-bundles" and bucket_name != "allogy-agw-050965680660-bundles":
+            #     continue
 
             # Retrieve the region of the bucket
             bucket_location_response = self.s3_session.get_bucket_location(

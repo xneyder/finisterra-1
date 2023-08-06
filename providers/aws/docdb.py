@@ -3,17 +3,18 @@ from utils.hcl import HCL
 
 
 class DocDb:
-    def __init__(self, docdb_client, ec2_client, script_dir, provider_name, schema_data, region, s3Bucket,
+    def __init__(self, docdb_client, ec2_client, kms_client, script_dir, provider_name, schema_data, region, s3Bucket,
                  dynamoDBTable, state_key, workspace_id, modules, aws_account_id):
         self.docdb_client = docdb_client
         self.ec2_client = ec2_client
+        self.kms_client = kms_client
         self.transform_rules = {}
         self.provider_name = provider_name
         self.script_dir = script_dir
         self.schema_data = schema_data
         self.region = region
         self.aws_account_id = aws_account_id
-        
+
         self.workspace_id = workspace_id
         self.modules = modules
         self.hcl = HCL(self.schema_data, self.provider_name,
@@ -26,6 +27,50 @@ class DocDb:
         for k, v in attributes.items():
             if v is not None:
                 result[key][k] = v
+        return result
+
+    def build_cluster_instances(self, attributes, arg):
+        key = attributes[arg]
+        result = {key: {}}
+        for k in ['identifier', 'apply_immediately', 'preferred_maintenance_window', 'instance_class', 'engine', 'auto_minor_version_upgrade', 'enable_performance_insights', 'promotion_tier', 'tags']:
+            val = attributes.get(k)
+            if isinstance(val, str):
+                val = val.replace('${', '$${')
+            result[key][k] = val
+        return result
+
+    def get_subnet_names(self, attributes, arg):
+
+        subnet_ids = attributes.get(arg)
+        subnet_names = []
+        for subnet_id in subnet_ids:
+            response = self.ec2_client.describe_subnets(SubnetIds=[subnet_id])
+
+            # Depending on how your subnets are tagged, you may need to adjust this line.
+            # This assumes you have a tag 'Name' for your subnet names.
+            subnet_name = next(
+                (tag['Value'] for tag in response['Subnets'][0]['Tags'] if tag['Key'] == 'Name'), None)
+
+            if subnet_name:
+                subnet_names.append(subnet_name)
+
+        return subnet_names
+
+    def get_vpc_name(self, attributes, arg):
+        vpc_id = attributes.get(arg)
+        response = self.ec2_client.describe_vpcs(VpcIds=[vpc_id])
+        vpc_name = next(
+            (tag['Value'] for tag in response['Vpcs'][0]['Tags'] if tag['Key'] == 'Name'), None)
+        return vpc_name
+
+    def get_security_group_rules(self, attributes, arg):
+        key = attributes[arg]
+        result = {key: {}}
+        for k in ['type', 'description', 'from_port', 'to_port', 'protocol', 'cidr_blocks']:
+            val = attributes.get(k)
+            if isinstance(val, str):
+                val = val.replace('${', '$${')
+            result[key][k] = val
         return result
 
     def match_security_group(self, parent_attributes, child_attributes):
@@ -58,6 +103,10 @@ class DocDb:
         functions = {
             'build_dict_var': self.build_dict_var,
             'match_security_group': self.match_security_group,
+            'build_cluster_instances': self.build_cluster_instances,
+            'get_subnet_names': self.get_subnet_names,
+            'get_vpc_name': self.get_vpc_name,
+            'get_security_group_rules': self.get_security_group_rules,
         }
 
         self.hcl.refresh_state()
@@ -90,6 +139,8 @@ class DocDb:
                     vpc_security_group_ids = [sg["VpcSecurityGroupId"]
                                               for sg in db_cluster.get("VpcSecurityGroups", [])]
                     self.aws_security_group(vpc_security_group_ids)
+                    if db_cluster.get("KmsKeyId", None):
+                        self.aws_kms_key(db_cluster.get("KmsKeyId", None))
 
     def aws_docdb_cluster_instance(self, db_cluster):
         print("Processing DocumentDB Cluster Instances...")
@@ -294,3 +345,38 @@ class DocDb:
                     }
                     self.hcl.process_resource(
                         "aws_docdb_global_cluster", cluster["GlobalClusterIdentifier"].replace("-", "_"), attributes)
+
+    def aws_kms_key(self, key_id):
+        print(f"  Processing KMS Key: {key_id}")
+        key_metadata = self.kms_client.describe_key(KeyId=key_id)[
+            "KeyMetadata"]
+
+        # Skip this key if it is not customer-managed
+        # if key_metadata["KeyManager"] != "CUSTOMER":
+        #     return
+
+        attributes = {
+            "id": key_id,
+            "key_id": key_id,
+            "arn": key_metadata["Arn"],
+            "creation_date": key_metadata["CreationDate"].isoformat(),
+            "enabled": key_metadata["Enabled"],
+            "key_usage": key_metadata["KeyUsage"],
+            "key_state": key_metadata["KeyState"],
+        }
+        self.hcl.process_resource(
+            "aws_kms_key", key_id.replace("-", "_"), attributes)
+        self.aws_kms_key_policy(key_id)
+
+    def aws_kms_key_policy(self, key_id):
+        print(f"  Processing KMS Key Policy for Key: {key_id}")
+        policy = self.kms_client.get_key_policy(
+            KeyId=key_id, PolicyName="default")["Policy"]
+
+        attributes = {
+            "id": key_id,
+            "key_id": key_id,
+            "policy": policy,
+        }
+        self.hcl.process_resource(
+            "aws_kms_key_policy", key_id.replace("-", "_"), attributes)
