@@ -5,12 +5,13 @@ import re
 
 
 class ECS:
-    def __init__(self, ecs_client, logs_client, appautoscaling_client, iam_client, script_dir, provider_name, schema_data, region, s3Bucket,
+    def __init__(self, ecs_client, logs_client, appautoscaling_client, iam_client, cloudmap_client, script_dir, provider_name, schema_data, region, s3Bucket,
                  dynamoDBTable, state_key, workspace_id, modules, aws_account_id):
         self.ecs_client = ecs_client
         self.logs_client = logs_client
         self.appautoscaling_client = appautoscaling_client
         self.iam_client = iam_client
+        self.cloudmap_client = cloudmap_client
         self.transform_rules = {
             "aws_ecs_task_definition": {
                 "hcl_json_multiline": {"container_definitions": True}
@@ -198,6 +199,40 @@ class ECS:
             return iam_role
         return None
 
+    def build_service_registries(self, attributes, arg):
+        result = {}
+        service_registries = attributes.get(arg, [])
+        if service_registries:
+            sg = service_registries[0]
+            # Reading the ARN
+            registry_arn = sg.get('registry_arn')
+
+            # Parsing the ARN to get service_id
+            service_id = registry_arn.split('/')[-1]
+
+            # Fetching service details using service_id
+            service = self.cloudmap_client.get_service(Id=service_id)[
+                'Service']
+
+            # Extracting service name from the service details
+            service_name = service['Name']
+
+            # Fetching namespace details using namespace_id
+            namespace = self.cloudmap_client.get_namespace(
+                Id=service['NamespaceId'])['Namespace']
+
+            # Extracting namespace name from the namespace details
+            namespace_name = namespace['Name']
+
+            # Adding the registry_name, namespace_name, port, container_name, and container_port to the result
+            result['registry_name'] = service_name
+            result['namespace_name'] = namespace_name
+            result['port'] = sg.get('port')
+            result['container_name'] = sg.get('container_name')
+            result['container_port'] = sg.get('container_port')
+
+        return result
+
     def ecs(self):
         self.hcl.prepare_folder(os.path.join("generated", "ecs"))
 
@@ -231,6 +266,7 @@ class ECS:
             'load_balancer': self.load_balancer,
             'join_path_role_name': self.join_path_role_name,
             'get_iam_role': self.get_iam_role,
+            'build_service_registries': self.build_service_registries,
         }
 
         self.hcl.module_hcl_code("terraform.tfstate", os.path.join(

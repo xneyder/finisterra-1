@@ -140,7 +140,8 @@ aws_ecs_service:
       field: service_connect_configuration
       type: map
     service_registries:
-      field: service_registries
+      function: build_service_registries
+      arg: service_registries
       type: map
     triggers:
       field: triggers
