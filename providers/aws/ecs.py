@@ -5,13 +5,15 @@ import re
 
 
 class ECS:
-    def __init__(self, ecs_client, logs_client, appautoscaling_client, iam_client, cloudmap_client, script_dir, provider_name, schema_data, region, s3Bucket,
+    def __init__(self, ecs_client, logs_client, appautoscaling_client, iam_client, cloudmap_client, elbv2_client, ec2_client, script_dir, provider_name, schema_data, region, s3Bucket,
                  dynamoDBTable, state_key, workspace_id, modules, aws_account_id):
         self.ecs_client = ecs_client
         self.logs_client = logs_client
         self.appautoscaling_client = appautoscaling_client
         self.iam_client = iam_client
         self.cloudmap_client = cloudmap_client
+        self.elbv2_client = elbv2_client
+        self.ec2_client = ec2_client
         self.transform_rules = {
             "aws_ecs_task_definition": {
                 "hcl_json_multiline": {"container_definitions": True}
@@ -167,8 +169,16 @@ class ECS:
     def load_balancer(self, attributes):
         result = {}
         load_balancer = attributes.get('load_balancer', [])
+
         for lb in load_balancer:
-            result[lb['target_group_arn'].split('/')[-1]] = lb
+            target_group_arn = lb['target_group_arn']
+            target_groups = self.elbv2_client.describe_target_groups(
+                TargetGroupArns=[target_group_arn]
+            )
+            target_group_name = target_groups['TargetGroups'][0]['TargetGroupName']
+            lb['target_group_name'] = target_group_name
+            del lb['target_group_arn']  # Remove the ARN from the result
+            result[target_group_name] = lb  # Use target_group_name as the key
         return result
 
     def tasks_iam_role_policies(self, attributes):
@@ -233,6 +243,21 @@ class ECS:
 
         return result
 
+    def join_ecs_service_to_aws_lb_target_group(self, parent_attributes, child_attributes):
+        target_group_name = child_attributes.get('name')
+        for lb in parent_attributes.get('load_balancer', []):
+            if lb.get('target_group_name') == target_group_name:
+                return True
+
+        return False
+
+    def get_vpc_name(self, attributes, arg):
+        vpc_id = attributes.get(arg)
+        response = self.ec2_client.describe_vpcs(VpcIds=[vpc_id])
+        vpc_name = next(
+            (tag['Value'] for tag in response['Vpcs'][0]['Tags'] if tag['Key'] == 'Name'), None)
+        return vpc_name
+
     def ecs(self):
         self.hcl.prepare_folder(os.path.join("generated", "ecs"))
 
@@ -267,10 +292,12 @@ class ECS:
             'join_path_role_name': self.join_path_role_name,
             'get_iam_role': self.get_iam_role,
             'build_service_registries': self.build_service_registries,
+            'join_ecs_service_to_aws_lb_target_group': self.join_ecs_service_to_aws_lb_target_group,
+            'get_vpc_name': self.get_vpc_name,
         }
 
         self.hcl.module_hcl_code("terraform.tfstate", os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), "aws_ecs_cluster.yaml"), functions, self.region, self.aws_account_id)
+            os.path.dirname(os.path.abspath(__file__)), "ecs.yaml"), functions, self.region, self.aws_account_id)
 
         # self.hcl.generate_hcl_file()
         self.json_plan = self.hcl.json_plan
@@ -405,9 +432,6 @@ class ECS:
 
                     for service in services:
                         service_name = service["serviceName"]
-
-                        # if service_name != "learning-media-service":  # TO REMOVE
-                        #     continue  # TO REMOVE
                         service_arn = service["serviceArn"]
                         id = cluster_arn.split("/")[1] + "/" + service_name
 
@@ -434,8 +458,13 @@ class ECS:
                             self.aws_ecs_task_definition(
                                 service['taskDefinition'])
 
-                else:
-                    print(f"Skipping cluster: {cluster['clusterName']}")
+                        # Process load balancer target groups if present
+                        for lb in service.get('loadBalancers', []):
+                            if lb.get('targetGroupArn'):
+                                self.aws_lb_target_group(lb['targetGroupArn'])
+
+            else:
+                print(f"Skipping cluster: {cluster['clusterName']}")
 
     def aws_ecs_task_definition(self, task_definition_arn):
         print(f"Processing ECS Task Definition: {task_definition_arn}...")
@@ -742,3 +771,26 @@ class ECS:
                     }
                     self.hcl.process_resource(
                         "aws_ecs_task_set", task_set_id.replace("-", "_"), attributes)
+
+    def aws_lb_target_group(self, target_group_arn):
+        print(
+            f"Processing Load Balancer Target Group with ARN: {target_group_arn}")
+
+        # Describe the specific target group using the provided ARN
+        response = self.elbv2_client.describe_target_groups(
+            TargetGroupArns=[target_group_arn]
+        )
+
+        for target_group in response["TargetGroups"]:
+            tg_arn = target_group["TargetGroupArn"]
+            tg_name = target_group["TargetGroupName"]
+            print(f"  Processing Load Balancer Target Group: {tg_name}")
+
+            attributes = {
+                "id": tg_arn,
+                "arn": tg_arn,
+                "name": tg_name,
+            }
+
+            self.hcl.process_resource(
+                "aws_lb_target_group", tg_name, attributes)

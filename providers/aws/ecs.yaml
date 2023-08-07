@@ -494,3 +494,33 @@ aws_ecs_service:
             autoscaling_scheduled_actions:
               function: autoscaling_scheduled_actions
               type: list
+    aws_lb_target_group:
+      join:
+        name:
+          join_function: join_ecs_service_to_aws_lb_target_group
+      target_resource_name: this
+      defaults:
+        create_target_group: true
+      fields:
+        target_group_name:
+          field: name
+          type: string
+        target_group_port:
+          field: port
+          type: number
+        target_group_protocol:
+          field: protocol
+          type: string
+        target_group_health_check:
+          field: health_check
+          type: map
+        target_group_stickiness:
+          field: stickiness
+          type: map
+        target_group_tags:
+          field: tags
+          type: map
+        vpc_name:
+          function: get_vpc_name
+          arg: vpc_id
+          type: string
