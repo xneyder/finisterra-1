@@ -174,7 +174,8 @@ aws_ecs_service:
     create_security_group:
       function: check_subnet_ids
     iam_role:
-      field: iam_role
+      function: get_iam_role
+      arg: iam_role
       type: string
 
   childs:
@@ -207,6 +208,7 @@ aws_ecs_service:
         iam_role_tags:
           field: tags
           type: map
+
       childs:
         aws_iam_role_policy_attachment:
           join:
@@ -359,6 +361,10 @@ aws_ecs_service:
             tasks_iam_role_tags:
               field: tags
               type: map
+            tasks_assume_role_policy:
+              field: assume_role_policy
+              type: string
+              multiline: true
           childs:
             aws_iam_role_policy_attachment:
               join:
@@ -419,6 +425,10 @@ aws_ecs_service:
             task_exec_iam_role_tags:
               field: tags
               type: map
+            task_exec_assume_role_policy:
+              field: assume_role_policy
+              type: string
+              multiline: true
           childs:
             aws_iam_role_policy_attachment:
               join:

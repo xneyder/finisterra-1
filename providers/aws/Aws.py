@@ -639,7 +639,10 @@ class Aws:
         route53_client = self.session.client(
             "route53", region_name=self.aws_region)
 
-        instance = Cloudmap(cloudmap_client, route53_client, self.script_dir, self.provider_name,
+        ec2_client = self.session.client(
+            "ec2", region_name=self.aws_region)
+
+        instance = Cloudmap(cloudmap_client, route53_client, ec2_client, self.script_dir, self.provider_name,
                             self.schema_data, self.aws_region, self.s3Bucket,
                             self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.cloudmap()

@@ -21,7 +21,7 @@ class ECS:
         self.schema_data = schema_data
         self.region = region
         self.aws_account_id = aws_account_id
-        
+
         self.workspace_id = workspace_id
         self.modules = modules
         self.hcl = HCL(self.schema_data, self.provider_name,
@@ -192,6 +192,12 @@ class ECS:
             return f"{path}{name}"
         return f"{name}"
 
+    def get_iam_role(self, attributes, arg):
+        iam_role = attributes.get(arg)
+        if iam_role and '/aws-service-role/' not in iam_role:
+            return iam_role
+        return None
+
     def ecs(self):
         self.hcl.prepare_folder(os.path.join("generated", "ecs"))
 
@@ -224,6 +230,7 @@ class ECS:
             'autoscaling_scheduled_actions': self.autoscaling_scheduled_actions,
             'load_balancer': self.load_balancer,
             'join_path_role_name': self.join_path_role_name,
+            'get_iam_role': self.get_iam_role,
         }
 
         self.hcl.module_hcl_code("terraform.tfstate", os.path.join(
@@ -419,6 +426,11 @@ class ECS:
         print(f"Processing IAM Role: {role_arn}...")
 
         role_name = role_arn.split('/')[-1]  # Extract role name from ARN
+
+        # Ignore AWS service-linked roles
+        if '/aws-service-role/' in role_arn:
+            print(f"Ignoring service-linked role: {role_name}")
+            return
 
         try:
             role = self.iam_client.get_role(RoleName=role_name)['Role']

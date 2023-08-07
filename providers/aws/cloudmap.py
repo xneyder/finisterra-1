@@ -3,10 +3,12 @@ from utils.hcl import HCL
 
 
 class Cloudmap:
-    def __init__(self, cloudmap_client, route53_client, script_dir, provider_name, schema_data, region, s3Bucket,
+    def __init__(self, cloudmap_client, route53_client, ec2_client, script_dir, provider_name, schema_data, region, s3Bucket,
                  dynamoDBTable, state_key, workspace_id, modules, aws_account_id):
         self.cloudmap_client = cloudmap_client
         self.route53_client = route53_client
+        self.ec2_client = ec2_client
+        self.aws_account_id = aws_account_id
         self.transform_rules = {
             "aws_service_discovery_service": {
                 "hcl_keep_fields": {"dns_records.type": "ALL", "dns_config.namespace_id": "ALL"},
@@ -23,17 +25,44 @@ class Cloudmap:
                        self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules)
         self.resource_list = {}
 
+    def get_vpc_name(self, attributes, arg):
+        vpc_id = attributes.get(arg)
+        response = self.ec2_client.describe_vpcs(VpcIds=[vpc_id])
+        vpc_name = next(
+            (tag['Value'] for tag in response['Vpcs'][0]['Tags'] if tag['Key'] == 'Name'), None)
+        return vpc_name
+
+    def build_service_names(self, attributes):
+        key = attributes.get("name")
+        result = {}
+        result[key] = {
+            'name': attributes.get("name"),
+            'description': attributes.get("description"),
+            'dns_records': attributes.get("dns_config", [{}])[0].get("dns_records", [{}]),
+            'routing_policy': attributes.get("dns_config", [{}])[0].get("routing_policy", ""),
+            'health_check_config': attributes.get("health_check_config"),
+            'health_check_custom_config': attributes.get("health_check_custom_config"),
+        }
+        return result
+
     def cloudmap(self):
         self.hcl.prepare_folder(os.path.join("generated", "cloudmap"))
 
-        self.aws_service_discovery_http_namespace()
-        self.aws_service_discovery_instance()
+        # self.aws_service_discovery_http_namespace()
+        # self.aws_service_discovery_instance()
         self.aws_service_discovery_private_dns_namespace()
-        self.aws_service_discovery_public_dns_namespace()
-        self.aws_service_discovery_service()
+        # self.aws_service_discovery_public_dns_namespace()
+
+        functions = {
+            'get_vpc_name': self.get_vpc_name,
+            'build_service_names': self.build_service_names,
+        }
 
         self.hcl.refresh_state()
-        self.hcl.generate_hcl_file()
+
+        self.hcl.module_hcl_code("terraform.tfstate", os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), "cloudmap.yaml"), functions, self.region, self.aws_account_id)
+
         self.json_plan = self.hcl.json_plan
 
     def aws_service_discovery_http_namespace(self):
@@ -116,6 +145,8 @@ class Cloudmap:
                     self.hcl.process_resource(
                         "aws_service_discovery_private_dns_namespace", namespace_id.replace("-", "_"), attributes)
 
+                    self.aws_service_discovery_service(namespace_id)
+
     def aws_service_discovery_public_dns_namespace(self):
         print("Processing AWS Service Discovery Public DNS Namespaces...")
 
@@ -138,11 +169,21 @@ class Cloudmap:
                     self.hcl.process_resource(
                         "aws_service_discovery_public_dns_namespace", namespace_id.replace("-", "_"), attributes)
 
-    def aws_service_discovery_service(self):
+    def aws_service_discovery_service(self, namespace_id):
         print("Processing AWS Service Discovery Services...")
 
         paginator = self.cloudmap_client.get_paginator("list_services")
-        for page in paginator.paginate():
+        for page in paginator.paginate(
+            Filters=[
+                {
+                    'Name': 'NAMESPACE_ID',
+                    'Values': [
+                        namespace_id,
+                    ],
+                    'Condition': 'EQ'
+                },
+            ]
+        ):
             for service in page["Services"]:
                 service_id = service["Id"]
                 sd_service = self.cloudmap_client.get_service(Id=service_id)[
@@ -152,19 +193,7 @@ class Cloudmap:
 
                 attributes = {
                     "id": service_id,
-                    # "arn": sd_service["Arn"],
-                    # "name": sd_service["Name"],
-                    # "namespace_id": sd_service["NamespaceId"],
                 }
-
-                # if "DnsConfig" in sd_service:
-                #     attributes["dns_config"] = sd_service["DnsConfig"]
-
-                # if "HealthCheckConfig" in sd_service:
-                #     attributes["health_check_config"] = sd_service["HealthCheckConfig"]
-
-                # if "HealthCheckCustomConfig" in sd_service:
-                #     attributes["health_check_custom_config"] = sd_service["HealthCheckCustomConfig"]
 
                 self.hcl.process_resource(
                     "aws_service_discovery_service", service_id.replace("-", "_"), attributes)
