@@ -5,8 +5,11 @@ import json
 
 class IAM:
     def __init__(self, iam_client, script_dir, provider_name, schema_data, region, s3Bucket,
-                 dynamoDBTable, state_key):
+                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id):
         self.iam_client = iam_client
+        self.aws_account_id = aws_account_id
+        self.workspace_id = workspace_id
+        self.modules = modules
         self.transform_rules = {
             "aws_iam_group_policy": {
                 "hcl_json_multiline": {"policy": True}
@@ -39,40 +42,45 @@ class IAM:
         self.schema_data = schema_data
         self.region = region
         self.hcl = HCL(self.schema_data, self.provider_name,
-                       self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key)
+                       self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules)
         self.resource_list = {}
 
     def iam(self):
         self.hcl.prepare_folder(os.path.join("generated", "iam"))
 
-        self.aws_iam_access_key()
-        self.aws_iam_account_alias()
-        self.aws_iam_account_password_policy()
-        self.aws_iam_group()
-        self.aws_iam_group_policy()
-        self.aws_iam_instance_profile()
-        self.aws_iam_openid_connect_provider()
         self.aws_iam_policy()
-        # self.aws_iam_policy_attachment() #Is a dangerous resource, can delete data conflicts with aws_iam_role_policy_attachment, aws_iam_user_policy_attachment, aws_iam_group_policy_attachment
-        self.aws_iam_role()
-        self.aws_iam_role_policy()
-        # self.aws_iam_saml_provider() #We do not have access to the xml file generated
-        self.aws_iam_server_certificate()
-        self.aws_iam_service_linked_role()
-        self.aws_iam_service_specific_credential()
-        self.aws_iam_signing_certificate()
-        self.aws_iam_user()
-        self.aws_iam_user_group_membership()
-        self.aws_iam_user_login_profile()
-        self.aws_iam_user_policy()
-        self.aws_iam_user_policy_attachment()
-        self.aws_iam_user_ssh_key()
-        self.aws_iam_virtual_mfa_device()
-        self.aws_iam_group_policy_attachment()
-        self.aws_iam_role_policy_attachment()
+        # self.aws_iam_access_key()
+        # self.aws_iam_account_alias()
+        # self.aws_iam_account_password_policy()
+        # self.aws_iam_group()
+        # self.aws_iam_group_policy()
+        # self.aws_iam_instance_profile()
+        # self.aws_iam_openid_connect_provider()
+        # # self.aws_iam_policy_attachment() #Is a dangerous resource, can delete data conflicts with aws_iam_role_policy_attachment, aws_iam_user_policy_attachment, aws_iam_group_policy_attachment
+        # self.aws_iam_role()
+        # self.aws_iam_role_policy()
+        # # self.aws_iam_saml_provider() #We do not have access to the xml file generated
+        # self.aws_iam_server_certificate()
+        # self.aws_iam_service_linked_role()
+        # self.aws_iam_service_specific_credential()
+        # self.aws_iam_signing_certificate()
+        # self.aws_iam_user()
+        # self.aws_iam_user_group_membership()
+        # self.aws_iam_user_login_profile()
+        # self.aws_iam_user_policy()
+        # self.aws_iam_user_policy_attachment()
+        # self.aws_iam_user_ssh_key()
+        # self.aws_iam_virtual_mfa_device()
+        # self.aws_iam_group_policy_attachment()
+        # self.aws_iam_role_policy_attachment()
 
         self.hcl.refresh_state()
-        self.hcl.generate_hcl_file()
+
+        functions = {}
+
+        self.hcl.module_hcl_code("terraform.tfstate", os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), "iam.yaml"), functions, self.region, self.aws_account_id)
+
         self.json_plan = self.hcl.json_plan
 
     def aws_iam_access_key(self):
@@ -232,15 +240,17 @@ class IAM:
             for policy in page["Policies"]:
                 policy_name = policy["PolicyName"]
                 policy_arn = policy["Arn"]
+
+                # Ignore AWS managed policies and policies with '/service-role/' in the ARN
+                if policy_arn.startswith('arn:aws:iam::aws:policy/') or '/service-role/' in policy_arn:
+                    continue
+
                 print(f"  Processing IAM Policy: {policy_name}")
 
                 attributes = {
                     "id": policy_arn,
                     "arn": policy_arn,
                     "name": policy_name,
-                    # "description": policy["Description"],
-                    # "path": policy["Path"],
-                    # "policy": self.iam_client.get_policy_version(PolicyArn=policy_arn, VersionId=policy["DefaultVersionId"])["PolicyVersion"]["Document"],
                 }
                 self.hcl.process_resource(
                     "aws_iam_policy", policy_name, attributes)
