@@ -77,6 +77,7 @@ aws_ecs_service:
     create_task_definition: false
     enable_autoscaling: false
     create_iam_role: false
+    create_target_group: false
   fields:
     name:
       field: name
