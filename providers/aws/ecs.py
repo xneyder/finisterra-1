@@ -258,6 +258,42 @@ class ECS:
             (tag['Value'] for tag in response['Vpcs'][0]['Tags'] if tag['Key'] == 'Name'), None)
         return vpc_name
 
+    def join_aws_lb_target_group_to_aws_lb_listener_rule(self, parent_attributes, child_attributes):
+        target_group_name = parent_attributes.get('name')
+        for action in child_attributes.get('action', []):
+            if action.get('target_group_name') == target_group_name:
+                return True
+        return False
+
+    def join_aws_lb_target_group_to_aws_lb_listener(self, parent_attributes, child_attributes):
+        target_group_name = parent_attributes.get('name')
+        for action in child_attributes.get('default_action', []):
+            if action.get('target_group_name') == target_group_name:
+                return True
+        return False
+
+    def get_lb_name(self, attributes, arg):
+        lb_arn = attributes.get(arg)
+        response = self.elbv2_client.describe_load_balancers(
+            LoadBalancerArns=[lb_arn])
+        lb_name = response['LoadBalancers'][0]['LoadBalancerName']
+        return lb_name
+
+    def get_listener_port(self, attributes, arg):
+        listener_arn = attributes.get(arg)
+        response = self.elbv2_client.describe_listeners(
+            ListenerArns=[listener_arn])
+        listener_port = response['Listeners'][0]['Port']
+        return listener_port
+
+    def get_listener_rule_lb_name(self, attributes, arg):
+        listener_rule_arn = attributes.get(arg)
+        response = self.elbv2_client.describe_rules(
+            ListenerArn=listener_rule_arn)
+        lb_name = response['Rules'][0]['Actions'][0]['TargetGroupArn'].split(
+            '/')[-1]
+        return lb_name
+
     def ecs(self):
         self.hcl.prepare_folder(os.path.join("generated", "ecs"))
 
@@ -294,6 +330,9 @@ class ECS:
             'build_service_registries': self.build_service_registries,
             'join_ecs_service_to_aws_lb_target_group': self.join_ecs_service_to_aws_lb_target_group,
             'get_vpc_name': self.get_vpc_name,
+            'join_aws_lb_target_group_to_aws_lb_listener_rule': self.join_aws_lb_target_group_to_aws_lb_listener_rule,
+            'join_aws_lb_target_group_to_aws_lb_listener': self.join_aws_lb_target_group_to_aws_lb_listener,
+            'get_lb_name': self.get_lb_name,
         }
 
         self.hcl.module_hcl_code("terraform.tfstate", os.path.join(
@@ -432,6 +471,10 @@ class ECS:
 
                     for service in services:
                         service_name = service["serviceName"]
+
+                        if service_name != "eureka-discovery-service" and service_name != "spring-config-server":
+                            continue
+
                         service_arn = service["serviceArn"]
                         id = cluster_arn.split("/")[1] + "/" + service_name
 
@@ -794,3 +837,73 @@ class ECS:
 
             self.hcl.process_resource(
                 "aws_lb_target_group", tg_name, attributes)
+            # Call the aws_lb_listener_rule function with the target_group_arn
+            self.aws_lb_listener_rule(target_group_arn)
+            self.aws_lb_listener(target_group_arn)
+
+    def aws_lb_listener_rule(self, target_group_arn):
+        print("Processing Load Balancer Listener Rules for Target Group ARN:",
+              target_group_arn)
+
+        load_balancers = self.elbv2_client.describe_load_balancers()[
+            "LoadBalancers"]
+
+        for lb in load_balancers:
+            lb_arn = lb["LoadBalancerArn"]
+            # print(f"Processing Load Balancer: {lb_arn}")
+
+            listeners = self.elbv2_client.describe_listeners(
+                LoadBalancerArn=lb_arn)["Listeners"]
+
+            for listener in listeners:
+                listener_arn = listener["ListenerArn"]
+                # print(f"  Processing Load Balancer Listener: {listener_arn}")
+
+                rules = self.elbv2_client.describe_rules(
+                    ListenerArn=listener_arn)["Rules"]
+
+                for rule in rules:
+                    # Skip rules that don't match the target group ARN
+                    if not any(action.get('TargetGroupArn') == target_group_arn for action in rule['Actions']):
+                        continue
+
+                    rule_arn = rule["RuleArn"]
+                    rule_id = rule_arn.split("/")[-1]
+                    if len(rule["Conditions"]) == 0:
+                        continue
+                    print(
+                        f"    Processing Load Balancer Listener Rule: {rule_id}")
+
+                    attributes = {
+                        "id": rule_arn,
+                        "condition": rule["Conditions"],
+                    }
+
+                    self.hcl.process_resource(
+                        "aws_lb_listener_rule", rule_id, attributes)
+
+    def aws_lb_listener(self, target_group_arn):
+        print("Processing Load Balancer Listeners for Target Group ARN:",
+              target_group_arn)
+
+        # Get all Load Balancers
+        load_balancer_arns = [lb["LoadBalancerArn"]
+                              for lb in self.elbv2_client.describe_load_balancers()["LoadBalancers"]]
+
+        # Get all Listeners for the Load Balancers
+        for lb_arn in load_balancer_arns:
+            paginator = self.elbv2_client.get_paginator("describe_listeners")
+            for page in paginator.paginate(LoadBalancerArn=lb_arn):
+                for listener in page["Listeners"]:
+                    # Check if the target group ARN is in the default actions
+                    for action in listener['DefaultActions']:
+                        if action['Type'] == 'forward' and any(tg['TargetGroupArn'] == target_group_arn for tg in action['ForwardConfig']['TargetGroups']):
+                            listener_arn = listener["ListenerArn"]
+                            print(f"  Processing Listener: {listener_arn}")
+
+                            attributes = {
+                                "id": listener_arn,
+                            }
+
+                            self.hcl.process_resource(
+                                "aws_lb_listener", listener_arn.split("/")[-1], attributes)
