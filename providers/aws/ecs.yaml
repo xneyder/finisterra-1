@@ -64,7 +64,7 @@ aws_ecs_service:
   # terraform_module: "../../../terraform-aws-modules/terraform-aws-ecs/modules/service/"
   terraform_module: "github.com/finisterra-io/terraform-aws-ecs//modules/service?ref=main"
   terraform_module_version: "5.2.0"
-  dict_to_hcl: true
+  # dict_to_hcl: true
   join:
     arn:
       function: aws_ecs_service_cluster_arn
@@ -531,22 +531,15 @@ aws_ecs_service:
             name:
               join_function: join_aws_lb_target_group_to_aws_lb_listener_rule
           target_resource_name: this
+          second_index:
+            function: get_id_from_arn
+            arg: arn
           defaults:
             create_aws_lb_listener_rule: true
           fields:
-            listener_rule_priority:
-              field: priority
-              type: number
-            listener_rule_conditions:
-              field: condition
+            listener_rules:
+              function: get_listener_rules
               type: map
-            listener_rule_tags:
-              field: tags
-              type: map
-            listener_rule_port:
-              function: get_listener_port
-              arg: listener_arn
-              type: string
             listener_rule_lb_name:
               function: get_listener_rule_lb_name
               arg: listener_arn
@@ -558,18 +551,12 @@ aws_ecs_service:
           target_resource_name: this
           defaults:
             create_aws_lb_listener: true
+          second_index:
+            function: get_id_from_arn
+            arg: arn
           fields:
-            listener_port:
-              field: port
-              type: number
-            listener_protocol:
-              field: protocol
-              type: string
-            listener_default_action:
-              field: default_action
-              type: map
-            listener_tags:
-              field: tags
+            listeners:
+              function: get_listeners
               type: map
             lb_name:
               function: get_lb_name

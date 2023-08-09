@@ -259,16 +259,16 @@ class ECS:
         return vpc_name
 
     def join_aws_lb_target_group_to_aws_lb_listener_rule(self, parent_attributes, child_attributes):
-        target_group_name = parent_attributes.get('name')
+        target_group_arn = parent_attributes.get('arn')
         for action in child_attributes.get('action', []):
-            if action.get('target_group_name') == target_group_name:
+            if action.get('target_group_arn') == target_group_arn:
                 return True
         return False
 
     def join_aws_lb_target_group_to_aws_lb_listener(self, parent_attributes, child_attributes):
-        target_group_name = parent_attributes.get('name')
+        target_group_arn = parent_attributes.get('arn')
         for action in child_attributes.get('default_action', []):
-            if action.get('target_group_name') == target_group_name:
+            if action.get('target_group_arn') == target_group_arn:
                 return True
         return False
 
@@ -286,13 +286,56 @@ class ECS:
         listener_port = response['Listeners'][0]['Port']
         return listener_port
 
+    # def get_listener_rule_lb_name(self, attributes, arg):
+    #     listener_rule_arn = attributes.get(arg)
+    #     print("================")
+    #     print(listener_rule_arn)
+
+    #     response = self.elbv2_client.describe_rules(
+    #         ListenerArn=listener_rule_arn)
+    #     print(response)
+    #     print("================")
+    #     lb_name = response['Rules'][0]['Actions'][0]['TargetGroupArn'].split(
+    #         '/')[-1]
+    #     return lb_name
+
     def get_listener_rule_lb_name(self, attributes, arg):
-        listener_rule_arn = attributes.get(arg)
-        response = self.elbv2_client.describe_rules(
-            ListenerArn=listener_rule_arn)
-        lb_name = response['Rules'][0]['Actions'][0]['TargetGroupArn'].split(
-            '/')[-1]
+        listener_arn = attributes.get(arg)
+
+        # Describe the listener to get the load balancer ARN
+        response_listener = self.elbv2_client.describe_listeners(ListenerArns=[
+                                                                 listener_arn])
+        lb_arn = response_listener['Listeners'][0]['LoadBalancerArn']
+
+        # Describe the load balancer to get its name
+        response_lb = self.elbv2_client.describe_load_balancers(
+            LoadBalancerArns=[lb_arn])
+        lb_name = response_lb['LoadBalancers'][0]['LoadBalancerName']
+
         return lb_name
+
+    def get_listeners(self, attributes):
+        result = {}
+        key = attributes.get('arn').split('/')[-1]
+        result[key] = {}
+        result[key]['port'] = attributes.get('port')
+        result[key]['protocol'] = attributes.get('protocol')
+        result[key]['tags'] = attributes.get('tags')
+        return result
+
+    def get_listener_rules(self, attributes):
+        result = {}
+        key = attributes.get('arn').split('/')[-1]
+        result[key] = {}
+        result[key]['priority'] = attributes.get('priority')
+        result[key]['conditions'] = attributes.get('condition')
+        result[key]['port'] = self.get_listener_port(
+            attributes, 'listener_arn')
+        return result
+
+    def get_id_from_arn(self, attributes, arg):
+        arn = attributes.get(arg)
+        return arn.split('/')[-1]
 
     def ecs(self):
         self.hcl.prepare_folder(os.path.join("generated", "ecs"))
@@ -333,6 +376,10 @@ class ECS:
             'join_aws_lb_target_group_to_aws_lb_listener_rule': self.join_aws_lb_target_group_to_aws_lb_listener_rule,
             'join_aws_lb_target_group_to_aws_lb_listener': self.join_aws_lb_target_group_to_aws_lb_listener,
             'get_lb_name': self.get_lb_name,
+            'get_listeners': self.get_listeners,
+            'get_listener_rules': self.get_listener_rules,
+            'get_id_from_arn': self.get_id_from_arn,
+            'get_listener_rule_lb_name': self.get_listener_rule_lb_name,
         }
 
         self.hcl.module_hcl_code("terraform.tfstate", os.path.join(
@@ -472,8 +519,8 @@ class ECS:
                     for service in services:
                         service_name = service["serviceName"]
 
-                        if service_name != "eureka-discovery-service" and service_name != "spring-config-server":
-                            continue
+                        # if service_name != "eureka-discovery-service" and service_name != "spring-config-server":
+                        #     continue
 
                         service_arn = service["serviceArn"]
                         id = cluster_arn.split("/")[1] + "/" + service_name
