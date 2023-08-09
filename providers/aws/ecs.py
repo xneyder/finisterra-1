@@ -537,8 +537,8 @@ class ECS:
                     for service in services:
                         service_name = service["serviceName"]
 
-                        if service_name != "eureka-discovery-service" and service_name != "spring-config-server":
-                            continue
+                        # if service_name != "eureka-discovery-service" and service_name != "spring-config-server":
+                        #     continue
 
                         service_arn = service["serviceArn"]
                         id = cluster_arn.split("/")[1] + "/" + service_name
