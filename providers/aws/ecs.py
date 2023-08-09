@@ -5,7 +5,7 @@ import re
 
 
 class ECS:
-    def __init__(self, ecs_client, logs_client, appautoscaling_client, iam_client, cloudmap_client, elbv2_client, ec2_client, script_dir, provider_name, schema_data, region, s3Bucket,
+    def __init__(self, ecs_client, logs_client, appautoscaling_client, iam_client, cloudmap_client, elbv2_client, ec2_client, acm_client, script_dir, provider_name, schema_data, region, s3Bucket,
                  dynamoDBTable, state_key, workspace_id, modules, aws_account_id):
         self.ecs_client = ecs_client
         self.logs_client = logs_client
@@ -14,6 +14,7 @@ class ECS:
         self.cloudmap_client = cloudmap_client
         self.elbv2_client = elbv2_client
         self.ec2_client = ec2_client
+        self.acm_client = acm_client
         self.transform_rules = {
             "aws_ecs_task_definition": {
                 "hcl_json_multiline": {"container_definitions": True}
@@ -314,12 +315,29 @@ class ECS:
 
         return lb_name
 
+    def get_domain_name(self, certificate_arn):
+
+        # Describe the certificate
+        response = self.acm_client.describe_certificate(
+            CertificateArn=certificate_arn)
+
+        # Extract the certificate name (or domain name)
+        domain_name = response['Certificate']['DomainName']
+
+        return domain_name
+
     def get_listeners(self, attributes):
         result = {}
         key = attributes.get('arn').split('/')[-1]
         result[key] = {}
         result[key]['port'] = attributes.get('port')
         result[key]['protocol'] = attributes.get('protocol')
+
+        certificate_arn = attributes.get('certificate_arn')
+        if certificate_arn:
+            result[key]['domain_name'] = self.get_domain_name(
+                certificate_arn)
+
         result[key]['tags'] = attributes.get('tags')
         return result
 
@@ -519,8 +537,8 @@ class ECS:
                     for service in services:
                         service_name = service["serviceName"]
 
-                        # if service_name != "eureka-discovery-service" and service_name != "spring-config-server":
-                        #     continue
+                        if service_name != "eureka-discovery-service" and service_name != "spring-config-server":
+                            continue
 
                         service_arn = service["serviceArn"]
                         id = cluster_arn.split("/")[1] + "/" + service_name
