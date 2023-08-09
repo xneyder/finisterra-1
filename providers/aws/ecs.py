@@ -538,6 +538,7 @@ class ECS:
                         service_name = service["serviceName"]
 
                         # if service_name != "eureka-discovery-service" and service_name != "spring-config-server":
+                        # if service_name != "spring-config-server":
                         #     continue
 
                         service_arn = service["serviceArn"]
