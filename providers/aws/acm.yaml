@@ -33,20 +33,20 @@ aws_acm_certificate:
     tags:
       field: tags
       type: map
-  childs:
-    aws_acm_certificate_validation:
-      join:
-        arn:
-          field: certificate_arn
-      target_resource_name: this
-      defaults:
-        validate_certificate: true
-        wait_for_validation: true
-      fields:
-        validation_record_fqdns:
-          field: validation_record_fqdns
-          type: list
-        validation_timeout:
-          function: get_field_from_attrs
-          arg: timeouts.validation_timeout
-          type: string
+  # childs:
+  #   aws_acm_certificate_validation:
+  #     join:
+  #       arn:
+  #         field: certificate_arn
+  #     target_resource_name: this
+  #     defaults:
+  #       validate_certificate: true
+  #       wait_for_validation: true
+  #     fields:
+  #       validation_record_fqdns:
+  #         field: validation_record_fqdns
+  #         type: list
+  #       validation_timeout:
+  #         function: get_field_from_attrs
+  #         arg: timeouts.validation_timeout
+  #         type: string
