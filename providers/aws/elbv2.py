@@ -3,9 +3,11 @@ from utils.hcl import HCL
 
 
 class ELBV2:
-    def __init__(self, elbv2_client, script_dir, provider_name, schema_data, region, s3Bucket,
+    def __init__(self, elbv2_client, ec2_client, script_dir, provider_name, schema_data, region, s3Bucket,
                  dynamoDBTable, state_key, workspace_id, modules, aws_account_id):
         self.elbv2_client = elbv2_client
+        self.ec2_client = ec2_client
+        self.aws_account_id = aws_account_id
         self.transform_rules = {
             "aws_lb_target_group": {
                 "hcl_drop_blocks": {"target_failover": {"on_deregistration": None}},
@@ -32,18 +34,149 @@ class ELBV2:
                        self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules)
         self.resource_list = {}
 
+    def match_security_group(self, parent_attributes, child_attributes):
+        child_security_group_id = child_attributes.get("id", None)
+        for security_group in parent_attributes.get("security_groups", []):
+            if security_group == child_security_group_id:
+                return True
+        return False
+
+    def get_vpc_name(self, attributes, arg):
+        vpc_id = attributes.get(arg)
+        response = self.ec2_client.describe_vpcs(VpcIds=[vpc_id])
+        vpc_name = next(
+            (tag['Value'] for tag in response['Vpcs'][0]['Tags'] if tag['Key'] == 'Name'), None)
+        return vpc_name
+
+    def get_security_group_rules(self, attributes, arg):
+        key = attributes[arg]
+        result = {key: {}}
+        for k in ['type', 'description', 'from_port', 'to_port', 'protocol', 'cidr_blocks']:
+            val = attributes.get(k)
+            if isinstance(val, str):
+                val = val.replace('${', '$${')
+            result[key][k] = val
+        return result
+
+    def get_field_from_attrs(self, attributes, arg):
+        keys = arg.split(".")
+        result = attributes
+        for key in keys:
+            if isinstance(result, list):
+                result = [sub_result.get(key, None) if isinstance(
+                    sub_result, dict) else None for sub_result in result]
+                if len(result) == 1:
+                    result = result[0]
+            else:
+                result = result.get(key, None)
+            if result is None:
+                return None
+        return result
+
+    def get_security_group_names(self, attributes, arg):
+        security_group_ids = attributes.get(arg)
+        security_group_names = []
+
+        for security_group_id in security_group_ids:
+            response = self.ec2_client.describe_security_groups(
+                GroupIds=[security_group_id])
+            security_group = response['SecurityGroups'][0]
+
+            security_group_name = security_group.get('GroupName')
+            # Just to be extra safe, if GroupName is somehow missing, fall back to the security group ID
+            if not security_group_name:
+                security_group_name = security_group_id
+
+            security_group_names.append(security_group_name)
+
+        return security_group_names
+
+    def get_listeners(self, attributes):
+        listeners = []
+        for listener in attributes.get('listener', []):
+            # use boto3 to get the domain of the certificate from the arn
+            domain_name = ""
+            if listener.get('certificate_arn'):
+                response = self.elbv2_client.describe_listeners(
+                    ListenerArns=[listener.get('certificate_arn')])
+                domain_name = response['Listeners'][0]['Certificates'][0]['DomainName']
+
+            listener_data = {
+                'port': listener.get('port'),
+                'protocol': listener.get('protocol'),
+                'ssl_policy': listener.get('ssl_policy'),
+                'domain_name': domain_name,
+                'additional_cert_names': listener.get('additional_cert_names'),
+                'listener_fixed_response': listener.get('listener_fixed_response'),
+                'listener_additional_tags': listener.get('listener_additional_tags'),
+            }
+            listeners.append(listener_data)
+        return listeners
+
+    def get_listener_certificate(self, attributes):
+        domain_name = ""
+        if attributes.get('certificate_arn'):
+            # Use the ACM client
+            response = self.acm_client.describe_certificate(
+                CertificateArn=attributes.get('certificate_arn')
+            )
+            domain_name = response['Certificate']['DomainName']
+        return [domain_name]
+
+    def get_domain_name(self, attributes):
+        domain_name = ""
+        if attributes.get('certificate_arn'):
+            # Use the ACM client
+            response = self.acm_client.describe_certificate(
+                CertificateArn=attributes.get('certificate_arn')
+            )
+            domain_name = response['Certificate']['DomainName']
+        return domain_name
+
+    def get_subnet_names(self, attributes, arg):
+        subnet_ids = attributes.get(arg)
+        subnet_names = []
+        for subnet_id in subnet_ids:
+            response = self.ec2_client.describe_subnets(SubnetIds=[subnet_id])
+
+            # Depending on how your subnets are tagged, you may need to adjust this line.
+            # This assumes you have a tag 'Name' for your subnet names.
+            subnet_name = next(
+                (tag['Value'] for tag in response['Subnets'][0]['Tags'] if tag['Key'] == 'Name'), None)
+
+            if subnet_name:
+                subnet_names.append(subnet_name)
+
+        return subnet_names
+
     def elbv2(self):
         self.hcl.prepare_folder(os.path.join("generated", "elbv2"))
 
         self.aws_lb()
-        self.aws_lb_listener()
-        self.aws_lb_listener_certificate()
-        self.aws_lb_listener_rule()
-        self.aws_lb_target_group()
-        self.aws_lb_target_group_attachment()
+        # self.aws_lb_listener()
+        # self.aws_lb_listener_certificate()
+        # self.aws_lb_listener_rule()
+        # self.aws_lb_target_group()
+        # self.aws_lb_target_group_attachment()
+
+        functions = {
+            'match_security_group': self.match_security_group,
+            'get_vpc_name': self.get_vpc_name,
+            'get_security_group_rules': self.get_security_group_rules,
+            'get_field_from_attrs': self.get_field_from_attrs,
+            'get_security_group_names': self.get_security_group_names,
+            'get_subnet_names': self.get_subnet_names,
+            'get_listeners': self.get_listeners,
+            'get_listener_certificate': self.get_listener_certificate,
+            'get_domain_name': self.get_domain_name,
+        }
 
         self.hcl.refresh_state()
-        self.hcl.generate_hcl_file()
+
+        self.hcl.module_hcl_code("terraform.tfstate",
+                                 os.path.join(os.path.dirname(os.path.abspath(__file__)), "elbv2.yaml"), functions, self.region, self.aws_account_id)
+
+        exit()
         self.json_plan = self.hcl.json_plan
 
     def aws_lb(self):
@@ -52,6 +185,7 @@ class ELBV2:
         load_balancers = self.elbv2_client.describe_load_balancers()[
             "LoadBalancers"]
 
+        load_balancer_arns = []
         for lb in load_balancers:
             lb_arn = lb["LoadBalancerArn"]
             lb_name = lb["LoadBalancerName"]
@@ -65,75 +199,137 @@ class ELBV2:
             }
 
             self.hcl.process_resource("aws_lb", lb_name, attributes)
+            load_balancer_arns.append(lb_arn)
 
-    def aws_lb_listener(self):
+            # Extract the security group IDs associated with this load balancer
+            security_group_ids = lb.get("SecurityGroups", [])
+
+            # Call the aws_security_group function for each security group ID
+            if security_group_ids:
+                self.aws_security_group(security_group_ids)
+
+        # Call the other functions for listeners and listener certificates
+        listener_arns = self.aws_lb_listener(load_balancer_arns)
+        self.aws_lb_listener_certificate(listener_arns)
+
+    def aws_lb_listener(self, load_balancer_arns):
         print("Processing Load Balancer Listeners...")
-        load_balancer_arns = set()
-        listener_arns = set()
 
-        paginator = self.elbv2_client.get_paginator("describe_load_balancers")
-        for page in paginator.paginate():
-            for lb in page["LoadBalancers"]:
-                load_balancer_arns.add(lb["LoadBalancerArn"])
+        listener_arns = []
 
         for lb_arn in load_balancer_arns:
             paginator = self.elbv2_client.get_paginator("describe_listeners")
             for page in paginator.paginate(LoadBalancerArn=lb_arn):
                 for listener in page["Listeners"]:
-                    listener_arns.add(listener["ListenerArn"])
+                    has_target_group = False
+                    for action in listener.get('DefaultActions', []):
+                        if action['Type'] == 'forward' and 'TargetGroupArn' in action:
+                            has_target_group = True
+                            break
+
+                    # If the listener has a target group attached, ignore and continue
+                    if has_target_group:
+                        continue
+
+                    listener_arn = listener["ListenerArn"]
+                    listener_arns.append(listener_arn)
+
+                    print(f"  Processing Listener: {listener_arn}")
+
+                    attributes = {
+                        "id": listener_arn,
+                        # ... Other attributes can be uncommented as needed ...
+                    }
+
+                    self.hcl.process_resource(
+                        "aws_lb_listener", listener_arn.split("/")[-1], attributes)
+
+        return listener_arns
+
+    def aws_lb_listener_certificate(self, listener_arns):
+        print("Processing Load Balancer Listener Certificates...")
 
         for listener_arn in listener_arns:
-            print(f"  Processing Listener: {listener_arn}")
+            listener_certificates = self.elbv2_client.describe_listener_certificates(
+                ListenerArn=listener_arn)
+
+            if "Certificates" in listener_certificates:
+                certificates = listener_certificates["Certificates"]
+
+                for cert in certificates:
+                    cert_arn = cert["CertificateArn"]
+                    cert_id = cert_arn.split("/")[-1]
+                    print(
+                        f"  Processing Load Balancer Listener Certificate: {cert_id} for Listener ARN: {listener_arn}")
+
+                    id = listener_arn + "_" + cert_arn
+                    attributes = {
+                        "id": id,
+                        "arn": cert_arn,
+                        "listener_arn": listener_arn,
+                    }
+
+                    self.hcl.process_resource(
+                        "aws_lb_listener_certificate", id, attributes)
+            else:
+                print(
+                    f"No certificates found for Listener ARN: {listener_arn}")
+
+    def aws_security_group(self, security_group_ids):
+        print("Processing Security Groups...")
+
+        # Create a response dictionary to collect responses for all security groups
+        response = self.ec2_client.describe_security_groups(
+            GroupIds=security_group_ids
+        )
+
+        for security_group in response["SecurityGroups"]:
+            print(
+                f"  Processing Security Group: {security_group['GroupName']}")
 
             attributes = {
-                "id": listener_arn,
-                # "load_balancer_arn": listener_arn.split("/")[-2],
-                # "port": self.elbv2_client.describe_listeners(ListenerArns=[listener_arn])["Listeners"][0]["Port"],
-                # "protocol": self.elbv2_client.describe_listeners(ListenerArns=[listener_arn])["Listeners"][0]["Protocol"],
-                # "ssl_policy": self.elbv2_client.describe_listeners(ListenerArns=[listener_arn]).get("SslPolicy", ""),
-                # "default_actions": self.elbv2_client.describe_listeners(ListenerArns=[listener_arn])["Listeners"][0]["DefaultActions"],
+                "id": security_group["GroupId"],
+                "name": security_group["GroupName"],
+                "description": security_group.get("Description", ""),
+                "vpc_id": security_group.get("VpcId", ""),
+                "owner_id": security_group.get("OwnerId", ""),
             }
 
             self.hcl.process_resource(
-                "aws_lb_listener", listener_arn.split("/")[-1], attributes)
+                "aws_security_group", security_group["GroupName"].replace("-", "_"), attributes)
 
-    def aws_lb_listener_certificate(self):
-        print("Processing Load Balancer Listener Certificates...")
+            # Process egress rules
+            for rule in security_group.get('IpPermissionsEgress', []):
+                self.aws_security_group_rule(
+                    'egress', security_group, rule)
 
-        load_balancers = self.elbv2_client.describe_load_balancers()[
-            "LoadBalancers"]
+            # Process ingress rules
+            for rule in security_group.get('IpPermissions', []):
+                self.aws_security_group_rule(
+                    'ingress', security_group, rule)
 
-        for lb in load_balancers:
-            lb_arn = lb["LoadBalancerArn"]
-            listeners = self.elbv2_client.describe_listeners(
-                LoadBalancerArn=lb_arn)["Listeners"]
+    def aws_security_group_rule(self, rule_type, security_group, rule):
+        # Rule identifiers are often constructed by combining security group id, rule type, protocol, ports and security group references
+        rule_id = f"{security_group['GroupId']}_{rule_type}_{rule.get('IpProtocol', 'all')}"
+        print(f"Processing Security Groups Rule {rule_id}...")
+        if rule.get('FromPort'):
+            rule_id += f"_{rule['FromPort']}"
+        if rule.get('ToPort'):
+            rule_id += f"_{rule['ToPort']}"
 
-            for listener in listeners:
-                listener_arn = listener["ListenerArn"]
-                listener_certificates = self.elbv2_client.describe_listener_certificates(
-                    ListenerArn=listener_arn)
+        attributes = {
+            "id": rule_id,
+            "type": rule_type,
+            "security_group_id": security_group['GroupId'],
+            "protocol": rule.get('IpProtocol', '-1'),  # '-1' stands for 'all'
+            "from_port": rule.get('FromPort', 0),
+            "to_port": rule.get('ToPort', 0),
+            "cidr_blocks": [ip_range['CidrIp'] for ip_range in rule.get('IpRanges', [])],
+            "source_security_group_ids": [sg['GroupId'] for sg in rule.get('UserIdGroupPairs', [])]
+        }
 
-                if "Certificates" in listener_certificates:
-                    certificates = listener_certificates["Certificates"]
-
-                    for cert in certificates:
-                        cert_arn = cert["CertificateArn"]
-                        cert_id = cert_arn.split("/")[-1]
-                        print(
-                            f"  Processing Load Balancer Listener Certificate: {cert_id} for Listener ARN: {listener_arn}")
-
-                        id = listener_arn+"_"+cert_arn
-                        attributes = {
-                            "id": id,
-                            "arn": cert_arn,
-                            "listener_arn": listener_arn,
-                        }
-
-                        self.hcl.process_resource(
-                            "aws_lb_listener_certificate", id, attributes)
-                else:
-                    print(
-                        f"No certificates found for Listener ARN: {listener_arn}")
+        self.hcl.process_resource(
+            "aws_security_group_rule", rule_id.replace("-", "_"), attributes)
 
     def aws_lb_listener_rule(self):
         print("Processing Load Balancer Listener Rules...")

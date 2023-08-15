@@ -837,7 +837,10 @@ class Aws:
         elbv2_client = self.session.client(
             "elbv2", region_name=self.aws_region)
 
-        instance = ELBV2(elbv2_client, self.script_dir, self.provider_name,
+        ec2_client = self.session.client(
+            "ec2", region_name=self.aws_region)
+
+        instance = ELBV2(elbv2_client, ec2_client, self.script_dir, self.provider_name,
                          self.schema_data, self.aws_region, self.s3Bucket,
                          self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.elbv2()

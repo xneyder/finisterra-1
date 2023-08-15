@@ -1,0 +1,127 @@
+aws_lb:
+  # terraform_module: "../../../terraform-aws-modules/terraform-aws-alb"
+  terraform_module: "github.com/finisterra-io/terraform-aws-alb.git?ref=main"
+  terraform_module_version: "0.20.0"
+  target_resource_name: default
+  name_field: name
+  defaults:
+    enabled: true
+    create_security_group: false
+  fields:
+    load_balancer_name:
+      field: name
+      type: string
+    tags:
+      field: tags
+      type: map
+    internal:
+      field: internal
+      type: bool
+    security_group_names:
+      function: get_security_group_names
+      arg: security_groups
+      type: list
+    cross_zone_load_balancing_enabled:
+      field: enable_cross_zone_load_balancing
+      type: bool
+    http2_enabled:
+      field: enable_http2
+      type: bool
+    idle_timeout:
+      field: idle_timeout
+      type: number
+    ip_address_type:
+      field: ip_address_type
+      type: string
+    deletion_protection_enabled:
+      field: enable_deletion_protection
+      type: bool
+    drop_invalid_header_fields:
+      field: drop_invalid_header_fields
+      type: bool
+    preserve_host_header:
+      field: preserve_host_header
+      type: bool
+    xff_header_processing_mode:
+      field: xff_header_processing_mode
+      type: string
+    access_logs:
+      field: access_logs
+      type: map
+    # access_logs_s3_bucket_id:
+    #   function: get_field_from_attrs
+    #   arg: access_logs.bucket
+    #   type: string
+    # access_logs_prefix:
+    #   function: get_field_from_attrs
+    #   arg: access_logs.prefix
+    #   type: string
+    # access_logs_enabled:
+    #   function: get_field_from_attrs
+    #   arg: access_logs.enabled
+    #   type: bool
+    vpc_name:
+      function: get_vpc_name
+      type: string
+      arg: vpc_id
+    subnet_names:
+      function: get_subnet_names
+      arg: subnets
+      type: list
+
+  childs:
+    aws_lb_listener:
+      join:
+        arn:
+          field: load_balancer_arn
+      target_resource_name: this
+      second_index:
+        field: port
+      fields:
+        aws_lb_listeners:
+          function: get_listeners
+          type: map
+      childs:
+        aws_lb_listener_certificate:
+          join:
+            certificate_arn:
+              field: certificate_arn
+          target_resource_name: https_sni
+          second_index:
+            function: get_domain_name
+          fields:
+            aws_lb_listener_certificates:
+              function: get_listener_certificate
+              type: list
+    aws_security_group:
+      join:
+        id:
+          join_function: match_security_group
+      target_resource_name: default
+      fields:
+        create_security_group:
+          unique: true
+        security_group_name:
+          field: name
+          type: string
+        security_group_description:
+          field: description
+          type: string
+        security_group_tags:
+          field: tags
+          type: map
+      childs:
+        aws_security_group_rule:
+          join:
+            id:
+              field: security_group_id
+          target_resource_name: default
+          second_index:
+            field: id
+          fields:
+            create_security_group:
+              unique: true
+            security_group_rules:
+              function: get_security_group_rules
+              arg: id
+              type: list
