@@ -8,6 +8,9 @@ aws_lb:
     enabled: true
     create_security_group: false
   fields:
+    init:
+      function: init_fields
+      type: string
     load_balancer_name:
       field: name
       type: string
@@ -48,18 +51,6 @@ aws_lb:
     access_logs:
       field: access_logs
       type: map
-    # access_logs_s3_bucket_id:
-    #   function: get_field_from_attrs
-    #   arg: access_logs.bucket
-    #   type: string
-    # access_logs_prefix:
-    #   function: get_field_from_attrs
-    #   arg: access_logs.prefix
-    #   type: string
-    # access_logs_enabled:
-    #   function: get_field_from_attrs
-    #   arg: access_logs.enabled
-    #   type: bool
     vpc_name:
       function: get_vpc_name
       type: string
@@ -76,7 +67,7 @@ aws_lb:
           field: load_balancer_arn
       target_resource_name: this
       second_index:
-        field: port
+        function: get_port
       fields:
         aws_lb_listeners:
           function: get_listeners
@@ -88,11 +79,11 @@ aws_lb:
               field: certificate_arn
           target_resource_name: https_sni
           second_index:
-            function: get_domain_name
+            function: get_port_domain_name
           fields:
-            aws_lb_listener_certificates:
+            aws_lb_listeners:
               function: get_listener_certificate
-              type: list
+              type: map
     aws_security_group:
       join:
         id:

@@ -3,10 +3,11 @@ from utils.hcl import HCL
 
 
 class ELBV2:
-    def __init__(self, elbv2_client, ec2_client, script_dir, provider_name, schema_data, region, s3Bucket,
+    def __init__(self, elbv2_client, ec2_client, acm_client, script_dir, provider_name, schema_data, region, s3Bucket,
                  dynamoDBTable, state_key, workspace_id, modules, aws_account_id):
         self.elbv2_client = elbv2_client
         self.ec2_client = ec2_client
+        self.acm_client = acm_client
         self.aws_account_id = aws_account_id
         self.transform_rules = {
             "aws_lb_target_group": {
@@ -33,6 +34,12 @@ class ELBV2:
         self.hcl = HCL(self.schema_data, self.provider_name,
                        self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules)
         self.resource_list = {}
+        self.listeners = {}
+
+    def init_fields(self, attributes):
+        self.listeners = {}
+
+        return None
 
     def match_security_group(self, parent_attributes, child_attributes):
         child_security_group_id = child_attributes.get("id", None)
@@ -92,38 +99,36 @@ class ELBV2:
         return security_group_names
 
     def get_listeners(self, attributes):
-        listeners = []
-        for listener in attributes.get('listener', []):
-            # use boto3 to get the domain of the certificate from the arn
-            domain_name = ""
-            if listener.get('certificate_arn'):
-                response = self.elbv2_client.describe_listeners(
-                    ListenerArns=[listener.get('certificate_arn')])
-                domain_name = response['Listeners'][0]['Certificates'][0]['DomainName']
+        domain_name = ""
+        if attributes.get('certificate_arn'):
+            response = self.acm_client.describe_certificate(
+                CertificateArn=attributes.get('certificate_arn')
+            )
+            domain_name = response['Certificate']['DomainName']
 
-            listener_data = {
-                'port': listener.get('port'),
-                'protocol': listener.get('protocol'),
-                'ssl_policy': listener.get('ssl_policy'),
-                'domain_name': domain_name,
-                'additional_cert_names': listener.get('additional_cert_names'),
-                'listener_fixed_response': listener.get('listener_fixed_response'),
-                'listener_additional_tags': listener.get('listener_additional_tags'),
-            }
-            listeners.append(listener_data)
-        return listeners
+        self.listeners[attributes.get('port')] = {
+            'port': attributes.get('port'),
+            'protocol': attributes.get('protocol'),
+            'ssl_policy': attributes.get('ssl_policy'),
+            'domain_name': domain_name,
+            'additional_domains': [],
+            'listener_fixed_response': attributes.get('default_action', [{}])[0].get('fixed_response', [{}])[0],
+            'listener_additional_tags': attributes.get('tags'),
+        }
+        return self.listeners
+
+    def get_port(self, attributes):
+        return str(attributes.get('port'))
 
     def get_listener_certificate(self, attributes):
-        domain_name = ""
-        if attributes.get('certificate_arn'):
-            # Use the ACM client
-            response = self.acm_client.describe_certificate(
-                CertificateArn=attributes.get('certificate_arn')
-            )
-            domain_name = response['Certificate']['DomainName']
-        return [domain_name]
+        listener_arn = attributes.get('listener_arn')
 
-    def get_domain_name(self, attributes):
+        # Get the port of the listener
+        response_listener = self.elbv2_client.describe_listeners(
+            ListenerArns=[listener_arn]
+        )
+        listener_port = response_listener['Listeners'][0]['Port']
+
         domain_name = ""
         if attributes.get('certificate_arn'):
             # Use the ACM client
@@ -131,7 +136,32 @@ class ELBV2:
                 CertificateArn=attributes.get('certificate_arn')
             )
             domain_name = response['Certificate']['DomainName']
-        return domain_name
+
+            if listener_port in self.listeners:
+                self.listeners[listener_port]['additional_domains'].append(
+                    domain_name)
+
+        return self.listeners
+
+    def get_port_domain_name(self, attributes):
+        listener_arn = attributes.get('listener_arn')
+
+        # Get the port of the listener
+        response_listener = self.elbv2_client.describe_listeners(
+            ListenerArns=[listener_arn]
+        )
+        listener_port = response_listener['Listeners'][0]['Port']
+
+        domain_name = ""
+        if attributes.get('certificate_arn'):
+            # Use the ACM client
+            response = self.acm_client.describe_certificate(
+                CertificateArn=attributes.get('certificate_arn')
+            )
+            domain_name = response['Certificate']['DomainName']
+
+        # Return in the format 'port-domain_name'
+        return f"{listener_port}-{domain_name}"
 
     def get_subnet_names(self, attributes, arg):
         subnet_ids = attributes.get(arg)
@@ -168,7 +198,8 @@ class ELBV2:
             'get_subnet_names': self.get_subnet_names,
             'get_listeners': self.get_listeners,
             'get_listener_certificate': self.get_listener_certificate,
-            'get_domain_name': self.get_domain_name,
+            'get_port_domain_name': self.get_port_domain_name,
+            'get_port': self.get_port,
         }
 
         self.hcl.refresh_state()
