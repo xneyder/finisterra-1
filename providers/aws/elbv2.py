@@ -207,7 +207,6 @@ class ELBV2:
         self.hcl.module_hcl_code("terraform.tfstate",
                                  os.path.join(os.path.dirname(os.path.abspath(__file__)), "elbv2.yaml"), functions, self.region, self.aws_account_id)
 
-        exit()
         self.json_plan = self.hcl.json_plan
 
     def aws_lb(self):
