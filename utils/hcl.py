@@ -1072,7 +1072,7 @@ class HCL:
                 instance["name"] = instance["name"].replace("\n", "")
 
                 module_instance_name = instance["name"].replace(
-                    '"', '').replace(" ", "_").replace(".", "_")
+                    '"', '').replace(" ", "_").replace(".", "_").replace("/", "_")
                 module_instance_name = f'{instance["type"]}-{module_instance_name}'
 
                 name_value = ""
@@ -1121,7 +1121,7 @@ class HCL:
         subprocess.run(["terraform", "init"], check=True)
         for instance in instances:
             module_instance_name = instance["name"].replace(
-                '"', '').replace(" ", "_").replace(".", "_")
+                '"', '').replace(" ", "_").replace(".", "_").replace("/", "_")
             module_instance_name = f'{instance["type"]}-{module_instance_name}'
 
             for deployed_resource in instance["deployed_resources"]:

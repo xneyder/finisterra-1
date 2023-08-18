@@ -22,8 +22,6 @@ class ELBV2:
             "aws_lb_listener": {
                 "hcl_drop_fields": {"default_action.order": 0},
             },
-
-
         }
         self.provider_name = provider_name
         self.script_dir = script_dir
@@ -110,8 +108,8 @@ class ELBV2:
             'port': attributes.get('port'),
             'protocol': attributes.get('protocol'),
             'ssl_policy': attributes.get('ssl_policy'),
-            'domain_name': domain_name,
-            'additional_domains': [],
+            'acm_domain_name': domain_name,
+            'all_acm_domains': [],
             'listener_fixed_response': attributes.get('default_action', [{}])[0].get('fixed_response', [{}])[0],
             'listener_additional_tags': attributes.get('tags'),
         }
@@ -138,7 +136,7 @@ class ELBV2:
             domain_name = response['Certificate']['DomainName']
 
             if listener_port in self.listeners:
-                self.listeners[listener_port]['additional_domains'].append(
+                self.listeners[listener_port]['all_acm_domains'].append(
                     domain_name)
 
         return self.listeners
@@ -219,6 +217,27 @@ class ELBV2:
         for lb in load_balancers:
             lb_arn = lb["LoadBalancerArn"]
             lb_name = lb["LoadBalancerName"]
+
+            # Check tags of the load balancer
+            tags_response = self.elbv2_client.describe_tags(
+                ResourceArns=[lb_arn])
+            tags = tags_response["TagDescriptions"][0]["Tags"]
+
+            # Filter out load balancers created by Elastic Beanstalk
+            is_ebs_created = any(
+                tag["Key"] == "elasticbeanstalk:environment-name" for tag in tags)
+
+            # Filter out load balancers created by Kubernetes
+            is_k8s_created = any(tag["Key"].startswith(
+                "kubernetes.io/cluster/") for tag in tags)
+
+            if is_ebs_created:
+                print(f"  Skipping Elastic Beanstalk Load Balancer: {lb_name}")
+                continue
+            elif is_k8s_created:
+                print(f"  Skipping Kubernetes Load Balancer: {lb_name}")
+                continue
+
             print(f"  Processing Load Balancer: {lb_name}")
 
             attributes = {
@@ -268,7 +287,6 @@ class ELBV2:
 
                     attributes = {
                         "id": listener_arn,
-                        # ... Other attributes can be uncommented as needed ...
                     }
 
                     self.hcl.process_resource(
@@ -391,9 +409,6 @@ class ELBV2:
 
                     attributes = {
                         "id": rule_arn,
-                        # "arn": rule_arn,
-                        # "listener_arn": listener_arn,
-                        # "priority": rule["Priority"],
                         "condition": rule["Conditions"],
                     }
 

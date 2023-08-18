@@ -3,7 +3,7 @@ aws_lb:
   terraform_module: "github.com/finisterra-io/terraform-aws-alb.git?ref=main"
   terraform_module_version: "0.20.0"
   target_resource_name: default
-  name_field: name
+  name_field: load_balancer_name
   defaults:
     enabled: true
     create_security_group: false

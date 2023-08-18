@@ -12,6 +12,7 @@ class Logs:
             },
         }
         self.provider_name = provider_name
+        self.aws_account_id = aws_account_id
         self.script_dir = script_dir
         self.schema_data = schema_data
         self.region = region
@@ -24,20 +25,24 @@ class Logs:
     def logs(self):
         self.hcl.prepare_folder(os.path.join("generated", "logs"))
 
-        self.aws_cloudwatch_log_destination()
-        self.aws_cloudwatch_log_destination_policy()
+        # self.aws_cloudwatch_log_destination()
+        # self.aws_cloudwatch_log_destination_policy()
         self.aws_cloudwatch_log_group()
-        self.aws_cloudwatch_log_metric_filter()
-        if "gov" not in self.region:
-            self.aws_cloudwatch_log_data_protection_policy()
+        # self.aws_cloudwatch_log_metric_filter()
+        # if "gov" not in self.region:
+        #     self.aws_cloudwatch_log_data_protection_policy()
 
-        self.aws_cloudwatch_log_resource_policy()
-        # self.aws_cloudwatch_log_stream() #could be a lot of data
-        self.aws_cloudwatch_log_subscription_filter()
-        self.aws_cloudwatch_query_definition()
+        # self.aws_cloudwatch_log_resource_policy()
+        # # self.aws_cloudwatch_log_stream() #could be a lot of data
+        # self.aws_cloudwatch_log_subscription_filter()
+        # self.aws_cloudwatch_query_definition()
+
+        functions = {}
 
         self.hcl.refresh_state()
-        self.hcl.generate_hcl_file()
+        self.hcl.module_hcl_code("terraform.tfstate",
+                                 os.path.join(os.path.dirname(os.path.abspath(__file__)), "logs.yaml"), functions, self.region, self.aws_account_id)
+        # self.hcl.generate_hcl_file()
         self.json_plan = self.hcl.json_plan
 
     def aws_cloudwatch_log_data_protection_policy(self):
@@ -114,6 +119,11 @@ class Logs:
         for page in paginator.paginate():
             for log_group in page["logGroups"]:
                 log_group_name = log_group["logGroupName"]
+
+                # Skip AWS managed log groups
+                if log_group_name.startswith("/aws"):
+                    continue
+
                 print(f"  Processing CloudWatch Log Group: {log_group_name}")
 
                 attributes = {
