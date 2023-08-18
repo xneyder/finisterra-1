@@ -48,6 +48,7 @@ class IAM:
     def iam(self):
         self.hcl.prepare_folder(os.path.join("generated", "iam"))
 
+        self.aws_iam_role()
         self.aws_iam_policy()
         # self.aws_iam_access_key()
         # self.aws_iam_account_alias()
@@ -57,7 +58,7 @@ class IAM:
         # self.aws_iam_instance_profile()
         # self.aws_iam_openid_connect_provider()
         # # self.aws_iam_policy_attachment() #Is a dangerous resource, can delete data conflicts with aws_iam_role_policy_attachment, aws_iam_user_policy_attachment, aws_iam_group_policy_attachment
-        # self.aws_iam_role()
+
         # self.aws_iam_role_policy()
         # # self.aws_iam_saml_provider() #We do not have access to the xml file generated
         # self.aws_iam_server_certificate()
@@ -80,6 +81,7 @@ class IAM:
 
         self.hcl.module_hcl_code("terraform.tfstate", os.path.join(
             os.path.dirname(os.path.abspath(__file__)), "iam.yaml"), functions, self.region, self.aws_account_id)
+        exit()
 
         self.json_plan = self.hcl.json_plan
 

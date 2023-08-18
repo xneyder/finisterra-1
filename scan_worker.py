@@ -189,7 +189,7 @@ def main():
                     provider.iam()
                 elif provider_group_code == 'kms':  # FIXME: This is not working
                     provider.kms()
-                elif provider_group_code == 'aws_lambda':  # FIXME: I can not get the code location
+                elif provider_group_code == 'aws_lambda':
                     provider.aws_lambda()
                 elif provider_group_code == 'opensearch':
                     provider.opensearch()

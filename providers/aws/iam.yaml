@@ -1,6 +1,6 @@
 aws_iam_policy:
-  # terraform_module: "../../../terraform-aws-modules/terraform-aws-iam-role/"
-  terraform_module: "github.com/finisterra-io/terraform-aws-iam-role?ref=main"
+  # terraform_module: "../../../terraform-aws-modules/terraform-aws-iam//modules/iam_policy"
+  terraform_module: "github.com/finisterra-io/terraform-aws-iam//modules/iam_policy?ref=main"
   terraform_module_version: "5.2.0"
   target_resource_name: default
   name_field: policy_name
@@ -21,3 +21,48 @@ aws_iam_policy:
     tags:
       field: tags
       type: map
+aws_iam_role:
+  # terraform_module: "../../../terraform-aws-modules/terraform-aws-iam//modules/iam_role"
+  terraform_module: "github.com/finisterra-io/terraform-aws-iam//modules/iam_role?ref=main"
+  terraform_module_version: "5.2.0"
+  target_resource_name: default
+  name_field: role_name
+  defaults:
+    instance_profile_enabled: false
+  fields:
+    role_name:
+      field: name
+      type: string
+    assume_role_policy:
+      field: assume_role_policy
+      type: string
+      multiline: true
+    role_description:
+      field: description
+      type: string
+    max_session_duration:
+      field: max_session_duration
+      type: number
+    inline_policies:
+      field: inline_policy
+      type: list
+    permissions_boundary:
+      field: permissions_boundary
+      type: string
+    path:
+      field: path
+      type: string
+    tags:
+      field: tags
+      type: map
+  childs:
+    aws_iam_instance_profile:
+      join:
+        name:
+          field: role
+      defaults:
+        instance_profile_enabled: false
+      fields:
+        instance_profile_name:
+          field: name
+          type: string
