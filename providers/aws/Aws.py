@@ -13,7 +13,8 @@ from providers.aws.route53 import Route53
 from providers.aws.acm import ACM
 from providers.aws.cloudfront import CloudFront
 from providers.aws.s3 import S3
-from providers.aws.iam import IAM
+from providers.aws.iam_policy import IAM_POLICY
+from providers.aws.iam_role import IAM_ROLE
 from providers.aws.ec2 import EC2
 from providers.aws.ebs import EBS  # no module
 from providers.aws.ecr import ECR
@@ -50,6 +51,7 @@ from providers.aws.elasticbeanstalk import ElasticBeanstalk
 from providers.aws.elb import ELB
 from providers.aws.elbv2 import ELBV2
 from providers.aws.stepfunction import StepFunction
+from utils.filesystem import create_tmp_terragrunt
 
 
 class Aws:
@@ -64,6 +66,7 @@ class Aws:
         self.state_key = state_key
         self.workspace_id = workspace_id
         self.modules = modules
+        create_tmp_terragrunt("generated")
 
     def set_boto3_session(self, id_token=None, role_arn=None, session_duration=None, aws_region="us-east-1"):
         if id_token and role_arn and session_duration:
@@ -374,12 +377,22 @@ class Aws:
         self.json_plan = instance.json_plan
         self.resource_list['s3'] = instance.resource_list
 
-    def iam(self):
+    def iam_policy(self):
         iam_client = self.session.client(
             "iam", region_name=self.aws_region)
-        instance = IAM(iam_client, self.script_dir, self.provider_name,
-                       self.schema_data, self.aws_region, self.s3Bucket,
-                       self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
+        instance = IAM_POLICY(iam_client, self.script_dir, self.provider_name,
+                              self.schema_data, self.aws_region, self.s3Bucket,
+                              self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
+        instance.iam()
+        self.json_plan = instance.json_plan
+        self.resource_list['iam'] = instance.resource_list
+
+    def iam_role(self):
+        iam_client = self.session.client(
+            "iam", region_name=self.aws_region)
+        instance = IAM_ROLE(iam_client, self.script_dir, self.provider_name,
+                            self.schema_data, self.aws_region, self.s3Bucket,
+                            self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.iam()
         self.json_plan = instance.json_plan
         self.resource_list['iam'] = instance.resource_list

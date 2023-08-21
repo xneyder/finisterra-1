@@ -69,6 +69,7 @@ def main():
                 role_arn = scan.workspace.awsAccount.roleArn
                 session_duration = scan.workspace.awsAccount.sessionDuration
                 aws_region = scan.workspace.awsRegion
+                aws_region_s3 = scan.workspace.awsAccount.awsStateConfigs[0].awsRegion
                 workspace_id = scan.workspace.id
                 provider_group_code = scan.workspace.providerGroup.code
 
@@ -83,13 +84,20 @@ def main():
                 os.chdir(script_dir)
                 local_path = os.path.join(
                     script_dir, "generated", provider_group_code)
+                state_key = os.path.join(
+                    "finisterra", "generated", "aws", scan.workspace.awsAccount.awsAccountId, aws_region)
                 git_repo = Git(github_installation_id=github_installation_id,
                                git_repo_id=git_repo_id,
                                local_path=local_path,
                                git_repo_path=git_repo_path,
                                git_repo_branch=git_repo_path,
                                git_target_branch=git_repo_branch,
-                               workspace_id=workspace_id)
+                               workspace_id=workspace_id,
+                               s3Bucket=s3Bucket,
+                               aws_region=aws_region_s3,
+                               dynamoDBTable=dynamoDBTable,
+                               state_key=state_key,
+                               )
 
                 # Get modules in workspace
                 modules = OrderedDict()
@@ -185,8 +193,10 @@ def main():
                     provider.es()
                 elif provider_group_code == 'guardduty':
                     provider.guardduty()
-                elif provider_group_code == 'iam':
-                    provider.iam()
+                elif provider_group_code == 'iam_policy':
+                    provider.iam_policy()
+                elif provider_group_code == 'iam_role':
+                    provider.iam_role()
                 elif provider_group_code == 'kms':  # FIXME: This is not working
                     provider.kms()
                 elif provider_group_code == 'aws_lambda':
@@ -213,7 +223,6 @@ def main():
                     provider.route53()
                 elif provider_group_code == 'stepfunction':
                     provider.stepfunction()
-
                 else:
                     update_scan_status(scan_id, "FAILED")
                     break
@@ -225,9 +234,15 @@ def main():
                 shutil.copytree(temp_dir, os.path.join(
                     git_repo.destination_dir, ".terraform"))
 
+                # print(git_repo.destination_dir)
+                # print(os.getcwd())
+
                 terraform = Terraform()
                 json_plan_main = terraform.tf_plan(
                     git_repo.destination_dir, True)
+
+                # print(os.getcwd())
+                # exit()
 
                 # Do PR
                 git_repo.create_pr_with_files()

@@ -3,7 +3,7 @@ from utils.hcl import HCL
 import json
 
 
-class IAM:
+class IAM_ROLE:
     def __init__(self, iam_client, script_dir, provider_name, schema_data, region, s3Bucket,
                  dynamoDBTable, state_key, workspace_id, modules, aws_account_id):
         self.iam_client = iam_client
@@ -46,10 +46,10 @@ class IAM:
         self.resource_list = {}
 
     def iam(self):
-        self.hcl.prepare_folder(os.path.join("generated", "iam"))
+        self.hcl.prepare_folder(os.path.join("generated", "iam_role"))
 
         self.aws_iam_role()
-        self.aws_iam_policy()
+        # self.aws_iam_policy()
         # self.aws_iam_access_key()
         # self.aws_iam_account_alias()
         # self.aws_iam_account_password_policy()
@@ -80,8 +80,8 @@ class IAM:
         functions = {}
 
         self.hcl.module_hcl_code("terraform.tfstate", os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), "iam.yaml"), functions, self.region, self.aws_account_id)
-        exit()
+            os.path.dirname(os.path.abspath(__file__)), "iam_role.yaml"), functions, self.region, self.aws_account_id)
+        # exit()
 
         self.json_plan = self.hcl.json_plan
 
@@ -318,6 +318,15 @@ class IAM:
         for page in paginator.paginate():
             for role in page["Roles"]:
                 role_name = role["RoleName"]
+                role_path = role["Path"]
+
+                # Ignore roles managed or created by AWS
+                if role_path.startswith("/aws-service-role/") or "AWS-QuickSetup" in role_name:
+                    continue
+
+                # if role_name != 'AmazonEKS_EBS_CSI_DriverRole':
+                #     continue
+
                 print(f"  Processing IAM Role: {role_name}")
 
                 attributes = {
@@ -325,7 +334,7 @@ class IAM:
                     "name": role_name,
                     "assume_role_policy": json.dumps(role["AssumeRolePolicyDocument"]),
                     "description": role.get("Description"),
-                    "path": role["Path"],
+                    "path": role_path,
                 }
                 self.hcl.process_resource(
                     "aws_iam_role", role_name, attributes)

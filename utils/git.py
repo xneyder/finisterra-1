@@ -19,13 +19,17 @@ import base64
 import git
 import shutil
 
+from utils.filesystem import create_root_terragrunt
+
+import re
+
 
 load_dotenv()
 
 
 class Git:
 
-    def __init__(self, github_installation_id, git_repo_id, git_repo_path, local_path, git_repo_branch, git_target_branch, workspace_id):
+    def __init__(self, github_installation_id, git_repo_id, git_repo_path, local_path, git_repo_branch, git_target_branch, workspace_id, s3Bucket, aws_region, dynamoDBTable, state_key):
         self.github_installation_id = github_installation_id
         self.git_repo_id = git_repo_id
         self.git_repo_path = git_repo_path
@@ -33,6 +37,10 @@ class Git:
         self.git_repo_branch = "branch/" + git_repo_branch
         self.git_target_branch = git_target_branch
         self.workspace_id = workspace_id
+        self.s3Bucket = s3Bucket
+        self.aws_region = aws_region
+        self.dynamoDBTable = dynamoDBTable
+        self.state_key = state_key
 
         self.clone_dir = os.path.join("/tmp/", "cloned_repo")
         if os.path.exists(self.clone_dir):
@@ -143,21 +151,69 @@ class Git:
         ct = base64.b64encode(ct_bytes).decode('utf-8')
         return iv + ":" + ct
 
+    def get_dependency_paths(self, filename="terragrunt.hcl"):
+        paths = []
+
+        # Check if the file exists
+        if not os.path.exists(filename):
+            return paths
+
+        # Open the file and read its contents
+        with open(filename, 'r') as file:
+            content = file.read()
+
+            # Use regex to extract the paths
+            match = re.search(
+                r'dependencies\s*{\s*paths\s*=\s*\[(.*?)\]\s*}', content)
+            if match:
+                paths_str = match.group(1)
+                paths = [path.strip().strip('"')
+                         for path in paths_str.split(",")]
+
+        return paths
+
     def create_pr_with_files(self):
 
         # clean the destination directory
         if os.path.exists(self.destination_dir):
             shutil.rmtree(self.destination_dir)
 
-        # Copy the new files into the cloned repository
-        for file in os.listdir(self.local_path):
-            # Create the directory if it does not exist
-            os.makedirs(self.destination_dir, exist_ok=True)
-            if file.endswith('.tf'):
-                shutil.copy(os.path.join(
-                    self.local_path, file), self.destination_dir)
+        # for file in os.listdir(self.local_path):
+        #     print(os.getcwd())
+        #     # Create the directory if it does not exist
+        #     os.makedirs(self.destination_dir, exist_ok=True)
+        #     if file.endswith('.tf'):
+        #         shutil.copy(os.path.join(
+        #             self.local_path, file), self.destination_dir)
 
-        self.create_gitignore_file(self.destination_dir)
+        # Copy the new files into the cloned repository
+        for dirpath, _, filenames in os.walk(self.local_path):
+            # Construct the destination directory path
+            relative_path = os.path.relpath(dirpath, self.local_path)
+            destination_subfolder = os.path.join(
+                self.destination_dir, relative_path)
+
+            # Create the directory in the destination if it doesn't exist
+            os.makedirs(destination_subfolder, exist_ok=True)
+
+            for file in filenames:
+                if file.endswith('.tf') or file.endswith('.hcl'):
+                    shutil.copy(os.path.join(dirpath, file),
+                                destination_subfolder)
+                    if file == "terragrunt.hcl":
+                        dependencies = self.get_dependency_paths(
+                            os.path.join(dirpath, file))
+                        for dependency in dependencies:
+                            os.makedirs(os.path.join(self.destination_dir,
+                                        dependency), exist_ok=True)
+
+        self.create_gitignore_file(os.path.join(
+            self.clone_dir, "finisterra", "generated"))
+
+        # Generate terragrunt.hcl
+        create_root_terragrunt(
+            self.s3Bucket, self.aws_region, self.dynamoDBTable, self.state_key, os.path.join(
+                self.clone_dir, self.state_key))
 
         # Create a digest file with a random hash
         # self.create_digest_file(self.destination_dir)
@@ -342,14 +398,9 @@ class Git:
             "# Ignore all .tfvars files, which are likely to contain sentitive data\n"
             "*.tfvars\n"
             "\n"
-            "# Ignore override files as they can contain sensitive information\n"
-            "override.tf\n"
-            "override.tf.json\n"
-            "*_override.tf\n"
-            "*_override.tf.json\n"
-            "\n"
             "# Ignore CLI configuration files\n"
             ".terraformrc\n"
+            ".terragrunt*\n"
             "terraform.rc\n"
             ".terraform.lock.hcl"
         )

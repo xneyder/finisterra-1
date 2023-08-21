@@ -18,7 +18,7 @@ class Terraform:
         plan_file = os.path.join("/tmp/", "plan.out")
         if init:
             try:
-                subprocess.run(["terraform", "init"], check=True)
+                subprocess.run(["terragrunt", "init"], check=True)
             except subprocess.CalledProcessError as e:
                 print(f"Failed to run 'terraform init': {e}")
                 return None
@@ -32,7 +32,7 @@ class Terraform:
 
         try:
             json_plan_result = subprocess.run(
-                ["terraform", "show", "-json", plan_file], capture_output=True, text=True, check=True)
+                ["terragrunt", "show", "-json", plan_file], capture_output=True, text=True, check=True)
         except subprocess.CalledProcessError as e:
             print(f"Failed to run 'terraform show': {e}")
             return None

@@ -507,8 +507,8 @@ class HCL:
             self.create_folder(generated_path)
             os.chdir(generated_path)
             create_version_file()
-            create_data_file()
-            create_locals_file()
+            # create_data_file()
+            # create_locals_file()
             destination_folder = os.getcwd()
             print("Copying Terraform init files...")
             shutil.copytree(temp_dir, os.path.join(
@@ -1061,16 +1061,18 @@ class HCL:
                 if not instance:
                     continue
                 instance['module'] = resource_config.get('terraform_module')
+                instance['path'] = resource_config.get('path', "")
+                instance['dependencies'] = resource_config.get(
+                    'dependencies', [])
                 instance['version'] = resource_config.get(
                     'terraform_module_version')
                 if instance:
                     instances.append(instance)
 
+        subfolders = {}
         for instance in instances:
             if instance["attributes"]:
-
                 instance["name"] = instance["name"].replace("\n", "")
-
                 module_instance_name = instance["name"].replace(
                     '"', '').replace(" ", "_").replace(".", "_").replace("/", "_")
                 module_instance_name = f'{instance["type"]}-{module_instance_name}'
@@ -1078,7 +1080,17 @@ class HCL:
                 name_value = ""
                 name_field = ""
 
-                with open(f'{module_instance_name}.tf', 'w') as file:
+                module_file_path = os.path.join(
+                    instance["path"], f'{module_instance_name}.tf')
+
+                if instance["path"]:
+                    os.makedirs(os.path.dirname(
+                        module_file_path), exist_ok=True)
+                if instance["path"] not in subfolders:
+                    subfolders[instance["path"]] = {
+                        'dependencies': instance["dependencies"]}
+
+                with open(module_file_path, 'w') as file:
                     if instance["replace_name"]:
                         name_value = instance["name"].replace('"', '')
                         hash_value = hashlib.sha256(
@@ -1118,11 +1130,30 @@ class HCL:
                             file.write(f'{index} = {value}\n')
                     file.write('}\n')
 
-        subprocess.run(["terraform", "init"], check=True)
+        for key, values in subfolders.items():
+            terragrunt_path = os.path.join(key, "terragrunt.hcl")
+
+            # If the file doesn't exist, create it
+            if not os.path.exists(terragrunt_path):
+                with open(terragrunt_path, 'w') as file:
+
+                    file.write(f'include {{\n')
+                    file.write(f'path = find_in_parent_folders()\n')
+                    file.write(f'}}\n')
+
+                    if values['dependencies']:
+                        file.write(f'dependencies  {{\n')
+                        file.write(
+                            f'paths = {json.dumps(values["dependencies"])}\n')
+                        file.write(f'}}\n')
+                        for dependency in values['dependencies']:
+                            os.makedirs(dependency, exist_ok=True)
+
         for instance in instances:
             module_instance_name = instance["name"].replace(
                 '"', '').replace(" ", "_").replace(".", "_").replace("/", "_")
             module_instance_name = f'{instance["type"]}-{module_instance_name}'
+            moved_file_path = os.path.join(instance["path"], f'moved.tf')
 
             for deployed_resource in instance["deployed_resources"]:
                 resource_import_source = f'{deployed_resource["resource_type"]}.{deployed_resource["resource_name"]}'
@@ -1154,18 +1185,20 @@ class HCL:
                 #     ["terraform", "state", "mv", "-backup=/dev/null", resource_import_source, resource_import_target])
 
                 # Write to moved.tf file
-                with open('moved.tf', 'a') as file:  # 'a' is for append mode
+                with open(moved_file_path, 'a') as file:  # 'a' is for append mode
                     file.write(
                         f'moved {{\n  from = {resource_import_source}\n  to   = {resource_import_target}\n}}\n\n')
 
         print("Formatting HCL files...")
-        subprocess.run(["terraform", "fmt"], check=True)
-        subprocess.run(["terraform", "validate"], check=True)
+        subprocess.run(["terragrunt", "init"], check=True)
+        subprocess.run(["terragrunt", "hclfmt"], check=True)
+        subprocess.run(["terraform", "fmt", "-recursive"], check=True)
+        subprocess.run(["terragrunt", "validate"], check=True)
 
         # exit()
         print("Running Terraform plan on generated files...")
         terraform = Terraform()
         self.json_plan = terraform.tf_plan("./", False)
-        create_backend_file(self.bucket, os.path.join(self.state_key, "terraform.tfstate"),
-                            self.region, self.dynamodb_table)
+        # create_backend_file(self.bucket, os.path.join(self.state_key, "terraform.tfstate"),
+        #                     self.region, self.dynamodb_table)
         shutil.rmtree("./.terraform", ignore_errors=True)
