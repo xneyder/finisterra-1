@@ -73,7 +73,7 @@ def create_root_terragrunt(bucket: str, region: str, dynamodb_table: str, key: s
         terragrunt.write('  backend "s3" {\n')
         terragrunt.write(f'    bucket         = "{bucket}"\n')
         terragrunt.write(
-            f'    key            = "{key}/${{path_relative_to_include()}}"\n')
+            f'    key            = "{key}/${{path_relative_to_include()}}/terraform.tfstate"\n')
         terragrunt.write(f'    region         = "{region}"\n')
         # terragrunt.write(f'    dynamodb_table = "{dynamodb_table}"\n')
         terragrunt.write('    encrypt        = true\n')
