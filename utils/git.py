@@ -125,7 +125,86 @@ class Git:
         json_data = json.loads(data.decode("utf-8"))
         self.installation_token = json_data.get('token')
 
+    def branch_exists(self):
+        """
+        Check if the branch exists on the remote repository.
+        :return: bool, True if the branch exists, False otherwise.
+        """
+        conn = http.client.HTTPSConnection("api.github.com")
+        headers = {
+            'User-Agent': 'GitHub App',
+            'Accept': 'application/vnd.github+json',
+            'Authorization': 'Bearer ' + str(self.installation_token),
+        }
+
+        conn.request(
+            "GET", f"/repos/{self.organization}/{self.git_repo_name}/branches", headers=headers)
+        res = conn.getresponse()
+        data = res.read()
+
+        if res.status == 200:
+            branches = json.loads(data.decode("utf-8"))
+            for branch in branches:
+                if branch['name'] == self.git_repo_branch:
+                    return True
+        return False
+
+    def get_pull_request_status(self):
+        """
+        Check if a pull request (PR) exists for the branch and return its status (open or closed).
+        :return: str, status of the pull request if it exists, None otherwise.
+        """
+        conn = http.client.HTTPSConnection("api.github.com")
+        headers = {
+            'User-Agent': 'GitHub App',
+            'Accept': 'application/vnd.github+json',
+            'Authorization': 'Bearer ' + str(self.installation_token),
+            'Content-Type': 'application/json'
+        }
+
+        conn.request(
+            "GET", f"/repos/{self.organization}/{self.git_repo_name}/pulls?state=all", headers=headers)
+        res = conn.getresponse()
+        data = res.read()
+
+        if res.status == 200:
+            pulls = json.loads(data.decode("utf-8"))
+            for pull in pulls:
+                if pull['head']['ref'] == self.git_repo_branch:
+                    return pull['state']
+
+        return None
+
+    def delete_branch(self):
+        """
+        Delete the branch from the remote repository.
+        """
+        conn = http.client.HTTPSConnection("api.github.com")
+        headers = {
+            'User-Agent': 'GitHub App',
+            'Accept': 'application/vnd.github+json',
+            'Authorization': 'Bearer ' + str(self.installation_token),
+        }
+
+        conn.request(
+            "DELETE", f"/repos/{self.organization}/{self.git_repo_name}/git/refs/heads/{self.git_repo_branch}", headers=headers)
+        res = conn.getresponse()
+        data = res.read()
+
+        if res.status == 204:
+            print(f"Successfully deleted branch {self.git_repo_branch}")
+        else:
+            print(
+                f"Failed to delete branch {self.git_repo_branch}. Response: {data.decode()}")
+
     def clone_repo(self):
+
+        branch_exists = self.branch_exists()
+        pr_status = self.get_pull_request_status()
+
+        if (pr_status == "closed" or not pr_status) and branch_exists:
+            self.delete_branch()
+
         # Clone the repository
         clone_url = f"https://x-access-token:{self.installation_token}@github.com/{self.organization}/{self.git_repo_name}.git"
 
@@ -178,13 +257,10 @@ class Git:
         if os.path.exists(self.destination_dir):
             shutil.rmtree(self.destination_dir)
 
-        # for file in os.listdir(self.local_path):
-        #     print(os.getcwd())
-        #     # Create the directory if it does not exist
-        #     os.makedirs(self.destination_dir, exist_ok=True)
-        #     if file.endswith('.tf'):
-        #         shutil.copy(os.path.join(
-        #             self.local_path, file), self.destination_dir)
+        # Clean up destination
+        for dirpath, _, filenames in os.walk(self.destination_dir):
+            for file in filenames:
+                os.remove(os.path.join(dirpath, file))
 
         # Copy the new files into the cloned repository
         for dirpath, _, filenames in os.walk(self.local_path):
@@ -225,7 +301,7 @@ class Git:
         if not self.repo.is_dirty():
             print("No changes detected. No commits will be made.")
         else:
-            self.repo.git.commit('-m', 'Updated files')
+            self.repo.git.commit('-m', 'Automatic scan')
 
         # Push the changes regardless of changes to the repo
         try:
@@ -303,7 +379,7 @@ class Git:
         }
         body = json.dumps({
             "title": f"{self.git_repo_branch}",
-            "body": f"Updated files for {self.git_repo_path}\n\nworkspace: {encrypted_text}",
+            "body": f"Updated files for {self.git_repo_path}\n\nworkspace: {encrypted_text} \n\n[skip ft]",
             "head": self.git_repo_branch,
             "base": self.git_target_branch
         })

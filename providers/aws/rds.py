@@ -26,7 +26,7 @@ class RDS:
 
         self.region = region
         self.aws_account_id = aws_account_id
-        
+
         self.workspace_id = workspace_id
         self.modules = modules
         self.hcl = HCL(self.schema_data, self.provider_name,
@@ -58,9 +58,9 @@ class RDS:
         }
 
         self.hcl.refresh_state()
+        print(self.region, self.aws_account_id)
         self.hcl.module_hcl_code("terraform.tfstate",
                                  os.path.join(os.path.dirname(os.path.abspath(__file__)), "rds.yaml"), functions, self.region, self.aws_account_id)
-        # self.hcl.generate_hcl_file()
         self.json_plan = self.hcl.json_plan
 
     def aws_db_instance(self):

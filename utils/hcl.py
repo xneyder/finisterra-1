@@ -1109,23 +1109,27 @@ class HCL:
                         file.write(instance["full_dump"]['attributes'])
                     else:
                         for index, value in instance["attributes"].items():
-                            if aws_account_id:
-                                value = re.sub(r'\b' + aws_account_id +
-                                               r'\b', "${local.aws_account_id}", value)
-                            if aws_region:
-                                value = re.sub(
-                                    r'\b(' + aws_region + r')(?=[a-z]?\b)', "${local.aws_region}", value)
-                                aws_partition = 'aws-us-gov' if 'gov' in aws_region else 'aws'
-                                value = re.sub(
-                                    r'\barn:' + aws_partition + r':\b', "arn:${local.aws_partition}:", value)
+                            try:
+                                if aws_account_id:
+                                    value = re.sub(r'\b' + aws_account_id +
+                                                   r'\b', "${local.aws_account_id}", value)
+                                if aws_region:
+                                    value = re.sub(
+                                        r'\b(' + aws_region + r')(?=[a-z]?\b)', "${local.aws_region}", value)
+                                    aws_partition = 'aws-us-gov' if 'gov' in aws_region else 'aws'
+                                    value = re.sub(
+                                        r'\barn:' + aws_partition + r':\b', "arn:${local.aws_partition}:", value)
 
-                            if instance["replace_name"]:
-                                value = re.sub(
-                                    r'\"' + name_value + r'\"', "local." + name_field, value)
+                                if instance["replace_name"]:
+                                    value = re.sub(
+                                        r'\"' + name_value + r'\"', "local." + name_field, value)
 
-                            if instance["replace_name"]:
-                                value = re.sub(
-                                    r'\b' + name_value + r'\b', "${local."+name_field+"}", value)
+                                if instance["replace_name"]:
+                                    value = re.sub(
+                                        r'\b' + name_value + r'\b', "${local."+name_field+"}", value)
+
+                            except Exception as e:
+                                print(f"Error processing index {index}: {e}")
 
                             file.write(f'{index} = {value}\n')
                     file.write('}\n')
