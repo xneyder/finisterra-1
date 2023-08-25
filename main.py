@@ -3,6 +3,7 @@ import click
 import boto3
 
 from providers.aws.Aws import Aws
+from utils.git import Git
 
 
 @click.command()
@@ -111,6 +112,9 @@ def main(aws_account_id, aws_region, group_code):
         provider.route53()
     elif group_code == 'stepfunction':
         provider.stepfunction()
+    else:
+        print(f"Group code {group_code} not found.")
+        exit()
 
     print("Finished processing AWS resources.")
 
