@@ -28,7 +28,8 @@ class HCL:
         self.json_plan = {}
         self.global_deployed_resources = []
 
-        self.module_data = get_module_data(self.workspace_id)
+        # self.module_data = get_module_data(self.workspace_id)
+        self.module_data = {}
 
     def search_state_file(self, resource_type, resource_name, resource_id):
         # Load the state file
