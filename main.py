@@ -4,38 +4,7 @@ import boto3
 
 from providers.aws.Aws import Aws
 from utils.git import Git
-from utils.filesystem import create_root_terragrunt
-
-
-def create_gitignore_file(path):
-    gitignore_content = (
-        "# Local .terraform directories\n"
-        "**/.terraform/*\n"
-        "\n"
-        "# .tfstate files\n"
-        "*.tfstate\n"
-        "*.tfstate.*\n"
-        "\n"
-        "# Crash log files\n"
-        "crash.log\n"
-        "\n"
-        "# Ignore all .tfvars files, which are likely to contain sentitive data\n"
-        "*.tfvars\n"
-        "\n"
-        "# Ignore CLI configuration files\n"
-        ".terraformrc\n"
-        ".terragrunt*\n"
-        "terraform.rc\n"
-        ".terraform.lock.hcl\n\n"
-        "# terragrunt generated files\n"
-        "backend.tf\n"
-        "data.tf\n"
-        "locals.tf\n"
-        "versions.tf\n"
-    )
-
-    with open(f'{path}/.gitignore', 'w') as file:
-        file.write(gitignore_content)
+from utils.filesystem import create_root_terragrunt, create_gitignore_file
 
 
 @click.command()

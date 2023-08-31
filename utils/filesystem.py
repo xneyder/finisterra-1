@@ -156,3 +156,34 @@ def create_tmp_terragrunt(base_path):
         terragrunt.write('}\n')
         terragrunt.write('EOF\n')
         terragrunt.write('}\n\n')
+
+
+def create_gitignore_file(destination):
+    gitignore_content = (
+        "# Local .terraform directories\n"
+        "**/.terraform/*\n"
+        "\n"
+        "# .tfstate files\n"
+        "*.tfstate\n"
+        "*.tfstate.*\n"
+        "\n"
+        "# Crash log files\n"
+        "crash.log\n"
+        "\n"
+        "# Ignore all .tfvars files, which are likely to contain sentitive data\n"
+        "*.tfvars\n"
+        "\n"
+        "# Ignore CLI configuration files\n"
+        ".terraformrc\n"
+        ".terragrunt*\n"
+        "terraform.rc\n"
+        ".terraform.lock.hcl\n\n"
+        "# terragrunt generated files\n"
+        "backend.tf\n"
+        "data.tf\n"
+        "locals.tf\n"
+        "versions.tf\n"
+    )
+
+    with open(f'{destination}/.gitignore', 'w') as file:
+        file.write(gitignore_content)
