@@ -44,7 +44,7 @@ def create_locals_file():
         locals_file.write('}\n')
 
 
-def create_root_terragrunt(bucket: str, region: str, dynamodb_table: str, key: str, destination: str):
+def create_root_terragrunt(bucket, region, dynamodb_table, key, destination="."):
     file_path = os.path.join(destination, "terragrunt.hcl")
     with open(file_path, "w") as terragrunt:
         # versions.tf
@@ -75,7 +75,7 @@ def create_root_terragrunt(bucket: str, region: str, dynamodb_table: str, key: s
         terragrunt.write(
             f'    key            = "{key}/${{path_relative_to_include()}}/terraform.tfstate"\n')
         terragrunt.write(f'    region         = "{region}"\n')
-        # terragrunt.write(f'    dynamodb_table = "{dynamodb_table}"\n')
+        terragrunt.write(f'    dynamodb_table = "{dynamodb_table}"\n')
         terragrunt.write('    encrypt        = true\n')
         terragrunt.write('  }\n')
         terragrunt.write('}\n')

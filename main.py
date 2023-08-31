@@ -4,6 +4,38 @@ import boto3
 
 from providers.aws.Aws import Aws
 from utils.git import Git
+from utils.filesystem import create_root_terragrunt
+
+
+def create_gitignore_file(path):
+    gitignore_content = (
+        "# Local .terraform directories\n"
+        "**/.terraform/*\n"
+        "\n"
+        "# .tfstate files\n"
+        "*.tfstate\n"
+        "*.tfstate.*\n"
+        "\n"
+        "# Crash log files\n"
+        "crash.log\n"
+        "\n"
+        "# Ignore all .tfvars files, which are likely to contain sentitive data\n"
+        "*.tfvars\n"
+        "\n"
+        "# Ignore CLI configuration files\n"
+        ".terraformrc\n"
+        ".terragrunt*\n"
+        "terraform.rc\n"
+        ".terraform.lock.hcl\n\n"
+        "# terragrunt generated files\n"
+        "backend.tf\n"
+        "data.tf\n"
+        "locals.tf\n"
+        "versions.tf\n"
+    )
+
+    with open(f'{path}/.gitignore', 'w') as file:
+        file.write(gitignore_content)
 
 
 @click.command()
@@ -17,7 +49,7 @@ def main(aws_account_id, aws_region, group_code):
     script_dir = os.path.dirname(os.path.abspath(__file__))
     s3Bucket = f'ft-{aws_account_id}-{aws_region}-tfstate'
     dynamoDBTable = f'ft-{aws_account_id}-{aws_region}-tfstate-lock'
-    stateKey = f'finisterra/generated/aws/{aws_account_id}/{aws_region}/${group_code}'
+    stateKey = f'finisterra/generated/aws/{aws_account_id}/{aws_region}/{group_code}'
 
     provider = Aws(script_dir, s3Bucket, dynamoDBTable, stateKey, None, [])
     provider.aws_account_id = aws_account_id
@@ -117,6 +149,10 @@ def main(aws_account_id, aws_region, group_code):
         exit()
 
     print("Finished processing AWS resources.")
+
+    create_gitignore_file("../")
+
+    create_root_terragrunt(s3Bucket, aws_region, dynamoDBTable, stateKey)
 
 
 if __name__ == "__main__":
