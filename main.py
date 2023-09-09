@@ -121,7 +121,8 @@ def main(aws_account_id, aws_region, group_code):
 
     create_gitignore_file("../")
 
-    create_root_terragrunt(s3Bucket, aws_region, dynamoDBTable, stateKey)
+    create_root_terragrunt(s3Bucket, aws_region,
+                           dynamoDBTable, stateKey, "../")
 
 
 if __name__ == "__main__":

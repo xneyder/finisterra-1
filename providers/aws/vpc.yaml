@@ -59,12 +59,14 @@ aws_vpc:
       target_resource_name: default
       defaults:
         manage_default_route_table: true
+      import_id:
+        field: vpc_id
       fields:
         default_route_table_propagating_vgws:
           field: propagating_vgws
           type: list
-        default_route_table_route:
-          field: route
+        default_route_table_routes:
+          function: default_route_table_routes
           type: list
         default_route_table_tags:
           field: tags
@@ -121,10 +123,6 @@ aws_vpc:
         private_subnet_assign_ipv6_address_on_creation:
           field: assign_ipv6_address_on_creation
           type: bool
-        # azs:
-        #   function: to_array
-        #   arg: availability_zone
-        #   type: list
         private_subnets:
           function: add_private_subnet
           type: map
@@ -151,6 +149,8 @@ aws_vpc:
           target_resource_name: private
           second_index:
             function: get_private_route_table_association_index
+          import_id:
+            function: get_private_route_table_association_import_id
           fields:
             private_subnets:
               function: add_private_route_table_association
@@ -217,6 +217,8 @@ aws_vpc:
           second_index:
             function: get_public_route_table_association_index
             arg: route_table_id
+          import_id:
+            function: get_private_route_table_association_import_id
           fields:
             public_subnets:
               function: add_public_route_table_association
@@ -265,6 +267,8 @@ aws_vpc:
               target_resource_name: private_nat_gateway
               second_index:
                 function: get_nat_gateway_private_route_id
+              import_id:
+                function: get_aws_route_import_id
               fields:
                 private_route_tables:
                   function: add_nat_gateway_private_route
@@ -290,6 +294,8 @@ aws_vpc:
           second_index:
             function: get_public_route_table_id
             arg: route_table_id
+          import_id:
+            function: get_aws_route_import_id
 
     aws_network_acl:
       join:
@@ -444,38 +450,35 @@ aws_vpc:
       target_resource_name: this
       defaults:
         enable_dhcp_options_association: true
+      import_id:
+        field: vpc_id
       fields:
         dhcp_options_domain_name:
           function: get_dhcp_options_domain_name
-      # childs:
-      #   aws_vpc_dhcp_options:
-      #     join:
-      #       dhcp_options_id:
-      #         field: id
-      #     target_resource_name: this
-      #     defaults:
-      #       create_dhcp_options: false
-      #     fields:
-      #       create_dhcp_options:
-      #         unique: false
-      #       # dhcp_options_id:
-      #       #   field: id
-      #       #   type: string
-      #       dhcp_options_domain_name:
-      #         field: domain_name
-      #         type: string
-      #       dhcp_options_domain_name_servers:
-      #         field: domain_name_servers
-      #         type: list
-      #       dhcp_options_netbios_name_servers:
-      #         field: netbios_name_servers
-      #         type: list
-      #       dhcp_options_netbios_node_type:
-      #         field: netbios_node_type
-      #         type: string
-      #       dhcp_options_ntp_servers:
-      #         field: ntp_servers
-      #         type: list
-      #       dhcp_options_tags:
-      #         field: tags
-      #         type: map
+      childs:
+        aws_vpc_dhcp_options:
+          join:
+            dhcp_options_id:
+              field: id
+          target_resource_name: this
+          fields:
+            create_dhcp_options:
+              unique: true
+            dhcp_options_domain_name:
+              field: domain_name
+              type: string
+            dhcp_options_domain_name_servers:
+              field: domain_name_servers
+              type: list
+            dhcp_options_netbios_name_servers:
+              field: netbios_name_servers
+              type: list
+            dhcp_options_netbios_node_type:
+              field: netbios_node_type
+              type: string
+            dhcp_options_ntp_servers:
+              field: ntp_servers
+              type: list
+            dhcp_options_tags:
+              field: tags
+              type: map

@@ -844,12 +844,31 @@ class HCL:
                                 second_index_value = self.get_value_from_tfstate(
                                     resource_attributes, field_name.split('.'))
 
+                import_id = resource_config.get('import_id', "")
+                import_id_value = resource_attributes.get('id', '')
+                if import_id:
+                    func_name = import_id.get('function')
+                    func = functions.get(func_name)
+                    if func is not None:
+                        arg = import_id.get('arg')
+                        if arg:
+                            import_id_value = func(
+                                resource_attributes, arg)
+                        else:
+                            import_id_value = func(resource_attributes)
+                    else:
+                        field_name = import_id.get('field')
+                        if field_name:
+                            import_id_value = self.get_value_from_tfstate(
+                                resource_attributes, field_name.split('.'))
+
                 deployed_resources.append({
                     'resource_type': resource_type,
                     'resource_name': resource_name,
                     'target_resource_name': target_resource_name,
                     'target_submodule': target_submodule,
                     'id': resource_attributes.get('id', ''),
+                    'import_id': import_id_value,
                     'index': root_attribute_key_value if root_attribute_key_value else '',
                     'second_index_value': second_index_value if second_index_value else '',
                 })
@@ -859,6 +878,7 @@ class HCL:
                     'target_resource_name': target_resource_name,
                     'target_submodule': target_submodule,
                     'id': resource_attributes.get('id', ''),
+                    'import_id': import_id_value,
                     'index': root_attribute_key_value if root_attribute_key_value else '',
                     'second_index_value': second_index_value if second_index_value else '',
                 })
@@ -1059,7 +1079,7 @@ class HCL:
         instances = []
 
         for resource in resources:
-            if resource['type'] in config:
+            if resource['type'] in config:  # Check if resource is root in the config
                 resource_config = config[resource['type']]
                 instance = self.process_resource_module(
                     resource, resources, config, functions)
@@ -1079,30 +1099,21 @@ class HCL:
             if instance["attributes"]:
                 instance["name"] = instance["name"].replace("\n", "")
                 module_instance_name = instance["name"].replace(
-                    '"', '').replace(" ", "_").replace(".", "_").replace("/", "_")
+                    '"', '').replace(" ", "_").replace(".", "_").replace("/", "_").replace("(", "_").replace(")", "_")
                 module_instance_name = f'{instance["type"]}-{module_instance_name}'
 
                 name_value = ""
                 name_field = ""
 
                 module_file_path = os.path.join(
-                    module_instance_name, f'instance.tf')
+                    instance["path"], f'{module_instance_name}.tf')
 
-                os.makedirs(os.path.dirname(
-                    module_file_path), exist_ok=True)
-
-                terragrunt_path = os.path.join(
-                    module_instance_name, "terragrunt.hcl")
-
-                with open(terragrunt_path, 'w') as file:
-
-                    file.write(f'include {{\n')
-                    file.write(f'path = find_in_parent_folders()\n')
-                    file.write(f'}}\n')
-
-                # if instance["path"] not in subfolders:
-                #     subfolders[instance["path"]] = {
-                #         'dependencies': instance["dependencies"]}
+                if instance["path"]:
+                    os.makedirs(os.path.dirname(
+                        module_file_path), exist_ok=True)
+                if instance["path"] not in subfolders:
+                    subfolders[instance["path"]] = {
+                        'dependencies': instance["dependencies"]}
 
                 with open(module_file_path, 'w') as file:
                     if instance["replace_name"]:
@@ -1120,13 +1131,17 @@ class HCL:
                                 r'\barn:' + aws_partition + r':\b', "arn:${local.aws_partition}:", name_value_replaced)
 
                         name_field = f'{instance["name_field"]}'
+
+                        hash_value = hashlib.sha256(
+                            name_value.encode()).hexdigest()[:10]
+                        name_field = f'{instance["name_field"]}_{hash_value}'
                         file.write(f'locals {{\n')
                         file.write(
                             f'{name_field} = "{name_value_replaced}"\n')
                         file.write(f'}}\n\n')
 
                     file.write(
-                        f'module "instance" {{\n')
+                        f'module "{module_instance_name}" {{\n')
                     file.write(f'source  = "{instance["module"]}"\n')
                     # file.write(f'version = "{instance["version"]}"\n') # TO REMOVE COMMENT
                     if instance["full_dump"]:
@@ -1158,72 +1173,30 @@ class HCL:
                             file.write(f'{index} = {value}\n')
                     file.write('}\n')
 
-        # for key, values in subfolders.items():
-        #     terragrunt_path = os.path.join(key, "terragrunt.hcl")
+        for key, values in subfolders.items():
+            terragrunt_path = os.path.join(key, "terragrunt.hcl")
 
-        #     # If the file doesn't exist, create it
-        #     if not os.path.exists(terragrunt_path):
-        #         with open(terragrunt_path, 'w') as file:
+            # If the file doesn't exist, create it
+            if not os.path.exists(terragrunt_path):
+                with open(terragrunt_path, 'w') as file:
 
-        #             file.write(f'include {{\n')
-        #             file.write(f'path = find_in_parent_folders()\n')
-        #             file.write(f'}}\n')
+                    file.write(f'include {{\n')
+                    file.write(f'path = find_in_parent_folders()\n')
+                    file.write(f'}}\n')
 
-        #             if values['dependencies']:
-        #                 file.write(f'dependencies  {{\n')
-        #                 file.write(
-        #                     f'paths = {json.dumps(values["dependencies"])}\n')
-        #                 file.write(f'}}\n')
-        #                 for dependency in values['dependencies']:
-        #                     os.makedirs(dependency, exist_ok=True)
-
-        # for instance in instances:
-        #     module_instance_name = instance["name"].replace(
-        #         '"', '').replace(" ", "_").replace(".", "_").replace("/", "_")
-        #     module_instance_name = f'{instance["type"]}-{module_instance_name}'
-        #     moved_file_path = os.path.join(
-        #         module_instance_name, f'moved.tf')
-
-        #     for deployed_resource in instance["deployed_resources"]:
-        #         resource_import_source = f'{deployed_resource["resource_type"]}.{deployed_resource["resource_name"]}'
-        #         index_str = ""
-        #         if deployed_resource["index"]:
-        #             index_str = '["'+deployed_resource["index"]+'"].'
-        #         if not index_str and deployed_resource["target_submodule"]:
-        #             deployed_resource["target_submodule"] += "."
-
-        #         second_index_str = "[0]"
-        #         if deployed_resource["second_index_value"]:
-        #             if deployed_resource["second_index_value"] == "disabled":
-        #                 second_index_str = ""
-        #             else:
-        #                 if isinstance(deployed_resource["second_index_value"], int):
-        #                     second_index_str = \
-        #                         f'[{deployed_resource["second_index_value"]}]'
-        #                 else:
-        #                     second_index_str = '["' + \
-        #                         deployed_resource["second_index_value"]+'"]'
-
-        #         resource_import_target = f'module.instance.{deployed_resource["target_submodule"]}{index_str}{deployed_resource["resource_type"]}.{deployed_resource["target_resource_name"]}{second_index_str}'
-
-        #         # print(resource_import_source)
-        #         # print(resource_import_target)
-        #         # subprocess.run(
-        #         #     ["terraform", "import", resource_import_target, deployed_resource["id"]])
-        #         # subprocess.run(
-        #         #     ["terraform", "state", "mv", "-backup=/dev/null", resource_import_source, resource_import_target])
-
-        #         # Write to moved.tf file
-        #         with open(moved_file_path, 'a') as file:  # 'a' is for append mode
-        #             file.write(
-        #                 f'moved {{\n  from = {resource_import_source}\n  to   = {resource_import_target}\n}}\n\n')
+                    if values['dependencies']:
+                        file.write(f'dependencies  {{\n')
+                        file.write(
+                            f'paths = {json.dumps(values["dependencies"])}\n')
+                        file.write(f'}}\n')
+                        for dependency in values['dependencies']:
+                            os.makedirs(dependency, exist_ok=True)
 
         for instance in instances:
             module_instance_name = instance["name"].replace(
-                '"', '').replace(" ", "_").replace(".", "_").replace("/", "_")
+                '"', '').replace(" ", "_").replace(".", "_").replace("/", "_").replace("(", "_").replace(")", "_")
             module_instance_name = f'{instance["type"]}-{module_instance_name}'
-            import_file_path = os.path.join(
-                module_instance_name, f'import.tf')
+            import_file_path = os.path.join("", f'import.tf')
 
             for deployed_resource in instance["deployed_resources"]:
                 resource_import_source = f'{deployed_resource["resource_type"]}.{deployed_resource["resource_name"]}'
@@ -1245,28 +1218,17 @@ class HCL:
                             second_index_str = '["' + \
                                 deployed_resource["second_index_value"]+'"]'
 
-                resource_import_target = f'module.instance.{deployed_resource["target_submodule"]}{index_str}{deployed_resource["resource_type"]}.{deployed_resource["target_resource_name"]}{second_index_str}'
+                resource_import_target = f'module.{module_instance_name}.{deployed_resource["target_submodule"]}{index_str}{deployed_resource["resource_type"]}.{deployed_resource["target_resource_name"]}{second_index_str}'
 
                 # Write to import.tf file
                 with open(import_file_path, 'a') as file:  # 'a' is for append mode
                     file.write(
-                        f'import {{\n  id = "{deployed_resource["id"]}"\n  to   = {resource_import_target}\n}}\n\n')
-
-        # Clean tmp files
-        os.remove("./versions.tf")
-        os.remove("./terraform.tfstate")
-        shutil.rmtree("./.terraform", ignore_errors=True)
+                        f'import {{\n  id = "{deployed_resource["import_id"]}"\n  to   = {resource_import_target}\n}}\n\n')
 
         print("Formatting HCL files...")
-        subprocess.run(["terragrunt", "run-all", "init"], check=True)
+        subprocess.run(["terragrunt", "init"], check=True)
         subprocess.run(["terragrunt", "hclfmt"], check=True)
         subprocess.run(["terraform", "fmt", "-recursive"], check=True)
-        subprocess.run(["terragrunt", "run-all", "validate"], check=True)
+        subprocess.run(["terragrunt",  "validate"], check=True)
         print("Running terragrunt plan on generated files...")
-        subprocess.run(["terragrunt", "run-all", "plan",
-                       "-refresh-only"], check=True)
-
-        # terraform = Terraform()
-        # self.json_plan = terraform.tf_plan("./", False)
-        # create_backend_file(self.bucket, os.path.join(self.state_key, "terraform.tfstate"),
-        #                     self.region, self.dynamodb_table)
+        subprocess.run(["terragrunt", "plan", "-refresh-only"], check=True)

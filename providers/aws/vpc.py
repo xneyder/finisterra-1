@@ -70,7 +70,6 @@ class VPC:
         self.schema_data = schema_data
         self.region = region
         self.aws_account_id = aws_account_id
-        
 
         self.workspace_id = workspace_id
         self.modules = modules
@@ -241,6 +240,17 @@ class VPC:
             self.network_acls[nacl_name]['egress_rules'][rule['rule_number']] = rule
         return {nacl_name: self.network_acls[nacl_name]}
 
+    def default_route_table_routes(self, attributes):
+        input_routes = attributes.get('route', [])
+
+        # Filter out entries with empty string values
+        filtered_routes = []
+        for route in input_routes:
+            filtered_route = {k: v for k, v in route.items() if v != ""}
+            filtered_routes.append(filtered_route)
+
+        return filtered_routes
+
     def add_eip(self, attributes):
         allocation_id = attributes.get('allocation_id')
         subnet_id, nat_gateway_name = self.public_subnets['allocations'][allocation_id]
@@ -338,17 +348,22 @@ class VPC:
 
     def add_nat_gateway_private_route(self, attributes):
         route_table_id = attributes.get('route_table_id')
-        route_table_name = self.private_route_table_ids[route_table_id]
-        nat_gateway_id = attributes.get('nat_gateway_id')
-        nat_gateway_name = self.public_nat_gateway_ids[nat_gateway_id]
+        # print("nat_gateway_id", attributes.get('nat_gateway_id'))
+        if route_table_id in self.private_route_table_ids:
+            route_table_name = self.private_route_table_ids[route_table_id]
+            nat_gateway_id = attributes.get('nat_gateway_id')
+            nat_gateway_name = self.public_nat_gateway_ids[nat_gateway_id]
 
-        self.private_route_tables[route_table_name]["nat_gateway_attached"] = nat_gateway_name
-        return {route_table_name: self.private_route_tables[route_table_name]}
+            self.private_route_tables[route_table_name]["nat_gateway_attached"] = nat_gateway_name
+            return {route_table_name: self.private_route_tables[route_table_name]}
+        return {}
 
     def get_nat_gateway_private_route_id(self, attributes):
         route_table_id = attributes.get('route_table_id')
-        route_table_name = self.private_route_table_ids[route_table_id]
-        return route_table_name+"-0.0.0.0/0"
+        if route_table_id in self.private_route_table_ids:
+            route_table_name = self.private_route_table_ids[route_table_id]
+            return route_table_name+"-0.0.0.0/0"
+        return ""
 
     def get_private_route_table_association_index(self, attributes):
         route_table_id = attributes.get('route_table_id')
@@ -356,6 +371,16 @@ class VPC:
         subnet_id = attributes.get('subnet_id')
         for key in self.private_subnets[subnet_id].keys():
             return key+"-"+route_table_name
+
+    def get_private_route_table_association_import_id(self, attributes):
+        route_table_id = attributes.get('route_table_id')
+        subnet_id = attributes.get('subnet_id')
+        return subnet_id+"/"+route_table_id
+
+    def get_aws_route_import_id(self, attributes):
+        route_table_id = attributes.get('route_table_id')
+        destination_cidr_block = attributes.get('destination_cidr_block')
+        return route_table_id+"_"+destination_cidr_block
 
     def get_private_route_table_id(self, attributes, arg):
         route_table_id = attributes.get(arg)
@@ -518,6 +543,9 @@ class VPC:
             'get_network_acl_id': self.get_network_acl_id,
             'get_network_acl_rule_id': self.get_network_acl_rule_id,
             'get_dhcp_options_domain_name': self.get_dhcp_options_domain_name,
+            'default_route_table_routes': self.default_route_table_routes,
+            'get_private_route_table_association_import_id': self.get_private_route_table_association_import_id,
+            'get_aws_route_import_id': self.get_aws_route_import_id,
 
 
 
@@ -540,6 +568,8 @@ class VPC:
             is_default = vpc.get("IsDefault", False)
             if not is_default:
                 vpc_id = vpc["VpcId"]
+                # if vpc_id != "vpc-09896d81bdb7b3cf4":
+                #     continue
                 print(f"  Processing VPC: {vpc_id}")
                 attributes = {
                     "id": vpc_id,
@@ -1445,32 +1475,48 @@ class VPC:
 
     def aws_route(self, route_table_id, route):
         self.resource_list['aws_route'] = {}
+        # Describe the route table
+        response = self.ec2_client.describe_route_tables(
+            RouteTableIds=[route_table_id])
+
+        # Check if it's the main route table
+        is_main_route_table = any(assoc.get('Main', False) for rt in response.get(
+            'RouteTables', []) for assoc in rt.get('Associations', []))
+
+        if is_main_route_table:
+            return
+
         destination = route.get("DestinationCidrBlock",
                                 route.get("DestinationIpv6CidrBlock", ""))
-        if destination:
-            if route.get("GatewayId", "") == "local":  # Ignoring local route
-                return
 
-            print(
-                f"  Processing Route in Route Table: {route_table_id} for destination: {destination}")
+        if not destination:
+            return
 
-            attributes = {
-                "id": f"{route_table_id}-{destination.replace('/', '-')}",
-                "route_table_id": route_table_id,
-                "destination_cidr_block": route.get("DestinationCidrBlock", ""),
-                "destination_ipv6_cidr_block": route.get("DestinationIpv6CidrBlock", ""),
-                "gateway_id": route.get("GatewayId", ""),
-                "nat_gateway_id": route.get("NatGatewayId", ""),
-                "instance_id": route.get("InstanceId", ""),
-                "egress_only_gateway_id": route.get("EgressOnlyInternetGatewayId", ""),
-                "transit_gateway_id": route.get("TransitGatewayId", ""),
-                "local_gateway_id": route.get("LocalGatewayId", ""),
-            }
-            self.hcl.process_resource(
-                "aws_route", f"{route_table_id.replace('-', '_')}-{destination.replace('/', '-')}", attributes)
+        # Ignoring local route
+        if route.get("GatewayId", "") == "local":
+            return
 
-            self.resource_list['aws_route'][
-                f"{route_table_id.replace('-', '_')}-{destination.replace('/', '-')}"] = attributes
+        print(
+            f"  Processing Route in Route Table: {route_table_id} for destination: {destination}")
+
+        attributes = {
+            "id": f"{route_table_id}-{destination.replace('/', '-')}",
+            "route_table_id": route_table_id,
+            "destination_cidr_block": route.get("DestinationCidrBlock", ""),
+            "destination_ipv6_cidr_block": route.get("DestinationIpv6CidrBlock", ""),
+            "gateway_id": route.get("GatewayId", ""),
+            "nat_gateway_id": route.get("NatGatewayId", ""),
+            "instance_id": route.get("InstanceId", ""),
+            "egress_only_gateway_id": route.get("EgressOnlyInternetGatewayId", ""),
+            "transit_gateway_id": route.get("TransitGatewayId", ""),
+            "local_gateway_id": route.get("LocalGatewayId", ""),
+        }
+
+        self.hcl.process_resource(
+            "aws_route", f"{route_table_id.replace('-', '_')}-{destination.replace('/', '-')}", attributes)
+
+        self.resource_list['aws_route'][
+            f"{route_table_id.replace('-', '_')}-{destination.replace('/', '-')}"] = attributes
 
     def aws_route_table_association(self, subnet_id):
         print("Processing Route Table Associations...")
@@ -1579,7 +1625,7 @@ class VPC:
                         self.dhcp_options_domain_name[assoc_id] = config['Values'][0]['Value']
                         break
 
-            # self.aws_vpc_dhcp_options(dhcp_options_id)
+            self.aws_vpc_dhcp_options(dhcp_options_id)
 
     def aws_vpc_endpoint(self):
         print("Processing VPC Endpoints...")
