@@ -17,7 +17,7 @@ class ACM:
         self.schema_data = schema_data
         self.region = region
         self.aws_account_id = aws_account_id
-        
+
         self.workspace_id = workspace_id
         self.modules = modules
         self.hcl = HCL(self.schema_data, self.provider_name,
@@ -68,13 +68,14 @@ class ACM:
                 cert_arn = cert_summary["CertificateArn"]
                 cert_domain = cert_summary["DomainName"]
 
-                # Get certificate details to check for expiration
+                # Get certificate details to check for expiration and type
                 cert_details = self.acm_client.describe_certificate(
                     CertificateArn=cert_arn)["Certificate"]
                 expiration_date = cert_details["NotAfter"]
+                certificate_type = cert_details["Type"]
 
-                # Skip expired certificates
-                if expiration_date < datetime.datetime.now(tz=datetime.timezone.utc):
+                # Skip expired certificates and imported certificates
+                if expiration_date < datetime.datetime.now(tz=datetime.timezone.utc) or certificate_type == "IMPORTED":
                     continue
 
                 print(f"  Processing ACM Certificate: {cert_arn}")

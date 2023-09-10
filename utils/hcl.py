@@ -1099,7 +1099,7 @@ class HCL:
             if instance["attributes"]:
                 instance["name"] = instance["name"].replace("\n", "")
                 module_instance_name = instance["name"].replace(
-                    '"', '').replace(" ", "_").replace(".", "_").replace("/", "_").replace("(", "_").replace(")", "_")
+                    '"', '').replace(" ", "_").replace(".", "_").replace("/", "_").replace("(", "_").replace(")", "_").replace("*", "_")
                 module_instance_name = f'{instance["type"]}-{module_instance_name}'
 
                 name_value = ""
@@ -1151,11 +1151,11 @@ class HCL:
                             try:
                                 if instance["replace_name"]:
                                     value = re.sub(
-                                        r'\"' + name_value + r'\"', "local." + name_field, value)
+                                        r'\"' + re.escape(name_value) + r'\"', "local." + name_field, value)
 
                                 if instance["replace_name"]:
                                     value = re.sub(
-                                        r'\b' + name_value + r'\b', "${local."+name_field+"}", value)
+                                        r'\b' + re.escape(name_value) + r'\b', "${local."+name_field+"}", value)
 
                                 if aws_account_id:
                                     value = re.sub(r'\b' + aws_account_id +
@@ -1194,7 +1194,7 @@ class HCL:
 
         for instance in instances:
             module_instance_name = instance["name"].replace(
-                '"', '').replace(" ", "_").replace(".", "_").replace("/", "_").replace("(", "_").replace(")", "_")
+                '"', '').replace(" ", "_").replace(".", "_").replace("/", "_").replace("(", "_").replace(")", "_").replace("*", "_")
             module_instance_name = f'{instance["type"]}-{module_instance_name}'
             import_file_path = os.path.join("", f'import.tf')
 
