@@ -20,6 +20,7 @@ aws_acm_certificate:
     validation_method:
       field: validation_method
       type: string
+      module_default: "DNS"
     key_algorithm:
       field: key_algorithm
       type: string
@@ -27,6 +28,7 @@ aws_acm_certificate:
       function: get_field_from_attrs
       arg: options.certificate_transparency_logging_preference
       type: string
+      module_default: "ENABLED"
     validation_option:
       field: validation_option
       type: list

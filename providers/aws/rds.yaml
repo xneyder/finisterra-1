@@ -32,6 +32,7 @@ aws_db_instance:
       field: storage_type
     storage_encrypted:
       field: storage_encrypted
+      module_default: true
     kms_key_id:
       field: kms_key_id
     license_model:
@@ -50,6 +51,7 @@ aws_db_instance:
       field: domain_iam_role_name
     iam_database_authentication_enabled:
       field: iam_database_authentication_enabled
+      module_default: false
     custom_iam_instance_profile:
       field: custom_iam_instance_profile
     master_user_secret_kms_key_id:
@@ -68,20 +70,25 @@ aws_db_instance:
       field: availability_zone
     multi_az:
       field: multi_az
+      module_default: true
     iops:
       field: iops
     storage_throughput:
       field: storage_throughput
     publicly_accessible:
       field: publicly_accessible
+      module_default: false
     ca_cert_identifier:
       field: ca_cert_identifier
     allow_major_version_upgrade:
       field: allow_major_version_upgrade
+      module_default: false
     auto_minor_version_upgrade:
       field: auto_minor_version_upgrade
+      module_default: true
     apply_immediately:
       field: apply_immediately
+      module_default: false
     maintenance_window:
       field: maintenance_window
     blue_green_update:
@@ -92,12 +99,16 @@ aws_db_instance:
       field: final_snapshot_identifier
     copy_tags_to_snapshot:
       field: copy_tags_to_snapshot
+      module_default: false
     skip_final_snapshot:
       field: skip_final_snapshot
+      module_default: false
     performance_insights_enabled:
       field: performance_insights_enabled
+      module_default: false
     performance_insights_retention_period:
       field: performance_insights_retention_period
+      module_default: 7
     performance_insights_kms_key_id:
       field: performance_insights_kms_key_id
     replicate_source_db:
@@ -110,8 +121,10 @@ aws_db_instance:
       field: backup_window
     max_allocated_storage:
       field: max_allocated_storage
+      module_default: 0
     monitoring_interval:
       field: monitoring_interval
+      module_default: 0
     monitoring_role_arn:
       field: monitoring_role_arn
     character_set_name:
@@ -126,8 +139,10 @@ aws_db_instance:
       field: timeouts
     deletion_protection:
       field: deletion_protection
+      module_default: false
     delete_automated_backups:
       field: delete_automated_backups
+      module_default: true
     restore_to_point_in_time:
       field: restore_to_point_in_time
     s3_import:
@@ -232,6 +247,7 @@ aws_db_instance:
         cloudwatch_log_group_retention_in_days:
           field: retention_in_days
           type: number
+          module_default: 7
         cloudwatch_log_group_kms_key_id:
           field: kms_key_id
           type: string

@@ -757,6 +757,7 @@ class HCL:
                 multiline = field_info.get('multiline', False)
                 jsonencode = field_info.get('jsonencode', False)
                 default = field_info.get('default', 'N/A')
+                module_default = field_info.get('module_default', 'N/A')
                 func_name = field_info.get('function')
                 field_type = field_info.get('type', None)
                 state_field = field_info.get('field', '').split('.')
@@ -800,6 +801,11 @@ class HCL:
                 if value in [None, "", [], {}] and default != 'N/A':
                     value = default
                     defaulted = True
+
+                if module_default != 'N/A':
+                    if value == module_default:
+                        value = None
+                        created = False
 
                 if value not in [None, "", [], {}] or defaulted:
                     if multiline:

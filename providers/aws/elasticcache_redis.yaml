@@ -17,6 +17,7 @@ aws_elasticache_replication_group:
     transit_encryption_enabled:
       field: transit_encryption_enabled
       type: bool
+      module_default: true
     replication_group_id:
       field: replication_group_id
       type: string
@@ -41,15 +42,18 @@ aws_elasticache_replication_group:
     automatic_failover_enabled:
       field: automatic_failover_enabled
       type: bool
+      module_default: false
     multi_az_enabled:
       field: multi_az_enabled
       type: bool
+      module_default: false
     subnet_group_name:
       field: subnet_group_name
       type: string
     maintenance_window:
       field: maintenance_window
       type: string
+      module_default: "wed:03:00-wed:04:00"
     notification_topic_arn:
       field: notification_topic_arn
       type: string
@@ -59,6 +63,7 @@ aws_elasticache_replication_group:
     at_rest_encryption_enabled:
       field: at_rest_encryption_enabled
       type: bool
+      module_default: false
     kms_key_id:
       field: kms_key_id
       type: string
@@ -71,18 +76,22 @@ aws_elasticache_replication_group:
     snapshot_window:
       field: snapshot_window
       type: string
+      module_default: "06:30-07:30"
     snapshot_retention_limit:
       field: snapshot_retention_limit
       type: number
+      module_default: 0
     final_snapshot_identifier:
       field: final_snapshot_identifier
       type: string
     apply_immediately:
       field: apply_immediately
       type: bool
+      module_default: true
     data_tiering_enabled:
       field: data_tiering_enabled
       type: bool
+      module_default: false
     auto_minor_version_upgrade:
       function: auto_minor_version_upgrade
       type: bool
@@ -95,9 +104,11 @@ aws_elasticache_replication_group:
     cluster_mode_num_node_groups:
       field: num_node_groups
       type: number
+      module_default: 0
     cluster_mode_replicas_per_node_group:
       field: replicas_per_node_group
       type: number
+      module_default: 0
     user_group_ids:
       field: user_group_ids
       type: list

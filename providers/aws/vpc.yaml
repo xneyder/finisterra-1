@@ -39,12 +39,15 @@ aws_vpc:
     instance_tenancy:
       field: instance_tenancy
       type: string
+      module_default: "default"
     enable_dns_hostnames:
       field: enable_dns_hostnames
       type: bool
+      module_default: true
     enable_dns_support:
       field: enable_dns_support
       type: bool
+      module_default: true
     enable_network_address_usage_metrics:
       field: enable_network_address_usage_metrics
       type: bool
@@ -123,21 +126,26 @@ aws_vpc:
         private_subnet_assign_ipv6_address_on_creation:
           field: assign_ipv6_address_on_creation
           type: bool
+          moudule_default: false
         private_subnets:
           function: add_private_subnet
           type: map
         private_subnet_enable_dns64:
           field: enable_dns64
           type: bool
+          moudule_default: true
         private_subnet_enable_resource_name_dns_aaaa_record_on_launch:
           field: enable_resource_name_dns_aaaa_record_on_launch
           type: bool
+          moudule_default: true
         private_subnet_enable_resource_name_dns_a_record_on_launch:
           field: enable_resource_name_dns_a_record_on_launch
           type: bool
+          moudule_default: false
         private_subnet_ipv6_native:
           field: ipv6_native
           type: bool
+          moudule_default: false
         private_subnet_private_dns_hostname_type_on_launch:
           field: private_dns_hostname_type_on_launch
           type: string
@@ -183,28 +191,30 @@ aws_vpc:
         public_subnet_assign_ipv6_address_on_creation:
           field: assign_ipv6_address_on_creation
           type: bool
-        # azs:
-        #   function: to_array
-        #   arg: availability_zone
-        #   type: list
+          module_default: false
         public_subnets:
           function: add_public_subnet
           type: map
         public_subnet_enable_dns64:
           field: enable_dns64
           type: bool
+          module_default: true
         public_subnet_enable_resource_name_dns_aaaa_record_on_launch:
           field: enable_resource_name_dns_aaaa_record_on_launch
           type: bool
+          module_default: true
         public_subnet_enable_resource_name_dns_a_record_on_launch:
           field: enable_resource_name_dns_a_record_on_launch
           type: bool
+          module_default: false
         public_subnet_ipv6_native:
           field: ipv6_native
           type: bool
+          module_default: false
         map_public_ip_on_launch:
           field: map_public_ip_on_launch
           type: bool
+          module_default: false
         public_subnet_private_dns_hostname_type_on_launch:
           field: private_dns_hostname_type_on_launch
           type: string
@@ -429,9 +439,9 @@ aws_vpc:
                     flow_iam_policy_description:
                       field: description
                       type: string
-                    flow_name_prefix:
-                      field: name_prefix
-                      type: string
+                    # flow_name_prefix:
+                    #   field: name_prefix
+                    #   type: string
                     flow_iam_policy_path:
                       field: path
                       type: string

@@ -58,7 +58,6 @@ class RDS:
         }
 
         self.hcl.refresh_state()
-        print(self.region, self.aws_account_id)
         self.hcl.module_hcl_code("terraform.tfstate",
                                  os.path.join(os.path.dirname(os.path.abspath(__file__)), "rds.yaml"), functions, self.region, self.aws_account_id)
         self.json_plan = self.hcl.json_plan
@@ -262,10 +261,12 @@ class RDS:
             print(
                 f"Processing IAM Role Policy Attachment: {policy_name} for Role: {role_name}")
 
+            resource_name = f"{role_name}/{policy_name}"
+
             attributes = {
                 "id": f"{role_name}/{policy['PolicyArn']}",
                 "role": role_name,
                 "policy_arn": policy['PolicyArn']
             }
             self.hcl.process_resource(
-                "aws_iam_role_policy_attachment", policy_name.replace("-", "_"), attributes)
+                "aws_iam_role_policy_attachment", resource_name.replace("-", "_"), attributes)

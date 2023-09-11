@@ -20,6 +20,7 @@ aws_ecr_repository:
     repository_image_tag_mutability:
       field: image_tag_mutability
       type: string
+      module_default: "IMMUTABLE"
     repository_encryption_type:
       function: get_field_from_attrs
       arg: encryption_configuration.encryption_type
@@ -34,6 +35,7 @@ aws_ecr_repository:
       function: get_field_from_attrs
       arg: image_scanning_configuration.scan_on_push
       type: bool
+      module_default: true
     tags:
       field: tags
       type: map
@@ -81,6 +83,7 @@ aws_ecr_repository:
         registry_scan_type:
           field: scan_type
           type: string
+          module_default: "ENHANCED"
         registry_scan_rules:
           field: rules
           type: list

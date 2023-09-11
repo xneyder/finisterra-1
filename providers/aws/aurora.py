@@ -3,11 +3,12 @@ from utils.hcl import HCL
 
 
 class Aurora:
-    def __init__(self, rds_client, logs_client, iam_client, script_dir, provider_name, schema_data, region, s3Bucket,
+    def __init__(self, rds_client, logs_client, iam_client, appautoscaling_client, script_dir, provider_name, schema_data, region, s3Bucket,
                  dynamoDBTable, state_key, workspace_id, modules, aws_account_id):
         self.rds_client = rds_client
         self.logs_client = logs_client
         self.iam_client = iam_client
+        self.appautoscaling_client = appautoscaling_client
         self.transform_rules = {}
         self.provider_name = provider_name
         self.script_dir = script_dir
@@ -21,27 +22,59 @@ class Aurora:
         self.hcl = HCL(self.schema_data, self.provider_name,
                        self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules)
         self.resource_list = {}
+        self.aws_rds_cluster = {}
 
-    def rds(self):
+    def init_cluster_attributes(self, attributes):
+        self.aws_rds_cluster = attributes
+        return None
+
+    def build_instances(self, attributes):
+        instance_result = {}
+        identifier = attributes.get("identifier", None)
+        instance_result['identifier'] = identifier
+        attrs_list = [
+            "apply_immediately",
+            "auto_minor_version_upgrade",
+            "copy_tags_to_snapshot",
+            "instance_class",
+            "monitoring_interval",
+            "performance_insights_enabled",
+            "performance_insights_kms_key_id",
+            "performance_insights_retention_period",
+            "preferred_maintenance_window",
+            "publicly_accessible",
+            "tags",
+        ]
+        for attr in attrs_list:
+            child_value = attributes.get(attr, None)
+            parent_value = self.aws_rds_cluster.get(attr, None)
+            if child_value != parent_value:
+                instance_result[attr] = child_value
+        availability_zone = attributes.get("availability_zone", None)
+        if availability_zone:
+            instance_result["availability_zone"] = availability_zone
+
+        promotion_tier = attributes.get("promotion_tier", None)
+        if promotion_tier:
+            instance_result["promotion_tier"] = promotion_tier
+        return {identifier: instance_result}
+
+    def aurora(self):
         self.hcl.prepare_folder(os.path.join("generated", "aurora"))
 
-        self.aws_db_subnet_group()
         self.aws_rds_cluster()
-        self.aws_rds_cluster_endpoint()
-        self.aws_rds_cluster_instance()
-        self.aws_rds_cluster_parameter_group()
-        self.aws_rds_cluster_role_association()
-        self.aws_db_parameter_group()
-        self.aws_appautoscaling_target()
-        self.aws_appautoscaling_policy()
-        self.aws_security_group()
-        self.aws_security_group_rule()
-        self.aws_iam_role()
-        self.aws_iam_role_policy_attachment()
-        self.aws_cloudwatch_log_group()
+
+        # self.aws_security_group()
+        # self.aws_security_group_rule()
+
+        functions = {
+            'init_cluster_attributes': self.init_cluster_attributes,
+            'build_instances': self.build_instances,
+        }
 
         self.hcl.refresh_state()
-        self.hcl.generate_hcl_file()
+        self.hcl.module_hcl_code("terraform.tfstate",
+                                 os.path.join(os.path.dirname(os.path.abspath(__file__)), "aurora.yaml"), functions, self.region, self.aws_account_id)
         self.json_plan = self.hcl.json_plan
 
     def aws_db_cluster_snapshot(self):
@@ -63,7 +96,7 @@ class Aurora:
 
     def aws_appautoscaling_target(self, cluster_arn):
         print(
-            f"Processing AppAutoScaling Targets for MSK Cluster ARN {cluster_arn}...")
+            f"Processing AppAutoScaling Targets for Aurora Cluster ARN {cluster_arn}...")
 
         paginator = self.appautoscaling_client.get_paginator(
             "describe_scalable_targets")
@@ -89,7 +122,7 @@ class Aurora:
 
     def aws_appautoscaling_policy(self, cluster_arn):
         print(
-            f"Processing AppAutoScaling Policies for MSK Cluster ARN {cluster_arn}...")
+            f"Processing AppAutoScaling Policies for Aurora Cluster ARN {cluster_arn}...")
 
         paginator = self.appautoscaling_client.get_paginator(
             "describe_scaling_policies")
@@ -394,19 +427,21 @@ class Aurora:
                     self.hcl.process_resource(
                         "aws_db_snapshot_copy", db_snapshot_id.replace("-", "_"), attributes)
 
-    def aws_db_subnet_group(self):
-        print("Processing DB Subnet Groups...")
+    def aws_db_subnet_group(self, db_subnet_group_name):
+        print(f"Processing DB Subnet Groups {db_subnet_group_name}")
+        if db_subnet_group_name.startswith("default"):
+            return
 
         paginator = self.rds_client.get_paginator("describe_db_subnet_groups")
         for page in paginator.paginate():
             for db_subnet_group in page.get("DBSubnetGroups", []):
-                db_subnet_group_name = db_subnet_group["DBSubnetGroupName"]
+                # Skip the subnet group if it's not the given one
+                if db_subnet_group["DBSubnetGroupName"] != db_subnet_group_name:
+                    continue
+
                 print(f"  Processing DB Subnet Group: {db_subnet_group_name}")
                 attributes = {
                     "id": db_subnet_group_name,
-                    # "name": db_subnet_group_name,
-                    # "description": db_subnet_group["DBSubnetGroupDescription"],
-                    # "subnet_ids": [subnet["SubnetIdentifier"] for subnet in db_subnet_group["Subnets"]],
                 }
                 self.hcl.process_resource(
                     "aws_db_subnet_group", db_subnet_group_name.replace("-", "_"), attributes)
@@ -418,7 +453,7 @@ class Aurora:
         for page in paginator.paginate():
             for rds_cluster in page.get("DBClusters", []):
                 engine = rds_cluster.get("Engine", "")
-                if engine not in ["mysql", "postgres"]:
+                if not engine.startswith("aurora"):
                     continue
                 rds_cluster_id = rds_cluster["DBClusterIdentifier"]
                 print(f"  Processing RDS Cluster: {rds_cluster_id}")
@@ -433,6 +468,16 @@ class Aurora:
                 }
                 self.hcl.process_resource(
                     "aws_rds_cluster", rds_cluster_id.replace("-", "_"), attributes)
+
+                parameter_group_name = rds_cluster.get(
+                    "DBClusterParameterGroupName", "")
+                self.aws_rds_cluster_instance(rds_cluster_id)
+                self.aws_rds_cluster_parameter_group(parameter_group_name)
+                self.aws_rds_cluster_endpoint(rds_cluster_id)
+                self.aws_rds_cluster_role_association(rds_cluster_id)
+                # Call AppAutoScaling related functions
+                self.aws_appautoscaling_target(rds_cluster_id)
+                self.aws_appautoscaling_policy(rds_cluster_id)
 
     def aws_rds_cluster_activity_stream(self):
         print("Processing RDS Cluster Activity Streams...")
@@ -459,13 +504,15 @@ class Aurora:
                     self.hcl.process_resource(
                         "aws_rds_cluster_activity_stream", rds_cluster_id.replace("-", "_"), attributes)
 
-    def aws_rds_cluster_endpoint(self):
+    def aws_rds_cluster_endpoint(self, cluster_id):
         print("Processing RDS Cluster Endpoints...")
 
         paginator = self.rds_client.get_paginator(
             "describe_db_cluster_endpoints")
         for page in paginator.paginate():
             for rds_cluster_endpoint in page.get("DBClusterEndpoints", []):
+                if rds_cluster_endpoint["DBClusterIdentifier"] != cluster_id:
+                    continue
                 if "DBClusterEndpointIdentifier" in rds_cluster_endpoint:
                     endpoint_id = rds_cluster_endpoint["DBClusterEndpointIdentifier"]
                     print(f"  Processing RDS Cluster Endpoint: {endpoint_id}")
@@ -479,13 +526,16 @@ class Aurora:
                     self.hcl.process_resource(
                         "aws_rds_cluster_endpoint", endpoint_id.replace("-", "_"), attributes)
 
-    def aws_rds_cluster_instance(self):
+    def aws_rds_cluster_instance(self, cluster_id):
         print("Processing RDS Cluster Instances...")
 
         paginator = self.rds_client.get_paginator("describe_db_instances")
         for page in paginator.paginate():
             for rds_instance in page.get("DBInstances", []):
-                if "DBClusterIdentifier" in rds_instance and rds_instance["Engine"] in ["mysql", "postgres"]:
+                if rds_instance.get("DBClusterIdentifier") != cluster_id:
+                    continue
+                print(rds_instance["Engine"])
+                if "DBClusterIdentifier" in rds_instance and rds_instance["Engine"].startswith("aurora"):
                     instance_id = rds_instance["DBInstanceIdentifier"]
                     print(f"  Processing RDS Cluster Instance: {instance_id}")
                     attributes = {
@@ -498,13 +548,36 @@ class Aurora:
                     self.hcl.process_resource(
                         "aws_rds_cluster_instance", instance_id.replace("-", "_"), attributes)
 
-    def aws_rds_cluster_parameter_group(self):
+                    # Extract the DBSubnetGroupName and call the aws_db_subnet_group function
+                    db_subnet_group_name = rds_instance.get(
+                        "DBSubnetGroupName", "")
+                    if db_subnet_group_name:
+                        self.aws_db_subnet_group(db_subnet_group_name)
+
+                    # Extract the DBParameterGroupName and call the aws_db_parameter_group function
+                    db_parameter_group_name = rds_instance.get(
+                        "DBParameterGroupName", "")
+                    if db_parameter_group_name:
+                        self.aws_db_parameter_group(db_parameter_group_name)
+
+                    monitoring_role_arn = rds_instance.get("MonitoringRoleArn")
+                    if monitoring_role_arn:
+                        self.aws_iam_role(monitoring_role_arn)
+
+                    # call aws_cloudwatch_log_group function with instance_id and each log export name as parameters
+                    for log_export_name in rds_instance.get("EnabledCloudwatchLogsExports", []):
+                        self.aws_cloudwatch_log_group(
+                            instance_id, log_export_name)
+
+    def aws_rds_cluster_parameter_group(self, parameter_group_name):
         print("Processing RDS Cluster Parameter Groups...")
 
         paginator = self.rds_client.get_paginator(
             "describe_db_cluster_parameter_groups")
         for page in paginator.paginate():
             for rds_cluster_parameter_group in page.get("DBClusterParameterGroups", []):
+                if rds_cluster_parameter_group["DBClusterParameterGroupName"] != parameter_group_name:
+                    continue
                 parameter_group_id = rds_cluster_parameter_group["DBClusterParameterGroupName"]
                 print(
                     f"  Processing RDS Cluster Parameter Group: {parameter_group_id}")
@@ -517,12 +590,14 @@ class Aurora:
                 self.hcl.process_resource(
                     "aws_rds_cluster_parameter_group", parameter_group_id.replace("-", "_"), attributes)
 
-    def aws_rds_cluster_role_association(self):
+    def aws_rds_cluster_role_association(self, cluster_id):
         print("Processing RDS Cluster Role Associations...")
 
         paginator = self.rds_client.get_paginator("describe_db_clusters")
         for page in paginator.paginate():
             for rds_cluster in page.get("DBClusters", []):
+                if rds_cluster["DBClusterIdentifier"] != cluster_id:
+                    continue
                 engine = rds_cluster.get("Engine", "")
                 if engine not in ["mysql", "postgres"]:
                     continue
@@ -691,13 +766,15 @@ class Aurora:
             print(
                 f"Processing IAM Role Policy Attachment: {policy_name} for Role: {role_name}")
 
+            resource_name = f"{role_name}/{policy_name}"
+
             attributes = {
                 "id": f"{role_name}/{policy['PolicyArn']}",
                 "role": role_name,
                 "policy_arn": policy['PolicyArn']
             }
             self.hcl.process_resource(
-                "aws_iam_role_policy_attachment", policy_name.replace("-", "_"), attributes)
+                "aws_iam_role_policy_attachment", resource_name.replace("-", "_"), attributes)
 
     def aws_cloudwatch_log_group(self, instance_id, log_export_name):
         print(
@@ -728,3 +805,57 @@ class Aurora:
                     logGroupNamePrefix=log_group_name_prefix, nextToken=response['nextToken'])
             else:
                 break
+
+    def aws_appautoscaling_target(self, cluster_identifier):
+        cluster_identifier = f"cluster:{cluster_identifier}"
+        print(
+            f"Processing AppAutoScaling Targets for Aurora Cluster ARN {cluster_identifier}...")
+
+        paginator = self.appautoscaling_client.get_paginator(
+            "describe_scalable_targets")
+        page_iterator = paginator.paginate(
+            ServiceNamespace='kafka',
+            ResourceIds=[cluster_identifier]
+        )
+
+        for page in page_iterator:
+            for target in page["ScalableTargets"]:
+                target_id = target["ResourceId"]
+                print(f"  Processing AppAutoScaling Target: {target_id}")
+
+                attributes = {
+                    "id": target_id,
+                    "service_namespace": 'kafka',
+                    "resource_id": cluster_identifier
+                    # Add other relevant details from 'target' as needed
+                }
+
+                self.hcl.process_resource(
+                    "aws_appautoscaling_target", target_id, attributes)
+
+    def aws_appautoscaling_policy(self, cluster_identifier):
+        cluster_identifier = f"cluster:{cluster_identifier}"
+        print(
+            f"Processing AppAutoScaling Policies for Aurora Cluster ARN {cluster_identifier}...")
+
+        paginator = self.appautoscaling_client.get_paginator(
+            "describe_scaling_policies")
+        page_iterator = paginator.paginate(
+            ServiceNamespace='kafka',
+            ResourceId=cluster_identifier
+        )
+
+        for page in page_iterator:
+            for policy in page["ScalingPolicies"]:
+                policy_name = policy["PolicyName"]
+                print(f"  Processing AppAutoScaling Policy: {policy_name}")
+
+                attributes = {
+                    "id": policy_name,
+                    "service_namespace": 'kafka',
+                    "resource_id": cluster_identifier
+                    # Add other relevant details from 'policy' as needed
+                }
+
+                self.hcl.process_resource(
+                    "aws_appautoscaling_policy", policy_name, attributes)

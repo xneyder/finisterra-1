@@ -23,6 +23,7 @@ aws_lb:
     internal:
       field: internal
       type: bool
+      module_default: false
     security_group_names:
       function: get_security_group_names
       arg: security_groups
@@ -30,27 +31,35 @@ aws_lb:
     cross_zone_load_balancing_enabled:
       field: enable_cross_zone_load_balancing
       type: bool
+      module_default: true
     http2_enabled:
       field: enable_http2
       type: bool
+      module_default: true
     idle_timeout:
       field: idle_timeout
       type: number
+      module_default: 60
     ip_address_type:
       field: ip_address_type
       type: string
+      module_default: "ipv4"
     deletion_protection_enabled:
       field: enable_deletion_protection
       type: bool
+      module_default: false
     drop_invalid_header_fields:
       field: drop_invalid_header_fields
       type: bool
+      module_default: false
     preserve_host_header:
       field: preserve_host_header
       type: bool
+      module_default: false
     xff_header_processing_mode:
       field: xff_header_processing_mode
       type: string
+      module_default: "append"
     access_logs:
       field: access_logs
       type: map

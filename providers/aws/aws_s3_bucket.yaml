@@ -16,8 +16,10 @@ aws_s3_bucket:
       field: tags
     force_destroy:
       field: force_destroy
+      module_default: false
     object_lock_enabled:
       field: object_lock_enabled
+      module_default: false
   defaults:
     attach_public_policy: false
   childs:
@@ -131,6 +133,7 @@ aws_s3_bucket:
           field: object_lock_configuration
         object_lock_enabled:
           field: object_lock_enabled
+          module_default: false
         expected_bucket_owner:
           field: expected_bucket_owner
 
@@ -173,12 +176,16 @@ aws_s3_bucket:
       fields:
         block_public_acls:
           field: block_public_acls
+          module_default: true
         block_public_policy:
           field: block_public_policy
+          module_default: true
         ignore_public_acls:
           field: ignore_public_acls
+          module_default: true
         restrict_public_buckets:
           field: restrict_public_buckets
+          module_default: true
 
     aws_s3_bucket_ownership_controls: #no tested
       join:

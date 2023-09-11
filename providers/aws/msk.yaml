@@ -24,6 +24,7 @@ aws_msk_cluster:
     enhanced_monitoring:
       field: enhanced_monitoring
       type: string
+      module_default: "DEFAULT"
     broker_instance_type:
       function: get_field_from_attrs
       arg: broker_node_group_info.instance_type
@@ -46,18 +47,22 @@ aws_msk_cluster:
       function: get_field_from_attrs
       arg: broker_node_group_info.storage_info.ebs_storage_info.volume_size
       type: number
+      module_default: 1000
     public_access_enabled:
       function: get_public_access_enabled
       arg: broker_node_group_info.connectivity_info.public_access.type
       type: string
+      module_default: false
     client_broker:
       function: get_field_from_attrs
       arg: encryption_info.encryption_in_transit.client_broker
       type: string
+      module_default: "TLS"
     encryption_in_cluster:
       function: get_field_from_attrs
       arg: encryption_info.encryption_in_transit.in_cluster
       type: string
+      module_default: true
     encryption_at_rest_kms_key_arn:
       function: get_field_from_attrs
       arg: encryption_info.encryption_at_rest_kms_key_arn
@@ -66,6 +71,7 @@ aws_msk_cluster:
       function: get_field_from_attrs
       arg: broker_node_group_info.connectivity_info.vpc_connectivity.client_authentication.unauthenticated
       type: bool
+      module_default: false
     certificate_authority_arns:
       function: get_field_from_attrs
       arg: broker_node_group_info.connectivity_info.vpc_connectivity.client_authentication.tls.certificate_authority_arns
@@ -74,26 +80,32 @@ aws_msk_cluster:
       function: get_field_from_attrs
       arg: broker_node_group_info.connectivity_info.vpc_connectivity.client_authentication.tls
       type: bool
+      module_default: false
     client_sasl_scram_enabled:
       function: get_field_from_attrs
       arg: broker_node_group_info.connectivity_info.vpc_connectivity.client_authentication.sasl.scram
       type: bool
+      module_default: false
     client_sasl_iam_enabled:
       function: get_field_from_attrs
       arg: broker_node_group_info.connectivity_info.vpc_connectivity.client_authentication.sasl.iam
       type: bool
+      module_default: false
     jmx_exporter_enabled:
       function: get_field_from_attrs
       arg: open_monitoring.prometheus.jmx_exporter.enabled_in_broker
       type: bool
+      module_default: false
     node_exporter_enabled:
       function: get_field_from_attrs
       arg: open_monitoring.prometheus.node_exporter.enabled_in_broker
       type: bool
+      module_default: false
     cloudwatch_logs_enabled:
       function: get_field_from_attrs
       arg: logging_info.broker_logs.cloudwatch_logs.enabled
       type: bool
+      module_default: false
     cloudwatch_logs_log_group:
       function: get_field_from_attrs
       arg: logging_info.broker_logs.cloudwatch_logs.log_group
@@ -102,6 +114,7 @@ aws_msk_cluster:
       function: get_field_from_attrs
       arg: logging_info.broker_logs.firehose.enabled
       type: bool
+      module_default: false
     firehose_delivery_stream:
       function: get_field_from_attrs
       arg: logging_info.broker_logs.firehose.delivery_stream
@@ -110,6 +123,7 @@ aws_msk_cluster:
       function: get_field_from_attrs
       arg: logging_info.broker_logs.s3.enabled
       type: bool
+      module_default: false
     s3_logs_bucket:
       function: get_field_from_attrs
       arg: logging_info.broker_logs.s3.bucket
