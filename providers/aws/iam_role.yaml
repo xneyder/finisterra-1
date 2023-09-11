@@ -39,6 +39,13 @@ aws_iam_role:
       field: managed_policy_arns
       type: list
   childs:
+    aws_iam_role_policy_attachment:
+      join:
+        name:
+          field: role
+      target_resource_name: managed
+      second_index:
+        function: get_policy_attachment_index
     aws_iam_instance_profile:
       join:
         name:

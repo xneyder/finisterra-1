@@ -45,6 +45,11 @@ class IAM_ROLE:
                        self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules)
         self.resource_list = {}
 
+    def get_policy_attachment_index(self, attributes):
+        role = attributes.get('role')
+        policy_name = attributes.get('policy_arn').split('/')[-1]
+        return role+"_"+policy_name
+
     def iam(self):
         self.hcl.prepare_folder(os.path.join("generated", "iam_role"))
 
@@ -77,7 +82,9 @@ class IAM_ROLE:
 
         self.hcl.refresh_state()
 
-        functions = {}
+        functions = {
+            'get_policy_attachment_index': self.get_policy_attachment_index,
+        }
 
         self.hcl.module_hcl_code("terraform.tfstate", os.path.join(
             os.path.dirname(os.path.abspath(__file__)), "iam_role.yaml"), functions, self.region, self.aws_account_id)
@@ -338,6 +345,29 @@ class IAM_ROLE:
                 }
                 self.hcl.process_resource(
                     "aws_iam_role", role_name, attributes)
+
+                # Call aws_iam_role_policy_attachment for the current role_name
+                self.aws_iam_role_policy_attachment(role_name)
+
+    def aws_iam_role_policy_attachment(self, role_name):
+        print(f"Processing IAM Role Policy Attachments for {role_name}...")
+
+        policy_paginator = self.iam_client.get_paginator(
+            "list_attached_role_policies")
+
+        for policy_page in policy_paginator.paginate(RoleName=role_name):
+            for policy in policy_page["AttachedPolicies"]:
+                policy_arn = policy["PolicyArn"]
+                print(
+                    f"  Processing IAM Role Policy Attachment: {role_name} - {policy_arn}")
+
+                attributes = {
+                    "id": f"{role_name}/{policy_arn}",
+                    "role": role_name,
+                    "policy_arn": policy_arn,
+                }
+                self.hcl.process_resource(
+                    "aws_iam_role_policy_attachment", f"{role_name}_{policy_arn.split(':')[-1]}", attributes)
 
     def aws_iam_role_policy(self):
         print("Processing IAM Role Policies...")
@@ -663,27 +693,3 @@ class IAM_ROLE:
                         }
                         self.hcl.process_resource(
                             "aws_iam_group_policy_attachment", f"{group_name}_{policy_arn.split(':')[-1]}", attributes)
-
-    def aws_iam_role_policy_attachment(self):
-        print("Processing IAM Role Policy Attachments...")
-        paginator = self.iam_client.get_paginator("list_roles")
-
-        for page in paginator.paginate():
-            for role in page["Roles"]:
-                role_name = role["RoleName"]
-                policy_paginator = self.iam_client.get_paginator(
-                    "list_attached_role_policies")
-
-                for policy_page in policy_paginator.paginate(RoleName=role_name):
-                    for policy in policy_page["AttachedPolicies"]:
-                        policy_arn = policy["PolicyArn"]
-                        print(
-                            f"  Processing IAM Role Policy Attachment: {role_name} - {policy_arn}")
-
-                        attributes = {
-                            "id": f"{role_name}/{policy_arn}",
-                            "role": role_name,
-                            "policy_arn": policy_arn,
-                        }
-                        self.hcl.process_resource(
-                            "aws_iam_role_policy_attachment", f"{role_name}_{policy_arn.split(':')[-1]}", attributes)

@@ -14,6 +14,9 @@ aws_lb:
     load_balancer_name:
       field: name
       type: string
+    load_balancer_type:
+      field: load_balancer_type
+      type: string
     tags:
       field: tags
       type: map
@@ -55,8 +58,16 @@ aws_lb:
       function: get_vpc_name
       type: string
       arg: vpc_id
+    vpc_id:
+      function: get_vpc_id
+      type: string
+      arg: vpc_id
     subnet_names:
       function: get_subnet_names
+      arg: subnets
+      type: list
+    subnet_ids:
+      function: get_subnet_ids
       arg: subnets
       type: list
 
@@ -109,6 +120,8 @@ aws_lb:
           target_resource_name: default
           second_index:
             field: id
+          import_id:
+            function: aws_security_group_rule_import_id
           fields:
             create_security_group:
               unique: true

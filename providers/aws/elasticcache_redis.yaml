@@ -120,6 +120,10 @@ aws_elasticache_replication_group:
         subnet_group_description:
           field: description
           type: string
+        subnet_ids:
+          function: get_subnet_ids
+          arg: subnet_ids
+          type: list
         subnet_names:
           function: get_subnet_names
           arg: subnet_ids
@@ -163,9 +167,10 @@ aws_elasticache_replication_group:
         security_group_name:
           field: name
           type: string
-        # vpc_id:
-        #   field: vpc_id
-        #   type: string
+        vpc_id:
+          function: get_vpc_id
+          type: string
+          arg: vpc_id
         vpc_name:
           function: get_vpc_name
           type: string
@@ -184,6 +189,8 @@ aws_elasticache_replication_group:
           target_resource_name: default
           second_index:
             field: id
+          import_id:
+            function: aws_security_group_rule_import_id
           fields:
             create_security_group:
               unique: true

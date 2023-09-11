@@ -45,12 +45,15 @@ from providers.aws.ssm import SSM
 from providers.aws.sqs import SQS
 from providers.aws.sns import SNS
 from providers.aws.rds import RDS
+from providers.aws.aurora import Aurora
 from providers.aws.aws_lambda import AwsLambda
 from providers.aws.kms import KMS
 from providers.aws.elasticbeanstalk import ElasticBeanstalk
 from providers.aws.elb import ELB
 from providers.aws.elbv2 import ELBV2
 from providers.aws.stepfunction import StepFunction
+from providers.aws.msk import MSK
+# from providers.aws.eks import EKS
 from utils.filesystem import create_tmp_terragrunt
 
 
@@ -791,6 +794,21 @@ class Aws:
         self.json_plan = instance.json_plan
         self.resource_list['rds'] = instance.resource_list
 
+    def aurora(self):
+        aurora_client = self.session.client(
+            "rds", region_name=self.aws_region)
+        logs_client = self.session.client(
+            "logs", region_name=self.aws_region)
+        iam_client = self.session.client(
+            "iam", region_name=self.aws_region)
+
+        instance = Aurora(aurora_client, logs_client, iam_client, self.script_dir, self.provider_name,
+                          self.schema_data, self.aws_region, self.s3Bucket,
+                          self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
+        instance.aurora()
+        self.json_plan = instance.json_plan
+        self.resource_list['aurora'] = instance.resource_list
+
     def aws_lambda(self):
         lambda_client = self.session.client(
             "lambda", region_name=self.aws_region)
@@ -879,3 +897,20 @@ class Aws:
         instance.stepfunction()
         self.json_plan = instance.json_plan
         self.resource_list['stepfunction'] = instance.resource_list
+
+    def msk(self):
+        msk_client = self.session.client(
+            "kafka", region_name=self.aws_region)
+
+        ec2_client = self.session.client(
+            "ec2", region_name=self.aws_region)
+
+        appautoscaling_client = self.session.client(
+            "application-autoscaling", region_name=self.aws_region)
+
+        instance = MSK(msk_client, ec2_client, appautoscaling_client, self.script_dir, self.provider_name,
+                       self.schema_data, self.aws_region, self.s3Bucket,
+                       self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
+        instance.msk()
+        self.json_plan = instance.json_plan
+        self.resource_list['msk'] = instance.resource_list

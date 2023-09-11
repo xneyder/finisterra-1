@@ -109,6 +109,17 @@ class ELBV2:
 
         return {}  # default to an empty dictionary if conditions are not met
 
+    def get_redirect(self, attributes):
+        default_action = attributes.get('default_action')
+
+        if default_action and isinstance(default_action, list) and default_action:
+            redirect = default_action[0].get('redirect')
+
+            if redirect and isinstance(redirect, list) and redirect:
+                return redirect[0]
+
+        return {}  # default to an empty dictionary if conditions are not met
+
     def get_listeners(self, attributes):
         domain_name = ""
         if attributes.get('certificate_arn'):
@@ -124,6 +135,7 @@ class ELBV2:
             'acm_domain_name': domain_name,
             'all_acm_domains': [],
             'listener_fixed_response': self.get_fixed_response(attributes),
+            'listener_redirect': self.get_redirect(attributes),
             'listener_additional_tags': attributes.get('tags'),
         }
         return self.listeners
@@ -200,6 +212,13 @@ class ELBV2:
 
         return subnet_names
 
+    def get_subnet_ids(self, attributes, arg):
+        subnet_names = self.get_subnet_names(attributes, arg)
+        if subnet_names:
+            return ""
+        else:
+            return attributes.get(arg)
+
     def get_vpc_name(self, attributes, arg):
         vpc_id = attributes.get(arg)
         response = self.ec2_client.describe_vpcs(VpcIds=[vpc_id])
@@ -217,6 +236,23 @@ class ELBV2:
             print(f"No 'Name' tag found for VPC ID: {vpc_id}")
 
         return vpc_name
+
+    def get_vpc_id(self, attributes, arg):
+        vpc_name = self.get_vpc_name(attributes, arg)
+        if vpc_name is None:
+            return attributes.get(arg)
+        else:
+            return ""
+
+    def aws_security_group_rule_import_id(self, attributes):
+        security_group_id = attributes.get('security_group_id')
+        type = attributes.get('type')
+        protocol = attributes.get('protocol')
+        from_port = attributes.get('from_port')
+        to_port = attributes.get('to_port')
+        cidr_blocks = attributes.get('cidr_blocks')
+        source = "_".join(cidr_blocks)
+        return security_group_id+"_"+type+"_"+protocol+"_"+str(from_port)+"_"+str(to_port)+"_"+source
 
     def elbv2(self):
         self.hcl.prepare_folder(os.path.join("generated", "elbv2"))
@@ -239,6 +275,9 @@ class ELBV2:
             'get_listener_certificate': self.get_listener_certificate,
             'get_port_domain_name': self.get_port_domain_name,
             'get_port': self.get_port,
+            'get_vpc_id': self.get_vpc_id,
+            'get_subnet_ids': self.get_subnet_ids,
+            'aws_security_group_rule_import_id': self.aws_security_group_rule_import_id,
         }
 
         self.hcl.refresh_state()
@@ -268,9 +307,9 @@ class ELBV2:
             is_ebs_created = any(
                 tag["Key"] == "elasticbeanstalk:environment-name" for tag in tags)
 
-            # Filter out load balancers created by Kubernetes
-            is_k8s_created = any(tag["Key"].startswith(
-                "kubernetes.io/cluster/") for tag in tags)
+            # Filter out load balancers created by Kubernetes Ingress
+            is_k8s_created = any(tag["Key"] in ["kubernetes.io/ingress-name",
+                                 "kubernetes.io/ingress.class", "elbv2.k8s.aws/cluster"] for tag in tags)
 
             if is_ebs_created:
                 print(f"  Skipping Elastic Beanstalk Load Balancer: {lb_name}")

@@ -1,0 +1,264 @@
+aws_db_instance:
+  # terraform_module: "../../../terraform-aws-modules/terraform-aws-rds-aurora"
+  terraform_module: "github.com/finisterra-io/terraform-aws-rds-aurora.git?ref=main"
+  terraform_module_version: "6.1.0"
+  target_resource_name: this
+  target_submodule: module.db_instance
+  name_field: identifier
+  defaults:
+    create_db_instance: true
+    create_db_subnet_group: false
+    create_db_parameter_group: false
+    create_db_option_group: false
+    manage_master_user_password: false
+
+  fields:
+    identifier:
+      field: identifier
+    identifier_prefix:
+      field: identifier_prefix
+    engine:
+      field: engine
+    engine_version:
+      field: engine_version
+    instance_class:
+      field: instance_class
+    allocated_storage:
+      field: allocated_storage
+    storage_type:
+      field: storage_type
+    storage_encrypted:
+      field: storage_encrypted
+    kms_key_id:
+      field: kms_key_id
+    license_model:
+      field: license_model
+    db_name:
+      field: db_name
+    username:
+      field: username
+    password:
+      field: password
+    port:
+      field: port
+    domain:
+      field: domain
+    domain_iam_role_name:
+      field: domain_iam_role_name
+    iam_database_authentication_enabled:
+      field: iam_database_authentication_enabled
+    custom_iam_instance_profile:
+      field: custom_iam_instance_profile
+    master_user_secret_kms_key_id:
+      field: master_user_secret_kms_key_id
+    vpc_security_group_ids:
+      field: vpc_security_group_ids
+    db_subnet_group_name:
+      field: db_subnet_group_name
+    parameter_group_name:
+      field: parameter_group_name
+    option_group_name:
+      field: option_group_name
+    network_type:
+      field: network_type
+    availability_zone:
+      field: availability_zone
+    multi_az:
+      field: multi_az
+    iops:
+      field: iops
+    storage_throughput:
+      field: storage_throughput
+    publicly_accessible:
+      field: publicly_accessible
+    ca_cert_identifier:
+      field: ca_cert_identifier
+    allow_major_version_upgrade:
+      field: allow_major_version_upgrade
+    auto_minor_version_upgrade:
+      field: auto_minor_version_upgrade
+    apply_immediately:
+      field: apply_immediately
+    maintenance_window:
+      field: maintenance_window
+    blue_green_update:
+      field: blue_green_update
+    snapshot_identifier:
+      field: snapshot_identifier
+    final_snapshot_identifier:
+      field: final_snapshot_identifier
+    copy_tags_to_snapshot:
+      field: copy_tags_to_snapshot
+    skip_final_snapshot:
+      field: skip_final_snapshot
+    performance_insights_enabled:
+      field: performance_insights_enabled
+    performance_insights_retention_period:
+      field: performance_insights_retention_period
+    performance_insights_kms_key_id:
+      field: performance_insights_kms_key_id
+    replicate_source_db:
+      field: replicate_source_db
+    replica_mode:
+      field: replica_mode
+    backup_retention_period:
+      field: backup_retention_period
+    backup_window:
+      field: backup_window
+    max_allocated_storage:
+      field: max_allocated_storage
+    monitoring_interval:
+      field: monitoring_interval
+    monitoring_role_arn:
+      field: monitoring_role_arn
+    character_set_name:
+      field: character_set_name
+    nchar_character_set_name:
+      field: nchar_character_set_name
+    timezone:
+      field: timezone
+    enabled_cloudwatch_logs_exports:
+      field: enabled_cloudwatch_logs_exports
+    timeouts:
+      field: timeouts
+    deletion_protection:
+      field: deletion_protection
+    delete_automated_backups:
+      field: delete_automated_backups
+    restore_to_point_in_time:
+      field: restore_to_point_in_time
+    s3_import:
+      field: s3_import
+    tags:
+      field: tags
+    db_instance_tags:
+      field: tags
+  childs:
+    aws_db_subnet_group:
+      join:
+        db_subnet_group_name:
+          field: name
+      target_resource_name: this
+      target_submodule: module.db_subnet_group
+      defaults:
+        db_subnet_group_use_name_prefix: false
+      fields:
+        create_db_subnet_group:
+          unique: true
+        db_subnet_group_name:
+          field: name
+          type: string
+        subnet_ids:
+          field: subnet_ids
+          type: list
+        db_subnet_group_tags:
+          field: tags
+          type: map
+        db_subnet_group_description:
+          field: description
+          type: string
+    aws_db_parameter_group:
+      join:
+        parameter_group_name:
+          field: name
+      target_resource_name: this
+      target_submodule: module.db_parameter_group
+      defaults:
+        parameter_group_use_name_prefix: false
+      fields:
+        create_db_parameter_group:
+          unique: true
+        parameter_group_name:
+          field: name
+          type: string
+        family:
+          field: family
+          type: string
+        parameter_group_description:
+          field: description
+          type: string
+        db_parameter_group_tags:
+          field: tags
+          type: map
+        parameters:
+          field: parameters
+          type: map
+    aws_db_option_group:
+      join:
+        option_group_name:
+          field: name
+      target_resource_name: this
+      target_submodule: module.db_option_group
+      defaults:
+        option_group_use_name_prefix: false
+      fields:
+        create_db_option_group:
+          unique: true
+        option_group_name:
+          field: name
+          type: string
+        engine:
+          field: engine_name
+          type: string
+        major_engine_version:
+          field: major_engine_version
+          type: string
+        option_group_description:
+          field: description
+          type: string
+        option_group_tags:
+          field: tags
+          type: map
+        options:
+          field: options
+          type: list
+        option_group_timeouts:
+          field: timeouts
+          type: map
+    aws_cloudwatch_log_group:
+      join:
+        identifier:
+          function: cloudwatch_log_group_name
+      target_resource_name: this
+      target_submodule: module.db_instance
+      defaults:
+        create_cloudwatch_log_group: true
+      second_index:
+        function: get_log_group_name
+      fields:
+        cloudwatch_log_group_retention_in_days:
+          field: retention_in_days
+          type: number
+        cloudwatch_log_group_kms_key_id:
+          field: kms_key_id
+          type: string
+    aws_iam_role:
+      join:
+        monitoring_role_arn:
+          field: arn
+      target_resource_name: enhanced_monitoring
+      target_submodule: module.db_instance
+      defaults:
+        monitoring_role_use_name_prefix: false
+      fields:
+        create_monitoring_role:
+          unique: true
+        monitoring_role_name:
+          field: name
+          type: string
+        monitoring_role_description:
+          field: description
+          type: string
+        monitoring_role_permissions_boundary:
+          field: permissions_boundary
+          type: string
+      childs:
+        aws_iam_role_policy_attachment:
+          join:
+            name:
+              field: role
+          target_resource_name: enhanced_monitoring
+          target_submodule: module.db_instance
+          fields:
+            create_monitoring_role:
+              unique: true

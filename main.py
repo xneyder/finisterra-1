@@ -113,6 +113,10 @@ def main(aws_account_id, aws_region, group_code):
         provider.route53()
     elif group_code == 'stepfunction':
         provider.stepfunction()
+    elif group_code == 'msk':
+        provider.msk()
+    elif group_code == 'aurora':
+        provider.aurora()
     else:
         print(f"Group code {group_code} not found.")
         exit()

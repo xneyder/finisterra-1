@@ -62,22 +62,57 @@ class ElasticacheRedis:
         for subnet_id in subnet_ids:
             response = self.ec2_client.describe_subnets(SubnetIds=[subnet_id])
 
-            # Depending on how your subnets are tagged, you may need to adjust this line.
-            # This assumes you have a tag 'Name' for your subnet names.
+            # Check if 'Subnets' key exists and it's not empty
+            if not response or 'Subnets' not in response or not response['Subnets']:
+                print(
+                    f"No subnet information found for Subnet ID: {subnet_id}")
+                continue
+
+            # Extract the 'Tags' key safely using get
+            subnet_tags = response['Subnets'][0].get('Tags', [])
+
+            # Extract the subnet name from the tags
             subnet_name = next(
-                (tag['Value'] for tag in response['Subnets'][0]['Tags'] if tag['Key'] == 'Name'), None)
+                (tag['Value'] for tag in subnet_tags if tag['Key'] == 'Name'), None)
 
             if subnet_name:
                 subnet_names.append(subnet_name)
+            else:
+                print(f"No 'Name' tag found for Subnet ID: {subnet_id}")
 
         return subnet_names
+
+    def get_subnet_ids(self, attributes, arg):
+        subnet_names = self.get_subnet_names(attributes, arg)
+        if subnet_names:
+            return ""
+        else:
+            return attributes.get(arg)
 
     def get_vpc_name(self, attributes, arg):
         vpc_id = attributes.get(arg)
         response = self.ec2_client.describe_vpcs(VpcIds=[vpc_id])
-        vpc_name = next(
-            (tag['Value'] for tag in response['Vpcs'][0]['Tags'] if tag['Key'] == 'Name'), None)
+
+        if not response or 'Vpcs' not in response or not response['Vpcs']:
+            # Handle this case as required, for example:
+            print(f"No VPC information found for VPC ID: {vpc_id}")
+            return None
+
+        vpc_tags = response['Vpcs'][0].get('Tags', [])
+        vpc_name = next((tag['Value']
+                        for tag in vpc_tags if tag['Key'] == 'Name'), None)
+
+        if vpc_name is None:
+            print(f"No 'Name' tag found for VPC ID: {vpc_id}")
+
         return vpc_name
+
+    def get_vpc_id(self, attributes, arg):
+        vpc_name = self.get_vpc_name(attributes, arg)
+        if vpc_name is None:
+            return attributes.get(arg)
+        else:
+            return ""
 
     def get_security_group_rules(self, attributes, arg):
         key = attributes[arg]
@@ -88,6 +123,16 @@ class ElasticacheRedis:
                 val = val.replace('${', '$${')
             result[key][k] = val
         return result
+
+    def aws_security_group_rule_import_id(self, attributes):
+        security_group_id = attributes.get('security_group_id')
+        type = attributes.get('type')
+        protocol = attributes.get('protocol')
+        from_port = attributes.get('from_port')
+        to_port = attributes.get('to_port')
+        cidr_blocks = attributes.get('cidr_blocks')
+        source = "_".join(cidr_blocks)
+        return security_group_id+"_"+type+"_"+protocol+"_"+str(from_port)+"_"+str(to_port)+"_"+source
 
     def elasticache_redis(self):
         self.hcl.prepare_folder(os.path.join("generated", "elasticache_redis"))
@@ -112,6 +157,9 @@ class ElasticacheRedis:
             'get_subnet_names': self.get_subnet_names,
             'get_vpc_name': self.get_vpc_name,
             'get_security_group_rules': self.get_security_group_rules,
+            'get_subnet_ids': self.get_subnet_ids,
+            'get_vpc_id': self.get_vpc_id,
+            'aws_security_group_rule_import_id': self.aws_security_group_rule_import_id,
         }
 
         self.hcl.refresh_state()

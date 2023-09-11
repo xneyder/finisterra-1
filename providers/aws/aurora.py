@@ -2,27 +2,20 @@ import os
 from utils.hcl import HCL
 
 
-class RDS:
-    def __init__(self, rds_client, script_dir, provider_name, schema_data, region, s3Bucket,
+class Aurora:
+    def __init__(self, rds_client, logs_client, iam_client, script_dir, provider_name, schema_data, region, s3Bucket,
                  dynamoDBTable, state_key, workspace_id, modules, aws_account_id):
         self.rds_client = rds_client
-        self.transform_rules = {
-            "aws_db_parameter_group": {
-                "hcl_keep_fields": {"parameter.name": True},
-            },
-            # "aws_db_instance": {
-            #     "hcl_transform_fields": {
-            #         "apply_immediately": {'source': None, 'target': False},
-            #         "skip_final_snapshot": {'source': None, 'target': False},
-            #     },
-            #     # "hcl_keep_fields": {"delete_automated_backups": True},
-            # },
-        }
+        self.logs_client = logs_client
+        self.iam_client = iam_client
+        self.transform_rules = {}
         self.provider_name = provider_name
         self.script_dir = script_dir
         self.schema_data = schema_data
 
         self.region = region
+        self.aws_account_id = aws_account_id
+
         self.workspace_id = workspace_id
         self.modules = modules
         self.hcl = HCL(self.schema_data, self.provider_name,
@@ -30,35 +23,22 @@ class RDS:
         self.resource_list = {}
 
     def rds(self):
-        self.hcl.prepare_folder(os.path.join("generated", "rds"))
+        self.hcl.prepare_folder(os.path.join("generated", "aurora"))
 
-        self.aws_db_cluster_snapshot()
-        self.aws_db_event_subscription()
-        self.aws_db_instance()
-        self.aws_db_instance_automated_backups_replication()
-        self.aws_db_instance_role_association()
-        self.aws_db_option_group()
-        self.aws_db_parameter_group()
-
-        if "gov" not in self.region:
-            self.aws_db_proxy()
-            self.aws_db_proxy_default_target_group()
-            self.aws_db_proxy_endpoint()
-            self.aws_db_proxy_target()
-            self.aws_rds_export_task()
-
-        # self.aws_db_security_group() #deprecated
-        # self.aws_db_snapshot() # Can be very long
-        # self.aws_db_snapshot_copy() # Can be very long
         self.aws_db_subnet_group()
         self.aws_rds_cluster()
-        self.aws_rds_cluster_activity_stream()
         self.aws_rds_cluster_endpoint()
         self.aws_rds_cluster_instance()
         self.aws_rds_cluster_parameter_group()
         self.aws_rds_cluster_role_association()
-        self.aws_rds_global_cluster()
-        self.aws_rds_reserved_instance()
+        self.aws_db_parameter_group()
+        self.aws_appautoscaling_target()
+        self.aws_appautoscaling_policy()
+        self.aws_security_group()
+        self.aws_security_group_rule()
+        self.aws_iam_role()
+        self.aws_iam_role_policy_attachment()
+        self.aws_cloudwatch_log_group()
 
         self.hcl.refresh_state()
         self.hcl.generate_hcl_file()
@@ -80,6 +60,58 @@ class RDS:
                     }
                     self.hcl.process_resource(
                         "aws_db_cluster_snapshot", snapshot_id.replace("-", "_"), attributes)
+
+    def aws_appautoscaling_target(self, cluster_arn):
+        print(
+            f"Processing AppAutoScaling Targets for MSK Cluster ARN {cluster_arn}...")
+
+        paginator = self.appautoscaling_client.get_paginator(
+            "describe_scalable_targets")
+        page_iterator = paginator.paginate(
+            ServiceNamespace='kafka',
+            ResourceIds=[cluster_arn]
+        )
+
+        for page in page_iterator:
+            for target in page["ScalableTargets"]:
+                target_id = target["ResourceId"]
+                print(f"  Processing AppAutoScaling Target: {target_id}")
+
+                attributes = {
+                    "id": target_id,
+                    "service_namespace": 'kafka',
+                    "resource_id": cluster_arn
+                    # Add other relevant details from 'target' as needed
+                }
+
+                self.hcl.process_resource(
+                    "aws_appautoscaling_target", target_id, attributes)
+
+    def aws_appautoscaling_policy(self, cluster_arn):
+        print(
+            f"Processing AppAutoScaling Policies for MSK Cluster ARN {cluster_arn}...")
+
+        paginator = self.appautoscaling_client.get_paginator(
+            "describe_scaling_policies")
+        page_iterator = paginator.paginate(
+            ServiceNamespace='kafka',
+            ResourceId=cluster_arn
+        )
+
+        for page in page_iterator:
+            for policy in page["ScalingPolicies"]:
+                policy_name = policy["PolicyName"]
+                print(f"  Processing AppAutoScaling Policy: {policy_name}")
+
+                attributes = {
+                    "id": policy_name,
+                    "service_namespace": 'kafka',
+                    "resource_id": cluster_arn
+                    # Add other relevant details from 'policy' as needed
+                }
+
+                self.hcl.process_resource(
+                    "aws_appautoscaling_policy", policy_name, attributes)
 
     def aws_db_event_subscription(self):
         print("Processing DB Event Subscriptions...")
@@ -193,14 +225,19 @@ class RDS:
                 self.hcl.process_resource(
                     "aws_db_option_group", option_group_name.replace("-", "_"), attributes)
 
-    def aws_db_parameter_group(self):
-        print("Processing DB Parameter Groups...")
+    def aws_db_parameter_group(self, parameter_group_name):
+        print(f"Processing DB Parameter Group {parameter_group_name}")
+        if parameter_group_name.startswith("default"):
+            return
 
         paginator = self.rds_client.get_paginator(
             "describe_db_parameter_groups")
         for page in paginator.paginate():
             for parameter_group in page.get("DBParameterGroups", []):
-                parameter_group_name = parameter_group["DBParameterGroupName"]
+                # Skip the parameter group if it's not the given one
+                if parameter_group["DBParameterGroupName"] != parameter_group_name:
+                    continue
+
                 print(
                     f"  Processing DB Parameter Group: {parameter_group_name}")
                 attributes = {
@@ -568,3 +605,126 @@ class RDS:
                 }
                 self.hcl.process_resource(
                     "aws_rds_reserved_instance", reserved_instance_id.replace("-", "_"), attributes)
+
+    def aws_security_group(self, security_group_ids):
+        print("Processing Security Groups...")
+
+        # Create a response dictionary to collect responses for all security groups
+        response = self.ec2_client.describe_security_groups(
+            GroupIds=security_group_ids
+        )
+
+        for security_group in response["SecurityGroups"]:
+            print(
+                f"  Processing Security Group: {security_group['GroupName']}")
+
+            attributes = {
+                "id": security_group["GroupId"],
+                "name": security_group["GroupName"],
+                "description": security_group.get("Description", ""),
+                "vpc_id": security_group.get("VpcId", ""),
+                "owner_id": security_group.get("OwnerId", ""),
+            }
+
+            self.hcl.process_resource(
+                "aws_security_group", security_group["GroupName"].replace("-", "_"), attributes)
+
+            # Process egress rules
+            for rule in security_group.get('IpPermissionsEgress', []):
+                self.aws_security_group_rule(
+                    'egress', security_group, rule)
+
+            # Process ingress rules
+            for rule in security_group.get('IpPermissions', []):
+                self.aws_security_group_rule(
+                    'ingress', security_group, rule)
+
+    def aws_security_group_rule(self, rule_type, security_group, rule):
+        # Rule identifiers are often constructed by combining security group id, rule type, protocol, ports and security group references
+        rule_id = f"{security_group['GroupId']}_{rule_type}_{rule.get('IpProtocol', 'all')}"
+        print(f"Processing Security Groups Rule {rule_id}...")
+        if rule.get('FromPort'):
+            rule_id += f"_{rule['FromPort']}"
+        if rule.get('ToPort'):
+            rule_id += f"_{rule['ToPort']}"
+
+        attributes = {
+            "id": rule_id,
+            "type": rule_type,
+            "security_group_id": security_group['GroupId'],
+            "protocol": rule.get('IpProtocol', '-1'),  # '-1' stands for 'all'
+            "from_port": rule.get('FromPort', 0),
+            "to_port": rule.get('ToPort', 0),
+            "cidr_blocks": [ip_range['CidrIp'] for ip_range in rule.get('IpRanges', [])],
+            "source_security_group_ids": [sg['GroupId'] for sg in rule.get('UserIdGroupPairs', [])]
+        }
+
+        self.hcl.process_resource(
+            "aws_security_group_rule", rule_id.replace("-", "_"), attributes)
+
+    def aws_iam_role(self, role_arn):
+        # the role name is the last part of the ARN
+        role_name = role_arn.split('/')[-1]
+
+        role = self.iam_client.get_role(RoleName=role_name)
+        print(f"Processing IAM Role: {role_name}")
+
+        attributes = {
+            "id": role_name,
+            # "name": role['Role']['RoleName'],
+            # "arn": role['Role']['Arn'],
+            # "description": role['Role']['Description'],
+            # "assume_role_policy": role['Role']['AssumeRolePolicyDocument'],
+        }
+        self.hcl.process_resource(
+            "aws_iam_role", role_name.replace("-", "_"), attributes)
+
+        # After processing the role, process the policies attached to it
+        self.aws_iam_role_policy_attachment(role_name)
+
+    def aws_iam_role_policy_attachment(self, role_name):
+        attached_policies = self.iam_client.list_attached_role_policies(
+            RoleName=role_name)
+
+        for policy in attached_policies['AttachedPolicies']:
+            policy_name = policy['PolicyName']
+            print(
+                f"Processing IAM Role Policy Attachment: {policy_name} for Role: {role_name}")
+
+            attributes = {
+                "id": f"{role_name}/{policy['PolicyArn']}",
+                "role": role_name,
+                "policy_arn": policy['PolicyArn']
+            }
+            self.hcl.process_resource(
+                "aws_iam_role_policy_attachment", policy_name.replace("-", "_"), attributes)
+
+    def aws_cloudwatch_log_group(self, instance_id, log_export_name):
+        print(
+            f"Processing CloudWatch Log Group: {log_export_name} for DB Instance: {instance_id}")
+
+        # assuming the log group name has prefix /aws/rds/instance/{instance_id}/{log_export_name}
+        log_group_name_prefix = f"/aws/rds/instance/{instance_id}/{log_export_name}"
+
+        response = self.logs_client.describe_log_groups(
+            logGroupNamePrefix=log_group_name_prefix)
+
+        while True:
+            for log_group in response.get('logGroups', []):
+                log_group_name = log_group.get('logGroupName')
+                if log_group_name.startswith(log_group_name_prefix):
+                    print(f"  Processing Log Group: {log_group_name}")
+                    attributes = {
+                        "id": log_group_name,
+                        "name": log_group_name,
+                        "retention_in_days": log_group.get('retentionInDays'),
+                        "arn": log_group.get('arn'),
+                    }
+                    self.hcl.process_resource(
+                        "aws_cloudwatch_log_group", log_group_name.replace("-", "_"), attributes)
+
+            if 'nextToken' in response:
+                response = self.logs_client.describe_log_groups(
+                    logGroupNamePrefix=log_group_name_prefix, nextToken=response['nextToken'])
+            else:
+                break
