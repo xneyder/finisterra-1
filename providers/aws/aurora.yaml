@@ -5,7 +5,6 @@ aws_rds_cluster:
   target_resource_name: this
   name_field: cluster_identifier
   defaults:
-    create: true
     create_db_subnet_group: false
     manage_master_user_password: false
     create_security_group: false
@@ -40,7 +39,7 @@ aws_rds_cluster:
     database_name:
       field: database_name
       type: string
-    db_cluster_instance_class:
+    instance_class:
       field: db_cluster_instance_class
       type: string
     db_cluster_parameter_group_name:
@@ -148,6 +147,9 @@ aws_rds_cluster:
     vpc_security_group_ids:
       field: vpc_security_group_ids
       type: list
+    auto_minor_version_upgrade:
+      field: auto_minor_version_upgrade
+      type: bool
   childs:
     aws_rds_cluster_instance:
       join:

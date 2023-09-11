@@ -22,37 +22,66 @@ class Aurora:
         self.hcl = HCL(self.schema_data, self.provider_name,
                        self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules)
         self.resource_list = {}
-        self.aws_rds_cluster = {}
+        self.aws_rds_cluster_attrs = {}
 
     def init_cluster_attributes(self, attributes):
-        self.aws_rds_cluster = attributes
+        self.aws_rds_cluster_attrs = attributes
         return None
+
+    def get_instance_identifier(self, attributes):
+        return attributes.get("identifier", None)
 
     def build_instances(self, attributes):
         instance_result = {}
         identifier = attributes.get("identifier", None)
         instance_result['identifier'] = identifier
         attrs_list = [
-            "apply_immediately",
-            "auto_minor_version_upgrade",
             "copy_tags_to_snapshot",
-            "instance_class",
-            "monitoring_interval",
-            "performance_insights_enabled",
-            "performance_insights_kms_key_id",
-            "performance_insights_retention_period",
             "preferred_maintenance_window",
-            "publicly_accessible",
             "tags",
         ]
         for attr in attrs_list:
             child_value = attributes.get(attr, None)
-            parent_value = self.aws_rds_cluster.get(attr, None)
+            parent_value = self.aws_rds_cluster_attrs.get(attr, None)
             if child_value != parent_value:
                 instance_result[attr] = child_value
-        availability_zone = attributes.get("availability_zone", None)
-        if availability_zone:
-            instance_result["availability_zone"] = availability_zone
+
+        instance_class = attributes.get("instance_class", None)
+        if instance_class:
+            instance_result["instance_class"] = instance_class
+
+        performance_insights_enabled = attributes.get(
+            "performance_insights_enabled", False)
+        if performance_insights_enabled:
+            instance_result["performance_insights_enabled"] = performance_insights_enabled
+            performance_insights_kms_key_id = attributes.get(
+                "performance_insights_kms_key_id", None)
+            if performance_insights_kms_key_id:
+                instance_result["performance_insights_kms_key_id"] = performance_insights_kms_key_id
+            performance_insights_retention_period = attributes.get(
+                "performance_insights_retention_period", None)
+            if performance_insights_retention_period:
+                instance_result["performance_insights_retention_period"] = performance_insights_retention_period
+        publicly_accessible = attributes.get("publicly_accessible", False)
+        if publicly_accessible:
+            instance_result["publicly_accessible"] = publicly_accessible
+
+        monitoring_interval = attributes.get("monitoring_interval", 0)
+        if monitoring_interval != 0:
+            instance_result["monitoring_interval"] = monitoring_interval
+
+        apply_immediately = attributes.get("apply_immediately", False)
+        if apply_immediately:
+            instance_result["apply_immediately"] = apply_immediately
+
+        auto_minor_version_upgrade = attributes.get(
+            "auto_minor_version_upgrade", True)
+        if not auto_minor_version_upgrade:
+            instance_result["auto_minor_version_upgrade"] = auto_minor_version_upgrade
+
+        # availability_zone = attributes.get("availability_zone", None)
+        # if availability_zone:
+        #     instance_result["availability_zone"] = availability_zone
 
         promotion_tier = attributes.get("promotion_tier", None)
         if promotion_tier:
@@ -70,6 +99,7 @@ class Aurora:
         functions = {
             'init_cluster_attributes': self.init_cluster_attributes,
             'build_instances': self.build_instances,
+            'get_instance_identifier': self.get_instance_identifier,
         }
 
         self.hcl.refresh_state()
@@ -534,7 +564,6 @@ class Aurora:
             for rds_instance in page.get("DBInstances", []):
                 if rds_instance.get("DBClusterIdentifier") != cluster_id:
                     continue
-                print(rds_instance["Engine"])
                 if "DBClusterIdentifier" in rds_instance and rds_instance["Engine"].startswith("aurora"):
                     instance_id = rds_instance["DBInstanceIdentifier"]
                     print(f"  Processing RDS Cluster Instance: {instance_id}")
