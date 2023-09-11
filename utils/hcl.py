@@ -526,6 +526,8 @@ class HCL:
             key = keys[0]
             if type == "string":
                 value = state_data[key]
+                # if key == "engine_version":
+                #     print(value)
             else:
                 if isinstance(state_data, list):
                     # Check if the list contains dictionaries
@@ -549,7 +551,11 @@ class HCL:
             return None
 
     def string_repr(self, value, field_type=None):
-        if value is None:
+        if field_type == "string":
+            value = value.replace('\n', '')
+            escaped_value = value.replace('${', '$${')
+            return f'"{escaped_value}"'
+        elif value is None:
             return json.dumps(value, indent=2)
         elif isinstance(value, bool):
             return "true" if value else "false"
@@ -568,7 +574,6 @@ class HCL:
             except json.JSONDecodeError:
                 value = value.replace('\n', '')
                 escaped_value = value.replace('${', '$${')
-                # escaped_value = re.sub(r'\$\{(\w+)\}', r'\1', value)
                 return f'"{escaped_value}"'
 
     def find_resource_config(self, config, resource_type):
@@ -1175,6 +1180,7 @@ class HCL:
 
                             except Exception as e:
                                 print(f"Error processing index {index}: {e}")
+                                print(value)
 
                             file.write(f'{index} = {value}\n')
                     file.write('}\n')

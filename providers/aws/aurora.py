@@ -32,9 +32,9 @@ class Aurora:
         return attributes.get("identifier", None)
 
     def build_instances(self, attributes):
-        instance_result = {}
+        result = {}
         identifier = attributes.get("identifier", None)
-        instance_result['identifier'] = identifier
+        result['identifier'] = identifier
         attrs_list = [
             "copy_tags_to_snapshot",
             "preferred_maintenance_window",
@@ -44,49 +44,116 @@ class Aurora:
             child_value = attributes.get(attr, None)
             parent_value = self.aws_rds_cluster_attrs.get(attr, None)
             if child_value != parent_value:
-                instance_result[attr] = child_value
+                result[attr] = child_value
 
         instance_class = attributes.get("instance_class", None)
         if instance_class:
-            instance_result["instance_class"] = instance_class
+            result["instance_class"] = instance_class
 
         performance_insights_enabled = attributes.get(
             "performance_insights_enabled", False)
         if performance_insights_enabled:
-            instance_result["performance_insights_enabled"] = performance_insights_enabled
+            result["performance_insights_enabled"] = performance_insights_enabled
             performance_insights_kms_key_id = attributes.get(
                 "performance_insights_kms_key_id", None)
             if performance_insights_kms_key_id:
-                instance_result["performance_insights_kms_key_id"] = performance_insights_kms_key_id
+                result["performance_insights_kms_key_id"] = performance_insights_kms_key_id
             performance_insights_retention_period = attributes.get(
                 "performance_insights_retention_period", None)
             if performance_insights_retention_period:
-                instance_result["performance_insights_retention_period"] = performance_insights_retention_period
+                result["performance_insights_retention_period"] = performance_insights_retention_period
         publicly_accessible = attributes.get("publicly_accessible", False)
         if publicly_accessible:
-            instance_result["publicly_accessible"] = publicly_accessible
+            result["publicly_accessible"] = publicly_accessible
 
         monitoring_interval = attributes.get("monitoring_interval", 0)
         if monitoring_interval != 0:
-            instance_result["monitoring_interval"] = monitoring_interval
+            result["monitoring_interval"] = monitoring_interval
 
         apply_immediately = attributes.get("apply_immediately", False)
         if apply_immediately:
-            instance_result["apply_immediately"] = apply_immediately
+            result["apply_immediately"] = apply_immediately
 
         auto_minor_version_upgrade = attributes.get(
             "auto_minor_version_upgrade", True)
         if not auto_minor_version_upgrade:
-            instance_result["auto_minor_version_upgrade"] = auto_minor_version_upgrade
+            result["auto_minor_version_upgrade"] = auto_minor_version_upgrade
 
         # availability_zone = attributes.get("availability_zone", None)
         # if availability_zone:
-        #     instance_result["availability_zone"] = availability_zone
+        #     result["availability_zone"] = availability_zone
 
         promotion_tier = attributes.get("promotion_tier", None)
         if promotion_tier:
-            instance_result["promotion_tier"] = promotion_tier
-        return {identifier: instance_result}
+            result["promotion_tier"] = promotion_tier
+        return {identifier: result}
+
+    def build_cluster_endpoint(self, attributes):
+        result = {}
+        identifier = attributes.get("cluster_endpoint_identifier", None)
+        type = attributes.get("cluster_endpoint_type", None)
+        if type:
+            result["type"] = type
+        excluded_members = attributes.get('excluded_members', [])
+        if excluded_members:
+            result['excluded_members'] = excluded_members
+        static_members = attributes.get('static_members', [])
+        if static_members:
+            result['static_members'] = static_members
+        tags = attributes.get('tags', {})
+        if tags:
+            result['tags'] = tags
+
+        return {identifier: result}
+
+    def build_cluster_role_association(self, attributes):
+        result = {}
+
+        role_arn = attributes.get("role_arn", None)
+        feature_name = attributes.get("feature_name", None)
+        if feature_name:
+            result["feature_name"] = feature_name
+
+        return {role_arn: result}
+
+    def cloudwatch_log_group_name(self, attributes):
+        parts = attributes.get('name').split('/')
+        if len(parts) >= 5 and parts[:4] == ['', 'aws', 'rds', 'instance']:
+            return parts[4]
+        else:
+            return None
+
+    def get_log_group_name(self, attributes):
+        parts = attributes.get('name').split('/')
+        if len(parts) >= 5 and parts[:4] == ['', 'aws', 'rds', 'instance']:
+            return parts[-1]
+        else:
+            return None
+
+    def build_resource_id(self, attributes):
+        resource_id = attributes.get("resource_id", None)
+        return f"cluster:{resource_id}"
+
+    def get_field_from_attrs(self, attributes, arg):
+        try:
+            keys = arg.split(".")
+            result = attributes
+
+            for key in keys:
+                if isinstance(result, list):
+                    result = [sub_result.get(key, None) if isinstance(
+                        sub_result, dict) else None for sub_result in result]
+                    if len(result) == 1:
+                        result = result[0]
+                else:
+                    result = result.get(key, None)
+
+                if result is None:
+                    return None
+            return result
+
+        except Exception as e:
+            return None
 
     def aurora(self):
         self.hcl.prepare_folder(os.path.join("generated", "aurora"))
@@ -100,6 +167,14 @@ class Aurora:
             'init_cluster_attributes': self.init_cluster_attributes,
             'build_instances': self.build_instances,
             'get_instance_identifier': self.get_instance_identifier,
+            'build_cluster_endpoint': self.build_cluster_endpoint,
+            'build_cluster_role_association': self.build_cluster_role_association,
+            'cloudwatch_log_group_name': self.cloudwatch_log_group_name,
+            'get_log_group_name': self.get_log_group_name,
+            'build_resource_id': self.build_resource_id,
+            'get_field_from_attrs': self.get_field_from_attrs,
+
+
         }
 
         self.hcl.refresh_state()
