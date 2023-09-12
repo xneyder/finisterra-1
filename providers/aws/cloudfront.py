@@ -66,27 +66,152 @@ class CloudFront:
         self.hcl = HCL(self.schema_data, self.provider_name,
                        self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules)
         self.resource_list = {}
+        self.aws_account_id = aws_account_id
+        self.origin = {}
+
+    def get_field_from_attrs(self, attributes, arg):
+        try:
+            keys = arg.split(".")
+            result = attributes
+
+            for key in keys:
+                if isinstance(result, list):
+                    result = [sub_result.get(key, None) if isinstance(
+                        sub_result, dict) else None for sub_result in result]
+                    if len(result) == 1:
+                        result = result[0]
+                else:
+                    result = result.get(key, None)
+
+                if result is None:
+                    return None
+            return result
+
+        except Exception as e:
+            return None
+
+    def build_origin(self, attributes):
+        origin_list = attributes.get("origin", [])
+        result = {}
+
+        for origin in origin_list:
+            origin_key = origin['origin_id']
+
+            # Remove empty fields and convert lists to their first item
+            transformed_origin = {}
+            for k, v in origin.items():
+                if v:  # check if the value is not empty
+                    if isinstance(v, list):
+                        transformed_origin[k] = v[0]
+                    else:
+                        transformed_origin[k] = v
+
+            if 's3_origin_config' in transformed_origin:
+                if 'origin_access_identity' in transformed_origin['s3_origin_config']:
+                    if transformed_origin['s3_origin_config']['origin_access_identity'] != '':
+                        transformed_origin['s3_origin_config']['cloudfront_access_identity_path'] = transformed_origin[
+                            's3_origin_config']['origin_access_identity']
+                        del transformed_origin['s3_origin_config']['origin_access_identity']
+
+            result[origin_key] = transformed_origin
+
+        self.origin = result
+        return result
+
+    def build_default_cache_behavior(self, attributes):
+        default_cache_behavior = attributes.get("default_cache_behavior", [])
+        result = {}
+        if not default_cache_behavior:
+            return result
+        for k, v in default_cache_behavior[0].items():
+            if v:  # check if the value is not empty
+                if k == "lambda_function_association":
+                    assoc_result = {}
+                    for association in v:
+                        assoc_key = association['event_type']
+                        assoc_result[assoc_key]['lambda_arn'] = association['lambda_arn']
+                        assoc_result[assoc_key]['include_body'] = association['include_body']
+                    result[k] = assoc_result
+                    continue
+
+                if isinstance(v, list):
+                    if isinstance(v[0], dict):
+                        result[k] = v[0]
+                    else:
+                        result[k] = v
+                else:
+                    result[k] = v
+        return result
+
+    def build_viewer_certificate(self, attributes):
+        viewer_certificate = attributes.get("viewer_certificate", [])
+        result = {}
+        if not viewer_certificate:
+            return result
+        for k, v in viewer_certificate[0].items():
+            if v:  # check if the value is not empty
+                if isinstance(v, list):
+                    if isinstance(v[0], dict):
+                        result[k] = v[0]
+                    else:
+                        result[k] = v
+                else:
+                    result[k] = v
+        return result
+
+    def join_origin_access_identity(self, parent_attributes, child_attributes):
+        # Get child's identity (assuming it's in 'id' or you can modify as needed)
+        child_identity = child_attributes.get('id')
+
+        # Iterate over the origins in parent attributes
+        for origin in parent_attributes.get('origin', []):
+            s3_origin_configs = origin.get('s3_origin_config', [])
+
+            # If the s3_origin_config contains a matching cloudfront_access_identity_path, return True
+            for s3_origin in s3_origin_configs:
+                if s3_origin.get('cloudfront_access_identity_path', "").split('/')[-1] == child_identity:
+                    return True
+
+        # If no matches found, return False
+        return False
+
+    def build_origin_access_identities(self, attributes):
+        # key = attributes.get("id")
+        comment = attributes.get("comment")
+        id = attributes.get("id")
+        result = {id: comment}
+
+        # # Search for the origin with the matching origin_access_identity
+        # for origin_id, origin_data in self.origin.items():
+        #     s3_origin_config = origin_data.get("s3_origin_config", {})
+        #     if s3_origin_config.get("origin_access_identity", "").split('/')[-1] == key:
+        #         # Assuming comment is directly in attributes
+        #         result[origin_id] = comment
+
+        return result
 
     def cloudfront(self):
         self.hcl.prepare_folder(os.path.join("generated", "cloudfront"))
 
         if "gov" not in self.region:
-            self.aws_cloudfront_cache_policy()
             self.aws_cloudfront_distribution()
-            self.aws_cloudfront_field_level_encryption_config()
-            self.aws_cloudfront_field_level_encryption_profile()
-            self.aws_cloudfront_function()
-            self.aws_cloudfront_key_group()
-            self.aws_cloudfront_monitoring_subscription()
-            # self.aws_cloudfront_origin_access_control()  # No API from AWS
-            self.aws_cloudfront_origin_access_identity()
-            self.aws_cloudfront_origin_request_policy()
-            self.aws_cloudfront_public_key()
-            self.aws_cloudfront_realtime_log_config()
-            self.aws_cloudfront_response_headers_policy()
+            # self.aws_cloudfront_origin_access_identity()
+            # self.aws_cloudfront_origin_access_control()
+            # self.aws_cloudfront_monitoring_subscription()
+
+        functions = {
+            'get_field_from_attrs': self.get_field_from_attrs,
+            'build_origin': self.build_origin,
+            'join_origin_access_identity': self.join_origin_access_identity,
+            'build_origin_access_identities': self.build_origin_access_identities,
+            'build_default_cache_behavior': self.build_default_cache_behavior,
+            'build_viewer_certificate': self.build_viewer_certificate,
+        }
 
         self.hcl.refresh_state()
-        self.hcl.generate_hcl_file()
+        self.hcl.module_hcl_code("terraform.tfstate",
+                                 os.path.join(os.path.dirname(os.path.abspath(__file__)), "cloudfront.yaml"), functions, self.region, self.aws_account_id)
+
         self.json_plan = self.hcl.json_plan
 
     def aws_cloudfront_cache_policy(self):
@@ -127,6 +252,20 @@ class CloudFront:
                 distribution_id = distribution_summary["Id"]
                 print(
                     f"  Processing CloudFront Distribution: {distribution_id}")
+
+                # Retrieve identity_id
+                origins = distribution_summary.get(
+                    "Origins", {}).get("Items", [])
+                for origin in origins:
+                    s3_origin_config = origin.get("S3OriginConfig")
+                    if s3_origin_config:
+                        identity_id = s3_origin_config.get(
+                            "OriginAccessIdentity")
+                        if identity_id:
+                            # Call aws_cloudfront_origin_access_identity function filtered by the identity_id
+                            identity_id = identity_id.split("/")[-1]
+                            self.aws_cloudfront_origin_access_identity(
+                                identity_id)
 
                 attributes = {
                     "id": distribution_id,
@@ -241,7 +380,7 @@ class CloudFront:
                     else:
                         raise
 
-    def aws_cloudfront_origin_access_identity(self):
+    def aws_cloudfront_origin_access_identity(self, identity_id):
         print("Processing CloudFront Origin Access Identities...")
 
         paginator = self.cloudfront_client.get_paginator(
@@ -249,6 +388,11 @@ class CloudFront:
         for page in paginator.paginate():
             for oai_summary in page["CloudFrontOriginAccessIdentityList"]["Items"]:
                 oai_id = oai_summary["Id"]
+
+                # Process only the matching oai_id
+                if oai_id != identity_id:
+                    continue
+
                 oai_comment = oai_summary["Comment"]
                 print(
                     f"  Processing CloudFront Origin Access Identity: {oai_id}")
@@ -260,6 +404,24 @@ class CloudFront:
 
                 self.hcl.process_resource(
                     "aws_cloudfront_origin_access_identity", oai_id.replace("-", "_"), attributes)
+
+    def aws_cloudfront_origin_access_control(self):
+        print("Processing CloudFront Origin Access Identities...")
+
+        paginator = self.cloudfront_client.get_paginator(
+            "list_origin_access_controls")
+        for page in paginator.paginate():
+            for oai_summary in page["OriginAccessControlList"]["Items"]:
+                oai_id = oai_summary["Id"]
+                print(
+                    f"  Processing CloudFront Origin Access Identity: {oai_id}")
+
+                attributes = {
+                    "id": oai_id,
+                }
+
+                self.hcl.process_resource(
+                    "aws_cloudfront_origin_access_control", oai_id.replace("-", "_"), attributes)
 
     def aws_cloudfront_origin_request_policy(self):
         print("Processing CloudFront Origin Request Policies...")
