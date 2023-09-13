@@ -13,12 +13,10 @@ aws_cloudfront_distribution:
     default_root_object:
       field: default_root_object
       type: string
-    enabled:
-      field: enabled
-      type: bool
     http_version:
       field: http_version
       type: string
+      module_default: "http2"
     is_ipv6_enabled:
       field: is_ipv6_enabled
       type: bool
@@ -28,9 +26,11 @@ aws_cloudfront_distribution:
     retain_on_delete:
       field: retain_on_delete
       type: bool
+      module_default: false
     wait_for_deployment:
       field: wait_for_deployment
       type: bool
+      module_default: true
     web_acl_id:
       field: web_acl_id
       type: string
@@ -50,7 +50,7 @@ aws_cloudfront_distribution:
       function: build_default_cache_behavior
       type: map
     ordered_cache_behavior:
-      field: ordered_cache_behavior
+      function: build_ordered_cache_behavior
       type: list
     viewer_certificate:
       function: build_viewer_certificate
@@ -59,10 +59,22 @@ aws_cloudfront_distribution:
       field: custom_error_response
       type: list
     geo_restriction:
-      function: get_field_from_attrs
-      arg: restrictions.geo_restriction
+      function: build_geo_restriction
       type: map
   childs:
+    aws_cloudfront_monitoring_subscription:
+      join:
+        id:
+          field: distribution_id
+      target_resource_name: this
+      defaults:
+        create_monitoring_subscription: true
+      fields:
+        realtime_metrics_subscription_status:
+          function: get_field_from_attrs
+          arg: monitoring_subscription.realtime_metrics_subscription_config.realtime_metrics_subscription_status
+          type: string
+          module_default: "Enabled"
     aws_cloudfront_origin_access_identity:
       join:
         id:

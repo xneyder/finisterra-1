@@ -129,6 +129,7 @@ class CloudFront:
                     assoc_result = {}
                     for association in v:
                         assoc_key = association['event_type']
+                        assoc_result[assoc_key] = {}
                         assoc_result[assoc_key]['lambda_arn'] = association['lambda_arn']
                         assoc_result[assoc_key]['include_body'] = association['include_body']
                     result[k] = assoc_result
@@ -141,6 +142,35 @@ class CloudFront:
                         result[k] = v
                 else:
                     result[k] = v
+        return result
+
+    def build_ordered_cache_behavior(self, attributes):
+        ordered_cache_behavior = attributes.get("ordered_cache_behavior", [])
+        result = []
+        if not ordered_cache_behavior:
+            return result
+        for cache_behavior in ordered_cache_behavior:
+            record = {}
+            for k, v in cache_behavior.items():
+                if v:  # check if the value is not empty
+                    if isinstance(v, list):
+                        if isinstance(v[0], dict):
+                            record[k] = v[0]
+                        else:
+                            record[k] = v
+                    else:
+                        record[k] = v
+            result.append(record)
+        return result
+
+    def build_geo_restriction(self, attributes):
+        restrictions = attributes.get("restrictions", [])
+        result = {}
+        if not restrictions:
+            return result
+        if 'geo_restriction' in restrictions[0]:
+            if restrictions[0]['geo_restriction'][0].get('restriction_type', 'none') != 'none':
+                result = restrictions[0]['geo_restriction'][0]
         return result
 
     def build_viewer_certificate(self, attributes):
@@ -206,6 +236,8 @@ class CloudFront:
             'build_origin_access_identities': self.build_origin_access_identities,
             'build_default_cache_behavior': self.build_default_cache_behavior,
             'build_viewer_certificate': self.build_viewer_certificate,
+            'build_ordered_cache_behavior': self.build_ordered_cache_behavior,
+            'build_geo_restriction': self.build_geo_restriction,
         }
 
         self.hcl.refresh_state()
@@ -275,6 +307,8 @@ class CloudFront:
 
                 self.hcl.process_resource(
                     "aws_cloudfront_distribution", distribution_id.replace("-", "_"), attributes)
+
+                self.aws_cloudfront_monitoring_subscription(distribution_id)
 
     def aws_cloudfront_field_level_encryption_config(self):
         print("Processing CloudFront Field-Level Encryption Configs...")
@@ -348,13 +382,18 @@ class CloudFront:
                 self.hcl.process_resource(
                     "aws_cloudfront_key_group", key_group_id.replace("-", "_"), attributes)
 
-    def aws_cloudfront_monitoring_subscription(self):
+    def aws_cloudfront_monitoring_subscription(self, target_distribution_id):
         print("Processing CloudFront Monitoring Subscriptions...")
 
         paginator = self.cloudfront_client.get_paginator("list_distributions")
         for page in paginator.paginate():
             for distribution_summary in page["DistributionList"]["Items"]:
                 distribution_id = distribution_summary["Id"]
+
+                # Skip the distributions that don't match the target_distribution_id
+                if distribution_id != target_distribution_id:
+                    continue
+
                 distribution_arn = distribution_summary["ARN"]
 
                 try:

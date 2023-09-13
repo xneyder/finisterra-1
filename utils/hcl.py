@@ -810,7 +810,6 @@ class HCL:
                 if module_default != 'N/A':
                     if value == module_default:
                         value = None
-                        created = False
 
                 if value not in [None, "", [], {}] or defaulted:
                     if multiline:
@@ -1211,7 +1210,6 @@ class HCL:
             import_file_path = os.path.join("", f'import.tf')
 
             for deployed_resource in instance["deployed_resources"]:
-                resource_import_source = f'{deployed_resource["resource_type"]}.{deployed_resource["resource_name"]}'
                 index_str = ""
                 if deployed_resource["index"]:
                     index_str = '["'+deployed_resource["index"]+'"].'
@@ -1231,7 +1229,6 @@ class HCL:
                                 deployed_resource["second_index_value"]+'"]'
 
                 resource_import_target = f'module.{module_instance_name}.{deployed_resource["target_submodule"]}{index_str}{deployed_resource["resource_type"]}.{deployed_resource["target_resource_name"]}{second_index_str}'
-
                 # Write to import.tf file
                 with open(import_file_path, 'a') as file:  # 'a' is for append mode
                     file.write(
