@@ -481,6 +481,12 @@ class VPC:
     def is_network_acl_rule_ingress(self, attributes, arg):
         return not attributes.get('egress', False)
 
+    def aws_network_acl_rule_import_id(self, attributes):
+        return attributes.get('network_acl_id') + ":" + str(attributes.get('rule_number')) + ":" + str(attributes.get('protocol')) + ":" + str(attributes.get('egress'))
+
+    def aws_iam_role_policy_attachment_import_id(self, attributes):
+        return attributes.get('role') + "/" + attributes.get('policy_arn')
+
     def join_aws_flow_log_iam_role_name(self, parent_attributes, child_attributes):
         flow_name = parent_attributes.get('iam_role_arn').split('/')[-1]
         iam_role_name = child_attributes.get('name')
@@ -546,6 +552,8 @@ class VPC:
             'default_route_table_routes': self.default_route_table_routes,
             'get_private_route_table_association_import_id': self.get_private_route_table_association_import_id,
             'get_aws_route_import_id': self.get_aws_route_import_id,
+            'aws_network_acl_rule_import_id': self.aws_network_acl_rule_import_id,
+            'aws_iam_role_policy_attachment_import_id': self.aws_iam_role_policy_attachment_import_id,
 
 
 

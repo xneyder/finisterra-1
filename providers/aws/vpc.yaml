@@ -331,6 +331,8 @@ aws_vpc:
           skip_if:
             function: is_network_acl_rule_egress
             arg: network_acl_id
+          import_id:
+            function: aws_network_acl_rule_import_id
           fields:
             aws_network_acls:
               function: add_network_acl_ingress_rule
@@ -347,6 +349,8 @@ aws_vpc:
           skip_if:
             function: is_network_acl_rule_ingress
             arg: network_acl_id
+          import_id:
+            function: aws_network_acl_rule_import_id
           fields:
             aws_network_acls:
               function: add_network_acl_egress_rule
@@ -421,6 +425,8 @@ aws_vpc:
                 name:
                   field: role
               target_resource_name: vpc_flow_log_cloudwatch
+              import_id:
+                function: aws_iam_role_policy_attachment_import_id
               fields:
                 create_flow_log_cloudwatch_iam_role:
                   unique: true
@@ -465,6 +471,9 @@ aws_vpc:
       fields:
         dhcp_options_domain_name:
           function: get_dhcp_options_domain_name
+        dhcp_options_id:
+          field: dhcp_options_id
+          type: string
       childs:
         aws_vpc_dhcp_options:
           join:
