@@ -17,7 +17,7 @@ class SQS:
         self.schema_data = schema_data
         self.region = region
         self.aws_account_id = aws_account_id
-        
+
         self.workspace_id = workspace_id
         self.modules = modules
         self.hcl = HCL(self.schema_data, self.provider_name,
@@ -68,8 +68,10 @@ class SQS:
         for page in paginator.paginate():
             for queue_url in page.get("QueueUrls", []):
                 queue_name = queue_url.split("/")[-1]
-                # if queue_name != 'market-marketSubscriptionQueue-DLQ' and queue_name != 'market-marketSubscriptionQueue':
+
+                # if queue_name != 'market-marketSubscriptionTenantIdentityActivationQueue':
                 #     continue
+
                 print(f"Processing SQS Queue: {queue_name}")
 
                 attributes = {

@@ -78,6 +78,8 @@ aws_ecs_service:
     enable_autoscaling: false
     create_iam_role: false
     create_target_group: false
+  import_id:
+    function: aws_ecs_service_import_id
   fields:
     name:
       field: name
@@ -210,6 +212,9 @@ aws_ecs_service:
         iam_role_tags:
           field: tags
           type: map
+        iam_role_inline_policies:
+          field: inline_policy
+          type: list
 
       childs:
         aws_iam_role_policy_attachment:
@@ -257,6 +262,8 @@ aws_ecs_service:
         create_tasks_iam_role: false
         create_task_exec_policy: false
         create_task_exec_iam_role: false
+      import_id:
+        function: aws_ecs_task_definition_import_id
       fields:
         task_definition_arn:
           field: arn
@@ -367,6 +374,9 @@ aws_ecs_service:
               field: assume_role_policy
               type: string
               multiline: true
+            tasks_iam_role_inline_policies:
+              field: inline_policy
+              type: list
           childs:
             aws_iam_role_policy_attachment:
               join:
@@ -431,6 +441,9 @@ aws_ecs_service:
               field: assume_role_policy
               type: string
               multiline: true
+            task_exec_iam_role_inline_policies:
+              field: inline_policy
+              type: list
           childs:
             aws_iam_role_policy_attachment:
               join:
@@ -459,6 +472,8 @@ aws_ecs_service:
       target_resource_name: this
       defaults:
         enable_autoscaling: true
+      import_id:
+        function: aws_appautoscaling_target_import_id
       fields:
         autoscaling_min_capacity:
           field: min_capacity
@@ -476,6 +491,8 @@ aws_ecs_service:
             scalable_dimension:
               field: scalable_dimension
           target_resource_name: this
+          import_id:
+            function: aws_appautoscaling_policy_import_id
           second_index:
             field: name
           fields:

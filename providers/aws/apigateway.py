@@ -67,7 +67,7 @@ class Apigateway:
         self.schema_data = schema_data
         self.region = region
         self.aws_account_id = aws_account_id
-        
+
         self.workspace_id = workspace_id
         self.modules = modules
         self.hcl = HCL(self.schema_data, self.provider_name,
@@ -88,6 +88,9 @@ class Apigateway:
             if result is None:
                 return None
         return result
+
+    def aws_api_gateway_deployment_import_id(self, attributes):
+        return f"{attributes['rest_api_id']}/{attributes['id']}"
 
     def apigateway(self):
         self.hcl.prepare_folder(os.path.join("generated", "apigateway"))
@@ -127,6 +130,7 @@ class Apigateway:
 
         functions = {
             'get_field_from_attrs': self.get_field_from_attrs,
+            'aws_api_gateway_deployment_import_id': self.aws_api_gateway_deployment_import_id,
         }
 
         self.hcl.refresh_state()

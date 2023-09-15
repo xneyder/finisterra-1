@@ -25,7 +25,7 @@ class Dynamodb:
         self.schema_data = schema_data
         self.region = region
         self.aws_account_id = aws_account_id
-        
+
         self.workspace_id = workspace_id
         self.modules = modules
         self.hcl = HCL(self.schema_data, self.provider_name,
@@ -46,6 +46,12 @@ class Dynamodb:
             if result is None:
                 return None
         return result
+
+    def aws_appautoscaling_policy_import_id(self, attributes):
+        return f"{attributes.get('service_namespace')}/{attributes.get('resource_id')}/{attributes.get('scalable_dimension')}/{attributes.get('name')}"
+
+    def aws_appautoscaling_target_import_id(self, attributes):
+        return f"{attributes.get('service_namespace')}/{attributes.get('resource_id')}/{attributes.get('scalable_dimension')}"
 
     def get_name_from_arn(self, attributes, arg):
         arn = attributes.get(arg)
@@ -186,6 +192,8 @@ class Dynamodb:
             'autoscaling_read_enabled': self.autoscaling_read_enabled,
             'autoscaling_write_enabled': self.autoscaling_write_enabled,
             'aws_dyanmodb_target_name': self.aws_dyanmodb_target_name,
+            'aws_appautoscaling_policy_import_id': self.aws_appautoscaling_policy_import_id,
+            'aws_appautoscaling_target_import_id': self.aws_appautoscaling_target_import_id,
         }
         self.hcl.refresh_state()
 
@@ -204,7 +212,7 @@ class Dynamodb:
                 table_description = self.dynamodb_client.describe_table(
                     TableName=table_name)["Table"]
 
-                # if table_name != "notification.production.DeviceRegistration":
+                # if table_name != "documentation.Instance":
                 #     continue
 
                 print(f"  Processing DynamoDB Table: {table_name}")

@@ -551,7 +551,7 @@ class HCL:
             return None
 
     def string_repr(self, value, field_type=None):
-        if field_type == "string":
+        if field_type == "string" and isinstance(value, str):
             value = value.replace('\n', '')
             escaped_value = value.replace('${', '$${')
             return f'"{escaped_value}"'
@@ -1164,8 +1164,36 @@ class HCL:
                                         r'\"' + re.escape(name_value) + r'\"', "local." + name_field, value)
 
                                 if instance["replace_name"]:
+                                    # if '-DLQ' in value:
+                                    #     print("before", value)
+                                    # value = re.sub(
+                                    #     r'\b' + re.escape(name_value) + r'\b', "${local."+name_field+"}", value)
+
+                                    def replace_value(match):
+                                        prefix = match.group(1) or ''
+                                        suffix = match.group(
+                                            2) if match.group(2) else ''
+                                        if prefix.endswith('$'):
+                                            # format("$%s-scaling-policy", local.name_7a25b73ae1)
+                                            # return f'$" + local.{name_field} + "{suffix}' if suffix else '$" + local.' + name_field
+
+                                            return f'format("{prefix}%s{suffix}", local.{name_field})'
+                                        elif prefix:
+                                            if '"' in prefix:
+                                                return f'{prefix}${{local.{name_field}}}{suffix}"'
+                                            else:
+                                                return f'"{prefix}${{local.{name_field}}}{suffix}"'
+                                        else:
+                                            return f'"${{local.{name_field}}}{suffix}"'
+
+                                    pattern = r'"?(.*\$?)' + \
+                                        re.escape(name_value) + r'([^"]*)"?'
+
                                     value = re.sub(
-                                        r'\b' + re.escape(name_value) + r'\b', "${local."+name_field+"}", value)
+                                        pattern, replace_value, value)
+
+                                    # if 'local' in value:
+                                    #     print("after", value)
 
                                 if aws_account_id:
                                     value = re.sub(r'\b' + aws_account_id +

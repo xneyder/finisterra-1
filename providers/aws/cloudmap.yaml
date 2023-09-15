@@ -2,13 +2,12 @@ aws_service_discovery_private_dns_namespace:
   # terraform_module: "../../../terraform-aws-modules/terraform-aws-cloudmap/"
   terraform_module: "github.com/finisterra-io/terraform-aws-cloudmap?ref=main"
   terraform_module_version: "5.2.0"
-  keys:
-    - name
   target_resource_name: this
   name_field: namespace_name
-  # target_submodule: module.cluster
   defaults:
     create_private_dns_namespace: true
+  import_id:
+    function: aws_service_discovery_private_dns_namespace_import_id
   fields:
     namespace_name:
       field: name

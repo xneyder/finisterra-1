@@ -56,6 +56,16 @@ class DocDb:
 
         return subnet_names
 
+    def aws_security_group_rule_import_id(self, attributes):
+        security_group_id = attributes.get('security_group_id')
+        type = attributes.get('type')
+        protocol = attributes.get('protocol')
+        from_port = attributes.get('from_port')
+        to_port = attributes.get('to_port')
+        cidr_blocks = attributes.get('cidr_blocks')
+        source = "_".join(cidr_blocks)
+        return security_group_id+"_"+type+"_"+protocol+"_"+str(from_port)+"_"+str(to_port)+"_"+source
+
     def get_vpc_name(self, attributes, arg):
         vpc_id = attributes.get(arg)
         response = self.ec2_client.describe_vpcs(VpcIds=[vpc_id])
@@ -107,6 +117,7 @@ class DocDb:
             'get_subnet_names': self.get_subnet_names,
             'get_vpc_name': self.get_vpc_name,
             'get_security_group_rules': self.get_security_group_rules,
+            'aws_security_group_rule_import_id': self.aws_security_group_rule_import_id,
         }
 
         self.hcl.refresh_state()

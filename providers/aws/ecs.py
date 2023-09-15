@@ -334,9 +334,10 @@ class ECS:
         result[key]['protocol'] = attributes.get('protocol')
 
         certificate_arn = attributes.get('certificate_arn')
-        if certificate_arn:
-            result[key]['domain_name'] = self.get_domain_name(
-                certificate_arn)
+        result[key]['certificate_arn'] = certificate_arn
+        # if certificate_arn:
+        #     result[key]['domain_name'] = self.get_domain_name(
+        #         certificate_arn)
 
         result[key]['tags'] = attributes.get('tags')
         return result
@@ -354,6 +355,20 @@ class ECS:
     def get_id_from_arn(self, attributes, arg):
         arn = attributes.get(arg)
         return arn.split('/')[-1]
+
+    def aws_ecs_service_import_id(self, attributes):
+        service_arn = attributes.get('id')
+        cluster_arn = attributes.get('cluster')
+        return cluster_arn.split('/')[-1]+"/"+service_arn.split('/')[-1]
+
+    def aws_ecs_task_definition_import_id(self, attributes):
+        return attributes.get('arn')
+
+    def aws_appautoscaling_policy_import_id(self, attributes):
+        return f"{attributes.get('service_namespace')}/{attributes.get('resource_id')}/{attributes.get('scalable_dimension')}/{attributes.get('name')}"
+
+    def aws_appautoscaling_target_import_id(self, attributes):
+        return f"{attributes.get('service_namespace')}/{attributes.get('resource_id')}/{attributes.get('scalable_dimension')}"
 
     def ecs(self):
         self.hcl.prepare_folder(os.path.join("generated", "ecs"))
@@ -398,6 +413,10 @@ class ECS:
             'get_listener_rules': self.get_listener_rules,
             'get_id_from_arn': self.get_id_from_arn,
             'get_listener_rule_lb_name': self.get_listener_rule_lb_name,
+            'aws_ecs_service_import_id': self.aws_ecs_service_import_id,
+            'aws_ecs_task_definition_import_id': self.aws_ecs_task_definition_import_id,
+            'aws_appautoscaling_policy_import_id': self.aws_appautoscaling_policy_import_id,
+            'aws_appautoscaling_target_import_id': self.aws_appautoscaling_target_import_id,
         }
 
         self.hcl.module_hcl_code("terraform.tfstate", os.path.join(
@@ -538,7 +557,7 @@ class ECS:
                         service_name = service["serviceName"]
 
                         # if service_name != "eureka-discovery-service" and service_name != "spring-config-server":
-                        # if service_name != "spring-config-server":
+                        # if service_name != "learning-media-service":
                         #     continue
 
                         service_arn = service["serviceArn"]

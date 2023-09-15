@@ -45,6 +45,11 @@ class Cloudmap:
         }
         return result
 
+    def aws_service_discovery_private_dns_namespace_import_id(self, attributes):
+        namespace_id = attributes.get("id")
+        vpc_id = attributes.get("vpc")
+        return f"{namespace_id}:{vpc_id}"
+
     def cloudmap(self):
         self.hcl.prepare_folder(os.path.join("generated", "cloudmap"))
 
@@ -56,6 +61,7 @@ class Cloudmap:
         functions = {
             'get_vpc_name': self.get_vpc_name,
             'build_service_names': self.build_service_names,
+            'aws_service_discovery_private_dns_namespace_import_id': self.aws_service_discovery_private_dns_namespace_import_id,
         }
 
         self.hcl.refresh_state()

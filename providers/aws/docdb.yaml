@@ -132,6 +132,8 @@ aws_docdb_cluster:
         id:
           join_function: match_security_group
       target_resource_name: default
+      defaults:
+        create_security_group: true
       fields:
         security_group_name:
           field: name
@@ -154,6 +156,8 @@ aws_docdb_cluster:
           join:
             id:
               field: security_group_id
+          import_id:
+            function: aws_security_group_rule_import_id
           target_resource_name: default
           second_index:
             field: id

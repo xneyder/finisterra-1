@@ -87,6 +87,8 @@ aws_dynamodb_table:
           arg: resource_id
       defaults:
         autoscaling_enabled: true
+      import_id:
+        function: aws_appautoscaling_target_import_id
       target_resource_name:
         function: aws_appautoscaling_target_name
       fields:
@@ -126,6 +128,8 @@ aws_dynamodb_table:
               field: scalable_dimension
           target_resource_name:
             function: aws_appautoscaling_policy_name
+          import_id:
+            function: aws_appautoscaling_policy_import_id
           fields:
             table_read_policy_name:
               function: table_read_policy_name

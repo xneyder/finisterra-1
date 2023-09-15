@@ -24,6 +24,7 @@ aws_db_instance:
       field: engine
     engine_version:
       field: engine_version
+      type: string
     instance_class:
       field: instance_class
     allocated_storage:
