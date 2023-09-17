@@ -433,6 +433,16 @@ class EC2:
 
         ni = network_interface["NetworkInterfaces"][0]
 
+        attachment = ni.get("Attachment")
+        if not attachment:
+            print(
+                f"  Skipping Detached Network Interface: {network_interface_id}")
+            return
+        if attachment["DeviceIndex"] == 0:
+            print(
+                f"  Skipping Primary Network Interface: {network_interface_id}")
+            return
+
         attributes = {
             "id": ni["NetworkInterfaceId"],
             "subnet_id": ni["SubnetId"],
@@ -450,6 +460,11 @@ class EC2:
     def aws_network_interface_attachment(self, instance_id, network_interface):
         print(
             f"Processing Network Interface Attachment for Network Interface: {network_interface['NetworkInterfaceId']} on Instance: {instance_id}")
+
+        if network_interface["Attachment"]["DeviceIndex"] == 0:
+            print(
+                f"  Skipping Primary Network Interface: {network_interface['NetworkInterfaceId']}")
+            return
 
         attributes = {
             "id": network_interface["Attachment"]["AttachmentId"],
