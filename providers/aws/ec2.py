@@ -3,9 +3,10 @@ from utils.hcl import HCL
 
 
 class EC2:
-    def __init__(self, ec2_client, autoscaling_client,  script_dir, provider_name, schema_data, region, s3Bucket,
+    def __init__(self, ec2_client, autoscaling_client,  iam_client, script_dir, provider_name, schema_data, region, s3Bucket,
                  dynamoDBTable, state_key, workspace_id, modules, aws_account_id):
         self.ec2_client = ec2_client
+        self.iam_client = iam_client
         self.autoscaling_client = autoscaling_client
         self.transform_rules = {
             "aws_instance": {
@@ -39,24 +40,15 @@ class EC2:
     def ec2(self):
         self.hcl.prepare_folder(os.path.join("generated", "ec2"))
 
-        self.aws_ami()
-        self.aws_ami_launch_permission()
-        self.aws_ec2_capacity_reservation()
-        self.aws_ec2_host()
-        # self.aws_ec2_serial_console_access()  # no api in boto3
-        # self.aws_ec2_tag()  # Blocking now because is long running
-        self.aws_eip()
-        self.aws_eip_association()
+# aws_iam_policy
+# aws_iam_role_policy_attachment
+# aws_iam_role_policy_attachment
+# aws_cloudwatch_metric_alarm
+
         self.aws_instance()
-        self.aws_key_pair()
-        self.aws_launch_template()
-        self.aws_placement_group()
-        if "gov" not in self.region:
-            self.aws_spot_datafeed_subscription()
-        self.aws_spot_fleet_request()
-        self.aws_spot_instance_request()
 
         self.hcl.refresh_state()
+        exit()
         self.hcl.generate_hcl_file()
         self.json_plan = self.hcl.json_plan
 
@@ -190,30 +182,33 @@ class EC2:
             self.hcl.process_resource(
                 "aws_ec2_tag", tag_id.replace("-", "_"), attributes)
 
-    def aws_eip(self):
-        print("Processing Elastic IPs...")
+    def aws_eip(self, allocation_id):
+        print(f"Processing Elastic IP: {allocation_id}")
 
-        eips = self.ec2_client.describe_addresses()
-        for eip in eips["Addresses"]:
-            allocation_id = eip["AllocationId"]
-            print(f"  Processing Elastic IP: {allocation_id}")
+        eips = self.ec2_client.describe_addresses(
+            AllocationIds=[allocation_id])
+        if not eips["Addresses"]:
+            print(f"  No Elastic IP found for Allocation ID: {allocation_id}")
+            return
 
-            attributes = {
-                "id": allocation_id,
-                "public_ip": eip["PublicIp"],
-            }
+        eip = eips["Addresses"][0]
 
-            if "InstanceId" in eip:
-                attributes["instance"] = eip["InstanceId"]
+        attributes = {
+            "id": allocation_id,
+            "public_ip": eip["PublicIp"],
+        }
 
-            if "NetworkInterfaceId" in eip:
-                attributes["network_interface"] = eip["NetworkInterfaceId"]
+        if "InstanceId" in eip:
+            attributes["instance"] = eip["InstanceId"]
 
-            if "PrivateIpAddress" in eip:
-                attributes["private_ip"] = eip["PrivateIpAddress"]
+        if "NetworkInterfaceId" in eip:
+            attributes["network_interface"] = eip["NetworkInterfaceId"]
 
-            self.hcl.process_resource(
-                "aws_eip", allocation_id.replace("-", "_"), attributes)
+        if "PrivateIpAddress" in eip:
+            attributes["private_ip"] = eip["PrivateIpAddress"]
+
+        self.hcl.process_resource(
+            "aws_eip", allocation_id.replace("-", "_"), attributes)
 
     def aws_eip_association(self):
         print("Processing Elastic IP Associations...")
@@ -265,20 +260,169 @@ class EC2:
                     "id": instance_id,
                     "ami": instance.get("ImageId", None),
                     "instance_type": instance.get("InstanceType", None),
-                    "availability_zone": instance.get("Placement", None).get("AvailabilityZone", None),
+                    "availability_zone": instance.get("Placement", {}).get("AvailabilityZone", None),
                     "key_name": instance.get("KeyName", None),
                     "subnet_id": instance.get("SubnetId", None),
-                    "vpc_security_group_ids": [sg["GroupId"] for sg in instance["SecurityGroups"]],
+                    "vpc_security_group_ids": [sg["GroupId"] for sg in instance.get("SecurityGroups", [])],
                 }
 
                 if "IamInstanceProfile" in instance:
                     attributes["iam_instance_profile"] = instance["IamInstanceProfile"]["Arn"]
+                    iam_instance_profile_id = instance["IamInstanceProfile"]["Arn"].split(
+                        "/")[-1]  # Updated this line
+                    self.aws_iam_instance_profile(iam_instance_profile_id)
 
                 if "UserData" in instance:
                     attributes["user_data"] = instance["UserData"]
 
                 self.hcl.process_resource(
                     "aws_instance", instance_id.replace("-", "_"), attributes)
+
+                # Process all EIPs associated with the instance
+                eips_associated = self.ec2_client.describe_addresses(Filters=[{
+                    'Name': 'instance-id',
+                    'Values': [instance_id]
+                }])
+                for eip in eips_associated["Addresses"]:
+                    self.aws_eip(eip["AllocationId"])
+
+                # Process all EBS volumes associated with the instance
+                for block_device in instance.get("BlockDeviceMappings", []):
+                    volume_id = block_device["Ebs"]["VolumeId"]
+                    self.aws_ebs_volume(volume_id)
+
+                    # Process the volume attachment for the EBS volume
+                    self.aws_volume_attachment(instance_id, block_device)
+
+                primary_interface_id = instance["NetworkInterfaces"][0]["NetworkInterfaceId"]
+                for ni in instance.get("NetworkInterfaces", [])[1:]:
+                    if ni["NetworkInterfaceId"] != primary_interface_id:
+                        self.aws_network_interface(ni["NetworkInterfaceId"])
+
+                        # Process the attachment details for the additional network interface
+                        self.aws_network_interface_attachment(instance_id, ni)
+
+    def aws_iam_instance_profile(self, iam_instance_profile_id):
+        print(f"Processing IAM Instance Profile: {iam_instance_profile_id}")
+
+        # Fetch the details of IAM Instance Profile using the IAM client
+        response = self.iam_client.get_instance_profile(
+            InstanceProfileName=iam_instance_profile_id)
+
+        profile = response["InstanceProfile"]
+        attributes = {
+            "id": profile["InstanceProfileName"],
+            "arn": profile["Arn"],
+            "name": profile["InstanceProfileName"],
+            "path": profile["Path"],
+            "create_date": profile["CreateDate"].strftime('%Y-%m-%d %H:%M:%S'),
+            "roles": [role["RoleName"] for role in profile["Roles"]]
+        }
+
+        self.hcl.process_resource(
+            "aws_iam_instance_profile", iam_instance_profile_id.replace("-", "_"), attributes)
+
+        # Process only the first associated role
+        if profile["Roles"]:
+            self.aws_iam_role(profile["Roles"][0]["Arn"])
+
+    def aws_iam_role(self, role_arn):
+        # the role name is the last part of the ARN
+        role_name = role_arn.split('/')[-1]
+
+        role = self.iam_client.get_role(RoleName=role_name)
+        print(f"Processing IAM Role: {role_name}")
+
+        attributes = {
+            "id": role_name,
+        }
+        self.hcl.process_resource(
+            "aws_iam_role", role_name.replace("-", "_"), attributes)
+
+    def aws_ebs_volume(self, volume_id):
+        print(f"Processing EBS Volume: {volume_id}")
+
+        volume = self.ec2_client.describe_volumes(VolumeIds=[volume_id])
+
+        if not volume["Volumes"]:
+            print(f"  No EBS Volume found for Volume ID: {volume_id}")
+            return
+
+        vol = volume["Volumes"][0]
+
+        attributes = {
+            "id": vol["VolumeId"],
+            "availability_zone": vol["AvailabilityZone"],
+            "size": vol["Size"],
+            "state": vol["State"],
+            "type": vol["VolumeType"],
+            "iops": vol["Iops"] if "Iops" in vol else None,
+            "encrypted": vol["Encrypted"]
+        }
+
+        if "SnapshotId" in vol:
+            attributes["snapshot_id"] = vol["SnapshotId"]
+
+        self.hcl.process_resource(
+            "aws_ebs_volume", volume_id.replace("-", "_"), attributes)
+
+    def aws_volume_attachment(self, instance_id, block_device):
+        device_name = block_device["DeviceName"]
+        volume_id = block_device["Ebs"]["VolumeId"]
+
+        print(
+            f"Processing EBS Volume Attachment for Volume: {volume_id} on Instance: {instance_id}")
+
+        attributes = {
+            'id': f"{device_name}:{volume_id}:{instance_id}",
+            "instance_id": instance_id,
+            "volume_id": volume_id,
+            "device_name": device_name
+        }
+
+        self.hcl.process_resource(
+            "aws_volume_attachment", volume_id.replace("-", "_"), attributes)
+
+    def aws_network_interface(self, network_interface_id):
+        print(f"Processing Network Interface: {network_interface_id}")
+
+        network_interface = self.ec2_client.describe_network_interfaces(
+            NetworkInterfaceIds=[network_interface_id])
+
+        if not network_interface["NetworkInterfaces"]:
+            print(
+                f"  No Network Interface found for ID: {network_interface_id}")
+            return
+
+        ni = network_interface["NetworkInterfaces"][0]
+
+        attributes = {
+            "id": ni["NetworkInterfaceId"],
+            "subnet_id": ni["SubnetId"],
+            "description": ni.get("Description", ""),
+            "private_ip": ni["PrivateIpAddress"],
+            "security_groups": [sg["GroupId"] for sg in ni["Groups"]],
+        }
+
+        if "Association" in ni and "PublicIp" in ni["Association"]:
+            attributes["public_ip"] = ni["Association"]["PublicIp"]
+
+        self.hcl.process_resource(
+            "aws_network_interface", network_interface_id.replace("-", "_"), attributes)
+
+    def aws_network_interface_attachment(self, instance_id, network_interface):
+        print(
+            f"Processing Network Interface Attachment for Network Interface: {network_interface['NetworkInterfaceId']} on Instance: {instance_id}")
+
+        attributes = {
+            "id": network_interface["Attachment"]["AttachmentId"],
+            "instance_id": instance_id,
+            "network_interface_id": network_interface["NetworkInterfaceId"],
+            "device_index": network_interface["Attachment"]["DeviceIndex"],
+        }
+
+        self.hcl.process_resource(
+            "aws_network_interface_attachment", network_interface["NetworkInterfaceId"].replace("-", "_"), attributes)
 
     def aws_key_pair(self):
         print("Processing EC2 Key Pairs...")
