@@ -66,6 +66,46 @@ class EC2:
         self.additional_ips_count += 1
         return self.additional_ips_count
 
+    def get_device_name(self, attributes):
+        volume_id = attributes.get("id")
+        if not volume_id:
+            return None
+
+        response = self.ec2_client.describe_volumes(VolumeIds=[volume_id])
+
+        # Check if the volume exists and has attachments
+        if response["Volumes"] and response["Volumes"][0]["Attachments"]:
+            return response["Volumes"][0]["Attachments"][0]["Device"]
+
+        return None
+
+    def get_device_name_list(self, attributes):
+        volume_id = attributes.get("id")
+        device_name = self.get_device_name(attributes)
+        if not device_name:
+            return None
+
+        result = {}
+        result[device_name] = {}
+
+        volume_type = attributes.get("type")
+        iops = attributes.get("iops")
+        throughput = attributes.get("throughput")
+
+        if volume_type != "gp2" and iops:
+            result[device_name]["iops"] = iops
+
+        if throughput and throughput != 0:
+            result[device_name]["throughput"] = throughput
+
+        # Add other fields conditionally if they are not empty or have a non-zero value
+        for key in ["size", "tags", "encrypted", "kms_key_id", "type"]:
+            value = attributes.get(key)
+            if value:
+                result[device_name][key] = value
+
+        return result
+
     def ec2(self):
         self.hcl.prepare_folder(os.path.join("generated", "ec2"))
 
@@ -83,6 +123,8 @@ class EC2:
             'get_device_index': self.get_device_index,
             'get_additional_ips_count': self.get_additional_ips_count,
             'init_fields': self.init_fields,
+            'get_device_name': self.get_device_name,
+            'get_device_name_list': self.get_device_name_list,
         }
         self.hcl.module_hcl_code("terraform.tfstate", os.path.join(
             os.path.dirname(os.path.abspath(__file__)), "ec2.yaml"), functions, self.region, self.aws_account_id)
@@ -291,6 +333,16 @@ class EC2:
                         f"  Skipping EC2 Instance (managed by Auto Scaling group): {instance_id}")
                     continue
 
+                # Check if the instance has EKS related tags and skip if it does
+                eks_tags = [tag for tag in instance.get(
+                    "Tags", []) if tag["Key"].startswith("kubernetes.io/cluster/")]
+                if eks_tags:
+                    print(
+                        f"  Skipping EC2 Instance (managed by EKS): {instance_id}")
+                    continue
+
+                # if instance_id != "i-0214c7a1fd42fa593":
+                #     continue
                 print(f"  Processing EC2 Instance: {instance_id}")
 
                 attributes = {
@@ -331,13 +383,12 @@ class EC2:
                     # Process the volume attachment for the EBS volume
                     self.aws_volume_attachment(instance_id, block_device)
 
-                primary_interface_id = instance["NetworkInterfaces"][0]["NetworkInterfaceId"]
-                for ni in instance.get("NetworkInterfaces", [])[1:]:
-                    if ni["NetworkInterfaceId"] != primary_interface_id:
-                        self.aws_network_interface(ni["NetworkInterfaceId"])
+                # disable for now until i know how to handle private and public ips
+                # for ni in instance.get("NetworkInterfaces", []):
+                #     self.aws_network_interface(ni["NetworkInterfaceId"])
 
-                        # Process the attachment details for the additional network interface
-                        self.aws_network_interface_attachment(instance_id, ni)
+                #     # Process the attachment details for the additional network interface
+                #     self.aws_network_interface_attachment(instance_id, ni)
 
     def aws_iam_instance_profile(self, iam_instance_profile_id):
         print(f"Processing IAM Instance Profile: {iam_instance_profile_id}")
