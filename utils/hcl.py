@@ -813,6 +813,7 @@ class HCL:
 
                 if value not in [None, "", [], {}] or defaulted:
                     if multiline:
+                        print(field, value)
                         value = "<<EOF\n" + \
                             json.dumps(json.loads(value), indent=4) + "\nEOF\n"
                     if jsonencode:

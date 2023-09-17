@@ -36,6 +36,35 @@ class EC2:
         self.hcl = HCL(self.schema_data, self.provider_name,
                        self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules)
         self.resource_list = {}
+        self.aws_account_id = aws_account_id
+        self.additional_ips_count = 0
+
+    def init_fields(self, attributes):
+        self.additional_ips_count = 0
+
+        return None
+
+    def get_field_from_attrs(self, attributes, arg):
+        keys = arg.split(".")
+        result = attributes
+        for key in keys:
+            if isinstance(result, list):
+                result = [sub_result.get(key, None) if isinstance(
+                    sub_result, dict) else None for sub_result in result]
+                if len(result) == 1:
+                    result = result[0]
+            else:
+                result = result.get(key, None)
+            if result is None:
+                return None
+        return result
+
+    def get_device_index(self, attributes):
+        return attributes.get("device_index", 0)-1
+
+    def get_additional_ips_count(self, attributes):
+        self.additional_ips_count += 1
+        return self.additional_ips_count
 
     def ec2(self):
         self.hcl.prepare_folder(os.path.join("generated", "ec2"))
@@ -48,8 +77,16 @@ class EC2:
         self.aws_instance()
 
         self.hcl.refresh_state()
-        exit()
-        self.hcl.generate_hcl_file()
+
+        functions = {
+            'get_field_from_attrs': self.get_field_from_attrs,
+            'get_device_index': self.get_device_index,
+            'get_additional_ips_count': self.get_additional_ips_count,
+            'init_fields': self.init_fields,
+        }
+        self.hcl.module_hcl_code("terraform.tfstate", os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), "ec2.yaml"), functions, self.region, self.aws_account_id)
+
         self.json_plan = self.hcl.json_plan
 
     def aws_ami(self):
