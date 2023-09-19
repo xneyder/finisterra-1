@@ -121,15 +121,7 @@ class ELBV2:
         return {}  # default to an empty dictionary if conditions are not met
 
     def get_listeners(self, attributes):
-
-        # domain_name = ""
-        # if attributes.get('certificate_arn'):
-        #     response = self.acm_client.describe_certificate(
-        #         CertificateArn=attributes.get('certificate_arn')
-        #     )
-        #     domain_name = response['Certificate']['DomainName']
-
-        self.listeners[attributes.get('port')] = {
+        listener = {
             'port': attributes.get('port'),
             'protocol': attributes.get('protocol'),
             'ssl_policy': attributes.get('ssl_policy'),
@@ -140,6 +132,11 @@ class ELBV2:
             'listener_redirect': self.get_redirect(attributes),
             'listener_additional_tags': attributes.get('tags'),
         }
+
+        # Filter out keys with undesirable values
+        self.listeners[attributes.get('port')] = {
+            k: v for k, v in listener.items() if v not in [{}, [], "", None]}
+
         return self.listeners
 
     def get_port(self, attributes):

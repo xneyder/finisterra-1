@@ -1,6 +1,7 @@
 aws_msk_cluster:
   # terraform_module: "../../../terraform-aws-modules/terraform-aws-msk-apache-kafka-cluster"
-  terraform_module: "github.com/finisterra-io/terraform-aws-msk-apache-kafka-cluster.git?ref=main"
+  # terraform_module: "github.com/finisterra-io/terraform-aws-msk-apache-kafka-cluster.git?ref=main"
+  terraform_module: "github.com/posthog/terraform-modules.git//aws-msk?ref=danielj-initial-modules"
   terraform_module_version: "0.20.0"
   target_resource_name: default
   name_field: cluster_name

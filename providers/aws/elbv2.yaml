@@ -1,6 +1,7 @@
 aws_lb:
   # terraform_module: "../../../terraform-aws-modules/terraform-aws-alb"
-  terraform_module: "github.com/finisterra-io/terraform-aws-alb.git?ref=main"
+  # terraform_module: "github.com/finisterra-io/terraform-aws-alb.git?ref=main"
+  terraform_module: "github.com/posthog/terraform-modules.git//aws-alb?ref=danielj-initial-modules"
   terraform_module_version: "0.20.0"
   target_resource_name: default
   name_field: load_balancer_name
