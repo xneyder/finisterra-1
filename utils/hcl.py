@@ -642,6 +642,16 @@ class HCL:
 
         def process_resource(resource, resources, config, parent_root_attribute_key_value=None):
 
+            def are_equivalent(a, b):
+                if isinstance(a, list) and isinstance(b, list):
+                    return sorted(a) == sorted(b)
+                elif isinstance(a, dict) and isinstance(b, dict):
+                    return a == b
+                elif isinstance(a, set) and isinstance(b, set):
+                    return a == b
+                else:
+                    return a == b
+
             def deep_update(original, update):
                 """
                 Recursively update a dictionary.
@@ -808,7 +818,7 @@ class HCL:
                     defaulted = True
 
                 if module_default != 'N/A':
-                    if value == module_default:
+                    if are_equivalent(value, module_default):
                         value = None
 
                 if value not in [None, "", [], {}] or defaulted:
@@ -1270,3 +1280,6 @@ class HCL:
         subprocess.run(["terragrunt",  "validate"], check=True)
         print("Running terragrunt plan on generated files...")
         subprocess.run(["terragrunt", "plan", "-refresh-only"], check=True)
+        # move file terraform.tfstate to terraform.tfstate.disable
+        os.rename("terraform.tfstate", "terraform.tfstate.disabled")
+        subprocess.run(["terragrunt", "plan"], check=True)

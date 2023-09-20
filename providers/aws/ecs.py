@@ -451,7 +451,7 @@ class ECS:
             self.aws_ecs_service(cluster_name)
 
     def aws_cloudwatch_log_group(self, log_group_name):
-        print(f"Processing CloudWatch Log Group for Lambda function...")
+        print(f"Processing CloudWatch Log Group...")
 
         paginator = self.logs_client.get_paginator('describe_log_groups')
 
@@ -473,7 +473,7 @@ class ECS:
                     return  # End the function once we've found the matching log group
 
         print(
-            f"  Warning: No matching CloudWatch Log Group found for Lambda function: {log_group_name}")
+            f"  Warning: No matching CloudWatch Log Group found: {log_group_name}")
 
     def aws_ecs_cluster_capacity_providers(self, cluster_name):
         print("Processing ECS Cluster Capacity Providers for the specified cluster...")

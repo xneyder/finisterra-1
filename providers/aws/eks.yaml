@@ -1,0 +1,143 @@
+#To do
+#aws_kms_key enabling cluster_encryption_config
+
+aws_eks_cluster:
+  terraform_module: "../../../terraform-aws-modules/terraform-aws-eks"
+  # terraform_module: "github.com/finisterra-io/terraform-aws-eks.git?ref=main"
+  # terraform_module: "github.com/posthog/terraform-modules.git//aws-eks?ref=danielj-initial-modules"
+  terraform_module_version: "0.20.0"
+  target_resource_name: this
+  name_field: cluster_name
+  defaults:
+    create_iam_role: false
+    create_cluster_security_group: false
+    create_node_security_group: false
+  fields:
+    cluster_name:
+      field: name
+      type: string
+    iam_role_arn:
+      field: role_arn
+      type: string
+    cluster_version:
+      field: version
+      type: string
+    cluster_enabled_log_types:
+      field: enabled_cluster_log_types
+      type: list
+    cluster_additional_security_group_ids:
+      function: get_field_from_attrs
+      arg: vpc_config.security_group_ids
+      type: list
+    subnet_ids:
+      function: get_field_from_attrs
+      arg: vpc_config.subnet_ids
+      type: list
+    cluster_endpoint_private_access:
+      function: get_field_from_attrs
+      arg: vpc_config.endpoint_private_access
+      type: bool
+    cluster_endpoint_public_access:
+      function: get_field_from_attrs
+      arg: vpc_config.endpoint_public_access
+      type: bool
+    cluster_endpoint_public_access_cidrs:
+      function: get_field_from_attrs
+      arg: vpc_config.public_access_cidrs
+      type: list
+    cluster_encryption_config:
+      field: encryption_config
+      type: map
+    cluster_tags:
+      field: tags
+      type: map
+  childs:
+    aws_cloudwatch_log_group:
+      join:
+        name:
+          function: cloudwatch_log_group_name
+      target_resource_name: this
+      defaults:
+        create_cloudwatch_log_group: true
+      fields:
+        cloudwatch_log_group_retention_in_days:
+          field: retention_in_days
+          type: number
+        cloudwatch_log_group_kms_key_id:
+          field: kms_key_id
+          type: string
+        cloudwatch_log_group_tags:
+          field: tags
+          type: map
+    aws_eks_addon:
+      join:
+        id:
+          field: cluster_name
+      target_resource_name: this
+      second_index:
+        field: addon_name
+      fields:
+        cluster_addons:
+          function: build_cluster_addons
+          type: map
+    aws_ec2_tag:
+      join:
+        resource_id:
+          join_function: join_ec2_tag_resource_id
+      target_resource_name: cluster_primary_security_group
+      second_index:
+        field: key
+      fields:
+        ec2_tags:
+          function: build_cluster_tags
+          type: map
+
+    # module "kms" {
+    #   source  = "terraform-aws-modules/kms/aws"
+    #   version = "1.1.0" # Note - be mindful of Terraform/provider version compatibility between modules
+
+    #   create = local.create && var.create_kms_key && local.enable_cluster_encryption_config # not valid on Outposts
+
+    #   description             = coalesce(var.kms_key_description, "${var.cluster_name} cluster encryption key")
+    #   key_usage               = "ENCRYPT_DECRYPT"
+    #   deletion_window_in_days = var.kms_key_deletion_window_in_days
+    #   enable_key_rotation     = var.enable_kms_key_rotation
+
+    #   # Policy
+    #   enable_default_policy     = var.kms_key_enable_default_policy
+    #   key_owners                = var.kms_key_owners
+    #   key_administrators        = coalescelist(var.kms_key_administrators, [data.aws_iam_session_context.current.issuer_arn])
+    #   key_users                 = concat([local.cluster_role], var.kms_key_users)
+    #   key_service_users         = var.kms_key_service_users
+    #   source_policy_documents   = var.kms_key_source_policy_documents
+    #   override_policy_documents = var.kms_key_override_policy_documents
+
+    #   # Aliases
+    #   aliases = var.kms_key_aliases
+    #   computed_aliases = {
+    #     # Computed since users can pass in computed values for cluster name such as random provider resources
+    #     cluster = { name = "eks/${var.cluster_name}" }
+    #   }
+
+    #   tags = var.cluster_tags
+    # }
+
+    aws_iam_openid_connect_provider:
+      join:
+        arn:
+          join_function: join_eks_cluster_and_oidc_provider
+      target_resource_name: oidc_provider
+      fields:
+        oidc_provider_tags:
+          field: tags
+          type: map
+        # custom_oidc_thumbprints:
+        #   field: thumbprint_list
+        #   type: list
+        #   module_default:
+        #     [
+        #       "9e99a48a9960b14926bb7f3b02e22da2b0ab7280",
+        #       "06b25927c42a721631c1efd9431e648fa62e1e39",
+        #       "414a2060b738c635cc7fc243e052615592830c53",
+        #       "aaa68bb211d468db8a8a19561ccba2e4043dcc80",
+        #     ]

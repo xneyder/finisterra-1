@@ -512,7 +512,14 @@ class Aws:
     def eks(self):
         eks_client = self.session.client(
             "eks", region_name=self.aws_region)
-        instance = EKS(eks_client, self.script_dir, self.provider_name,
+        logs_client = self.session.client(
+            "logs", region_name=self.aws_region)
+
+        ec2_client = self.session.client(
+            "ec2", region_name=self.aws_region)
+        iam_client = self.session.client(
+            "iam", region_name=self.aws_region)
+        instance = EKS(eks_client, logs_client, ec2_client, iam_client, self.script_dir, self.provider_name,
                        self.schema_data, self.aws_region, self.s3Bucket,
                        self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.eks()

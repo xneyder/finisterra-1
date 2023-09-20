@@ -139,3 +139,7 @@ aws_lb:
               function: get_security_group_rules
               arg: id
               type: list
+            fields:
+              oidc_provider_tags:
+                field: tags
+                type: map
