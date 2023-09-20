@@ -3,12 +3,13 @@ from utils.hcl import HCL
 
 
 class EKS:
-    def __init__(self, eks_client, logs_client, ec2_client, iam_client, script_dir, provider_name, schema_data, region, s3Bucket,
+    def __init__(self, eks_client, logs_client, ec2_client, iam_client, autoscaling_client, script_dir, provider_name, schema_data, region, s3Bucket,
                  dynamoDBTable, state_key, workspace_id, modules, aws_account_id):
         self.eks_client = eks_client
         self.logs_client = logs_client
         self.ec2_client = ec2_client
         self.iam_client = iam_client
+        self.autoscaling_client = autoscaling_client
         self.transform_rules = {
             "aws_eks_node_group": {
                 "hcl_drop_fields": {"update_config.max_unavailable_percentage": 0, "update_config.max_unavailable_percentage": 0},
@@ -116,11 +117,8 @@ class EKS:
         self.aws_eks_cluster()
 
 
-# aws_ec2_tag
-# aws_cloudwatch_log_group
 # aws_security_group
 # aws_security_group_rule
-# aws_iam_openid_connect_provider
 # aws_iam_role
 # aws_iam_role_policy_attachment
 # aws_iam_role_policy_attachment
@@ -142,6 +140,7 @@ class EKS:
         }
 
         self.hcl.refresh_state()
+        exit()
         self.hcl.module_hcl_code("terraform.tfstate",
                                  os.path.join(os.path.dirname(os.path.abspath(__file__)), "eks.yaml"), functions, self.region, self.aws_account_id)
         self.json_plan = self.hcl.json_plan
@@ -180,6 +179,9 @@ class EKS:
 
             # oidc irsa
             self.aws_iam_openid_connect_provider(cluster_name)
+
+            # eks node group
+            self.aws_eks_node_group(cluster_name)
 
     def aws_eks_addon(self, cluster_name):
         print(f"Processing EKS Add-ons for Cluster: {cluster_name}...")
@@ -362,25 +364,145 @@ class EKS:
             print(
                 f"  Prepared tag for Resource {resource_id} with {key} = {value}")
 
-    def aws_eks_node_group(self):
+    def aws_eks_node_group(self, cluster_name):
         print("Processing EKS Node Groups...")
 
         clusters = self.eks_client.list_clusters()["clusters"]
 
-        for cluster_name in clusters:
-            node_groups = self.eks_client.list_nodegroups(
-                clusterName=cluster_name)["nodegroups"]
+        # Check if the provided cluster_name is in the list of clusters
+        if cluster_name not in clusters:
+            print(f"Cluster '{cluster_name}' not found!")
+            return
 
-            for node_group_name in node_groups:
-                node_group = self.eks_client.describe_nodegroup(
-                    clusterName=cluster_name, nodegroupName=node_group_name)["nodegroup"]
+        node_groups = self.eks_client.list_nodegroups(
+            clusterName=cluster_name)["nodegroups"]
+
+        for node_group_name in node_groups:
+            node_group = self.eks_client.describe_nodegroup(
+                clusterName=cluster_name, nodegroupName=node_group_name)["nodegroup"]
+            print(
+                f"  Processing EKS Node Group: {node_group_name} for Cluster: {cluster_name}")
+
+            attributes = {
+                "id": cluster_name + ":" + node_group_name,
+                "node_group_name": node_group_name,
+                "cluster_name": cluster_name,
+            }
+            self.hcl.process_resource(
+                "aws_eks_node_group", f"{cluster_name}-{node_group_name}".replace("-", "_"), attributes)
+
+            # If the node group has a launch template, process it
+            if 'launchTemplate' in node_group and 'id' in node_group['launchTemplate']:
+                self.aws_launch_template(node_group['launchTemplate']['id'])
+
+            # Process IAM role associated with the EKS node group
+            if 'nodeRole' in node_group:
+                self.aws_iam_role(node_group['nodeRole'])
+
+            # Process Auto Scaling schedules for the node group's associated Auto Scaling group
+            for asg in node_group.get('resources', {}).get('autoScalingGroups', []):
+                self.aws_autoscaling_schedule(asg['name'])
+
+    def aws_launch_template(self, launch_template_id):
+        print("Processing AWS Launch Template...")
+
+        # Describe the launch template using the provided ID
+        response = self.ec2_client.describe_launch_templates(
+            LaunchTemplateIds=[launch_template_id])
+
+        # Check if we have the launch template in the response
+        if 'LaunchTemplates' not in response or len(response['LaunchTemplates']) == 0:
+            print(f"Launch template with ID '{launch_template_id}' not found!")
+            return
+
+        launch_template = response['LaunchTemplates'][0]
+
+        print(
+            f"  Processing Launch Template: {launch_template['LaunchTemplateName']} with ID: {launch_template_id}")
+
+        attributes = {
+            "id": launch_template_id,
+            "name": launch_template['LaunchTemplateName'],
+            "version": launch_template['DefaultVersionNumber'],
+            # You can add other attributes from the launch_template as needed
+        }
+
+        self.hcl.process_resource(
+            "aws_launch_template", f"{launch_template['LaunchTemplateName']}".replace("-", "_"), attributes)
+
+    def aws_iam_role(self, role_arn):
+        print(f"Processing IAM Role: {role_arn}...")
+
+        role_name = role_arn.split('/')[-1]  # Extract role name from ARN
+
+        # Ignore AWS service-linked roles
+        if '/aws-service-role/' in role_arn:
+            print(f"Ignoring service-linked role: {role_name}")
+            return
+
+        try:
+            role = self.iam_client.get_role(RoleName=role_name)['Role']
+
+            print(f"  Processing IAM Role: {role['Arn']}")
+
+            attributes = {
+                "id": role['RoleName'],
+            }
+            self.hcl.process_resource(
+                "aws_iam_role", role['RoleName'], attributes)
+
+            # Process IAM role policy attachments for the role
+            self.aws_iam_role_policy_attachment(
+                role['RoleName'])
+        except Exception as e:
+            print(f"Error processing IAM role: {role_name}: {str(e)}")
+
+    def aws_iam_role_policy_attachment(self, role_name):
+        print(
+            f"Processing IAM Role Policy Attachments for role: {role_name}...")
+
+        try:
+            paginator = self.iam_client.get_paginator(
+                'list_attached_role_policies')
+            for page in paginator.paginate(RoleName=role_name):
+                for policy in page['AttachedPolicies']:
+                    print(
+                        f"  Processing IAM Role Policy Attachment: {policy['PolicyName']} for role: {role_name}")
+
+                    resource_name = f"{role_name}-{policy['PolicyName']}"
+                    attributes = {
+                        "id": f"{role_name}/{policy['PolicyArn']}",
+                        "role": role_name,
+                        "policy_arn": policy['PolicyArn']
+                    }
+                    self.hcl.process_resource(
+                        "aws_iam_role_policy_attachment", resource_name, attributes)
+
+        except Exception as e:
+            print(
+                f"Error processing IAM role policy attachments for role: {role_name}: {str(e)}")
+
+    def aws_autoscaling_schedule(self, autoscaling_group_name):
+        print(
+            f"Processing Auto Scaling Schedules for Group: {autoscaling_group_name}...")
+
+        try:
+            # List all scheduled actions for the specified Auto Scaling group
+            scheduled_actions = self.autoscaling_client.describe_scheduled_actions(
+                AutoScalingGroupName=autoscaling_group_name)['ScheduledUpdateGroupActions']
+
+            for action in scheduled_actions:
                 print(
-                    f"  Processing EKS Node Group: {node_group_name} for Cluster: {cluster_name}")
+                    f"  Processing Auto Scaling Schedule: {action['ScheduledActionName']} for Group: {autoscaling_group_name}")
 
                 attributes = {
-                    "id": cluster_name+":"+node_group_name,
-                    "node_group_name": node_group_name,
-                    "cluster_name": cluster_name,
+                    "id": action['ScheduledActionName'],
+                    "start_time": action.get('StartTime', ''),
+                    "end_time": action.get('EndTime', ''),
+                    # You can add more attributes as needed
                 }
                 self.hcl.process_resource(
-                    "aws_eks_node_group", f"{cluster_name}-{node_group_name}".replace("-", "_"), attributes)
+                    "aws_autoscaling_schedule", action['ScheduledActionName'].replace("-", "_"), attributes)
+        except Exception as e:
+            print(
+                f"Error processing Auto Scaling schedule for group {autoscaling_group_name}: {str(e)}")

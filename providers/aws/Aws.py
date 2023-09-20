@@ -519,7 +519,9 @@ class Aws:
             "ec2", region_name=self.aws_region)
         iam_client = self.session.client(
             "iam", region_name=self.aws_region)
-        instance = EKS(eks_client, logs_client, ec2_client, iam_client, self.script_dir, self.provider_name,
+        autoscaling_client = self.session.client(
+            "autoscaling", region_name=self.aws_region)
+        instance = EKS(eks_client, logs_client, ec2_client, iam_client, autoscaling_client, self.script_dir, self.provider_name,
                        self.schema_data, self.aws_region, self.s3Bucket,
                        self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.eks()
