@@ -111,6 +111,254 @@ class EKS:
         # Check if the OIDC provider URL matches the one from the EKS cluster
         return provider_url == expected_oidc_url.replace("https://", "")
 
+    def join_node_group_launch_template(self, parent_attributes, child_attributes):
+        node_launch_template_id = parent_attributes.get(
+            "launch_template", [{}])[0].get("id", "")
+        launch_template_id = child_attributes.get("id", "")
+        return node_launch_template_id == launch_template_id
+
+    def join_node_group_autoscaling_schedule(self, parent_attributes, child_attributes):
+        # Assuming parent_attributes contains a list of associated ASG names for the EKS node group.
+        node_asg_names = parent_attributes.get("resources", {}).get(
+            "autoScalingGroups", [{}])[0].get("name", "")
+
+        # Assuming child_attributes contains the name of the ASG the schedule applies to.
+        schedule_asg_name = child_attributes.get("autoscaling_group_name", "")
+
+        return node_asg_names == schedule_asg_name
+
+    def build_managed_node_groups(self, attributes):
+
+        use_name_prefix = False
+        node_group_name_prefix = attributes.get("node_group_name_prefix")
+        if node_group_name_prefix:
+            use_name_prefix = True
+            if "-" in node_group_name_prefix:
+                self.node_group_name = node_group_name_prefix.rsplit("-", 1)[0]
+            else:
+                self.node_group_name = node_group_name_prefix
+
+        else:
+            self.node_group_name = attributes.get("node_group_name")
+
+        result = {self.node_group_name: {}}
+        result[self.node_group_name]['use_name_prefix'] = use_name_prefix
+        result[self.node_group_name]['subnet_ids'] = attributes.get(
+            "subnet_ids")
+        result[self.node_group_name]['min_size'] = attributes.get("min_size")
+        result[self.node_group_name]['max_size'] = attributes.get("max_size")
+        result[self.node_group_name]['desired_size'] = attributes.get(
+            "desired_size")
+        result[self.node_group_name]['ami_id'] = attributes.get("ami_id")
+        result[self.node_group_name]['ami_type'] = attributes.get("ami_type")
+        result[self.node_group_name]['ami_release_version'] = attributes.get(
+            "ami_release_version")
+        result[self.node_group_name]['capacity_type'] = attributes.get(
+            "capacity_type")
+        result[self.node_group_name]['disk_size'] = attributes.get("disk_size")
+        result[self.node_group_name]['force_update_version'] = attributes.get(
+            "force_update_version")
+        result[self.node_group_name]['instance_types'] = attributes.get(
+            "instance_types")
+        result[self.node_group_name]['labels'] = attributes.get("labels")
+        result[self.node_group_name]['remote_access'] = attributes.get(
+            "remote_access")
+        result[self.node_group_name]['taints'] = attributes.get("taints")
+        result[self.node_group_name]['update_config'] = attributes.get(
+            "update_config")
+        result[self.node_group_name]['timeouts'] = attributes.get("timeouts")
+
+        # Remove the keys that are empty
+        result[self.node_group_name] = {k: v for k,
+                                        v in result[self.node_group_name].items() if v is not None}
+        return result
+
+    def build_block_device_mappings(self, block_device_mappings):
+        result = {}
+        for block_device in block_device_mappings:
+            name = block_device.get("device_name")
+            result[name] = block_device
+        return result
+
+    def build_launch_templates(self, attributes):
+        launch_template_id = attributes.get("id")
+        # clusters = self.eks_client.list_clusters()['clusters']
+
+        # # 2. For each cluster, list all managed node groups
+        # for cluster_name in clusters:
+        #     nodegroups = self.eks_client.list_nodegroups(
+        #         clusterName=cluster_name)['nodegroups']
+
+        #     # 3. For each node group, describe it and check its launch template ID
+        #     for nodegroup_name in nodegroups:
+        #         nodegroup = self.eks_client.describe_nodegroup(
+        #             clusterName=cluster_name, nodegroupName=nodegroup_name)
+        #         nodegroup_launch_template_id = nodegroup['nodegroup']['launchTemplate']['id']
+
+        #         if nodegroup_launch_template_id == launch_template_id:
+        #             break
+        result = {self.node_group_name: {}}
+        block_device_mappings = attributes.get("block_device_mappings")
+        result[self.node_group_name]["block_device_mappings"] = self.build_block_device_mappings(
+            block_device_mappings)
+        result[self.node_group_name]["launch_template_tags"] = attributes.get(
+            "tags")
+        result[self.node_group_name]["tag_specifications"] = attributes.get(
+            "tag_specifications")
+        result[self.node_group_name]["ebs_optimized"] = attributes.get(
+            "ebs_optimized")
+        result[self.node_group_name]["key_name"] = attributes.get("key_name")
+        result[self.node_group_name]["disable_api_termination"] = attributes.get(
+            "disable_api_termination")
+        result[self.node_group_name]["kernel_id"] = attributes.get("kernel_id")
+        result[self.node_group_name]["ram_disk_id"] = attributes.get(
+            "ram_disk_id")
+        result[self.node_group_name]["capacity_reservation_specification"] = attributes.get(
+            "capacity_reservation_specification")
+        result[self.node_group_name]["cpu_options"] = attributes.get(
+            "cpu_options")
+        result[self.node_group_name]["credit_specification"] = attributes.get(
+            "credit_specification")
+        result[self.node_group_name]["elastic_gpu_specifications"] = attributes.get(
+            "elastic_gpu_specifications")
+        result[self.node_group_name]["elastic_inference_accelerator"] = attributes.get(
+            "elastic_inference_accelerator")
+        result[self.node_group_name]["enclave_options"] = attributes.get(
+            "enclave_options")
+        result[self.node_group_name]["instance_market_options"] = attributes.get(
+            "instance_market_options")
+        result[self.node_group_name]["license_specifications"] = attributes.get(
+            "license_specifications")
+        result[self.node_group_name]["metadata_options"] = attributes.get(
+            "metadata_options")
+        result[self.node_group_name]["enable_monitoring"] = attributes.get(
+            "monitoring", [{}])[0].get("enabled")
+        result[self.node_group_name]["network_interfaces"] = attributes.get(
+            "network_interfaces")
+        result[self.node_group_name]["placement"] = attributes.get("placement")
+        result[self.node_group_name]["maintenance_options"] = attributes.get(
+            "maintenance_options")
+        result[self.node_group_name]["private_dns_name_options"] = attributes.get(
+            "private_dns_name_options")
+
+        # Remove the keys that are empty
+        result[self.node_group_name] = {k: v for k,
+                                        v in result[self.node_group_name].items() if v is not None}
+        return result
+
+    def build_node_group_roles(self, attributes):
+        result = {}
+        role_arn = attributes.get("arn")
+        # using boto3 get the eks managed node group using the role arn.
+        # 1. List all EKS clusters
+        # clusters = self.eks_client.list_clusters()['clusters']
+
+        # # 2. For each cluster, list all managed node groups
+        # for cluster_name in clusters:
+        #     nodegroups = self.eks_client.list_nodegroups(
+        #         clusterName=cluster_name)['nodegroups']
+
+        #     # 3. For each node group, describe it and check its role ARN
+        #     for nodegroup_name in nodegroups:
+        #         nodegroup = self.eks_client.describe_nodegroup(
+        #             clusterName=cluster_name, nodegroupName=nodegroup_name)
+        #         nodegroup_role_arn = nodegroup['nodegroup']['nodeRole']
+
+        #         if nodegroup_role_arn == role_arn:
+        #             break
+
+        result[self.node_group_name] = {}
+        result[self.node_group_name]["iam_role_path"] = attributes.get("path")
+        result[self.node_group_name]["iam_role_description"] = attributes.get(
+            "description")
+        result[self.node_group_name]["iam_role_tags"] = attributes.get("tags")
+
+        # Remove the keys that are empty
+        result[self.node_group_name] = {k: v for k,
+                                        v in result[self.node_group_name].items() if v is not None}
+        return result
+
+    def build_node_group_role_policy_attachments(self, attributes):
+        result = {}
+
+        result[self.node_group_name] = {}
+
+        # # 1. Using IAM client, get the ARN of the role using the role name
+        # try:
+        #     role_arn = self.iam_client.get_role(
+        #         RoleName=role_name)['Role']['Arn']
+        # except self.iam_client.exceptions.NoSuchEntityException:
+        #     return result
+
+        # # 2. Using EKS client, list all clusters
+        # clusters = self.eks_client.list_clusters()['clusters']
+
+        # # 3. For each cluster, list all managed node groups
+        # for cluster_name in clusters:
+        #     nodegroups = self.eks_client.list_nodegroups(
+        #         clusterName=cluster_name)['nodegroups']
+
+        #     # 4. For each node group, describe it and check its role ARN
+        #     for nodegroup_name in nodegroups:
+        #         nodegroup = self.eks_client.describe_nodegroup(
+        #             clusterName=cluster_name, nodegroupName=nodegroup_name)
+        #         nodegroup_role_arn = nodegroup['nodegroup']['nodeRole']
+
+        #         if nodegroup_role_arn == role_arn:
+        #             # Save the result, in this case, just updating the dictionary
+        #             # Modify as per your requirements
+        #             break
+
+        result[self.node_group_name]["iam_role_additional_policies"] = [attributes.get(
+            'policy_arn')]
+        return result
+
+    def build_node_group_autoscaling_schedules(self, attributes):
+        result = {}
+        # asg_id = attributes.get("id")
+        result[self.node_group_name] = {}
+        # 1. List all EKS clusters
+        # clusters = self.eks_client.list_clusters()['clusters']
+
+        # # 2. For each cluster, list all managed node groups
+        # for cluster_name in clusters:
+        #     nodegroups = self.eks_client.list_nodegroups(
+        #         clusterName=cluster_name)['nodegroups']
+
+        #     # 3. For each node group, describe it and check its ASG ID
+        #     for nodegroup_name in nodegroups:
+        #         nodegroup = self.eks_client.describe_nodegroup(
+        #             clusterName=cluster_name, nodegroupName=nodegroup_name)
+
+        #         # Assuming that each node group might be associated with multiple ASGs
+        #         for asg in nodegroup['nodegroup'].get('resources', {}).get('autoScalingGroups', []):
+        #             # Assuming the ASG 'name' field corresponds to the ASG ID
+        #             if asg.get('name') == asg_id:
+        #                 break
+
+        result[self.node_group_name]['schedules'] = {}
+        result[self.node_group_name]['schedules']["min_size"] = attributes.get(
+            "min_size")
+        result[self.node_group_name]['schedules']["max_size"] = attributes.get(
+            "max_size")
+        result[self.node_group_name]['schedules']["desired_capacity"] = attributes.get(
+            "desired_capacity")
+        result[self.node_group_name]['schedules']["start_time"] = attributes.get(
+            "start_time")
+        result[self.node_group_name]['schedules']["end_time"] = attributes.get(
+            "end_time")
+        result[self.node_group_name]['schedules']["time_zone"] = attributes.get(
+            "time_zone")
+
+        # Remove the keys that are empty
+        result[self.node_group_name]['schedules'] = {k: v for k,
+                                                     v in result[self.node_group_name]['schedules'].items() if v is not None}
+
+        return result
+
+    def get_node_group_name(self, attributes):
+        return self.node_group_name
+
     def eks(self):
         self.hcl.prepare_folder(os.path.join("generated", "eks"))
 
@@ -137,10 +385,17 @@ class EKS:
             'join_ec2_tag_resource_id': self.join_ec2_tag_resource_id,
             'build_cluster_tags': self.build_cluster_tags,
             'join_eks_cluster_and_oidc_provider': self.join_eks_cluster_and_oidc_provider,
+            'build_managed_node_groups': self.build_managed_node_groups,
+            'join_node_group_launch_template': self.join_node_group_launch_template,
+            'build_launch_templates': self.build_launch_templates,
+            'build_node_group_roles': self.build_node_group_roles,
+            'build_node_group_role_policy_attachments': self.build_node_group_role_policy_attachments,
+            'join_node_group_autoscaling_schedule': self.join_node_group_autoscaling_schedule,
+            'build_node_group_autoscaling_schedules': self.build_node_group_autoscaling_schedules,
+            'get_node_group_name': self.get_node_group_name,
         }
 
         self.hcl.refresh_state()
-        exit()
         self.hcl.module_hcl_code("terraform.tfstate",
                                  os.path.join(os.path.dirname(os.path.abspath(__file__)), "eks.yaml"), functions, self.region, self.aws_account_id)
         self.json_plan = self.hcl.json_plan

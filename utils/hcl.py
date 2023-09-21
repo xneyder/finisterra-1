@@ -843,6 +843,28 @@ class HCL:
                                 value, field_type)
 
             if created:
+                first_index = resource_config.get('first_index', "")
+                first_index_value = None
+                if first_index:
+                    enabled = first_index.get('enabled', True)
+                    if not enabled:
+                        first_index_value = "disabled"
+                    else:
+                        func_name = first_index.get('function')
+                        func = functions.get(func_name)
+                        if func is not None:
+                            arg = first_index.get('arg')
+                            if arg:
+                                first_index_value = func(
+                                    resource_attributes, arg)
+                            else:
+                                first_index_value = func(resource_attributes)
+                        else:
+                            field_name = first_index.get('field')
+                            if field_name:
+                                first_index_value = self.get_value_from_tfstate(
+                                    resource_attributes, field_name.split('.'))
+
                 second_index = resource_config.get('second_index', "")
                 second_index_value = None
                 if second_index:
@@ -892,6 +914,7 @@ class HCL:
                     'import_id': import_id_value,
                     'index': root_attribute_key_value if root_attribute_key_value else '',
                     'second_index_value': second_index_value if second_index_value else '',
+                    'first_index_value': first_index_value if first_index_value else '',
                 })
                 self.global_deployed_resources.append({
                     'resource_type': resource_type,
@@ -902,6 +925,7 @@ class HCL:
                     'import_id': import_id_value,
                     'index': root_attribute_key_value if root_attribute_key_value else '',
                     'second_index_value': second_index_value if second_index_value else '',
+                    'first_index_value': first_index_value if first_index_value else '',
                 })
 
             for child_type, child_config in resource_config.get('childs', {}).items():
@@ -1249,10 +1273,23 @@ class HCL:
             import_file_path = os.path.join("", f'import.tf')
 
             for deployed_resource in instance["deployed_resources"]:
-                index_str = ""
-                if deployed_resource["index"]:
-                    index_str = '["'+deployed_resource["index"]+'"].'
-                if not index_str and deployed_resource["target_submodule"]:
+                # index_str = ""
+                # if deployed_resource["index"]:
+                #     index_str = '["'+deployed_resource["index"]+'"].'
+
+                first_index_str = ""
+                if deployed_resource["first_index_value"]:
+                    if deployed_resource["first_index_value"] == "disabled":
+                        first_index_str = ""
+                    else:
+                        if isinstance(deployed_resource["first_index_value"], int):
+                            first_index_str = \
+                                f'[{deployed_resource["first_index_value"]}].'
+                        else:
+                            first_index_str = '["' + \
+                                deployed_resource["first_index_value"]+'"].'
+
+                if not first_index_str and deployed_resource["target_submodule"]:
                     deployed_resource["target_submodule"] += "."
 
                 second_index_str = "[0]"
@@ -1267,7 +1304,7 @@ class HCL:
                             second_index_str = '["' + \
                                 deployed_resource["second_index_value"]+'"]'
 
-                resource_import_target = f'module.{module_instance_name}.{deployed_resource["target_submodule"]}{index_str}{deployed_resource["resource_type"]}.{deployed_resource["target_resource_name"]}{second_index_str}'
+                resource_import_target = f'module.{module_instance_name}.{deployed_resource["target_submodule"]}{first_index_str}{deployed_resource["resource_type"]}.{deployed_resource["target_resource_name"]}{second_index_str}'
                 # Write to import.tf file
                 with open(import_file_path, 'a') as file:  # 'a' is for append mode
                     file.write(

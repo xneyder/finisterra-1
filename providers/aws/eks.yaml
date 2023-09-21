@@ -51,6 +51,14 @@ aws_eks_cluster:
     cluster_tags:
       field: tags
       type: map
+    cluster_ip_family:
+      function: get_field_from_attrs
+      arg: kubernetes_network_config.ip_family
+      type: string
+    cluster_service_ipv4_cidr:
+      function: get_field_from_attrs
+      arg: kubernetes_network_config.service_ipv4_cidr
+      type: string
   childs:
     aws_cloudwatch_log_group:
       join:
@@ -111,3 +119,67 @@ aws_eks_cluster:
         #       "414a2060b738c635cc7fc243e052615592830c53",
         #       "aaa68bb211d468db8a8a19561ccba2e4043dcc80",
         #     ]
+    aws_eks_node_group:
+      join:
+        name:
+          field: cluster_name
+      target_resource_name: this
+      target_submodule: module.eks_managed_node_group
+      first_index:
+        function: get_node_group_name
+      fields:
+        eks_managed_node_groups:
+          function: build_managed_node_groups
+          type: map
+      childs:
+        aws_launch_template:
+          join:
+            name:
+              join_function: join_node_group_launch_template
+          target_resource_name: this
+          target_submodule: module.eks_managed_node_group
+          first_index:
+            function: get_node_group_name
+          fields:
+            eks_managed_node_groups:
+              function: build_launch_templates
+              type: map
+        aws_iam_role:
+          join:
+            node_role_arn:
+              field: arn
+          target_resource_name: this
+          target_submodule: module.eks_managed_node_group
+          first_index:
+            function: get_node_group_name
+          fields:
+            eks_managed_node_groups:
+              function: build_node_group_roles
+              type: map
+          childs:
+            aws_iam_role_policy_attachment:
+              join:
+                name:
+                  field: role
+              target_resource_name: additional
+              target_submodule: module.eks_managed_node_group
+              first_index:
+                function: get_node_group_name
+              second_index:
+                field: policy_arn
+              fields:
+                eks_managed_node_groups:
+                  function: build_node_group_role_policy_attachments
+                  type: map
+        aws_autoscaling_schedule:
+          join:
+            name:
+              join_function: join_node_group_autoscaling_schedule
+          target_resource_name: this
+          target_submodule: module.eks_managed_node_group
+          first_index:
+            function: get_node_group_name
+          fields:
+            eks_managed_node_groups:
+              function: build_node_group_autoscaling_schedules
+              type: map
