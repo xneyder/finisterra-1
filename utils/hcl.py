@@ -1316,7 +1316,7 @@ class HCL:
         subprocess.run(["terraform", "fmt", "-recursive"], check=True)
         subprocess.run(["terragrunt",  "validate"], check=True)
         print("Running terragrunt plan on generated files...")
-        subprocess.run(["terragrunt", "plan", "-refresh-only"], check=True)
+        # subprocess.run(["terragrunt", "plan", "-refresh-only"], check=True)
         # move file terraform.tfstate to terraform.tfstate.disable
         os.rename("terraform.tfstate", "terraform.tfstate.disabled")
         subprocess.run(["terragrunt", "plan"], check=True)

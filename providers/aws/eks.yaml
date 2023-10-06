@@ -161,7 +161,7 @@ aws_eks_cluster:
               join:
                 name:
                   field: role
-              target_resource_name: additional
+              target_resource_name: this
               target_submodule: module.eks_managed_node_group
               first_index:
                 function: get_node_group_name

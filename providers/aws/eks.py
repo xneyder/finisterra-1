@@ -161,11 +161,18 @@ class EKS:
         result[self.node_group_name]['instance_types'] = attributes.get(
             "instance_types")
         result[self.node_group_name]['labels'] = attributes.get("labels")
-        result[self.node_group_name]['remote_access'] = attributes.get(
-            "remote_access")
+        tmp = attributes.get("remote_access")
+        if tmp:
+            result[self.node_group_name]['remote_access'] = attributes.get(
+                "remote_access")[0]
         result[self.node_group_name]['taints'] = attributes.get("taints")
-        result[self.node_group_name]['update_config'] = attributes.get(
-            "update_config")
+        tmp = attributes.get("update_config")
+        if tmp:
+            result[self.node_group_name]['update_config'] = attributes.get(
+                "update_config")[0]
+            # Remove the keys that are empty or 0
+            result[self.node_group_name]['update_config'] = {k: v for k,
+                                                             v in result[self.node_group_name]['update_config'].items() if v is not None and v != 0}
         result[self.node_group_name]['timeouts'] = attributes.get("timeouts")
 
         # Remove the keys that are empty
@@ -203,43 +210,72 @@ class EKS:
             block_device_mappings)
         result[self.node_group_name]["launch_template_tags"] = attributes.get(
             "tags")
-        result[self.node_group_name]["tag_specifications"] = attributes.get(
-            "tag_specifications")
-        result[self.node_group_name]["ebs_optimized"] = attributes.get(
-            "ebs_optimized")
+        result[self.node_group_name]["tag_specifications"] = []
+        tag_specifications = attributes.get("tag_specifications")
+        for tag_specification in tag_specifications:
+            result[self.node_group_name]["tag_specifications"].append(
+                tag_specification["resource_type"])
+        tmp = attributes.get("ebs_optimized")
+        if tmp:
+            result[self.node_group_name]["ebs_optimized"] = tmp
         result[self.node_group_name]["key_name"] = attributes.get("key_name")
         result[self.node_group_name]["disable_api_termination"] = attributes.get(
             "disable_api_termination")
         result[self.node_group_name]["kernel_id"] = attributes.get("kernel_id")
         result[self.node_group_name]["ram_disk_id"] = attributes.get(
             "ram_disk_id")
-        result[self.node_group_name]["capacity_reservation_specification"] = attributes.get(
-            "capacity_reservation_specification")
-        result[self.node_group_name]["cpu_options"] = attributes.get(
-            "cpu_options")
-        result[self.node_group_name]["credit_specification"] = attributes.get(
-            "credit_specification")
-        result[self.node_group_name]["elastic_gpu_specifications"] = attributes.get(
-            "elastic_gpu_specifications")
-        result[self.node_group_name]["elastic_inference_accelerator"] = attributes.get(
-            "elastic_inference_accelerator")
-        result[self.node_group_name]["enclave_options"] = attributes.get(
-            "enclave_options")
-        result[self.node_group_name]["instance_market_options"] = attributes.get(
-            "instance_market_options")
+        tmp = attributes.get("capacity_reservation_specification")
+        if tmp:
+            result[self.node_group_name]["capacity_reservation_specification"] = attributes.get(
+                "capacity_reservation_specification")[0]
+        tmp = attributes.get("cpu_options")
+        if tmp:
+            result[self.node_group_name]["cpu_options"] = attributes.get(
+                "cpu_options")[0]
+        tmp = attributes.get("credit_specification")
+        if tmp:
+            result[self.node_group_name]["credit_specification"] = attributes.get(
+                "credit_specification")[0]
+        tmp = attributes.get("elastic_gpu_specifications")
+        if tmp:
+            result[self.node_group_name]["elastic_gpu_specifications"] = attributes.get(
+                "elastic_gpu_specifications")[0]
+        tmp = attributes.get("elastic_inference_accelerator")
+        if tmp:
+            result[self.node_group_name]["elastic_inference_accelerator"] = attributes.get(
+                "elastic_inference_accelerator")[0]
+        tmp = attributes.get("enclave_options")
+        if tmp:
+            result[self.node_group_name]["enclave_options"] = attributes.get(
+                "enclave_options")[0]
+        tmp = attributes.get("instance_market_options")
+        if tmp:
+            result[self.node_group_name]["instance_market_options"] = attributes.get(
+                "instance_market_options")[0]
         result[self.node_group_name]["license_specifications"] = attributes.get(
             "license_specifications")
-        result[self.node_group_name]["metadata_options"] = attributes.get(
-            "metadata_options")
-        result[self.node_group_name]["enable_monitoring"] = attributes.get(
-            "monitoring", [{}])[0].get("enabled")
+        tmp = attributes.get("metadata_options")
+        if tmp:
+            result[self.node_group_name]["metadata_options"] = attributes.get(
+                "metadata_options")[0]
+        tmp = attributes.get("enable_monitoring")
+        if tmp:
+            result[self.node_group_name]["enable_monitoring"] = attributes.get(
+                "monitoring",)[0].get("enabled")
         result[self.node_group_name]["network_interfaces"] = attributes.get(
             "network_interfaces")
-        result[self.node_group_name]["placement"] = attributes.get("placement")
-        result[self.node_group_name]["maintenance_options"] = attributes.get(
-            "maintenance_options")
-        result[self.node_group_name]["private_dns_name_options"] = attributes.get(
-            "private_dns_name_options")
+        tmp = attributes.get("placement")
+        if tmp:
+            result[self.node_group_name]["placement"] = attributes.get("placement")[
+                0]
+        tmp = attributes.get("maintenance_options")
+        if tmp:
+            result[self.node_group_name]["maintenance_options"] = attributes.get(
+                "maintenance_options")[0]
+        tmp = attributes.get("private_dns_name_options")
+        if tmp:
+            result[self.node_group_name]["private_dns_name_options"] = attributes.get(
+                "private_dns_name_options")[0]
 
         # Remove the keys that are empty
         result[self.node_group_name] = {k: v for k,
@@ -309,8 +345,10 @@ class EKS:
         #             # Modify as per your requirements
         #             break
 
-        result[self.node_group_name]["iam_role_additional_policies"] = [attributes.get(
-            'policy_arn')]
+        policy_arn = attributes.get("policy_arn")
+        if policy_arn:
+            result[self.node_group_name]["iam_role_policy_attachments"] = {
+                policy_arn: policy_arn}
         return result
 
     def build_node_group_autoscaling_schedules(self, attributes):
