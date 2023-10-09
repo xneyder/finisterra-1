@@ -1,7 +1,6 @@
 aws_acm_certificate:
   # terraform_module: "../../../terraform-aws-modules/terraform-aws-acm"
-  # terraform_module: "github.com/finisterra-io/terraform-aws-acm.git?ref=main"
-  terraform_module: "github.com/posthog/terraform-modules.git//aws-acm?ref=danielj-initial-modules"
+  terraform_module: "github.com/finisterra-io/terraform-aws-acm.git?ref=main"
   terraform_module_version: "4.3.2"
   target_resource_name: this
   name_field: domain_name

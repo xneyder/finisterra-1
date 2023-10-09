@@ -1,7 +1,6 @@
 aws_elasticache_replication_group:
   # terraform_module: "../../../terraform-aws-modules/terraform-aws-elasticache-redis"
-  # terraform_module: "github.com/finisterra-io/terraform-aws-elasticache-redis.git?ref=main"
-  terraform_module: "github.com/posthog/terraform-modules.git//aws-elasticache-redis?ref=danielj-initial-modules"
+  terraform_module: "github.com/finisterra-io/terraform-aws-elasticache-redis.git?ref=main"
   terraform_module_version: "0.20.0"
   target_resource_name: default
   name_field: replication_group_id

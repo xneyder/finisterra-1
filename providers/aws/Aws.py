@@ -53,7 +53,6 @@ from providers.aws.elb import ELB
 from providers.aws.elbv2 import ELBV2
 from providers.aws.stepfunction import StepFunction
 from providers.aws.msk import MSK
-# from providers.aws.eks import EKS
 from utils.filesystem import create_tmp_terragrunt
 
 

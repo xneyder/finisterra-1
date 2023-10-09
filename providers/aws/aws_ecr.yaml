@@ -1,8 +1,7 @@
 aws_ecr_repository:
   # terraform_module: "terraform-aws-modules/aws/ecr"
   # terraform_module: "../../../terraform-aws-modules/terraform-aws-ecr"
-  # terraform_module: "github.com/finisterra-io/terraform-aws-ecr.git?ref=main"
-  terraform_module: "github.com/posthog/terraform-modules.git//aws-ecr?ref=danielj-initial-modules"
+  terraform_module: "github.com/finisterra-io/terraform-aws-ecr.git?ref=main"
   terraform_module_version: "1.6.0"
   name_field: repository_name
   keys:
