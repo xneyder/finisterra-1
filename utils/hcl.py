@@ -7,7 +7,6 @@ from utils.filesystem import create_version_file, create_backend_file, create_da
 from utils.terraform import Terraform
 import yaml
 import re
-from db.terraform_module_instance import get_module_data
 from collections import OrderedDict
 import hashlib
 
