@@ -68,7 +68,7 @@ class Aws:
         self.state_key = state_key
         self.workspace_id = workspace_id
         self.modules = modules
-        create_tmp_terragrunt("generated")
+        create_tmp_terragrunt(os.path.join(script_dir, "generated"))
 
     def set_boto3_session(self, id_token=None, role_arn=None, session_duration=None, aws_region="us-east-1"):
         if id_token and role_arn and session_duration:
