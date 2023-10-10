@@ -119,6 +119,9 @@ def create_root_terragrunt(bucket, region, dynamodb_table, key, destination=".")
 
 
 def create_tmp_terragrunt(base_path):
+    # Create the base_path directory if it doesn't exist
+    if not os.path.exists(base_path):
+        os.makedirs(base_path)
     file_path = os.path.join(base_path, "terragrunt.hcl")
     with open(file_path, "w") as terragrunt:
         # versions.tf
