@@ -119,6 +119,8 @@ def create_root_terragrunt(bucket, region, dynamodb_table, key, destination=".")
 
 
 def create_tmp_terragrunt(base_path):
+    current_path = os.getcwd()
+    print("current_path", current_path)
     # Create the base_path directory if it doesn't exist
     if not os.path.exists(base_path):
         os.makedirs(base_path)
@@ -164,6 +166,8 @@ def create_tmp_terragrunt(base_path):
         terragrunt.write('}\n')
         terragrunt.write('EOF\n')
         terragrunt.write('}\n\n')
+
+    print("file_path", file_path)
 
 
 def create_gitignore_file(destination):
