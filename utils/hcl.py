@@ -1309,9 +1309,15 @@ class HCL:
                     file.write(
                         f'import {{\n  id = "{deployed_resource["import_id"]}"\n  to   = {resource_import_target}\n}}\n\n')
 
+        print("Checking if terraform code was created...")
+        file_path = os.path.join(os.getcwd(), "terragrunt.hcl")
+
+        # Check if the file exists
+        if not os.path.exists(file_path):
+            print("No terraform code was generated.")
+            return
+
         print("Formatting HCL files...")
-        current_path = os.getcwd()
-        print("current_path", current_path)
         subprocess.run(["terragrunt", "init"], check=True)
         subprocess.run(["terragrunt", "hclfmt"], check=True)
         subprocess.run(["terraform", "fmt", "-recursive"], check=True)
