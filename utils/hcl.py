@@ -1310,6 +1310,18 @@ class HCL:
                         f'import {{\n  id = "{deployed_resource["import_id"]}"\n  to   = {resource_import_target}\n}}\n\n')
 
         print("Formatting HCL files...")
+        current_path = os.getcwd()
+        print("current_path", current_path)
+        # Get the parent directory of the current working directory
+        parent_directory = os.path.dirname(os.getcwd())
+
+        # List the contents of the parent directory
+        contents = os.listdir(parent_directory)
+
+        # Print the contents
+        for item in contents:
+            print(item)
+        exit()
         subprocess.run(["terragrunt", "init"], check=True)
         subprocess.run(["terragrunt", "hclfmt"], check=True)
         subprocess.run(["terraform", "fmt", "-recursive"], check=True)
