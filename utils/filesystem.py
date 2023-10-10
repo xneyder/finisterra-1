@@ -168,6 +168,10 @@ def create_tmp_terragrunt(base_path):
         terragrunt.write('}\n\n')
 
     print("file_path", file_path)
+    # Assuming file_path is a variable that contains the path to your file
+    with open(file_path, 'r') as file:
+        contents = file.read()
+        print(contents)
 
 
 def create_gitignore_file(destination):
