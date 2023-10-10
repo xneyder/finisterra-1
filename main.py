@@ -125,6 +125,8 @@ def main(aws_account_id, aws_region, group_code):
 
     create_gitignore_file("../")
 
+    stateKey = f'finisterra/generated/aws/{aws_account_id}/{aws_region}'
+
     create_root_terragrunt(s3Bucket, aws_region,
                            dynamoDBTable, stateKey, "../")
 
