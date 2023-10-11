@@ -84,8 +84,10 @@ def main(aws_account_id, aws_region, group_code):
     elif group_code == 'guardduty':
         provider.guardduty()
     elif group_code == 'iam_policy':
+        aws_region = "global"
         provider.iam_policy()
     elif group_code == 'iam_role':
+        aws_region = "global"
         provider.iam_role()
     elif group_code == 'kms':  # FIXME: This is not working
         provider.kms()
