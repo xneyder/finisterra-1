@@ -3,9 +3,10 @@ from utils.hcl import HCL
 
 
 class AutoScaling:
-    def __init__(self, autoscaling_client, script_dir, provider_name, schema_data, region, s3Bucket,
+    def __init__(self, autoscaling_client, cloudwatch_client, script_dir, provider_name, schema_data, region, s3Bucket,
                  dynamoDBTable, state_key, workspace_id, modules, aws_account_id):
         self.autoscaling_client = autoscaling_client
+        self.cloudwatch_client = cloudwatch_client
         self.transform_rules = {
             "aws_autoscaling_policy": {
                 "hcl_drop_fields": {"min_adjustment_magnitude": 0},
@@ -20,21 +21,28 @@ class AutoScaling:
         self.hcl = HCL(self.schema_data, self.provider_name,
                        self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules)
         self.resource_list = {}
+        self.aws_account_id = aws_account_id
 
     def autoscaling(self):
         self.hcl.prepare_folder(os.path.join("generated", "autoscaling"))
 
-        self.aws_autoscaling_attachment()
         self.aws_autoscaling_group()
-        self.aws_autoscaling_group_tag()
-        self.aws_autoscaling_lifecycle_hook()
-        self.aws_autoscaling_notification()
-        self.aws_autoscaling_policy()
-        self.aws_autoscaling_schedule()
-        self.aws_launch_configuration()
+        # self.aws_autoscaling_attachment()
+        # self.aws_autoscaling_group_tag()
+        # self.aws_autoscaling_lifecycle_hook()
+        # self.aws_autoscaling_notification()
+        # self.aws_autoscaling_policy()
+        # self.aws_autoscaling_schedule()
 
         self.hcl.refresh_state()
-        self.hcl.generate_hcl_file()
+
+        functions = {}
+
+        self.hcl.module_hcl_code("terraform.tfstate", os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), "autoscalling.yaml"), functions, self.region, self.aws_account_id)
+
+        exit()
+
         self.json_plan = self.hcl.json_plan
 
     def aws_autoscaling_attachment(self):
@@ -66,30 +74,42 @@ class AutoScaling:
 
         for as_group in as_groups:
             as_group_name = as_group["AutoScalingGroupName"]
+
+            # # Check tags to determine if this group is controlled by Elastic Beanstalk or EKS
+            # is_elasticbeanstalk = any(tag['Key'].startswith(
+            #     'elasticbeanstalk:') for tag in as_group.get('Tags', []))
+            # is_eks = any(tag['Key'].startswith('eks:')
+            #              for tag in as_group.get('Tags', []))
+
+            # if is_elasticbeanstalk or is_eks:
+            #     print(
+            #         f"  Skipping Elastic Beanstalk or EKS AutoScaling Group: {as_group_name}")
+            #     continue  # Skip this AutoScaling group and move to the next
+
             print(f"  Processing AutoScaling Group: {as_group_name}")
 
             attributes = {
                 "id": as_group_name,
-                # "launch_configuration": as_group["LaunchConfigurationName"],
-                # "availability_zones": as_group["AvailabilityZones"],
-                # "desired_capacity": as_group["DesiredCapacity"],
-                # "min_size": as_group["MinSize"],
-                # "max_size": as_group["MaxSize"],
-                # "health_check_type": as_group["HealthCheckType"],
-                # "health_check_grace_period": as_group["HealthCheckGracePeriod"],
             }
-
-            # if "LoadBalancerNames" in as_group:
-            #     attributes["load_balancers"] = as_group["LoadBalancerNames"]
-
-            # if "TargetGroupARNs" in as_group:
-            #     attributes["target_group_arns"] = as_group["TargetGroupARNs"]
-
-            # if "VPCZoneIdentifier" in as_group:
-            #     attributes["vpc_zone_identifier"] = as_group["VPCZoneIdentifier"]
 
             self.hcl.process_resource(
                 "aws_autoscaling_group", as_group_name.replace("-", "_"), attributes)
+
+            # Here we call the policy processing for this specific group
+            self.aws_autoscaling_policy(as_group_name)
+
+            # Check if the AutoScaling group uses a Launch Configuration or Launch Template
+            if "LaunchConfigurationName" in as_group:
+                lc_name = as_group["LaunchConfigurationName"]
+                # Call the method for processing Launch Configurations
+                self.aws_launch_configuration(id=lc_name)
+
+            elif "LaunchTemplate" in as_group:
+                lt_info = as_group["LaunchTemplate"]
+                if "LaunchTemplateId" in lt_info:  # It's possible to have 'LaunchTemplateName' instead of 'LaunchTemplateId'
+                    lt_id = lt_info["LaunchTemplateId"]
+                    # Call the method for processing Launch Templates
+                    self.aws_launch_template(id=lt_id)
 
     def aws_autoscaling_group_tag(self):
         print("Processing AutoScaling Group Tags...")
@@ -198,40 +218,55 @@ class AutoScaling:
                           for config in response['NotificationConfigurations']]
         return sns_topic_arns
 
-    def aws_autoscaling_policy(self):
-        print("Processing AutoScaling Policies...")
+    def aws_autoscaling_policy(self, as_group_name):
+        print(f"Processing AutoScaling Policies for group: {as_group_name}")
 
-        as_groups = self.autoscaling_client.describe_auto_scaling_groups()[
-            "AutoScalingGroups"]
+        # Retrieving policies for the specified AutoScaling group
+        try:
+            response = self.autoscaling_client.describe_policies(
+                AutoScalingGroupName=as_group_name)
+        except Exception as e:
+            print(
+                f"Error retrieving policies for AutoScaling group {as_group_name}: {str(e)}")
+            return
 
-        for as_group in as_groups:
-            as_group_name = as_group["AutoScalingGroupName"]
-            policies = self.autoscaling_client.describe_policies(
-                AutoScalingGroupName=as_group_name)["ScalingPolicies"]
+        policies = response.get("ScalingPolicies", [])
+        if not policies:
+            print(f"No policies found for AutoScaling group: {as_group_name}")
+            return
 
-            for policy in policies:
-                policy_name = policy["PolicyName"]
-                print(
-                    f"  Processing AutoScaling Policy: {policy_name} for ASG: {as_group_name}")
+        for policy in policies:
+            policy_name = policy["PolicyName"]
+            print(f"  Processing AutoScaling Policy: {policy_name}")
 
-                attributes = {
-                    "id": policy_name,
-                    "autoscaling_group_name": as_group_name,
-                    "adjustment_type": policy["AdjustmentType"],
-                    "scaling_adjustment": policy["ScalingAdjustment"],
-                }
+            attributes = {
+                "id": policy_name,
+                "autoscaling_group_name": as_group_name,
+                "adjustment_type": policy["AdjustmentType"],
+                "scaling_adjustment": policy["ScalingAdjustment"],
+                # ... other attributes you plan to process
+            }
 
-                if "Cooldown" in policy:
-                    attributes["cooldown"] = policy["Cooldown"]
+            # Optional attributes that may or may not be present in the policy
+            if "Cooldown" in policy:
+                attributes["cooldown"] = policy["Cooldown"]
 
-                if "MinAdjustmentStep" in policy:
-                    attributes["min_adjustment_step"] = policy["MinAdjustmentStep"]
+            if "MinAdjustmentStep" in policy:
+                attributes["min_adjustment_step"] = policy["MinAdjustmentStep"]
 
-                if "EstimatedInstanceWarmup" in policy:
-                    attributes["estimated_instance_warmup"] = policy["EstimatedInstanceWarmup"]
+            if "EstimatedInstanceWarmup" in policy:
+                attributes["estimated_instance_warmup"] = policy["EstimatedInstanceWarmup"]
 
-                self.hcl.process_resource(
-                    "aws_autoscaling_policy", policy_name.replace("-", "_"), attributes)
+            # If there are other optional attributes, continue your checks here
+
+            # Process the attributes with your custom function
+            self.hcl.process_resource(
+                "aws_autoscaling_policy", policy_name.replace("-", "_"), attributes)
+
+            if 'Alarms' in policy:
+                for alarm in policy['Alarms']:
+                    alarm_name = alarm['AlarmName']
+                    self.aws_cloudwatch_metric_alarm(alarm_name)
 
     def aws_autoscaling_schedule(self):
         print("Processing AutoScaling Schedules...")
@@ -272,36 +307,128 @@ class AutoScaling:
                 self.hcl.process_resource(
                     "aws_autoscaling_schedule", action_name.replace("-", "_"), attributes)
 
-    def aws_launch_configuration(self):
-        print("Processing Launch Configurations...")
+    def aws_launch_template(self, id):
+        print(f"Processing Launch Template: {id}")
 
-        paginator = self.autoscaling_client.get_paginator(
-            "describe_launch_configurations")
-        for page in paginator.paginate():
-            launch_configurations = page["LaunchConfigurations"]
+        try:
+            response = self.ec2_client.describe_launch_templates(
+                LaunchTemplateIds=[id])
+        except Exception as e:
+            print(f"Error retrieving Launch Template {id}: {str(e)}")
+            return
 
-            for launch_configuration in launch_configurations:
-                lc_name = launch_configuration["LaunchConfigurationName"]
-                print(f"  Processing Launch Configuration: {lc_name}")
+        launch_templates = response.get("LaunchTemplates", [])
+        if not launch_templates:
+            print(f"No launch template found with ID: {id}")
+            return
 
-                attributes = {
-                    "id": lc_name,
-                    "name": lc_name,
-                    "image_id": launch_configuration["ImageId"],
-                    "instance_type": launch_configuration["InstanceType"],
-                }
+        launch_template = launch_templates[0]
+        lt_name = launch_template["LaunchTemplateName"]
+        print(f"  Processing specific Launch Template: {lt_name}")
 
-                if "KeyName" in launch_configuration:
-                    attributes["key_name"] = launch_configuration["KeyName"]
+        default_version = launch_template.get("DefaultVersionNumber")
+        try:
+            response_version = self.ec2_client.describe_launch_template_versions(
+                LaunchTemplateId=id,
+                Versions=[str(default_version)]
+            )
+        except Exception as e:
+            print(
+                f"Error retrieving version details for Launch Template {lt_name}: {str(e)}")
+            return
 
-                if "SecurityGroups" in launch_configuration:
-                    attributes["security_groups"] = launch_configuration["SecurityGroups"]
+        lt_data = response_version["LaunchTemplateVersions"][0]["LaunchTemplateData"]
 
-                if "IamInstanceProfile" in launch_configuration:
-                    attributes["iam_instance_profile"] = launch_configuration["IamInstanceProfile"]
+        attributes = {
+            "id": lt_name,
+            "image_id": lt_data.get("ImageId", ""),
+            "instance_type": lt_data.get("InstanceType", ""),
+            # continue adding all other relevant details you need from lt_data
+        }
 
-                if "UserData" in launch_configuration:
-                    attributes["user_data"] = launch_configuration["UserData"]
+        # If you have optional data that might not be present in every launch template,
+        # you can add checks before including them in the 'attributes' dictionary.
+        if "KeyName" in lt_data:
+            attributes["key_name"] = lt_data["KeyName"]
 
-                self.hcl.process_resource(
-                    "aws_launch_configuration", lc_name.replace("-", "_"), attributes)
+        if "SecurityGroupIds" in lt_data:
+            attributes["security_group_ids"] = lt_data["SecurityGroupIds"]
+
+        if "UserData" in lt_data:
+            attributes["user_data"] = lt_data["UserData"]
+
+        # more conditional attribute assignments...
+
+        self.hcl.process_resource(
+            "aws_launch_template", lt_name.replace("-", "_"), attributes)
+
+    def aws_launch_configuration(self, id):
+        print(f"Processing Launch Configuration: {id}")
+
+        try:
+            response = self.autoscaling_client.describe_launch_configurations(
+                LaunchConfigurationNames=[id])
+        except Exception as e:
+            print(f"Error retrieving Launch Configuration {id}: {str(e)}")
+            return
+
+        launch_configurations = response.get("LaunchConfigurations", [])
+        if not launch_configurations:
+            print(f"No launch configuration found with name: {id}")
+            return
+
+        launch_configuration = launch_configurations[0]
+        lc_name = launch_configuration["LaunchConfigurationName"]
+        print(f"  Processing specific Launch Configuration: {lc_name}")
+
+        attributes = {
+            "id": lc_name,
+            "image_id": launch_configuration.get("ImageId", ""),
+            "instance_type": launch_configuration.get("InstanceType", ""),
+            # continue adding all other relevant details you need from launch_configuration
+        }
+
+        # If you have optional data that might not be present in every launch configuration,
+        # you can add checks before including them in the 'attributes' dictionary.
+        if "KeyName" in launch_configuration:
+            attributes["key_name"] = launch_configuration["KeyName"]
+
+        if "SecurityGroups" in launch_configuration:
+            attributes["security_groups"] = launch_configuration["SecurityGroups"]
+
+        if "UserData" in launch_configuration:
+            attributes["user_data"] = launch_configuration["UserData"]
+
+        # more conditional attribute assignments...
+
+        self.hcl.process_resource(
+            "aws_launch_configuration", lc_name.replace("-", "_"), attributes)
+
+    def aws_cloudwatch_metric_alarm(self, alarm_name):
+        print(f"Processing CloudWatch Metric Alarm: {alarm_name}")
+
+        try:
+            # Retrieve specific alarm
+            alarm = self.cloudwatch_client.describe_alarms(
+                AlarmNames=[alarm_name])
+        except Exception as e:
+            print(f"Error retrieving CloudWatch Alarm {alarm_name}: {str(e)}")
+            return  # Exiting the function because there was an error retrieving the alarm
+
+        if not alarm['MetricAlarms']:
+            print(f"No alarm data found for: {alarm_name}")
+            return  # Exiting the function because no alarm data was returned
+
+        # Since we expect a specific alarm, we take the first element
+        metric_alarm = alarm['MetricAlarms'][0]
+        print(
+            f"  Retrieved details for CloudWatch Metric Alarm: {metric_alarm['AlarmName']}")
+
+        attributes = {
+            "id": metric_alarm['AlarmName'],
+            "metric_name": metric_alarm['MetricName'],
+            "namespace": metric_alarm['Namespace'],
+        }
+
+        self.hcl.process_resource("aws_cloudwatch_metric_alarm",
+                                  metric_alarm['AlarmName'].replace("-", "_"), attributes)

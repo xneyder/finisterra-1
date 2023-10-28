@@ -1,0 +1,93 @@
+aws_autoscaling_group:
+  # terraform_module: "../../../terraform-aws-modules/terraform-aws-modules"
+  terraform_module: "github.com/finisterra-io/terraform-aws-modules.git?ref=main"
+  terraform_module_version: "6.1.0"
+  target_resource_name: default
+  fields:
+    asg_name:
+      field: asg_name
+      type: string
+    subnet_ids:
+      field: vpc_zone_identifier
+      type: list
+    max_size:
+      field: max_size
+      type: number
+    min_size:
+      field: min_size
+      type: number
+    load_balancers:
+      field: load_balancers
+      type: list
+    health_check_grace_period:
+      field: health_check_grace_period
+      type: number
+    health_check_type:
+      field: health_check_type
+      type: string
+    min_elb_capacity:
+      field: min_elb_capacity
+      type: number
+    wait_for_elb_capacity:
+      field: wait_for_elb_capacity
+      type: bool
+    target_group_arns:
+      field: target_group_arns
+      type: list
+    default_cooldown:
+      field: default_cooldown
+      type: number
+    force_delete:
+      field: force_delete
+      type: bool
+    termination_policies:
+      field: termination_policies
+      type: list
+    suspended_processes:
+      field: suspended_processes
+      type: list
+    placement_group:
+      field: placement_group
+      type: string
+    enabled_metrics:
+      field: enabled_metrics
+      type: list
+    metrics_granularity:
+      field: metrics_granularity
+      type: string
+    wait_for_capacity_timeout:
+      field: wait_for_capacity_timeout
+      type: string
+    protect_from_scale_in:
+      field: protect_from_scale_in
+      type: bool
+    service_linked_role_arn:
+      field: service_linked_role_arn
+      type: string
+    desired_capacity:
+      field: desired_capacity
+      type: number
+    max_instance_lifetime:
+      field: max_instance_lifetime
+      type: number
+    capacity_rebalance:
+      field: capacity_rebalance
+      type: bool
+    instance_refresh:
+      field: instance_refresh
+      type: list
+    launch_configuration:
+      field: launch_configuration
+      type: map
+    launch_template:
+      field: launch_template
+      type: list
+    mixed_instances_policy:
+      field: mixed_instances_policy
+      type: list
+    warm_pool:
+      field: warm_pool
+      type: map
+    tag:
+      field: tags
+      type: map
