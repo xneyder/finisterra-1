@@ -1,14 +1,21 @@
 aws_autoscaling_group:
-  # terraform_module: "../../../terraform-aws-modules/terraform-aws-modules"
-  terraform_module: "github.com/finisterra-io/terraform-aws-modules.git?ref=main"
+  terraform_module: "../../../terraform-aws-modules/terraform-aws-ec2-autoscale-group"
+  # terraform_module: "github.com/finisterra-io/terraform-aws-ec2-autoscale-group.git?ref=main"
   terraform_module_version: "6.1.0"
   target_resource_name: default
+  name_field: asg_name
   fields:
     asg_name:
-      field: asg_name
+      field: name
       type: string
+
     subnet_ids:
-      field: vpc_zone_identifier
+      function: get_subnet_ids
+      arg: vpc_zone_identifier
+      type: list
+    subnet_names:
+      function: get_subnet_names
+      arg: vpc_zone_identifier
       type: list
     max_size:
       field: max_size
@@ -76,9 +83,6 @@ aws_autoscaling_group:
     instance_refresh:
       field: instance_refresh
       type: list
-    launch_configuration:
-      field: launch_configuration
-      type: map
     launch_template:
       field: launch_template
       type: list
@@ -88,6 +92,145 @@ aws_autoscaling_group:
     warm_pool:
       field: warm_pool
       type: map
-    tag:
-      field: tags
+    autoscaling_group_tags:
+      field: tag
       type: map
+  childs:
+    aws_autoscaling_policy:
+      join:
+        name:
+          field: autoscaling_group_name
+      target_resource_name: this
+      fields:
+        autoscaling_policies:
+          function: build_autoscaling_policies
+          type: map
+      childs:
+        aws_cloudwatch_metric_alarm:
+          join:
+            arn:
+              field: alarm_actions
+          target_resource_name: this
+          fields:
+            aws_cloudwatch_metric_alarms:
+              function: build_aws_cloudwatch_metric_alarms
+              type: map
+
+    aws_launch_configuration:
+      join:
+        id:
+          join_function: join_launch_configuration
+      target_resource_name: default
+      defaults:
+        create_aws_launch_configuration: true
+      fields:
+        launch_configuration_name:
+          field: name
+          type: string
+        image_id:
+          field: image_id
+          type: string
+        instance_type:
+          field: instance_type
+          type: string
+        key_name:
+          field: key_name
+          type: string
+        user_data_base64:
+          function: get_user_data
+          type: string
+        enable_monitoring:
+          field: enable_monitoring
+          type: bool
+        ebs_optimized:
+          field: ebs_optimized
+          type: bool
+        security_group_ids:
+          field: security_groups
+          type: list
+        root_block_device:
+          field: root_block_device
+          type: map
+        ebs_block_device:
+          field: ebs_block_device
+          type: list
+        ephemeral_block_device:
+          field: ephemeral_block_device
+          type: list
+        iam_instance_profile_name:
+          field: iam_instance_profile
+          type: string
+        spot_price:
+          field: spot_price
+          type: string
+        placement_tenancy:
+          field: placement_tenancy
+          type: string
+    aws_launch_template:
+      join:
+        id:
+          join_function: join_launch_template
+      target_resource_name: default
+      defaults:
+        create_aws_launch_template: true
+      fields:
+        launch_template_name:
+          field: name
+          type: string
+        block_device_mappings:
+          field: block_device_mappings
+          type: list
+        credit_specification:
+          field: credit_specification
+          type: map
+        disable_api_termination:
+          field: disable_api_termination
+          type: bool
+        ebs_optimized:
+          field: ebs_optimized
+          type: bool
+        update_default_version:
+          field: update_default_version
+          type: bool
+        elastic_gpu_specifications:
+          field: elastic_gpu_specifications
+          type: map
+        image_id:
+          field: image_id
+          type: string
+        instance_initiated_shutdown_behavior:
+          field: instance_initiated_shutdown_behavior
+          type: string
+        instance_market_options:
+          field: instance_market_options
+          type: map
+        instance_type:
+          field: instance_type
+          type: string
+        key_name:
+          field: key_name
+          type: string
+        placement:
+          field: placement
+          type: map
+        user_data_base64:
+          function: get_user_data
+          type: string
+        iam_instance_profile:
+          field: iam_instance_profile
+          type: map
+        enable_monitoring:
+          function: get_field_from_attrs
+          arg: monitoring.enabled
+        network_interfaces:
+          field: network_interfaces
+          type: list
+        metadata_options:
+          field: metadata_options
+          type: map
+        tag_specifications:
+          field: tag_specifications
+          type: list
+        aws_launch_template_tags:
+          field: tags
+          type: map

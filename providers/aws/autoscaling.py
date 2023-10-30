@@ -3,7 +3,7 @@ from utils.hcl import HCL
 
 
 class AutoScaling:
-    def __init__(self, autoscaling_client, cloudwatch_client, script_dir, provider_name, schema_data, region, s3Bucket,
+    def __init__(self, autoscaling_client, cloudwatch_client, ec2_client, script_dir, provider_name, schema_data, region, s3Bucket,
                  dynamoDBTable, state_key, workspace_id, modules, aws_account_id):
         self.autoscaling_client = autoscaling_client
         self.cloudwatch_client = cloudwatch_client
@@ -22,6 +22,129 @@ class AutoScaling:
                        self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules)
         self.resource_list = {}
         self.aws_account_id = aws_account_id
+        self.user_data = {}
+        self.ec2_client = ec2_client
+
+    def get_user_data(self, attributes):
+        name = attributes.get("name")
+        return self.user_data.get(name)
+
+    def build_autoscaling_policies(self, attributes):
+        result = {}
+        name = attributes.get("name")
+        if not name:
+            return result
+
+        policy_details = {}
+        attribute_keys = ["policy_type",
+                          "scaling_adjustment", "adjustment_type", "cooldown"]
+
+        for key in attribute_keys:
+            value = attributes.get(key)
+            if value or value == 0:
+                policy_details[key] = value
+
+        if not policy_details:
+            return result
+
+        result[name] = policy_details
+
+        return result
+
+    def build_aws_cloudwatch_metric_alarms(self, attributes):
+        result = {}
+        alarm_name = attributes.get("alarm_name")
+        if not alarm_name:
+            return result
+
+        alarm_details = {}
+
+        attribute_keys = ["comparison_operator", "evaluation_periods", "metric_name", "namespace", "period", "statistic", "extended_statistic",
+                          "threshold", "treat_missing_data", "ok_actions", "insufficient_data_actions", "dimensions", "alarm_description", "alarm_actions", "tags"]
+
+        for key in attribute_keys:
+            value = attributes.get(key)
+            if value or value == 0:
+                alarm_details[key] = value
+
+        if not alarm_details:
+            return result
+
+        result[alarm_name] = alarm_details
+
+        return result
+
+    def join_launch_configuration(self, parent_attributes, child_attributes):
+        name = child_attributes.get('name')
+        launch_configuration = parent_attributes.get('launch_configuration')
+
+        if name == launch_configuration:
+            return True
+
+        return False
+
+    def join_launch_template(self, parent_attributes, child_attributes):
+        name = child_attributes.get('name')
+        launch_template = parent_attributes.get('launch_template')
+
+        if name == launch_template['id']:
+            return True
+
+        return False
+
+    def get_field_from_attrs(self, attributes, arg):
+        try:
+            keys = arg.split(".")
+            result = attributes
+
+            for key in keys:
+                if isinstance(result, list):
+                    result = [sub_result.get(key, None) if isinstance(
+                        sub_result, dict) else None for sub_result in result]
+                    if len(result) == 1:
+                        result = result[0]
+                else:
+                    result = result.get(key, None)
+
+                if result is None:
+                    return None
+            return result
+
+        except Exception as e:
+            return None
+
+    def get_subnet_names(self, attributes, arg):
+        subnet_ids = attributes.get(arg)
+        subnet_names = []
+        for subnet_id in subnet_ids:
+            response = self.ec2_client.describe_subnets(SubnetIds=[subnet_id])
+
+            # Check if 'Subnets' key exists and it's not empty
+            if not response or 'Subnets' not in response or not response['Subnets']:
+                print(
+                    f"No subnet information found for Subnet ID: {subnet_id}")
+                continue
+
+            # Extract the 'Tags' key safely using get
+            subnet_tags = response['Subnets'][0].get('Tags', [])
+
+            # Extract the subnet name from the tags
+            subnet_name = next(
+                (tag['Value'] for tag in subnet_tags if tag['Key'] == 'Name'), None)
+
+            if subnet_name:
+                subnet_names.append(subnet_name)
+            else:
+                print(f"No 'Name' tag found for Subnet ID: {subnet_id}")
+
+        return subnet_names
+
+    def get_subnet_ids(self, attributes, arg):
+        subnet_names = self.get_subnet_names(attributes, arg)
+        if subnet_names:
+            return ""
+        else:
+            return attributes.get(arg)
 
     def autoscaling(self):
         self.hcl.prepare_folder(os.path.join("generated", "autoscaling"))
@@ -36,12 +159,19 @@ class AutoScaling:
 
         self.hcl.refresh_state()
 
-        functions = {}
+        functions = {
+            'build_autoscaling_policies': self.build_autoscaling_policies,
+            'join_launch_configuration': self.join_launch_configuration,
+            'join_launch_template': self.join_launch_template,
+            'get_field_from_attrs': self.get_field_from_attrs,
+            'build_aws_cloudwatch_metric_alarms': self.build_aws_cloudwatch_metric_alarms,
+            'get_user_data': self.get_user_data,
+            'get_subnet_ids': self.get_subnet_ids,
+            'get_subnet_names': self.get_subnet_names,
+        }
 
         self.hcl.module_hcl_code("terraform.tfstate", os.path.join(
             os.path.dirname(os.path.abspath(__file__)), "autoscalling.yaml"), functions, self.region, self.aws_account_id)
-
-        exit()
 
         self.json_plan = self.hcl.json_plan
 
@@ -75,16 +205,16 @@ class AutoScaling:
         for as_group in as_groups:
             as_group_name = as_group["AutoScalingGroupName"]
 
-            # # Check tags to determine if this group is controlled by Elastic Beanstalk or EKS
-            # is_elasticbeanstalk = any(tag['Key'].startswith(
-            #     'elasticbeanstalk:') for tag in as_group.get('Tags', []))
-            # is_eks = any(tag['Key'].startswith('eks:')
-            #              for tag in as_group.get('Tags', []))
+            # Check tags to determine if this group is controlled by Elastic Beanstalk or EKS
+            is_elasticbeanstalk = any(tag['Key'].startswith(
+                'elasticbeanstalk:') for tag in as_group.get('Tags', []))
+            is_eks = any(tag['Key'].startswith('eks:')
+                         for tag in as_group.get('Tags', []))
 
-            # if is_elasticbeanstalk or is_eks:
-            #     print(
-            #         f"  Skipping Elastic Beanstalk or EKS AutoScaling Group: {as_group_name}")
-            #     continue  # Skip this AutoScaling group and move to the next
+            if is_elasticbeanstalk or is_eks:
+                print(
+                    f"  Skipping Elastic Beanstalk or EKS AutoScaling Group: {as_group_name}")
+                continue  # Skip this AutoScaling group and move to the next
 
             print(f"  Processing AutoScaling Group: {as_group_name}")
 
@@ -356,6 +486,7 @@ class AutoScaling:
 
         if "UserData" in lt_data:
             attributes["user_data"] = lt_data["UserData"]
+            self.user_data[lt_name] = attributes["user_data"]
 
         # more conditional attribute assignments...
 
@@ -398,6 +529,8 @@ class AutoScaling:
 
         if "UserData" in launch_configuration:
             attributes["user_data"] = launch_configuration["UserData"]
+
+            self.user_data[lc_name] = attributes["user_data"]
 
         # more conditional attribute assignments...
 

@@ -534,7 +534,10 @@ class Aws:
         cloudwatch_client = self.session.client(
             "cloudwatch", region_name=self.aws_region)
 
-        instance = AutoScaling(autoscaling_client, cloudwatch_client, self.script_dir, self.provider_name,
+        ec2_client = self.session.client(
+            "ec2", region_name=self.aws_region)
+
+        instance = AutoScaling(autoscaling_client, cloudwatch_client, ec2_client, self.script_dir, self.provider_name,
                                self.schema_data, self.aws_region, self.s3Bucket,
                                self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.autoscaling()

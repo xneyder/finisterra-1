@@ -7,13 +7,13 @@ class Opensearch:
                  dynamoDBTable, state_key, workspace_id, modules, aws_account_id):
         self.opensearch_client = opensearch_client
         self.transform_rules = {
-            "aws_opensearch_domain_policy": {
-                "hcl_json_multiline": {"access_policies": True},
-            },
-            "aws_opensearch_domain": {
-                "hcl_drop_blocks": {"cognito_options": {"enabled": False}},
-                "hcl_drop_fields": {"warm_count": 0},
-            }
+            # "aws_opensearch_domain_policy": {
+            #     "hcl_json_multiline": {"access_policies": True},
+            # },
+            # "aws_opensearch_domain": {
+            #     "hcl_drop_blocks": {"cognito_options": {"enabled": False}},
+            #     "hcl_drop_fields": {"warm_count": 0},
+            # }
         }
         self.provider_name = provider_name
         self.script_dir = script_dir
@@ -24,24 +24,40 @@ class Opensearch:
         self.hcl = HCL(self.schema_data, self.provider_name,
                        self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules)
         self.resource_list = {}
+        self.aws_account_id = aws_account_id
 
     def opensearch(self):
         self.hcl.prepare_folder(os.path.join("generated", "opensearch"))
 
+        # aws_elasticsearch_domain
+        # aws_elasticsearch_domain_policy
+
+        # aws_iam_role
+        # aws_iam_service_linked_role
+        # aws_security_group
+        # aws_security_group_rule
+        # aws_security_group_rule
+        # aws_security_group_rule
+
         self.aws_opensearch_domain()
-        self.aws_opensearch_domain_policy()
+        # self.aws_opensearch_domain_policy()
         # self.aws_opensearch_domain_saml_options() # Currently, there's no direct way to list or describe outbound connections using boto3.
         # self.aws_opensearch_outbound_connection() # Currently, there's no direct way to list or describe outbound connections using boto3.
 
         self.hcl.refresh_state()
-        self.hcl.generate_hcl_file()
+
+        exit()
+
+        functions = {}
+        self.hcl.module_hcl_code("terraform.tfstate", os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), "opensearch.yaml"), functions, self.region, self.aws_account_id)
+
         self.json_plan = self.hcl.json_plan
 
     def aws_opensearch_domain(self):
         print("Processing OpenSearch Domain...")
 
-        domains = self.opensearch_client.list_domain_names(
-            EngineType='OpenSearch')["DomainNames"]
+        domains = self.opensearch_client.list_domain_names()["DomainNames"]
         for domain in domains:
             domain_name = domain["DomainName"]
             domain_info = self.opensearch_client.describe_domain(DomainName=domain_name)[
@@ -55,30 +71,33 @@ class Opensearch:
                 # "domain_info": domain_info,
             }
 
+            # Process the domain resource
             self.hcl.process_resource(
                 "aws_opensearch_domain", domain_name.replace("-", "_"), attributes)
 
-    def aws_opensearch_domain_policy(self):
+            # Now, call the policy function with the domain
+            self.aws_opensearch_domain_policy(domain_name)
+
+    # Updated function signature
+    def aws_opensearch_domain_policy(self, domain_name):
         print("Processing OpenSearch Domain Policy...")
 
-        domains = self.opensearch_client.list_domain_names(
-            EngineType='OpenSearch')["DomainNames"]
-        for domain in domains:
-            domain_name = domain["DomainName"]
-            domain_info = self.opensearch_client.describe_domain(
-                DomainName=domain_name)["DomainStatus"]
-            arn = domain_info["ARN"]
-            access_policy = domain_info["AccessPolicies"]
-            print(f"  Processing OpenSearch Domain Policy: {domain_name}")
+        # Since the domain is already known, we don't need to retrieve all domains
+        domain_info = self.opensearch_client.describe_domain(DomainName=domain_name)[
+            "DomainStatus"]
+        arn = domain_info["ARN"]
+        access_policy = domain_info["AccessPolicies"]
+        print(f"  Processing OpenSearch Domain Policy: {domain_name}")
 
-            attributes = {
-                "id": arn,
-                "domain_name": domain_name,
-                "access_policy": access_policy,
-            }
+        attributes = {
+            "id": arn,
+            "domain_name": domain_name,
+            "access_policy": access_policy,
+        }
 
-            self.hcl.process_resource(
-                "aws_opensearch_domain_policy", domain_name.replace("-", "_"), attributes)
+        # Process the policy resource
+        self.hcl.process_resource(
+            "aws_opensearch_domain_policy", domain_name.replace("-", "_"), attributes)
 
     # def aws_opensearch_domain_saml_options(self):
     #     print("Processing OpenSearch Domain SAML Options...")
