@@ -202,21 +202,28 @@ class IAM_ROLE:
                         self.hcl.process_resource(
                             "aws_iam_group_policy", f"{group_name}_{policy_name}", attributes)
 
-    def aws_iam_instance_profile(self):
+    def aws_iam_instance_profile(self, role_name_filter):
         print("Processing IAM Instance Profiles...")
         paginator = self.iam_client.get_paginator("list_instance_profiles")
 
         for page in paginator.paginate():
             for instance_profile in page["InstanceProfiles"]:
+                # Check if any of the associated roles match the role_name_filter
+                associated_roles = [role["RoleName"]
+                                    for role in instance_profile["Roles"]]
+                if role_name_filter not in associated_roles:
+                    # If the current instance profile's roles do not include the filtered role name, skip it.
+                    continue
+
                 instance_profile_name = instance_profile["InstanceProfileName"]
                 print(
-                    f"  Processing IAM Instance Profile: {instance_profile_name}")
+                    f"  Processing IAM Instance Profile: {instance_profile_name} for role {role_name_filter}")
 
                 attributes = {
                     "id": instance_profile_name,
                     "name": instance_profile_name,
                     "path": instance_profile["Path"],
-                    "role": instance_profile["Roles"][0]["RoleName"] if instance_profile["Roles"] else None,
+                    "role": role_name_filter,
                 }
                 self.hcl.process_resource(
                     "aws_iam_instance_profile", instance_profile_name, attributes)
@@ -329,6 +336,7 @@ class IAM_ROLE:
 
                 # Ignore roles managed or created by AWS
                 if role_path.startswith("/aws-service-role/") or "AWS-QuickSetup" in role_name:
+                    print(f"  Skipping IAM Role: {role_name}")
                     continue
 
                 # if role_name != 'AmazonEKS_EBS_CSI_DriverRole':
@@ -348,6 +356,9 @@ class IAM_ROLE:
 
                 # Call aws_iam_role_policy_attachment for the current role_name
                 self.aws_iam_role_policy_attachment(role_name)
+
+                # Now call aws_iam_instance_profile for the current role_name
+                self.aws_iam_instance_profile(role_name)
 
     def aws_iam_role_policy_attachment(self, role_name):
         print(f"Processing IAM Role Policy Attachments for {role_name}...")

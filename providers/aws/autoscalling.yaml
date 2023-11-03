@@ -1,6 +1,6 @@
 aws_autoscaling_group:
-  terraform_module: "../../../terraform-aws-modules/terraform-aws-ec2-autoscale-group"
-  # terraform_module: "github.com/finisterra-io/terraform-aws-ec2-autoscale-group.git?ref=main"
+  # terraform_module: "../../../terraform-aws-modules/terraform-aws-ec2-autoscale-group"
+  terraform_module: "github.com/finisterra-io/terraform-aws-ec2-autoscale-group.git?ref=main"
   terraform_module_version: "6.1.0"
   target_resource_name: default
   name_field: asg_name
@@ -145,8 +145,12 @@ aws_autoscaling_group:
         ebs_optimized:
           field: ebs_optimized
           type: bool
-        security_group_ids:
-          field: security_groups
+        # security_group_ids:
+        #   field: security_groups
+        #   type: list
+        security_group_names:
+          function: get_security_group_names
+          arg: security_groups
           type: list
         root_block_device:
           field: root_block_device

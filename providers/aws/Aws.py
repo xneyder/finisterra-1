@@ -53,6 +53,7 @@ from providers.aws.elb import ELB
 from providers.aws.elbv2 import ELBV2
 from providers.aws.stepfunction import StepFunction
 from providers.aws.msk import MSK
+from providers.aws.security_group import SECURITY_GROUP
 from utils.filesystem import create_tmp_terragrunt
 
 
@@ -931,5 +932,16 @@ class Aws:
                        self.schema_data, self.aws_region, self.s3Bucket,
                        self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.msk()
+        self.json_plan = instance.json_plan
+        self.resource_list['msk'] = instance.resource_list
+
+    def security_group(self):
+        ec2_client = self.session.client(
+            "ec2", region_name=self.aws_region)
+
+        instance = SECURITY_GROUP(ec2_client, self.script_dir, self.provider_name,
+                                  self.schema_data, self.aws_region, self.s3Bucket,
+                                  self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
+        instance.security_group()
         self.json_plan = instance.json_plan
         self.resource_list['msk'] = instance.resource_list

@@ -1,0 +1,39 @@
+aws_security_group:
+  terraform_module: "../../../terraform-aws-modules/terraform-aws-security-group"
+  # terraform_module: "github.com/finisterra-io/terraform-aws-security-group?ref=main"
+  terraform_module_version: "5.2.0"
+  target_resource_name: default
+  name_field: security_group_name
+  defaults:
+    create_before_destroy: false
+  fields:
+    security_group_name:
+      field: name
+      type: string
+    vpc_name:
+      function: get_vpc_name
+      arg: vpc_id
+      type: string
+    # vpc_id:
+    #   field: vpc_id
+    #   type: string
+    security_group_description:
+      field: description
+      type: string
+    tags:
+      field: tags
+      type: map
+  childs:
+    aws_security_group_rule:
+      join:
+        id:
+          field: security_group_id
+      import_id:
+        function: aws_security_group_rule_import_id
+      target_resource_name: dbc
+      second_index:
+        field: id
+      fields:
+        rules_map:
+          function: get_security_group_rules
+          type: map

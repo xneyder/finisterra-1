@@ -119,6 +119,8 @@ def main(aws_account_id, aws_region, group_code):
         provider.msk()
     elif group_code == 'aurora':
         provider.aurora()
+    elif group_code == 'security_group':
+        provider.security_group()
     else:
         print(f"Group code {group_code} not found.")
         exit()

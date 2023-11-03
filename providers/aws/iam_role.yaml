@@ -51,7 +51,8 @@ aws_iam_role:
         name:
           field: role
       defaults:
-        instance_profile_enabled: false
+        instance_profile_enabled: true
+      target_resource_name: default
       fields:
         instance_profile_name:
           field: name

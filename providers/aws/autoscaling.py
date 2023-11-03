@@ -29,6 +29,24 @@ class AutoScaling:
         name = attributes.get("name")
         return self.user_data.get(name)
 
+    def get_security_group_names(self, attributes, arg):
+        security_group_ids = attributes.get(arg)
+        security_group_names = []
+
+        for security_group_id in security_group_ids:
+            response = self.ec2_client.describe_security_groups(
+                GroupIds=[security_group_id])
+            security_group = response['SecurityGroups'][0]
+
+            security_group_name = security_group.get('GroupName')
+            # Just to be extra safe, if GroupName is somehow missing, fall back to the security group ID
+            if not security_group_name:
+                security_group_name = security_group_id
+
+            security_group_names.append(security_group_name)
+
+        return security_group_names
+
     def build_autoscaling_policies(self, attributes):
         result = {}
         name = attributes.get("name")
@@ -168,6 +186,7 @@ class AutoScaling:
             'get_user_data': self.get_user_data,
             'get_subnet_ids': self.get_subnet_ids,
             'get_subnet_names': self.get_subnet_names,
+            'get_security_group_names': self.get_security_group_names,
         }
 
         self.hcl.module_hcl_code("terraform.tfstate", os.path.join(
