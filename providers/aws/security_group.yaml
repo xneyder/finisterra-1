@@ -1,6 +1,6 @@
 aws_security_group:
-  terraform_module: "../../../terraform-aws-modules/terraform-aws-security-group"
-  # terraform_module: "github.com/finisterra-io/terraform-aws-security-group?ref=main"
+  # terraform_module: "../../../terraform-aws-modules/terraform-aws-security-group"
+  terraform_module: "github.com/finisterra-io/terraform-aws-security-group?ref=main"
   terraform_module_version: "5.2.0"
   target_resource_name: default
   name_field: security_group_name

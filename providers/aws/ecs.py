@@ -72,6 +72,13 @@ class ECS:
                 if 'subnet_ids' in network_configuration:
                     return True
         return False
+    
+    def get_iam_policy_name(self, attributes, field):
+        policy_arn = attributes.get(field, "")
+        if policy_arn:
+            # The policy name is typically the last element in the ARN, after the last colon
+            return policy_arn.split('/')[-1]
+        return None
 
     def task_definition_id(self, attributes):
         # The name is expected to be in the format /aws/ecs/{cluster_name}
@@ -417,6 +424,7 @@ class ECS:
             'aws_ecs_task_definition_import_id': self.aws_ecs_task_definition_import_id,
             'aws_appautoscaling_policy_import_id': self.aws_appautoscaling_policy_import_id,
             'aws_appautoscaling_target_import_id': self.aws_appautoscaling_target_import_id,
+            'get_iam_policy_name': self.get_iam_policy_name,
         }
 
         self.hcl.module_hcl_code("terraform.tfstate", os.path.join(
@@ -557,7 +565,7 @@ class ECS:
                         service_name = service["serviceName"]
 
                         # if service_name != "eureka-discovery-service" and service_name != "spring-config-server":
-                        # if service_name != "learning-media-service":
+                        # if service_name != "spring-config-server":
                         #     continue
 
                         service_arn = service["serviceArn"]
@@ -627,6 +635,15 @@ class ECS:
 
         try:
             role = self.iam_client.get_role(RoleName=role_name)['Role']
+            role_name = role["RoleName"]
+            role_path = role["Path"]
+
+
+            # Ignore roles managed or created by AWS
+            if role_path.startswith("/aws-service-role/") or "AWS-QuickSetup" in role_name:
+                print(f"  Skipping IAM Role: {role_name}")
+                return
+
 
             print(f"  Processing IAM Role: {role['Arn']}")
 
@@ -677,6 +694,11 @@ class ECS:
             policy = response.get('Policy', {})
 
             if policy:
+
+                # Ignore AWS managed policies and policies with '/service-role/' in the ARN
+                if policy_arn.startswith('arn:aws:iam::aws:policy/') or '/service-role/' in policy_arn:
+                    return
+
                 print(f"  Processing IAM Policy: {policy_arn}")
 
                 attributes = {

@@ -225,6 +225,11 @@ aws_ecs_service:
           fields:
             create_iam_role:
               unique: true
+            iam_policy_name:
+              function: get_iam_policy_name
+              arg: policy_arn
+              type: string
+
           childs:
             aws_iam_policy:
               join:
@@ -232,7 +237,7 @@ aws_ecs_service:
                   field: arn
               target_resource_name: service
               fields:
-                create_iam_role:
+                create_iam_policy:
                   unique: true
                 iam_policy_name:
                   field: name

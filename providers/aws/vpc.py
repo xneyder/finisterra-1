@@ -576,7 +576,7 @@ class VPC:
             is_default = vpc.get("IsDefault", False)
             if not is_default:
                 vpc_id = vpc["VpcId"]
-                # if vpc_id != "vpc-09896d81bdb7b3cf4":
+                # if vpc_id != "vpc-062a9bb71430eda86":
                 #     continue
                 print(f"  Processing VPC: {vpc_id}")
                 attributes = {
@@ -1374,8 +1374,11 @@ class VPC:
                         "cidr_block": entry.get("CidrBlock", ""),
                         "ipv6_cidr_block": entry.get("Ipv6CidrBlock", ""),
                     }
+                    type = "egress"
+                    if not rule_egress:
+                        type = "ingress"
                     self.hcl.process_resource(
-                        "aws_network_acl_rule", f"{network_acl_id.replace('-', '_')}-{rule_number}", attributes)
+                        "aws_network_acl_rule", f"{network_acl_id.replace('-', '_')}-{rule_number}-{type}", attributes)
                     self.resource_list['aws_network_acl_rule'][
                         f"{network_acl_id.replace('-', '_')}-{rule_number}"] = attributes
 

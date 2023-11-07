@@ -134,8 +134,8 @@ class ELBV2:
         }
 
         # Filter out keys with undesirable values
-        self.listeners[attributes.get('port')] = {
-            k: v for k, v in listener.items() if v not in [{}, [], "", None]}
+        # self.listeners[attributes.get('port')] = {k: v for k, v in listener.items() if v not in [{}, [], "", None]}
+        self.listeners[attributes.get('port')] = {k: v for k, v in listener.items()}
 
         return self.listeners
 
@@ -355,8 +355,9 @@ class ELBV2:
             security_group_ids = lb.get("SecurityGroups", [])
 
             # Call the aws_security_group function for each security group ID
-            if security_group_ids:
-                self.aws_security_group(security_group_ids)
+            # Block because we want to create the security groups in their own module
+            # if security_group_ids:
+            #     self.aws_security_group(security_group_ids)
 
         # Call the other functions for listeners and listener certificates
         listener_arns = self.aws_lb_listener(load_balancer_arns)
