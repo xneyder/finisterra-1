@@ -108,325 +108,6 @@ class HCL:
         with open(self.terraform_state_file, 'w') as state_file:
             json.dump(state_data, state_file, indent=2)
 
-    def generate_hcl_file(self):
-        print("Generating HCL files from the state file...")
-        with open(self.terraform_state_file, "r") as state_file:
-            state_data = json.load(state_file)
-
-        # Get modules info
-
-        modules_code = {}
-
-        for resource in state_data["resources"]:
-            # print("=======================RESOURCE=======================")
-            # print(
-            #     f'Processing resource "{resource["name"]}" of type "{resource["type"]}"...')
-            attributes = resource["instances"][0]["attributes"]
-            resource_type = resource["type"]
-            resource_name = resource["name"]
-
-            if 'module' in resource and resource['module'] != "":
-                key = f"{resource_type}_{resource_name}"
-                module_name = ""
-                if key in self.module_data:
-                    module_name = self.module_data[key]["module_name"]
-
-                key = f"{resource_type}-{resource_name}"
-                if key not in self.modules[module_name]:
-                    # no variables for the resource
-                    continue
-
-                module_instance = resource['module']
-
-                if module_instance not in modules_code:
-                    modules_code[module_instance] = OrderedDict()
-                    for okey, ovalue in self.modules[module_name].items():
-                        for ikey in ovalue.keys():
-                            modules_code[module_instance][f'{okey}-{ikey}'] = ""
-
-                for key_field in self.modules[module_name][key].keys():
-                    modules_code[module_instance][f'{key}-{key_field}'] = resource['instances'][0]['attributes'][key_field]
-
-                # print(
-                #     f'Skipping {resource_type}_{resource_name} belongs to {module_instance}')
-                continue
-
-            schema_attributes = self.schema_data['provider_schemas'][self.provider_name][
-                'resource_schemas'][resource_type]["block"]["attributes"]
-            schema_block_types = self.schema_data['provider_schemas'][self.provider_name][
-                'resource_schemas'][resource_type]["block"].get("block_types", {})
-
-            def escape_dollar_sign(value):
-                # replacement = "$$"
-                # escaped_value = value.replace("$", replacement)
-
-                escaped_value = re.sub(r'\$\{(\w+)\}', r'\1', value)
-
-                return f'{escaped_value}'
-
-            def convert_value(value):
-                if value is None:
-                    return "null"
-                if isinstance(value, bool):
-                    return "true" if value else "false"
-                if isinstance(value, (int, float)):
-                    return str(value)
-                if isinstance(value, str):
-                    value = value.replace('\n', '')
-                    return f'"{escape_dollar_sign(value)}"'
-                if isinstance(value, list):
-                    return "[\n" + ", ".join([convert_value(v) for v in value]) + "\n]"
-                if isinstance(value, dict):
-                    return "{\n" + "\n ".join([f'{process_key(k,v)}' for k, v in value.items()]) + "\n}"
-                return ""
-
-            def process_key(key, value, validate=True, parent=None):
-                if validate:
-                    # Check if the field is in the transform rules
-                    is_transformed, transform_str = check_transform_rules(
-                        key, value, resource_type, parent)
-                    if is_transformed:
-                        return (f'  {transform_str}')
-                    else:
-                        # return null ony if is not validated
-                        if value == None or value == "":
-                            return ""
-                        if isinstance(value, dict) and not value:
-                            return ""
-                        if isinstance(value, list) and not value:
-                            return ""
-
-                    # Ignore is key is computed and handled the exception
-                    try:
-                        if schema_attributes[key]['computed']:
-                            return ""
-                    except:
-                        pass
-                return f'{quote_string(key)}={convert_value(value)}\n'
-
-            def quote_string(s):
-                if re.search(r'\W', s):
-                    return f'"{s}"'
-                else:
-                    return s
-
-            def validate_block(key, block, resource_type):
-                if resource_type in self.transform_rules:
-                    if 'hcl_drop_blocks' in self.transform_rules[resource_type]:
-                        hcl_drop_blocks = self.transform_rules[resource_type]['hcl_drop_blocks']
-                        if key in hcl_drop_blocks:
-                            if hcl_drop_blocks[key] == "ALL":
-                                return False
-                            for bkey, bvalue in block.items():
-                                if bkey in hcl_drop_blocks[key]:
-                                    if hcl_drop_blocks[key][bkey] == 'ALL' or hcl_drop_blocks[key][bkey] == bvalue:
-                                        return False
-                return True
-
-            def multiline_json(value):
-                try:
-                    json_value = json.loads(value)
-                    return json.dumps(json_value, indent=2).replace("${", "$${")
-                except:
-                    return value
-
-            def process_block_type(key, value, schema_block_types, resource_type):
-                return_str = ""
-                is_block = False
-                if not value:
-                    return is_block, return_str
-                if key in schema_block_types:
-                    is_block = True
-                    if schema_block_types[key]['nesting_mode'] == 'list' or schema_block_types[key]['nesting_mode'] == 'set':
-                        for block in value:
-                            # print(key, block)
-                            # validate if a field in the block is empty
-                            if not validate_block(key, block, resource_type):
-                                return is_block, return_str
-                            return_str += (f'  {quote_string(key)} {{\n')
-                            for block_key, block_value in block.items():
-                                # # Ignore is key is computed and handled the exception
-                                # try:
-
-                                #     if schema_block_types[key]['block']['attributes'][block_key]['computed']:
-                                #         continue
-                                # except:
-                                #     pass
-
-                                schema_block_types_child = schema_block_types[key]['block'].get(
-                                    "block_types", {})
-                                is_child_block, block_child_str = process_block_type(
-                                    block_key, block_value, schema_block_types_child, resource_type)
-                                if is_child_block:
-                                    return_str += (f'    {block_child_str}')
-                                    continue
-
-                                return_str += (
-                                    f'    {process_key(block_key, block_value, True, key)}')
-                            return_str += ("  }\n   ")
-                return is_block, return_str
-
-            def check_transform_rules(key, value, resource_type, parent=None):
-                is_transformed = False
-                return_str = ""
-                if parent:
-                    key = f'{parent}.{key}'
-                    # print(key, value)
-                if resource_type in self.transform_rules:
-                    if 'hcl_drop_fields' in self.transform_rules[resource_type]:
-                        hcl_drop_fields = self.transform_rules[resource_type]['hcl_drop_fields']
-                        # print(key, value)
-                        if key in hcl_drop_fields:
-                            if hcl_drop_fields[key] == 'ALL' or hcl_drop_fields[key] == value:
-                                return_str = ""
-                                is_transformed = True
-                                return is_transformed, return_str
-                    if 'hcl_keep_fields' in self.transform_rules[resource_type]:
-                        hcl_keep_fields = self.transform_rules[resource_type]['hcl_keep_fields']
-                        if key in hcl_keep_fields:
-                            key = key.split('.')[-1]
-                            return_str += (
-                                f'{process_key(key, value, False)}')
-                            is_transformed = True
-                            return is_transformed, return_str
-                    if 'hcl_prefix' in self.transform_rules[resource_type]:
-                        hcl_prefix = self.transform_rules[resource_type]['hcl_prefix']
-                        if key in hcl_prefix:
-                            key = key.split('.')[-1]
-                            return_str += (
-                                f'{process_key(key, hcl_prefix[key]+value, False)}')
-                            is_transformed = True
-                            return is_transformed, return_str
-                    if 'hcl_json_multiline' in self.transform_rules[resource_type]:
-                        hcl_json_multiline = self.transform_rules[resource_type]['hcl_json_multiline']
-                        if key in hcl_json_multiline:
-                            key = key.split('.')[-1]
-                            multiline_json_value = multiline_json(value)
-                            if multiline_json_value != "":
-                                return_str += (
-                                    f'{quote_string(key)}=<<EOF\n{multiline_json(value)}\nEOF\n')
-                            else:
-                                return_str += ""
-                            is_transformed = True
-                            return is_transformed, return_str
-                    if 'hcl_file_function' in self.transform_rules[resource_type]:
-                        hcl_file_function = self.transform_rules[resource_type]['hcl_file_function']
-                        if key in hcl_file_function:
-                            file_name = f"{resource_name}.{hcl_file_function[key]['type']}"
-                            with open(file_name, "w") as hcl_output:
-                                hcl_output.write(f'{value}')
-                                key = key.split('.')[-1]
-                                return_str += (
-                                    f'{quote_string(key)}=file("{file_name}")\n')
-                                is_transformed = True
-                                return is_transformed, return_str
-                    if 'hcl_apply_function' in self.transform_rules[resource_type]:
-                        hcl_apply_function = self.transform_rules[resource_type]['hcl_apply_function']
-                        # print(key, hcl_apply_function)
-                        if key in hcl_apply_function:
-                            for function in hcl_apply_function[key]["function"]:
-                                value = function(value)
-                            key = key.split('.')[-1]
-                            return_str += (
-                                f'{quote_string(key)}="{value}"\n')
-                            is_transformed = True
-                            return is_transformed, return_str
-                    if 'hcl_apply_function_dict' in self.transform_rules[resource_type]:
-                        hcl_apply_function_dict = self.transform_rules[
-                            resource_type]['hcl_apply_function_dict']
-                        if key in hcl_apply_function_dict:
-                            for function in hcl_apply_function_dict[key]["function"]:
-                                value = function(value)
-                            key = key.split('.')[-1]
-                            return_str += (
-                                f'{quote_string(key)}={value}\n')
-                            is_transformed = True
-                            return is_transformed, return_str
-                    if 'hcl_apply_function_block' in self.transform_rules[resource_type]:
-                        hcl_apply_function_block = self.transform_rules[
-                            resource_type]['hcl_apply_function_block']
-                        if key in hcl_apply_function_block:
-                            for function in hcl_apply_function_block[key]["function"]:
-                                value = function(value)
-                            key = key.split('.')[-1]
-                            return_str += (
-                                f'{quote_string(key)} {value}\n')
-                            is_transformed = True
-                            return is_transformed, return_str
-                    if 'hcl_transform_fields' in self.transform_rules[resource_type]:
-                        hcl_transform_fields = self.transform_rules[resource_type]['hcl_transform_fields']
-                        if key in hcl_transform_fields:
-                            if hcl_transform_fields[key]['source'] == value:
-                                target = hcl_transform_fields[key]['target']
-                                key = key.split('.')[-1]
-                                return_str += (
-                                    f' {process_key(key, target, False)}')
-                                is_transformed = True
-                                return is_transformed, return_str
-
-                return is_transformed, return_str
-
-            with open(f"{resource_type}.tf", "a") as hcl_output:
-                hcl_output.write(
-                    f'resource "{resource_type}" "{resource_name}" {{\n')
-                for key, value in attributes.items():
-                    is_block, block_str = process_block_type(
-                        key, value, schema_block_types, resource_type)
-                    if is_block:
-                        hcl_output.write(f'    {block_str}')
-                        continue
-
-                    hcl_output.write(f'  {process_key(key, value)}')
-
-                hcl_output.write("}\n\n")
-
-        print("Creating resources under modules")
-        pattern = re.compile(r'\${(.*?)}')  # Matches '${xxxxxx}'
-
-        for tmodule, attributes in modules_code.items():
-            # Get the name after the first dot
-            tmodule_name = tmodule.split('.')[1]
-            db_module_name = self.module_data[tmodule_name]["module_name"]
-            with open(f'{tmodule_name}.tf', 'w') as f:
-                f.write(f'module "{tmodule_name}" {{\n')
-                f.write(f'  source = "../../../modules/{db_module_name}"\n')
-                for attribute, value in attributes.items():
-                    if isinstance(value, dict):
-                        # Loop through the dictionary items
-                        for k, v in value.items():
-                            if isinstance(v, str):  # Check if the value is a string
-                                # Replace '${xxxxxx}' with 'xxxxxx' if present
-                                value[k] = re.sub(pattern, r'\1', v)
-                        # Format the dictionary as a JSON string, then remove the quotes around the keys
-                        formatted_value = json.dumps(value, indent=2)
-                        formatted_value = formatted_value.replace('\n', '\n  ')
-                        f.write(f'  {attribute} = {formatted_value}\n')
-                    elif isinstance(value, list):  # Check if the value is a list
-                        # For simplicity, let's just write out the list as a string
-                        # This can be modified to handle more complex list elements
-                        json_value = json.dumps(value)
-                        f.write(f'  {attribute} = {json_value}\n')
-                    else:
-                        if isinstance(value, str):  # Check if the value is a string
-                            # Replace '${xxxxxx}' with 'xxxxxx' if present
-                            value = re.sub(pattern, r'\1', value)
-                        # Surround value with quotes
-                        f.write(f'  {attribute} = "{value}"\n')
-
-                f.write('}\n')
-
-        print("Formatting HCL files...")
-
-        subprocess.run(["terraform", "fmt"], check=True)
-        # Because i have modules i need to remove these checks
-        # subprocess.run(["terraform", "init"], check=True)
-        # subprocess.run(["terraform", "validate"], check=True)
-        # print("Running Terraform plan on generated files...")
-        # terraform = Terraform()
-        # self.json_plan = terraform.tf_plan("./", True)
-        create_backend_file(self.bucket, os.path.join(self.state_key, "terraform.tfstate"),
-                            self.region, self.dynamodb_table)
-        shutil.rmtree("./.terraform", ignore_errors=True)
 
     def replace_special_chars(self, input_string):
         # Replace spaces, "-", ".", and any special character with "_"
@@ -1111,7 +792,6 @@ class HCL:
             return []
 
     def module_hcl_code(self, terraform_state_file, config_file, functions={}, aws_region="", aws_account_id=""):
-
         with open(config_file, 'r') as f:
             config = yaml.safe_load(f)
 
@@ -1198,19 +878,12 @@ class HCL:
                                         r'\"' + re.escape(name_value) + r'\"', "local." + name_field, value)
 
                                 if instance["replace_name"]:
-                                    # if '-DLQ' in value:
-                                    #     print("before", value)
-                                    # value = re.sub(
-                                    #     r'\b' + re.escape(name_value) + r'\b', "${local."+name_field+"}", value)
 
                                     def replace_value(match):
                                         prefix = match.group(1) or ''
                                         suffix = match.group(
                                             2) if match.group(2) else ''
                                         if prefix.endswith('$'):
-                                            # format("$%s-scaling-policy", local.name_7a25b73ae1)
-                                            # return f'$" + local.{name_field} + "{suffix}' if suffix else '$" + local.' + name_field
-
                                             return f'format("{prefix}%s{suffix}", local.{name_field})'
                                         elif prefix:
                                             if '"' in prefix:
@@ -1225,9 +898,6 @@ class HCL:
 
                                     value = re.sub(
                                         pattern, replace_value, value)
-
-                                    # if 'local' in value:
-                                    #     print("after", value)
 
                                 if aws_account_id:
                                     value = re.sub(r'\b' + aws_account_id +
@@ -1252,29 +922,26 @@ class HCL:
             # If the file doesn't exist, create it
             if not os.path.exists(terragrunt_path):
                 with open(terragrunt_path, 'w') as file:
+                    file.write('include {\n')
+                    file.write('path = find_in_parent_folders()\n')
+                    file.write('}\n')
 
-                    file.write(f'include {{\n')
-                    file.write(f'path = find_in_parent_folders()\n')
-                    file.write(f'}}\n')
+                    # Filter out non-existing folders
+                    existing_dependencies = [d for d in values['dependencies'] if os.path.isdir(os.path.join(key,d))]
+                    print(existing_dependencies)
 
-                    if values['dependencies']:
-                        file.write(f'dependencies  {{\n')
-                        file.write(
-                            f'paths = {json.dumps(values["dependencies"])}\n')
-                        file.write(f'}}\n')
-                        for dependency in values['dependencies']:
-                            os.makedirs(dependency, exist_ok=True)
+                    if existing_dependencies:
+                        file.write('dependencies  {\n')
+                        file.write(f'paths = {json.dumps(existing_dependencies)}\n')
+                        file.write('}\n')
 
         for instance in instances:
             module_instance_name = instance["name"].replace(
                 '"', '').replace(" ", "_").replace(".", "_").replace("/", "_").replace("(", "_").replace(")", "_").replace("*", "_")
             module_instance_name = f'{instance["type"]}-{module_instance_name}'
-            import_file_path = os.path.join("", f'import.tf')
+            import_file_path = os.path.join(instance["path"], f'import.tf')
 
             for deployed_resource in instance["deployed_resources"]:
-                # index_str = ""
-                # if deployed_resource["index"]:
-                #     index_str = '["'+deployed_resource["index"]+'"].'
 
                 first_index_str = ""
                 if deployed_resource["first_index_value"]:
@@ -1305,7 +972,7 @@ class HCL:
 
                 resource_import_target = f'module.{module_instance_name}.{deployed_resource["target_submodule"]}{first_index_str}{deployed_resource["resource_type"]}.{deployed_resource["target_resource_name"]}{second_index_str}'
                 # Write to import.tf file
-                with open(import_file_path, 'a') as file:  # 'a' is for append mode
+                with open(import_file_path, 'a') as file:
                     file.write(
                         f'import {{\n  id = "{deployed_resource["import_id"]}"\n  to   = {resource_import_target}\n}}\n\n')
 
@@ -1313,17 +980,15 @@ class HCL:
         file_path = os.path.join(os.getcwd(), "terragrunt.hcl")
 
         # Check if the file exists
-        if not os.path.exists(file_path):
+        if not instances:
             print("No terraform code was generated.")
             return
 
         print("Formatting HCL files...")
-        subprocess.run(["terragrunt", "init"], check=True)
-        subprocess.run(["terragrunt", "hclfmt"], check=True)
+        subprocess.run(["terragrunt", "run-all", "init"], check=True)
+        subprocess.run(["terragrunt", "run-all", "hclfmt"], check=True)
         subprocess.run(["terraform", "fmt", "-recursive"], check=True)
-        subprocess.run(["terragrunt",  "validate"], check=True)
+        subprocess.run(["terragrunt", "run-all",  "validate"], check=True)
         print("Running terragrunt plan on generated files...")
-        # subprocess.run(["terragrunt", "plan", "-refresh-only"], check=True)
-        # move file terraform.tfstate to terraform.tfstate.disable
         os.rename("terraform.tfstate", "terraform.tfstate.disabled")
-        subprocess.run(["terragrunt", "plan"], check=True)
+        subprocess.run(["terragrunt", "run-all", "plan"], check=True)

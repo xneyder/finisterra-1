@@ -213,8 +213,8 @@ class ECS:
 
     def get_iam_role(self, attributes, arg):
         iam_role = attributes.get(arg)
-        if iam_role and '/aws-service-role/' not in iam_role:
-            return iam_role
+        if iam_role:
+            return iam_role.split('/')[-1]
         return None
 
     def build_service_registries(self, attributes, arg):
@@ -353,8 +353,10 @@ class ECS:
         result = {}
         key = attributes.get('arn').split('/')[-1]
         result[key] = {}
+        result[key]['listener_id'] = attributes.get('listener_arn').split('/')[-1]
         result[key]['priority'] = attributes.get('priority')
         result[key]['conditions'] = attributes.get('condition')
+        result[key]['tags'] = attributes.get('tags')
         result[key]['port'] = self.get_listener_port(
             attributes, 'listener_arn')
         return result
@@ -376,6 +378,13 @@ class ECS:
 
     def aws_appautoscaling_target_import_id(self, attributes):
         return f"{attributes.get('service_namespace')}/{attributes.get('resource_id')}/{attributes.get('scalable_dimension')}"
+
+    def get_policy_attachment_index(self, attributes):
+        role = attributes.get('role')
+        policy_name = attributes.get('policy_arn').split('/')[-1]
+        return role+"_"+policy_name
+
+
 
     def ecs(self):
         self.hcl.prepare_folder(os.path.join("generated", "ecs"))
@@ -425,6 +434,7 @@ class ECS:
             'aws_appautoscaling_policy_import_id': self.aws_appautoscaling_policy_import_id,
             'aws_appautoscaling_target_import_id': self.aws_appautoscaling_target_import_id,
             'get_iam_policy_name': self.get_iam_policy_name,
+            'get_policy_attachment_index': self.get_policy_attachment_index,
         }
 
         self.hcl.module_hcl_code("terraform.tfstate", os.path.join(
@@ -456,6 +466,8 @@ class ECS:
             self.aws_cloudwatch_log_group(cluster_name)
             self.aws_ecs_cluster_capacity_providers(cluster_name)
             self.aws_ecs_capacity_provider(cluster_name)
+            # if cluster_name != "CloudStorageSecCluster-97tzz35":
+            #     continue
             self.aws_ecs_service(cluster_name)
 
     def aws_cloudwatch_log_group(self, log_group_name):
@@ -609,13 +621,14 @@ class ECS:
             taskDefinition=task_definition_arn)["taskDefinition"]
 
         family = task_definition['family']
+        revision = task_definition['revision']
         attributes = {
             "id": task_definition_arn,
             "arn": task_definition_arn,
             "family": family,
         }
         self.hcl.process_resource(
-            "aws_ecs_task_definition", family.replace("-", "_"), attributes)
+            "aws_ecs_task_definition", family.replace("-", "_")+"_"+str(revision), attributes)
 
         # Process IAM roles for the task
         if task_definition.get('taskRoleArn'):

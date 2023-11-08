@@ -103,22 +103,24 @@ class ELBV2:
 
         if default_action and isinstance(default_action, list) and default_action:
             fixed_response = default_action[0].get('fixed_response')
+            return fixed_response
 
-            if fixed_response and isinstance(fixed_response, list) and fixed_response:
-                return fixed_response[0]
+            # if fixed_response and isinstance(fixed_response, list) and fixed_response:
+            #     return [fixed_response[0]]
 
-        return {}  # default to an empty dictionary if conditions are not met
+        return []
 
     def get_redirect(self, attributes):
         default_action = attributes.get('default_action')
 
         if default_action and isinstance(default_action, list) and default_action:
             redirect = default_action[0].get('redirect')
+            return redirect
 
-            if redirect and isinstance(redirect, list) and redirect:
-                return redirect[0]
+            # if redirect and isinstance(redirect, list) and redirect:
+            #     return [redirect[0]]
 
-        return {}  # default to an empty dictionary if conditions are not met
+        return []  # default to an empty dictionary if conditions are not met
 
     def get_listeners(self, attributes):
         listener = {
@@ -299,6 +301,7 @@ class ELBV2:
             'get_vpc_id': self.get_vpc_id,
             'get_subnet_ids': self.get_subnet_ids,
             'aws_security_group_rule_import_id': self.aws_security_group_rule_import_id,
+            'init_fields': self.init_fields,
         }
 
         self.hcl.refresh_state()
@@ -318,6 +321,9 @@ class ELBV2:
         for lb in load_balancers:
             lb_arn = lb["LoadBalancerArn"]
             lb_name = lb["LoadBalancerName"]
+
+            # if lb_name != "dev-vgs-alb":
+            #     continue
 
             # Check tags of the load balancer
             tags_response = self.elbv2_client.describe_tags(

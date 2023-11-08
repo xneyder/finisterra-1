@@ -79,6 +79,9 @@ aws_lb:
       function: get_subnet_ids
       arg: subnets
       type: list
+    enable_xff_client_port:
+      field: enable_xff_client_port
+      type: bool
 
   childs:
     aws_lb_listener:
