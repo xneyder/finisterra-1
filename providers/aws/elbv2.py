@@ -176,6 +176,9 @@ class ELBV2:
         listener_port = response_listener['Listeners'][0]['Port']
 
         certificate_arn = attributes.get('certificate_arn')
+        # print("========================")
+        # print(listener_arn)
+        # print(certificate_arn)
         if certificate_arn:
             # Get the domain name for the certificate
             response = self.acm_client.describe_certificate(

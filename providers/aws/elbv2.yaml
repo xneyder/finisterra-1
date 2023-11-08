@@ -98,8 +98,8 @@ aws_lb:
       childs:
         aws_lb_listener_certificate:
           join:
-            certificate_arn:
-              field: certificate_arn
+            arn:
+              field: listener_arn
           target_resource_name: https_sni
           second_index:
             function: get_port_domain_name
