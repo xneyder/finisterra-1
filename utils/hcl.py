@@ -774,6 +774,13 @@ class HCL:
 
         if attributes or deployed_resources:
             name_field = config[resource['type']].get("name_field", "name")
+            add_id_hash_to_name = config[resource['type']].get("add_id_hash_to_name", False)
+            id_hash = ""
+            for deployed_resource in deployed_resources:
+                if deployed_resource["resource_type"] == resource['type']:
+                    id_hash = hashlib.sha256(deployed_resource.get("id", "").encode()).hexdigest()[:10]
+                    break
+
             resoource_name = attributes.get(name_field, None)
             replace_name = True
             if not resoource_name:
@@ -786,7 +793,9 @@ class HCL:
                 "name_field": name_field,
                 "attributes": attributes,
                 "full_dump": full_dump,
-                "deployed_resources": deployed_resources
+                "deployed_resources": deployed_resources,
+                "add_id_hash_to_name": add_id_hash_to_name,
+                "id_hash": id_hash,
             }
         else:
             return []
@@ -825,6 +834,8 @@ class HCL:
                 module_instance_name = instance["name"].replace(
                     '"', '').replace(" ", "_").replace(".", "_").replace("/", "_").replace("(", "_").replace(")", "_").replace("*", "_")
                 module_instance_name = f'{instance["type"]}-{module_instance_name}'
+                if instance["add_id_hash_to_name"]:
+                    module_instance_name = f'{module_instance_name}_{instance["id_hash"]}'
 
                 name_value = ""
                 name_field = ""
@@ -856,9 +867,13 @@ class HCL:
 
                         name_field = f'{instance["name_field"]}'
 
-                        hash_value = hashlib.sha256(
-                            name_value.encode()).hexdigest()[:10]
-                        name_field = f'{instance["name_field"]}_{hash_value}'
+                        
+                        if instance["add_id_hash_to_name"]:
+                            name_field = f'{instance["name_field"]}_{instance["id_hash"]}'
+                        else:
+                            hash_value = hashlib.sha256(
+                                name_value.encode()).hexdigest()[:10]
+                            name_field = f'{instance["name_field"]}_{hash_value}'
                         file.write(f'locals {{\n')
                         file.write(
                             f'{name_field} = "{name_value_replaced}"\n')
@@ -939,6 +954,8 @@ class HCL:
             module_instance_name = instance["name"].replace(
                 '"', '').replace(" ", "_").replace(".", "_").replace("/", "_").replace("(", "_").replace(")", "_").replace("*", "_")
             module_instance_name = f'{instance["type"]}-{module_instance_name}'
+            if instance["add_id_hash_to_name"]:
+                module_instance_name = f'{module_instance_name}_{instance["id_hash"]}'
             import_file_path = os.path.join(instance["path"], f'import.tf')
 
             for deployed_resource in instance["deployed_resources"]:

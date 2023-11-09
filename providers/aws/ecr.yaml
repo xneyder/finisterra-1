@@ -67,7 +67,7 @@ aws_ecr_repository:
         repository_name:
           field: name
           type: string
-        repository_policy:
+        repository_lifecycle_policy:
           field: policy
           type: string
           multiline: true
@@ -124,5 +124,5 @@ aws_ecr_replication_configuration:
     create_repository: false
   fields:
     registry_replication_rules:
-      field: rules
+      function: build_registry_replication_rules
       type: list

@@ -4,6 +4,7 @@ aws_acm_certificate:
   terraform_module_version: "4.3.2"
   target_resource_name: this
   name_field: domain_name
+  add_id_hash_to_name: true
   defaults:
     create_certificate: true
     validate_certificate: false

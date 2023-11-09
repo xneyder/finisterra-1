@@ -34,6 +34,25 @@ class ECR:
             if result is None:
                 return None
         return result
+    
+    def build_registry_replication_rules(self, attributes):
+        formatted_rules = []
+        replication_configuration = attributes.get("replication_configuration", [])
+        if not replication_configuration:
+            return formatted_rules
+        for replication in replication_configuration:
+            rules = replication.get("rule", [])
+            if not rules:
+                continue
+            for rule in rules:
+                formatted_rules.append({
+                    "destinations": [{
+                        "region": rule["destination"][0]["region"],
+                        "registry_id": rule["destination"][0]["registry_id"]
+                    }]
+                })
+        return formatted_rules
+
 
     def ecr(self):
         self.hcl.prepare_folder(os.path.join("generated", "ecr"))
@@ -50,11 +69,12 @@ class ECR:
 
         functions = {
             'get_field_from_attrs': self.get_field_from_attrs,
+            'build_registry_replication_rules': self.build_registry_replication_rules,
         }
 
         self.hcl.refresh_state()
         self.hcl.module_hcl_code("terraform.tfstate", os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), "aws_ecr.yaml"), functions, self.region, self.aws_account_id)
+            os.path.dirname(os.path.abspath(__file__)), "ecr.yaml"), functions, self.region, self.aws_account_id)
 
         # self.hcl.generate_hcl_file()
         self.json_plan = self.hcl.json_plan
@@ -124,8 +144,10 @@ class ECR:
         print("Processing ECR Registry Policies...")
 
         try:
-            registry_policy = self.ecr_client.get_registry_policy()[
-                "registryPolicyText"]
+            registry_policy = self.ecr_client.get_registry_policy()
+            if "registryPolicyText" not in registry_policy:
+                return
+            registry_policy = registry_policy["registryPolicyText"]
         except self.ecr_client.exceptions.RegistryPolicyNotFoundException:
             return
 
@@ -144,8 +166,10 @@ class ECR:
         for repo in repositories:
             repository_name = repo["repositoryName"]
             try:
-                cache_settings = self.ecr_client.get_registry_policy()[
-                    "registryPolicyText"]
+                cache_settings = self.ecr_client.get_registry_policy()
+                if "registryPolicyText" not in cache_settings:
+                    continue
+                cache_settings = cache_settings["registryPolicyText"]
                 cache_settings_data = json.loads(cache_settings)
             except self.ecr_client.exceptions.RegistryPolicyNotFoundException:
                 continue
@@ -195,18 +219,18 @@ class ECR:
 
         print(f"  Processing ECR Replication Configuration")
 
-        formatted_rules = []
-        for rule in rules:
-            formatted_rules.append({
-                "destination": {
-                    "region": rule["destination"]["region"],
-                    "registry_id": rule["destination"]["registryId"]
-                }
-            })
+        # formatted_rules = []
+        # for rule in rules:
+        #     formatted_rules.append({
+        #         "destination": {
+        #             "region": rule["destination"]["region"],
+        #             "registry_id": rule["destination"]["registryId"]
+        #         }
+        #     })
 
         attributes = {
             "id": registryId,
-            "rule": formatted_rules,
+            # "rule": formatted_rules,
         }
         self.hcl.process_resource(
             "aws_ecr_replication_configuration", "ecr_replication_configuration", attributes)
