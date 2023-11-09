@@ -137,6 +137,26 @@ class CloudFront:
                     result[k] = assoc_result
                     continue
 
+                if k == "function_association":
+                    assoc_result = {}
+                    for association in v:
+                        assoc_key = association['event_type']
+                        assoc_result[assoc_key] = {}
+                        assoc_result[assoc_key]['function_arn'] = association['function_arn']
+                    result[k] = assoc_result
+                    continue
+
+                if k == "forwarded_values":
+                    for forwarded_value in v:
+                        assoc_result = {}
+                        assoc_result["headers"] = forwarded_value.get("headers", [])
+                        assoc_result["query_string"] = forwarded_value.get("query_string", False)
+                        assoc_result["cookies_forward"] = forwarded_value.get("cookies", [{}])[0].get("forward", "none")
+                        assoc_result["cookies_whitelisted_names"] = forwarded_value.get("cookies", [{}])[0].get("whitelisted_names", [])
+                        assoc_result["query_string_cache_keys"] = forwarded_value.get("query_string_cache_keys", [])
+                        result[k] = [assoc_result]
+                    continue                
+
                 if isinstance(v, list):
                     if isinstance(v[0], dict):
                         result[k] = v[0]
@@ -155,9 +175,38 @@ class CloudFront:
             record = {}
             for k, v in cache_behavior.items():
                 if v:
-                    if k in ("function_association", "lambda_function_association"):
-                        record[k] = v
-                    elif isinstance(v, list):
+                    if k == "lambda_function_association":
+                        assoc_result = {}
+                        for association in v:
+                            assoc_key = association['event_type']
+                            assoc_result[assoc_key] = {}
+                            assoc_result[assoc_key]['lambda_arn'] = association['lambda_arn']
+                            assoc_result[assoc_key]['include_body'] = association['include_body']
+                        record[k] = assoc_result
+                        continue
+
+
+                    if k == "function_association":
+                        assoc_result = {}
+                        for association in v:
+                            assoc_key = association['event_type']
+                            assoc_result[assoc_key] = {}
+                            assoc_result[assoc_key]['function_arn'] = association['function_arn']
+                        record[k] = assoc_result
+                        continue
+
+                    if k == "forwarded_values":
+                        for forwarded_value in v:
+                            assoc_result = {}
+                            assoc_result["headers"] = forwarded_value.get("headers", [])
+                            assoc_result["query_string"] = forwarded_value.get("query_string", False)
+                            assoc_result["cookies_forward"] = forwarded_value.get("cookies", [{}])[0].get("forward", "none")
+                            assoc_result["cookies_whitelisted_names"] = forwarded_value.get("cookies", [{}])[0].get("whitelisted_names", [])
+                            assoc_result["query_string_cache_keys"] = forwarded_value.get("query_string_cache_keys", [])
+                            record[k] = [assoc_result]
+                        continue
+
+                    if isinstance(v, list):
                         if isinstance(v[0], dict):
                             record[k] = v[0]
                         else:
@@ -287,8 +336,8 @@ class CloudFront:
             for distribution_summary in items:
                 distribution_id = distribution_summary["Id"]
 
-                if distribution_id != "E72U8YCZJXSEA":
-                    continue
+                # if distribution_id != "E72U8YCZJXSEA":
+                #     continue
 
                 print(
                     f"  Processing CloudFront Distribution: {distribution_id}")
