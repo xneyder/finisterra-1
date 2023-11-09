@@ -16,6 +16,10 @@ aws_api_gateway_rest_api:
       field: body
       type: string
       multiline: true
+    endpoint_type:
+      function: get_field_from_attrs
+      arg: endpoint_configuration.types
+      type: string
     tags:
       field: tags
       type: map
