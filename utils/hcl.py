@@ -503,7 +503,6 @@ class HCL:
 
                 if value not in [None, "", [], {}] or defaulted:
                     if multiline:
-                        print(field, value)
                         value = "<<EOF\n" + \
                             json.dumps(json.loads(value), indent=4) + "\nEOF\n"
                     if jsonencode:
@@ -943,7 +942,6 @@ class HCL:
 
                     # Filter out non-existing folders
                     existing_dependencies = [d for d in values['dependencies'] if os.path.isdir(os.path.join(key,d))]
-                    print(existing_dependencies)
 
                     if existing_dependencies:
                         file.write('dependencies  {\n')

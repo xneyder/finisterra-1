@@ -122,19 +122,26 @@ aws_s3_bucket:
         lifecycle_rule:
           function: aws_s3_bucket_lifecycle_configuration_lifecycle_rule
 
-    aws_s3_bucket_object_lock_configuration: #Not tested
+    aws_s3_bucket_object_lock_configuration:
       join:
         bucket:
           field: bucket
       target_resource_name: this
+      defaults:
+        create_object_lock_configuration: true
       fields:
-        object_lock_configuration:
-          field: object_lock_configuration
-        object_lock_enabled:
+        object_lock_configuration_token:
+          field: token
+          type: string
+        object_lock_configuration_object_lock_enabled:
           field: object_lock_enabled
-          module_default: false
+          type: string
         expected_bucket_owner:
           field: expected_bucket_owner
+          type: string
+        object_lock_configuration_rule:
+          field: rule
+          type: list
 
     aws_s3_bucket_replication_configuration: #Not tested
       join:
@@ -152,9 +159,9 @@ aws_s3_bucket:
       target_resource_name: this
       defaults:
         attach_policy: true
-        block_public_policy: false
-        ignore_public_acls: false
-        restrict_public_buckets: false
+        # block_public_policy: false
+        # ignore_public_acls: false
+        # restrict_public_buckets: false
       fields:
         policy:
           function: aws_s3_bucket_policy_policy
