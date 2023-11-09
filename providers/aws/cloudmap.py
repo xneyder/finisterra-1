@@ -42,6 +42,7 @@ class Cloudmap:
             'routing_policy': attributes.get("dns_config", [{}])[0].get("routing_policy", ""),
             'health_check_config': attributes.get("health_check_config"),
             'health_check_custom_config': attributes.get("health_check_custom_config"),
+            'tags': attributes.get("tags"),
         }
         return result
 

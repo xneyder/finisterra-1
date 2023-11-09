@@ -101,7 +101,9 @@ class CloudFront:
             transformed_origin = {}
             for k, v in origin.items():
                 if v:  # check if the value is not empty
-                    if isinstance(v, list):
+                    if k in ("custom_header"):
+                        transformed_origin[k] = v
+                    elif isinstance(v, list):
                         transformed_origin[k] = v[0]
                     else:
                         transformed_origin[k] = v
@@ -152,8 +154,10 @@ class CloudFront:
         for cache_behavior in ordered_cache_behavior:
             record = {}
             for k, v in cache_behavior.items():
-                if v:  # check if the value is not empty
-                    if isinstance(v, list):
+                if v:
+                    if k in ("function_association", "lambda_function_association"):
+                        record[k] = v
+                    elif isinstance(v, list):
                         if isinstance(v[0], dict):
                             record[k] = v[0]
                         else:
@@ -282,6 +286,10 @@ class CloudFront:
 
             for distribution_summary in items:
                 distribution_id = distribution_summary["Id"]
+
+                if distribution_id != "E72U8YCZJXSEA":
+                    continue
+
                 print(
                     f"  Processing CloudFront Distribution: {distribution_id}")
 
