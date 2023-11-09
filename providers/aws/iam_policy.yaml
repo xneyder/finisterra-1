@@ -7,7 +7,7 @@ aws_iam_policy:
   # path: "policies"
   fields:
     policy_documents:
-      field: policy
+      function: get_policy_documents
       type: string
       multiline: true
     policy_name:
