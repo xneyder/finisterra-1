@@ -12,9 +12,6 @@ aws_sns_topic:
     name:
       field: name
       type: string
-    application_feedback:
-      field: application_feedback
-      type: map
     content_based_deduplication:
       field: content_based_deduplication
       type: string
@@ -34,28 +31,61 @@ aws_sns_topic:
     tracing_config:
       field: tracing_config
       type: string
-    firehose_feedback:
-      field: firehose_feedback
-      type: map
-    http_feedback:
-      field: http_feedback
-      type: map
     kms_master_key_id:
       field: kms_master_key_id
       type: string
-    lambda_feedback:
-      field: lambda_feedback
-      type: map
     topic_policy:
       field: policy
       type: string
       multiline: true
-    sqs_feedback:
-      field: sqs_feedback
-      type: map
     tags:
       field: tags
       type: map
+    application_failure_feedback_role_arn:
+      field: application_failure_feedback_role_arn
+      type: string
+    application_success_feedback_role_arn:
+      field: application_success_feedback_role_arn
+      type: string
+    application_success_feedback_sample_rate:
+      field: application_success_feedback_sample_rate
+      type: number
+    firehose_failure_feedback_role_arn:
+      field: firehose_failure_feedback_role_arn
+      type: string
+    firehose_success_feedback_role_arn:
+      field: firehose_success_feedback_role_arn
+      type: string
+    firehose_success_feedback_sample_rate:
+      field: firehose_success_feedback_sample_rate
+      type: number
+    http_failure_feedback_role_arn:
+      field: http_failure_feedback_role_arn
+      type: string
+    http_success_feedback_role_arn:
+      field: http_success_feedback_role_arn
+      type: string
+    http_success_feedback_sample_rate:
+      field: http_success_feedback_sample_rate
+      type: number
+    lambda_failure_feedback_role_arn:
+      field: lambda_failure_feedback_role_arn
+      type: string
+    lambda_success_feedback_role_arn:
+      field: lambda_success_feedback_role_arn
+      type: string
+    lambda_success_feedback_sample_rate:
+      field: lambda_success_feedback_sample_rate
+      type: number
+    sqs_failure_feedback_role_arn:
+      field: sqs_failure_feedback_role_arn
+      type: string
+    sqs_success_feedback_role_arn:
+      field: sqs_success_feedback_role_arn
+      type: string
+    sqs_success_feedback_sample_rate:
+      field: sqs_success_feedback_sample_rate
+      type: number
   childs:
     aws_sns_topic_policy:
       join:
