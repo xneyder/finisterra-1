@@ -73,6 +73,7 @@ class S3:
             'convert_dict_structure': self.convert_dict_structure,
             'server_side_encryption_configuration': self.server_side_encryption_configuration,
             'aws_s3_bucket_policy_policy': self.aws_s3_bucket_policy_policy,
+            'build_logging': self.build_logging,
         }
 
         self.hcl.module_hcl_code("terraform.tfstate",
@@ -82,6 +83,19 @@ class S3:
         #                       os.path.join(os.path.dirname(os.path.abspath(__file__)), "aws_s3_bucket.yaml"))
         # self.hcl.generate_hcl_file()
         self.json_plan = self.hcl.json_plan
+
+    def build_logging(self, state):
+        result = {}
+
+        tmp = state.get('target_bucket', '')
+        if tmp:
+            result['target_bucket'] = tmp
+
+        tmp = state.get('target_prefix', '')
+        if tmp:
+            result['target_prefix'] = tmp
+
+        return result
 
     def aws_s3_bucket_acl_owner(self, state):
         result = {}

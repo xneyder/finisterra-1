@@ -23,12 +23,14 @@ aws_s3_bucket:
     attach_public_policy: false
   childs:
     aws_s3_bucket_logging:
+      target_resource_name: this
       join:
         bucket:
           field: bucket
       fields:
         logging:
-          field: logging
+          function: build_logging
+          type: map
 
     aws_s3_bucket_acl:
       join:
