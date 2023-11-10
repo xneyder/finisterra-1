@@ -61,6 +61,8 @@ aws_api_gateway_rest_api:
         id:
           field: rest_api_id
       target_resource_name: all
+      defaults:
+        create_api_gateway_method_settings: true
       fields:
         method_path:
           field: method_path
