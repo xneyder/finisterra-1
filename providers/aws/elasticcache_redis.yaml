@@ -93,8 +93,8 @@ aws_elasticache_replication_group:
       type: bool
       module_default: false
     auto_minor_version_upgrade:
-      function: auto_minor_version_upgrade
-      type: bool
+      field: auto_minor_version_upgrade
+      type: string
     log_delivery_configuration:
       field: log_delivery_configuration
       type: map

@@ -518,7 +518,7 @@ class ECS:
                     self.hcl.process_resource(
                         "aws_ecs_cluster_capacity_providers", resource_name.replace("-", "_"), attributes)
             else:
-                print(f"Skipping cluster: {cluster['clusterName']}")
+                print(f"Skipping aws_ecs_cluster_capacity_providers: {cluster['clusterName']}")
 
     def aws_ecs_capacity_provider(self, cluster_name):
         print(
@@ -554,7 +554,7 @@ class ECS:
                             f"Skipping provider: {provider_name} without auto scaling group")
 
             else:
-                print(f"Skipping cluster: {cluster['clusterName']}")
+                print(f"Skipping aws_ecs_capacity_provider: {cluster['clusterName']}")
 
     def aws_ecs_service(self, cluster_name):
         print(f"Processing ECS Services for cluster: {cluster_name}...")
@@ -612,7 +612,7 @@ class ECS:
                                 self.aws_lb_target_group(lb['targetGroupArn'])
 
             else:
-                print(f"Skipping cluster: {cluster['clusterName']}")
+                print(f"Skipping aws_ecs_service: {cluster['clusterName']}")
 
     def aws_ecs_task_definition(self, task_definition_arn):
         print(f"Processing ECS Task Definition: {task_definition_arn}...")
