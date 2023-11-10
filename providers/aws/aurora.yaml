@@ -273,6 +273,15 @@ aws_rds_cluster:
             monitoring_role_permissions_boundary:
               field: permissions_boundary
               type: string
+            monitoring_role_path:
+              field: path
+              type: string
+            monitoring_role_tags:
+              field: tags
+              type: map
+            monitoring_role_max_session_duration:
+              field: max_session_duration
+              type: number
           childs:
             aws_iam_role_policy_attachment:
               join:
