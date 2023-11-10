@@ -6,6 +6,8 @@ aws_lambda_function:
   defaults:
     enabled: true
     create_iam_role: false
+  import_id:
+    field: function_name
   fields:
     architectures:
       field: architectures
@@ -96,6 +98,8 @@ aws_lambda_function:
           function: cloudwatch_log_group_name
       # target_submodule: module.cloudwatch_log_group
       target_resource_name: default
+      defaults:
+        create_aws_cloudwatch_log_group: true
       fields:
         cloudwatch_logs_kms_key_arn:
           field: kms_key_id
@@ -128,6 +132,12 @@ aws_lambda_function:
         iam_role_description:
           field: description
           type: string
+        iam_role_path:
+          field: path
+          type: string
+        iam_role_tags:
+          field: tags
+          type: map
       childs:
         aws_iam_role_policy_attachment:
           join:
