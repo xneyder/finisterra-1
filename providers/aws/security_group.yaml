@@ -4,6 +4,7 @@ aws_security_group:
   terraform_module_version: "5.2.0"
   target_resource_name: default
   name_field: security_group_name
+  add_id_hash_to_name: true
   defaults:
     create_before_destroy: false
   fields:

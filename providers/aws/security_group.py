@@ -19,6 +19,7 @@ class SECURITY_GROUP:
                        self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules)
         self.resource_list = {}
         self.security_group_rule_ids = []
+        self.prefix_list_ids = []
 
     def aws_security_group_rule_import_id(self, attributes):
         security_group_id = attributes.get('security_group_id')
@@ -38,10 +39,15 @@ class SECURITY_GROUP:
             # look for it on self.security_group_rule_ids
             for rule in self.security_group_rule_ids:
                 if security_group_id == rule['security_group_id'] and type == rule['type'] and protocol == rule['protocol'] and from_port == rule['from_port'] and to_port == rule['to_port']:
-                    if rule['cidr_blocks']:
-                        source = "_".join(rule['cidr_blocks'])
-                    elif rule['source_security_group_ids']:
+                    # if rule['cidr_blocks']:
+                    #     source = "_".join(rule['cidr_blocks'])
+                    if rule['source_security_group_ids']:
                         source = "_".join(rule['source_security_group_ids'])
+                    break
+            for rule in self.prefix_list_ids:
+                if security_group_id == rule['security_group_id'] and type == rule['type'] and protocol == rule['protocol'] and from_port == rule['from_port'] and to_port == rule['to_port']:
+                    if rule['prefix_list_ids']:
+                        source = "_".join(rule['prefix_list_ids'])
                     break
         return security_group_id+"_"+type+"_"+protocol+"_"+str(from_port)+"_"+str(to_port)+"_"+source
 
@@ -93,6 +99,9 @@ class SECURITY_GROUP:
             if security_group["GroupName"] == "default":
                 continue
 
+            # if security_group["GroupId"] != "sg-0316822c1cec4c1dd":
+            #     continue
+
             is_elasticbeanstalk = any(tag['Key'].startswith(
                 'elasticbeanstalk:') for tag in security_group.get('Tags', []))
             is_eks = any(tag['Key'].startswith('eks:')
@@ -114,7 +123,7 @@ class SECURITY_GROUP:
             }
 
             self.hcl.process_resource(
-                "aws_security_group", security_group["GroupName"].replace("-", "_"), attributes)
+                "aws_security_group", security_group["GroupId"].replace("-", "_"), attributes)
 
             # Process egress rules
             for rule in security_group.get('IpPermissionsEgress', []):
@@ -130,24 +139,64 @@ class SECURITY_GROUP:
     def aws_security_group_rule(self, rule_type, security_group, rule):
         cidr_blocks = [ip_range['CidrIp']
                        for ip_range in rule.get('IpRanges', [])]
+        if cidr_blocks:
+            source = "_".join(cidr_blocks)
+            rule_id = security_group['GroupId']+"_"+rule_type+"_"+rule.get(
+                'IpProtocol', '-1')+"_"+str(rule.get('FromPort', 0))+"_"+str(rule.get('ToPort', 0))+"_"+source
+            print(f"Processing Security Groups Rule {rule_id}...")
+
+            attributes = {
+                "id": rule_id,
+                "type": rule_type,
+                "security_group_id": security_group['GroupId'],
+                "protocol": rule.get('IpProtocol', '-1'),  # '-1' stands for 'all'
+                "from_port": rule.get('FromPort', 0),
+                "to_port": rule.get('ToPort', 0),
+            }
+            attributes["cidr_blocks"]=cidr_blocks
+            self.hcl.process_resource(
+                "aws_security_group_rule", rule_id.replace("-", "_"), attributes)
+        
+
+        #Source security group ids
         source_security_group_ids = [sg['GroupId']
                                      for sg in rule.get('UserIdGroupPairs', [])]
+        if source_security_group_ids:
+            source = "_".join(source_security_group_ids)
+            rule_id = security_group['GroupId']+"_"+rule_type+"_"+rule.get(
+                'IpProtocol', '-1')+"_"+str(rule.get('FromPort', 0))+"_"+str(rule.get('ToPort', 0))+"_"+source
+            print(f"Processing Security Groups Rule {rule_id}...")
+            attributes = {
+                "id": rule_id,
+                "type": rule_type,
+                "security_group_id": security_group['GroupId'],
+                "protocol": rule.get('IpProtocol', '-1'),  # '-1' stands for 'all'
+                "from_port": rule.get('FromPort', 0),
+                "to_port": rule.get('ToPort', 0),
+            }
 
-        source = "_".join(cidr_blocks+source_security_group_ids)
-        rule_id = security_group['GroupId']+"_"+rule_type+"_"+rule.get(
-            'IpProtocol', '-1')+"_"+str(rule.get('FromPort', 0))+"_"+str(rule.get('ToPort', 0))+"_"+source
-        print(f"Processing Security Groups Rule {rule_id}...")
+            attributes["source_security_group_ids"]=source_security_group_ids
+            self.security_group_rule_ids.append(attributes)
+            self.hcl.process_resource(
+                "aws_security_group_rule", rule_id.replace("-", "_"), attributes)
 
-        attributes = {
-            "id": rule_id,
-            "type": rule_type,
-            "security_group_id": security_group['GroupId'],
-            "protocol": rule.get('IpProtocol', '-1'),  # '-1' stands for 'all'
-            "from_port": rule.get('FromPort', 0),
-            "to_port": rule.get('ToPort', 0),
-            "cidr_blocks": cidr_blocks,
-            "source_security_group_ids": source_security_group_ids
-        }
-        self.security_group_rule_ids.append(attributes)
-        self.hcl.process_resource(
-            "aws_security_group_rule", rule_id.replace("-", "_"), attributes)
+        #prefix list ids
+        prefix_list_ids = [prefix_list['PrefixListId']
+                           for prefix_list in rule.get('PrefixListIds', [])]
+        if prefix_list_ids:
+            source = "_".join(prefix_list_ids)
+            rule_id = security_group['GroupId']+"_"+rule_type+"_"+rule.get(
+                'IpProtocol', '-1')+"_"+str(rule.get('FromPort', 0))+"_"+str(rule.get('ToPort', 0))+"_"+source
+            print(f"Processing Security Groups Rule {rule_id}...")
+            attributes = {
+                "id": rule_id,
+                "type": rule_type,
+                "security_group_id": security_group['GroupId'],
+                "protocol": rule.get('IpProtocol', '-1'),  # '-1' stands for 'all'
+                "from_port": rule.get('FromPort', 0),
+                "to_port": rule.get('ToPort', 0),
+            }
+            attributes["prefix_list_ids"]=prefix_list_ids
+            self.prefix_list_ids.append(attributes)
+            self.hcl.process_resource(
+                "aws_security_group_rule", rule_id.replace("-", "_"), attributes)
