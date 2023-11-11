@@ -58,6 +58,12 @@ class IAM_ROLE:
             policy_str = policy_str.replace('${', '$${')
             policy["policy"] = json.loads(policy_str)
         return inline_policy
+    
+    def get_instance_profiles(self, attributes):
+        name = attributes.get("name")
+        tags = attributes.get("tags")
+        result=[{"name":name, "tags": tags}]
+        return result
 
     def iam(self):
         self.hcl.prepare_folder(os.path.join("generated", "iam_role"))
@@ -93,7 +99,8 @@ class IAM_ROLE:
 
         functions = {
             'get_policy_attachment_index': self.get_policy_attachment_index,
-            'get_inline_policies': self.get_inline_policies
+            'get_inline_policies': self.get_inline_policies,
+            'get_instance_profiles': self.get_instance_profiles,
         }
 
         self.hcl.module_hcl_code("terraform.tfstate", os.path.join(
@@ -349,7 +356,7 @@ class IAM_ROLE:
                     print(f"  Skipping IAM Role: {role_name}")
                     continue
 
-                # if role_name != 'AWSReservedSSO_cognito_user_deactivation_8c78e5e7629a9031':
+                # if role_name != 'terraform-eks-devqa-node':
                 #     continue
 
                 print(f"  Processing IAM Role: {role_name}")

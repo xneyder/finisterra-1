@@ -16,6 +16,10 @@ aws_iam_policy:
     policy_description:
       field: description
       type: string
+    # policy:
+    #   field: policy
+    #   type: string
+    #   multiline: true
     path:
       field: path
       type: string

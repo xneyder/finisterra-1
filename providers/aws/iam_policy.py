@@ -45,14 +45,32 @@ class IAM_POLICY:
                        self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules)
         self.resource_list = {}
 
+    # def get_policy_documents(self, attributes):
+    #     # convert data_dict to str
+    #     policy_documents = attributes.get("policy")
+    #     data_str = json.dumps(policy_documents)
+    #     data_str = data_str.replace('${', '$${')
+    #     # convert data_str back to dict
+    #     result = json.loads(data_str)
+    #     print(result.keys())
+    #     exit()
+    #     return result      
+
     def get_policy_documents(self, attributes):
         # convert data_dict to str
         policy_documents = attributes.get("policy")
-        data_str = json.dumps(policy_documents)
-        data_str = data_str.replace('${', '$${')
+        policy_documents_dict = json.loads(policy_documents)
+        #check if policy_documents_dict["Statement"] is a list
+        if not isinstance(policy_documents_dict["Statement"], list):
+            policy_documents_dict["Statement"] = [policy_documents_dict["Statement"]]
+        #use policy_documents_dict for result
+        result = json.dumps(policy_documents_dict)
+        result = result.replace('${', '$${')
         # convert data_str back to dict
-        result = json.loads(data_str)
-        return result        
+        # result = json.loads(result)
+        # print(result)
+        # exit()
+        return result
 
     def iam(self):
         self.hcl.prepare_folder(os.path.join("generated", "iam_policy"))
@@ -255,7 +273,7 @@ class IAM_POLICY:
                 if policy_arn.startswith('arn:aws:iam::aws:policy/') or '/service-role/' in policy_arn:
                     continue
 
-                # if policy_name != "allow-manage-mfa":
+                # if policy_name != "DenyCannedPublicACL":
                 #     continue
 
                 print(f"  Processing IAM Policy: {policy_name}")

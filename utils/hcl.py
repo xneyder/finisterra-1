@@ -833,7 +833,7 @@ class HCL:
             if instance["attributes"]:
                 instance["name"] = instance["name"].replace("\n", "")
                 module_instance_name = instance["name"].replace(
-                    '"', '').replace(" ", "_").replace(".", "_").replace("/", "_").replace("(", "_").replace(")", "_").replace("*", "_")
+                    '"', '').replace(" ", "_").replace(".", "_").replace("/", "_").replace("(", "_").replace(")", "_").replace("*", "_").replace("@", "_").replace("#", "_")
                 module_instance_name = f'{instance["type"]}-{module_instance_name}'
                 if instance["add_id_hash_to_name"]:
                     module_instance_name = f'{module_instance_name}_{instance["id_hash"]}'
@@ -889,7 +889,7 @@ class HCL:
                     else:
                         for index, value in instance["attributes"].items():
                             try:
-                                if instance["replace_name"]:
+                                if instance["replace_name"] and "<<EOF" not in value:
                                     value = re.sub(
                                         r'\"' + re.escape(name_value) + r'\"', "local." + name_field, value)
 
@@ -912,12 +912,9 @@ class HCL:
                                     pattern = r'"?(.*\$?)' + \
                                         re.escape(name_value) + r'([^"]*)"?'
                                     
-                                    # print(f'{index} = {value}')
-                                    # value = value.replace('"', '##TMP_REPLACE##')
                                     value = re.sub(
                                         pattern, replace_value, value)
                                     value = value.replace('#PUT_SCAPED_QUOTE_HERE#', '\"' )
-                                    # print(f'{index} = {value}')
 
                                 if aws_account_id:
                                     value = re.sub(r'\b' + aws_account_id +
@@ -957,7 +954,7 @@ class HCL:
 
         for instance in instances:
             module_instance_name = instance["name"].replace(
-                '"', '').replace(" ", "_").replace(".", "_").replace("/", "_").replace("(", "_").replace(")", "_").replace("*", "_")
+                '"', '').replace(" ", "_").replace(".", "_").replace("/", "_").replace("(", "_").replace(")", "_").replace("*", "_").replace("@", "_").replace("#", "_")
             module_instance_name = f'{instance["type"]}-{module_instance_name}'
             if instance["add_id_hash_to_name"]:
                 module_instance_name = f'{module_instance_name}_{instance["id_hash"]}'

@@ -18,8 +18,8 @@ aws_db_instance:
   fields:
     identifier:
       field: identifier
-    identifier_prefix:
-      field: identifier_prefix
+    # instance_identifier_prefix:
+    #   field: identifier_prefix
     engine:
       field: engine
     engine_version:

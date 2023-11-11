@@ -7,8 +7,8 @@ aws_iam_role:
   # path: "roles"
   dependencies:
     - "../iam_policy"
-  defaults:
-    instance_profile_enabled: false
+  # defaults:
+  #   instance_profile_enabled: false
   fields:
     role_name:
       field: name
@@ -50,13 +50,18 @@ aws_iam_role:
       join:
         name:
           field: role
-      defaults:
-        instance_profile_enabled: true
+      # defaults:
+      #   instance_profile_enabled: true
       target_resource_name: default
+      second_index:
+        field: name
       fields:
-        instance_profile_name:
-          field: name
-          type: string
-        instance_profile_tags:
-          field: tags
-          type: map
+        instance_profiles:
+          function: get_instance_profiles
+          type: list
+        # instance_profile_name:
+        #   field: name
+        #   type: string
+        # instance_profile_tags:
+        #   field: tags
+        #   type: map
