@@ -5,6 +5,7 @@ aws_api_gateway_rest_api:
   target_resource_name: this
   defaults:
     enabled: true
+  add_id_hash_to_name: true
   fields:
     name:
       field: name
@@ -33,6 +34,10 @@ aws_api_gateway_rest_api:
         function: aws_api_gateway_deployment_import_id
       defaults:
         create_api_gateway_deployment: true
+      fields:
+        deployment_description:
+          field: description
+          type: string
     aws_api_gateway_stage:
       join:
         id:
@@ -56,6 +61,16 @@ aws_api_gateway_rest_api:
         stage_variables:
           field: variables
           type: map
+        stage_cache_cluster_enabled:
+          field: cache_cluster_enabled
+          type: bool
+        stage_cache_cluster_size:
+          field: cache_cluster_size
+          type: string
+        stage_description:
+          field: description
+          type: string
+
     aws_api_gateway_method_settings:
       join:
         id:

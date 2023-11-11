@@ -570,6 +570,9 @@ class ECS:
                 paginator = self.ecs_client.get_paginator('list_services')
                 for page in paginator.paginate(cluster=cluster_arn):
                     services_arns = page["serviceArns"]
+                    if not services_arns:
+                        print(f"  No services found for cluster. {cluster_name}")
+                        continue
                     services = self.ecs_client.describe_services(
                         cluster=cluster_arn, services=services_arns)["services"]
 

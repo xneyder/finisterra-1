@@ -18,7 +18,7 @@ aws_acm_certificate:
       field: subject_alternative_names
       type: list
     validation_method:
-      field: validation_method
+      function: get_validation_method
       type: string
       module_default: "DNS"
     key_algorithm:
@@ -35,6 +35,9 @@ aws_acm_certificate:
     tags:
       field: tags
       type: map
+    certificate_authority_arn:
+      field: certificate_authority_arn
+      type: string
   # childs:
   #   aws_acm_certificate_validation:
   #     join:

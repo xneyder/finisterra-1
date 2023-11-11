@@ -39,6 +39,13 @@ class ACM:
                 return None
         return result
 
+    def get_validation_method(self, attributes):
+        validation_method = attributes.get("validation_method", None)
+        if validation_method == "NONE":
+            return None
+        return validation_method
+
+
     def acm(self):
         self.hcl.prepare_folder(os.path.join("generated", "acm"))
 
@@ -50,6 +57,7 @@ class ACM:
 
         functions = {
             'get_field_from_attrs': self.get_field_from_attrs,
+            'get_validation_method': self.get_validation_method,
         }
 
         self.hcl.refresh_state()

@@ -233,6 +233,8 @@ class HCL:
     def string_repr(self, value, field_type=None):
         if field_type == "string" and isinstance(value, str):
             value = value.replace('\n', '')
+            value = value.replace('"', '\\"')
+            value = value.replace('"', '#PUT_SCAPED_QUOTE_HERE#')
             escaped_value = value.replace('${', '$${')
             return f'"{escaped_value}"'
         elif value is None:
@@ -517,7 +519,7 @@ class HCL:
                     else:
                         if multiline or jsonencode:
                             attributes[field] = value
-                        else:
+                        else:                            
                             attributes[field] = self.string_repr(
                                 value, field_type)
 
@@ -909,9 +911,13 @@ class HCL:
 
                                     pattern = r'"?(.*\$?)' + \
                                         re.escape(name_value) + r'([^"]*)"?'
-
+                                    
+                                    # print(f'{index} = {value}')
+                                    # value = value.replace('"', '##TMP_REPLACE##')
                                     value = re.sub(
                                         pattern, replace_value, value)
+                                    value = value.replace('#PUT_SCAPED_QUOTE_HERE#', '\"' )
+                                    # print(f'{index} = {value}')
 
                                 if aws_account_id:
                                     value = re.sub(r'\b' + aws_account_id +
@@ -926,6 +932,7 @@ class HCL:
                             except Exception as e:
                                 print(f"Error processing index {index}: {e}")
                                 print(value)
+
 
                             file.write(f'{index} = {value}\n')
                     file.write('}\n')

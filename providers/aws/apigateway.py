@@ -167,6 +167,9 @@ class Apigateway:
         rest_apis = self.apigateway_client.get_rest_apis()["items"]
 
         for rest_api in rest_apis:
+            # if rest_api["name"] != "signal-r-hub":
+            #     continue
+
             print(f"  Processing API Gateway REST API: {rest_api['name']}")
 
             attributes = {
