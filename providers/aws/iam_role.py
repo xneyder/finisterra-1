@@ -50,7 +50,7 @@ class IAM_ROLE:
 
                 # Ignore roles managed or created by AWS
                 if role_path.startswith("/aws-service-role/") or "AWS-QuickSetup" in current_role_name:
-                    print(f"  Skipping IAM Role: {current_role_name}")
+                    # print(f"  Skipping IAM Role: {current_role_name}")
                     continue
 
                 # Process only the specified role if role_name is provided
