@@ -87,7 +87,7 @@ aws_s3_bucket:
       target_resource_name: this
       fields:
         acceleration_status:
-          field: acceleration_status
+          field: status
         expected_bucket_owner:
           field: expected_bucket_owner
 
@@ -142,7 +142,8 @@ aws_s3_bucket:
           field: expected_bucket_owner
           type: string
         object_lock_configuration_rule:
-          field: rule
+          function: get_object_lock_configuration_rule
+          # field: rule
           type: list
 
     aws_s3_bucket_replication_configuration: #Not tested

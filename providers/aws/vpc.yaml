@@ -392,72 +392,72 @@ aws_vpc:
               field: tags
               type: map
 
-        aws_iam_role:
-          join:
-            name:
-              join_function: join_aws_flow_log_iam_role_name
-          target_resource_name: vpc_flow_log_cloudwatch
-          fields:
-            create_flow_log_cloudwatch_iam_role:
-              unique: true
-            flow_aws_iam_role_name:
-              field: name
-              type: string
-            flow_aws_iam_role_name_prefix:
-              field: name_prefix
-              type: string
-            flow_aws_iam_role_assume_role_policy:
-              field: assume_role_policy
-              type: string
-              multiline: true
-            flow_aws_iam_role_permissions_boundary:
-              field: permissions_boundary
-              type: string
-            flow_aws_iam_role_description:
-              field: description
-              type: string
-            flow_aws_iam_role_path:
-              field: path
-              type: string
-          childs:
-            aws_iam_role_policy_attachment:
-              join:
-                name:
-                  field: role
-              target_resource_name: vpc_flow_log_cloudwatch
-              import_id:
-                function: aws_iam_role_policy_attachment_import_id
-              fields:
-                create_flow_log_cloudwatch_iam_role:
-                  unique: true
-              childs:
-                aws_iam_policy:
-                  join:
-                    policy_arn:
-                      field: arn
-                  target_resource_name: vpc_flow_log_cloudwatch
-                  fields:
-                    create_flow_log_cloudwatch_iam_role:
-                      unique: true
-                    flow_iam_policy_name:
-                      field: name
-                      type: string
-                    flow_iam_policy_description:
-                      field: description
-                      type: string
-                    # flow_name_prefix:
-                    #   field: name_prefix
-                    #   type: string
-                    flow_iam_policy_path:
-                      field: path
-                      type: string
-                    flow_iam_policy_document:
-                      field: policy
-                      type: string
-                      multiline: true
-                    flow_policy_tags:
-                      field: tags
-                      type: map
+        # aws_iam_role:
+        #   join:
+        #     name:
+        #       join_function: join_aws_flow_log_iam_role_name
+        #   target_resource_name: vpc_flow_log_cloudwatch
+        #   fields:
+        #     create_flow_log_cloudwatch_iam_role:
+        #       unique: true
+        #     flow_aws_iam_role_name:
+        #       field: name
+        #       type: string
+        #     flow_aws_iam_role_name_prefix:
+        #       field: name_prefix
+        #       type: string
+        #     flow_aws_iam_role_assume_role_policy:
+        #       field: assume_role_policy
+        #       type: string
+        #       multiline: true
+        #     flow_aws_iam_role_permissions_boundary:
+        #       field: permissions_boundary
+        #       type: string
+        #     flow_aws_iam_role_description:
+        #       field: description
+        #       type: string
+        #     flow_aws_iam_role_path:
+        #       field: path
+        #       type: string
+        #   childs:
+        #     aws_iam_role_policy_attachment:
+        #       join:
+        #         name:
+        #           field: role
+        #       target_resource_name: vpc_flow_log_cloudwatch
+        #       import_id:
+        #         function: aws_iam_role_policy_attachment_import_id
+        #       fields:
+        #         create_flow_log_cloudwatch_iam_role:
+        #           unique: true
+        #       childs:
+        #         aws_iam_policy:
+        #           join:
+        #             policy_arn:
+        #               field: arn
+        #           target_resource_name: vpc_flow_log_cloudwatch
+        #           fields:
+        #             create_flow_log_cloudwatch_iam_role:
+        #               unique: true
+        #             flow_iam_policy_name:
+        #               field: name
+        #               type: string
+        #             flow_iam_policy_description:
+        #               field: description
+        #               type: string
+        #             # flow_name_prefix:
+        #             #   field: name_prefix
+        #             #   type: string
+        #             flow_iam_policy_path:
+        #               field: path
+        #               type: string
+        #             flow_iam_policy_document:
+        #               field: policy
+        #               type: string
+        #               multiline: true
+        #             flow_policy_tags:
+        #               field: tags
+        #               type: map
 
     aws_vpc_dhcp_options_association:
       join:
@@ -501,3 +501,61 @@ aws_vpc:
             dhcp_options_tags:
               field: tags
               type: map
+
+aws_iam_role:
+  # terraform_module: "../../../terraform-aws-modules/terraform-aws-iam//modules/iam_role"
+  terraform_module: "github.com/finisterra-io/terraform-aws-iam//modules/iam_role?ref=main"
+  terraform_module_version: "5.2.0"
+  target_resource_name: default
+  name_field: role_name
+  path: "iam_role"
+  dependencies:
+    - "../iam_policy"
+  fields:
+    role_name:
+      field: name
+      type: string
+    assume_role_policy:
+      field: assume_role_policy
+      type: string
+      multiline: true
+    role_description:
+      field: description
+      type: string
+    max_session_duration:
+      field: max_session_duration
+      type: number
+    inline_policies:
+      function: get_inline_policies
+      type: list
+    permissions_boundary:
+      field: permissions_boundary
+      type: string
+    path:
+      field: path
+      type: string
+    tags:
+      field: tags
+      type: map
+    managed_policy_arns:
+      field: managed_policy_arns
+      type: list
+  childs:
+    aws_iam_role_policy_attachment:
+      join:
+        name:
+          field: role
+      target_resource_name: managed
+      second_index:
+        function: get_policy_attachment_index
+    aws_iam_instance_profile:
+      join:
+        name:
+          field: role
+      target_resource_name: default
+      second_index:
+        field: name
+      fields:
+        instance_profiles:
+          function: get_instance_profiles
+          type: list

@@ -15,26 +15,41 @@ aws_security_group:
       function: get_vpc_name
       arg: vpc_id
       type: string
-    # vpc_id:
-    #   field: vpc_id
-    #   type: string
+    vpc_id:
+      function: get_vpc_id
+      type: string
+      arg: vpc_id
     security_group_description:
       field: description
       type: string
     tags:
       field: tags
       type: map
+  #BLocking because of all the issues, look into using  aws_vpc_security_group_ingress_rule and  aws_vpc_security_group_egress_rule
   childs:
-    aws_security_group_rule:
+    aws_vpc_security_group_ingress_rule:
       join:
         id:
           field: security_group_id
       import_id:
-        function: aws_security_group_rule_import_id
+        field: security_group_rule_id
       target_resource_name: dbc
       second_index:
         field: id
       fields:
-        rules_map:
+        ingress_rules:
+          function: get_security_group_rules
+          type: map
+    aws_vpc_security_group_egress_rule:
+      join:
+        id:
+          field: security_group_id
+      import_id:
+        field: security_group_rule_id
+      target_resource_name: dbc
+      second_index:
+        field: id
+      fields:
+        egress_rules:
           function: get_security_group_rules
           type: map

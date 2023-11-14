@@ -9,7 +9,7 @@ import yaml
 import re
 from collections import OrderedDict
 import hashlib
-
+import importlib
 
 class HCL:
     def __init__(self, schema_data, provider_name, script_dir, transform_rules, region, bucket, dynamodb_table, state_key, workspace_id, modules):
@@ -29,6 +29,10 @@ class HCL:
 
         # self.module_data = get_module_data(self.workspace_id)
         self.module_data = {}
+
+        functions_module_name = 'providers.aws.hcl_functions.all'
+        self.functions_module = importlib.import_module(functions_module_name)
+
 
     def search_state_file(self, resource_type, resource_name, resource_id):
         # Load the state file
@@ -290,6 +294,11 @@ class HCL:
             join_func = functions.get(join_function)
             func_name = value_dict.get('function')
             func = functions.get(func_name)
+            if not func and func_name:   
+                func = getattr(self.functions_module, func_name)
+
+            if not join_func and join_function:                    
+                func = getattr(self.functions_module, join_function)
 
             if func is not None:
                 arg = value_dict.get('arg')
@@ -321,6 +330,7 @@ class HCL:
 
     def process_resource_module(self, resource, resources, config, functions={}):
         root_attributes = set()
+
 
         def process_resource(resource, resources, config, parent_root_attribute_key_value=None):
 
@@ -390,6 +400,11 @@ class HCL:
             if isinstance(skip_if, dict) and 'function' in skip_if:
                 func_name = skip_if.get('function')
                 func = functions.get(func_name)
+
+                #look in functions/all.py shared functions file
+                if not func and func_name:                    
+                    func = getattr(self.functions_module, func_name)
+
                 if func is not None:
                     arg = skip_if.get('arg')
                     if arg:
@@ -410,6 +425,10 @@ class HCL:
             if isinstance(target_resource_name, dict) and 'function' in target_resource_name:
                 func_name = target_resource_name.get('function')
                 func = functions.get(func_name)
+                #look in functions/all.py shared functions file
+                if not func and func_name:
+                    func = getattr(self.functions_module, func_name)
+
                 if func is not None:
                     arg = target_resource_name.get('arg')
                     if arg:
@@ -460,6 +479,10 @@ class HCL:
                 state_field = field_info.get('field', '').split('.')
                 if func_name:
                     func = functions.get(func_name)
+                    #look in functions/all.py shared functions file
+                    if not func and func_name:
+                        func = getattr(self.functions_module, func_name)
+
                     if func is not None:
                         value = None
                         arg = field_info.get('arg', '')
@@ -533,6 +556,8 @@ class HCL:
                     else:
                         func_name = first_index.get('function')
                         func = functions.get(func_name)
+                        if not func and func_name:
+                            func = getattr(self.functions_module, func_name)
                         if func is not None:
                             arg = first_index.get('arg')
                             if arg:
@@ -555,6 +580,9 @@ class HCL:
                     else:
                         func_name = second_index.get('function')
                         func = functions.get(func_name)
+                        if not func and func_name:
+                            func = getattr(self.functions_module, func_name)
+
                         if func is not None:
                             arg = second_index.get('arg')
                             if arg:
@@ -573,6 +601,9 @@ class HCL:
                 if import_id:
                     func_name = import_id.get('function')
                     func = functions.get(func_name)
+                    if not func and func_name:
+                        func = getattr(self.functions_module, func_name)
+
                     if func is not None:
                         arg = import_id.get('arg')
                         if arg:
@@ -802,6 +833,7 @@ class HCL:
             return []
 
     def module_hcl_code(self, terraform_state_file, config_file, functions={}, aws_region="", aws_account_id=""):
+
         with open(config_file, 'r') as f:
             config = yaml.safe_load(f)
 

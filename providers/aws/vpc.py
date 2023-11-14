@@ -2,79 +2,32 @@ import os
 from utils.hcl import HCL
 from utils.filesystem import create_backend_file
 import json
-
+from providers.aws.iam_role import IAM_ROLE
 
 class VPC:
     def __init__(self, ec2_client, iam_client, logs_client, script_dir, provider_name, schema_data, region, s3Bucket,
-                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id):
+                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id, hcl=None):
         self.ec2_client = ec2_client
         self.iam_client = iam_client
         self.logs_client = logs_client
-        self.transform_rules = {
-            "aws_vpc": {
-                "hcl_drop_fields": {"ipv6_netmask_length": 0},
-                "hcl_keep_fields": {"cidr_block": True, "enable_dns_hostnames": True},
-            },
-            "aws_network_acl": {
-                "hcl_keep_fields": {"subnet_ids": True,
-                                    "ingress": True,
-                                    "egress": True,
-                                    },
-                "hcl_transform_fields": {
-                    "ipv6_cidr_block": {'source': "", 'target': None},
-                },
-            },
-            "aws_default_security_group": {
-                "hcl_keep_fields": {"vpc_id": True,
-                                    "egress": True,
-                                    "ingress": True,
-                                    "ipv6_cidr_blocks": True,
-                                    "prefix_list_ids": True,
-                                    "security_groups": True,
-                                    },
-            },
-            "aws_flow_log": {
-                "hcl_keep_fields": {"log_destination": True},
-            },
-            "aws_vpc_peering_connection": {
-                "hcl_drop_fields": {"allow_classic_link_to_remote_vpc": "ALL"},
-            },
-            "aws_default_vpc": {
-                "hcl_drop_fields": {"ipv6_netmask_length": 0},
-                "hcl_transform_fields": {
-                    "force_destroy": {'source': None, 'target': False},
-                },
-            },
-            "aws_subnet": {
-                "hcl_drop_fields": {"map_customer_owned_ip_on_launch": False,
-                                    "enable_lni_at_device_index": 0
-                                    },
-            },
-            "aws_default_subnet": {
-                "hcl_drop_fields": {"map_customer_owned_ip_on_launch": False},
-            },
-            "aws_network_interface": {
-                "hcl_keep_fields": {"instance": True},
-                "hcl_drop_blocks": {"attachment": {"instance": ""}},
-                "hcl_drop_fields": {"attachment.attachment_id": 'ALL'},
-            },
-            "aws_vpc_security_group_ingress_rule": {
-                "hcl_transform_fields": {
-                    "description": {'source': "", 'target': ""},
-                },
-            },
-
-        }
+        self.transform_rules = {}
         self.provider_name = provider_name
         self.script_dir = script_dir
         self.schema_data = schema_data
         self.region = region
         self.aws_account_id = aws_account_id
+        self.s3Bucket = s3Bucket
+        self.dynamoDBTable = dynamoDBTable
+        self.state_key = state_key
 
         self.workspace_id = workspace_id
         self.modules = modules
-        self.hcl = HCL(self.schema_data, self.provider_name,
-                       self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules)
+
+        if not hcl:
+            self.hcl = HCL(self.schema_data, self.provider_name,self.script_dir, self.transform_rules, self.region, self.s3Bucket, self.dynamoDBTable, self.state_key, self.workspace_id, self.modules)
+        else:
+            self.hcl = hcl
+        
         self.resource_list = {}
         self.public_subnets = {}
         self.private_subnets = {}
@@ -85,6 +38,8 @@ class VPC:
         self.network_acl_ids = {}
         self.network_acls = {}
         self.dhcp_options_domain_name = {}
+
+        self.iam_role_instance = IAM_ROLE(iam_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)        
 
     def get_field_from_attrs(self, attributes, arg):
         keys = arg.split(".")
@@ -494,7 +449,7 @@ class VPC:
             return True
         return False
 
-    def vpc(self):
+    def vpc(self):        
         self.hcl.prepare_folder(os.path.join("generated", "vpc"))
 
         # aws_customer_gateway.this
@@ -555,9 +510,6 @@ class VPC:
             'aws_network_acl_rule_import_id': self.aws_network_acl_rule_import_id,
             'aws_iam_role_policy_attachment_import_id': self.aws_iam_role_policy_attachment_import_id,
 
-
-
-
         }
         self.hcl.refresh_state()
 
@@ -576,8 +528,8 @@ class VPC:
             is_default = vpc.get("IsDefault", False)
             if not is_default:
                 vpc_id = vpc["VpcId"]
-                # if vpc_id != "vpc-062a9bb71430eda86":
-                #     continue
+                if vpc_id != "vpc-06cc176a61adea807":
+                    continue
                 print(f"  Processing VPC: {vpc_id}")
                 attributes = {
                     "id": vpc_id,
@@ -1073,79 +1025,69 @@ class VPC:
                 # If IAM role ARN is provided, process the IAM role
                 if attributes["iam_role_arn"]:
                     # Assuming the role ARN ends with the role name
-                    role_name = attributes["iam_role_arn"]
-                    self.aws_iam_role(role_name)
+                    role_name = attributes["iam_role_arn"].split('/')[-1]
+                    self.iam_role_instance.aws_iam_role(role_name)
+                    # self.aws_iam_role(role_name)
 
-    def aws_iam_role(self, role_arn):
-        # the role name is the last part of the ARN
-        role_name = role_arn.split('/')[-1]
+    # def aws_iam_role(self, role_arn):
+    #     # the role name is the last part of the ARN
+    #     role_name = role_arn.split('/')[-1]
 
-        role = self.iam_client.get_role(RoleName=role_name)
-        print(f"Processing IAM Role: {role_name}")
+    #     role = self.iam_client.get_role(RoleName=role_name)
+    #     print(f"Processing IAM Role: {role_name}")
 
-        attributes = {
-            "id": role_name,
-            # "name": role['Role']['RoleName'],
-            # "arn": role['Role']['Arn'],
-            # "description": role['Role']['Description'],
-            # "assume_role_policy": role['Role']['AssumeRolePolicyDocument'],
-        }
-        self.hcl.process_resource(
-            "aws_iam_role", role_name.replace("-", "_"), attributes)
+    #     attributes = {
+    #         "id": role_name,
+    #         # "name": role['Role']['RoleName'],
+    #         # "arn": role['Role']['Arn'],
+    #         # "description": role['Role']['Description'],
+    #         # "assume_role_policy": role['Role']['AssumeRolePolicyDocument'],
+    #     }
+    #     self.hcl.process_resource(
+    #         "aws_iam_role", role_name.replace("-", "_"), attributes)
 
-        # After processing the role, process the policies attached to it
-        self.aws_iam_role_policy_attachment(role_name)
+    #     # After processing the role, process the policies attached to it
+    #     self.aws_iam_role_policy_attachment(role_name)
 
-    def aws_iam_role_policy_attachment(self, role_name):
-        print(
-            f"Processing IAM Role Policy Attachment for Role: {role_name}...")
-        self.resource_list['aws_iam_role_policy_attachment'] = {}
+    # def aws_iam_role_policy_attachment(self, role_name):
+    #     print(f"Processing IAM Role Policy Attachments for {role_name}...")
 
-        try:
-            attached_policies = self.iam_client.list_attached_role_policies(
-                RoleName=role_name)
-            for policy in attached_policies['AttachedPolicies']:
-                policy_arn = policy['PolicyArn']
-                id = f"{role_name}_{policy['PolicyName']}"
-                attributes = {
-                    "id": id,
-                    "role": role_name,
-                    "policy_arn": policy_arn
-                }
+    #     policy_paginator = self.iam_client.get_paginator(
+    #         "list_attached_role_policies")
 
-                self.hcl.process_resource(
-                    "aws_iam_role_policy_attachment", id.replace("-", "_"), attributes)
-                self.resource_list['aws_iam_role_policy_attachment'][id.replace(
-                    "-", "_")] = attributes
+    #     for policy_page in policy_paginator.paginate(RoleName=role_name):
+    #         for policy in policy_page["AttachedPolicies"]:
+    #             policy_arn = policy["PolicyArn"]
+    #             print(
+    #                 f"  Processing IAM Role Policy Attachment: {role_name} - {policy_arn}")
 
-                # Call the aws_iam_policy function with the policy ARN
-                self.aws_iam_policy(policy_arn)
+    #             attributes = {
+    #                 "id": f"{role_name}/{policy_arn}",
+    #                 "role": role_name,
+    #                 "policy_arn": policy_arn,
+    #             }
+    #             self.hcl.process_resource(
+    #                 "aws_iam_role_policy_attachment", f"{role_name}_{policy_arn.split(':')[-1]}", attributes)
 
-                # Process only one policy for now
-                return
+    # def aws_iam_policy(self, policy_arn):
+    #     print(f"Processing IAM Policy: {policy_arn}...")
+    #     self.resource_list['aws_iam_policy'] = {}
 
-        except self.iam_client.exceptions.NoSuchEntityException:
-            print(f"  Role: {role_name} does not exist.")
+    #     try:
+    #         policy = self.iam_client.get_policy(PolicyArn=policy_arn)
+    #         attributes = {
+    #             "id": policy['Policy']['Arn'],
+    #             "arn": policy['Policy']['Arn'],
+    #             "name": policy['Policy']['PolicyName'],
+    #             # add more attributes as needed
+    #         }
 
-    def aws_iam_policy(self, policy_arn):
-        print(f"Processing IAM Policy: {policy_arn}...")
-        self.resource_list['aws_iam_policy'] = {}
-
-        try:
-            policy = self.iam_client.get_policy(PolicyArn=policy_arn)
-            attributes = {
-                "id": policy['Policy']['Arn'],
-                "arn": policy['Policy']['Arn'],
-                "name": policy['Policy']['PolicyName'],
-                # add more attributes as needed
-            }
-
-            self.hcl.process_resource(
-                "aws_iam_policy", policy['Policy']['PolicyName'].replace("-", "_"), attributes)
-            self.resource_list['aws_iam_policy'][policy['Policy']['PolicyName'].replace(
-                "-", "_")] = attributes
-        except self.iam_client.exceptions.NoSuchEntityException:
-            print(f"  Policy: {policy_arn} does not exist.")
+    #         self.hcl.process_resource(
+    #             "aws_iam_policy", policy['Policy']['PolicyName'].replace("-", "_"), attributes)
+    #         self.resource_list['aws_iam_policy'][policy['Policy']['PolicyName'].replace(
+    #             "-", "_")] = attributes
+    #     except self.iam_client.exceptions.NoSuchEntityException:
+    #         print(f"  Policy: {policy_arn} does not exist.")
 
     def aws_cloudwatch_log_group(self, log_group_name):
         print(f"Processing CloudWatch Log Group: {log_group_name}...")

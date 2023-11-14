@@ -331,7 +331,7 @@ class ElasticacheRedis:
 
             self.hcl.process_resource(
                 "aws_security_group", security_group["GroupName"].replace("-", "_"), attributes)
-
+            
             # Process egress rules
             for rule in security_group.get('IpPermissionsEgress', []):
                 self.aws_security_group_rule(
@@ -364,7 +364,6 @@ class ElasticacheRedis:
 
         self.hcl.process_resource(
             "aws_security_group_rule", rule_id.replace("-", "_"), attributes)
-
     # def aws_elasticache_user(self):
     #     print("Processing ElastiCache Users...")
 

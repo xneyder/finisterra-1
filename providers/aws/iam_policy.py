@@ -10,33 +10,7 @@ class IAM_POLICY:
         self.aws_account_id = aws_account_id
         self.workspace_id = workspace_id
         self.modules = modules
-        self.transform_rules = {
-            "aws_iam_group_policy": {
-                "hcl_json_multiline": {"policy": True}
-            },
-            "aws_iam_policy": {
-                "hcl_json_multiline": {"policy": True}
-            },
-            "aws_iam_role_policy": {
-                "hcl_json_multiline": {"policy": True}
-            },
-            "aws_iam_user_policy": {
-                "hcl_json_multiline": {"policy": True}
-            },
-            "aws_iam_role": {
-                "hcl_json_multiline": {"assume_role_policy": True, "policy": True,
-                                       "inline_policy.policy": True},
-                "hcl_keep_fields": {"inline_policy.name": True},
-            },
-            "aws_iam_saml_provider": {
-                "hcl_file_function": {"saml_metadata_document": {"type": "xml"}}
-            },
-            "aws_iam_openid_connect_provider": {
-                "hcl_prefix": {"url": "https://"}
-            }
-
-
-        }
+        self.transform_rules = {}
         self.provider_name = provider_name
         self.script_dir = script_dir
         self.schema_data = schema_data
@@ -45,16 +19,6 @@ class IAM_POLICY:
                        self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules)
         self.resource_list = {}
 
-    # def get_policy_documents(self, attributes):
-    #     # convert data_dict to str
-    #     policy_documents = attributes.get("policy")
-    #     data_str = json.dumps(policy_documents)
-    #     data_str = data_str.replace('${', '$${')
-    #     # convert data_str back to dict
-    #     result = json.loads(data_str)
-    #     print(result.keys())
-    #     exit()
-    #     return result      
 
     def get_policy_documents(self, attributes):
         # convert data_dict to str
@@ -75,33 +39,7 @@ class IAM_POLICY:
     def iam(self):
         self.hcl.prepare_folder(os.path.join("generated", "iam_policy"))
 
-        # self.aws_iam_role()
         self.aws_iam_policy()
-        # self.aws_iam_access_key()
-        # self.aws_iam_account_alias()
-        # self.aws_iam_account_password_policy()
-        # self.aws_iam_group()
-        # self.aws_iam_group_policy()
-        # self.aws_iam_instance_profile()
-        # self.aws_iam_openid_connect_provider()
-        # # self.aws_iam_policy_attachment() #Is a dangerous resource, can delete data conflicts with aws_iam_role_policy_attachment, aws_iam_user_policy_attachment, aws_iam_group_policy_attachment
-
-        # self.aws_iam_role_policy()
-        # # self.aws_iam_saml_provider() #We do not have access to the xml file generated
-        # self.aws_iam_server_certificate()
-        # self.aws_iam_service_linked_role()
-        # self.aws_iam_service_specific_credential()
-        # self.aws_iam_signing_certificate()
-        # self.aws_iam_user()
-        # self.aws_iam_user_group_membership()
-        # self.aws_iam_user_login_profile()
-        # self.aws_iam_user_policy()
-        # self.aws_iam_user_policy_attachment()
-        # self.aws_iam_user_ssh_key()
-        # self.aws_iam_virtual_mfa_device()
-        # self.aws_iam_group_policy_attachment()
-        # self.aws_iam_role_policy_attachment()
-
         self.hcl.refresh_state()
 
         functions = {'get_policy_documents': self.get_policy_documents,}

@@ -74,6 +74,7 @@ class S3:
             'server_side_encryption_configuration': self.server_side_encryption_configuration,
             'aws_s3_bucket_policy_policy': self.aws_s3_bucket_policy_policy,
             'build_logging': self.build_logging,
+            'get_object_lock_configuration_rule': self.get_object_lock_configuration_rule,
         }
 
         self.hcl.module_hcl_code("terraform.tfstate",
@@ -96,6 +97,15 @@ class S3:
             result['target_prefix'] = tmp
 
         return result
+    
+    def get_object_lock_configuration_rule(self, state):
+        rule = state.get('rule', [])
+        if rule:
+            default_retention=rule[0].get('default_retention', [])
+            if default_retention:
+                rule[0]['default_retention'] = default_retention[0]
+
+        return rule
 
     def aws_s3_bucket_acl_owner(self, state):
         result = {}
@@ -247,7 +257,7 @@ class S3:
         for bucket in all_buckets:
             bucket_name = bucket["Name"]
 
-            # if bucket_name != "allogy-gov-bundles" and bucket_name != "allogy-agw-050965680660-bundles":
+            # if bucket_name != "ae-dev-loadbalancer-logs" and bucket_name != "ae-eks-production-logs" and bucket_name !=  "ae-eks-staging-logs":
             #     continue
 
             # Retrieve the region of the bucket
