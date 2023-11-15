@@ -4,12 +4,15 @@ aws_elasticache_replication_group:
   terraform_module_version: "0.20.0"
   target_resource_name: default
   name_field: replication_group_id
+  path: "elasticache_redis"
+  dependencies:
+    - "../security_group"
   defaults:
     enabled: true
     # cloudwatch_metric_alarms_enabled: false
     create_parameter_group_name: false
     create_subnet_group_name: false
-    create_security_group: false
+    # create_security_group: false
   fields:
     auth_token:
       field: auth_token
@@ -115,6 +118,10 @@ aws_elasticache_replication_group:
     security_group_names:
       field: security_group_names
       type: list
+    security_groups:
+      function: get_security_group_names
+      arg: security_group_ids
+      type: list
 
   childs:
     aws_elasticache_subnet_group:
@@ -142,6 +149,14 @@ aws_elasticache_replication_group:
         subnet_group_tags:
           field: tags
           type: map
+        vpc_id:
+          function: get_vpc_id_by_subnet
+          type: string
+          arg: vpc_id
+        vpc_name:
+          function: get_vpc_name_by_subnet
+          type: string
+          arg: vpc_id
 
     aws_elasticache_parameter_group:
       join:
@@ -167,45 +182,101 @@ aws_elasticache_replication_group:
           field: tags
           type: map
 
-    aws_security_group:
+    # aws_security_group:
+    #   join:
+    #     id:
+    #       join_function: match_security_group
+    #   target_resource_name: default
+    #   fields:
+    #     create_security_group:
+    #       unique: true
+    #     security_group_name:
+    #       field: name
+    #       type: string
+    #     vpc_id:
+    #       function: get_vpc_id
+    #       type: string
+    #       arg: vpc_id
+    #     vpc_name:
+    #       function: get_vpc_name
+    #       type: string
+    #       arg: vpc_id
+    #     security_group_description:
+    #       field: description
+    #       type: string
+    #     security_group_tags:
+    #       field: tags
+    #       type: map
+    #   childs:
+    #     aws_security_group_rule:
+    #       join:
+    #         id:
+    #           field: security_group_id
+    #       target_resource_name: default
+    #       second_index:
+    #         field: id
+    #       import_id:
+    #         function: aws_security_group_rule_import_id
+    #       fields:
+    #         create_security_group:
+    #           unique: true
+    #         security_group_rules:
+    #           function: get_security_group_rules
+    #           arg: id
+    #           type: list
+
+aws_security_group:
+  # terraform_module: "../../../terraform-aws-modules/terraform-aws-security-group"
+  terraform_module: "github.com/finisterra-io/terraform-aws-security-group?ref=main"
+  terraform_module_version: "5.2.0"
+  target_resource_name: default
+  name_field: security_group_name
+  add_id_hash_to_name: true
+  path: "security_group"
+  defaults:
+    create_before_destroy: false
+  fields:
+    security_group_name:
+      field: name
+      type: string
+    vpc_name:
+      function: get_vpc_name
+      arg: vpc_id
+      type: string
+    vpc_id:
+      function: get_vpc_id
+      type: string
+      arg: vpc_id
+    security_group_description:
+      field: description
+      type: string
+    tags:
+      field: tags
+      type: map
+  childs:
+    aws_vpc_security_group_ingress_rule:
       join:
         id:
-          join_function: match_security_group
-      target_resource_name: default
+          field: security_group_id
+      import_id:
+        field: security_group_rule_id
+      target_resource_name: dbc
+      second_index:
+        field: id
       fields:
-        create_security_group:
-          unique: true
-        security_group_name:
-          field: name
-          type: string
-        vpc_id:
-          function: get_vpc_id
-          type: string
-          arg: vpc_id
-        vpc_name:
-          function: get_vpc_name
-          type: string
-          arg: vpc_id
-        security_group_description:
-          field: description
-          type: string
-        security_group_tags:
-          field: tags
+        ingress_rules:
+          function: get_security_group_rules
           type: map
-      childs:
-        aws_security_group_rule:
-          join:
-            id:
-              field: security_group_id
-          target_resource_name: default
-          second_index:
-            field: id
-          import_id:
-            function: aws_security_group_rule_import_id
-          fields:
-            create_security_group:
-              unique: true
-            security_group_rules:
-              function: get_security_group_rules
-              arg: id
-              type: list
+    aws_vpc_security_group_egress_rule:
+      join:
+        id:
+          field: security_group_id
+      import_id:
+        field: security_group_rule_id
+      target_resource_name: dbc
+      second_index:
+        field: id
+      fields:
+        egress_rules:
+          function: get_security_group_rules
+          type: map

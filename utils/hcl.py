@@ -230,8 +230,9 @@ class HCL:
             else:
                 return self.get_value_from_tfstate(value, keys[1:], type)
         except KeyError:
-            print(
-                f"Warning: field '{'.'.join(keys)}' not found in state file.")
+            if '.'.join(keys):
+                print(
+                    f"Warning: field '{'.'.join(keys)}' not found in state file.")
             return None
 
     def string_repr(self, value, field_type=None):

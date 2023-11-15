@@ -25,7 +25,6 @@ aws_security_group:
     tags:
       field: tags
       type: map
-  #BLocking because of all the issues, look into using  aws_vpc_security_group_ingress_rule and  aws_vpc_security_group_egress_rule
   childs:
     aws_vpc_security_group_ingress_rule:
       join:

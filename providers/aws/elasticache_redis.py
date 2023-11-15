@@ -1,6 +1,6 @@
 import os
 from utils.hcl import HCL
-
+from providers.aws.security_group import SECURITY_GROUP
 
 class ElasticacheRedis:
     def __init__(self, elasticache_client, ec2_client, script_dir, provider_name, schema_data, region, s3Bucket,
@@ -33,6 +33,12 @@ class ElasticacheRedis:
         self.hcl = HCL(self.schema_data, self.provider_name,
                        self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules)
         self.resource_list = {}
+
+        self.processed_subnet_groups = set()
+        self.processed_parameter_groups = set()
+        self.processed_security_groups = set()
+
+        self.security_group_instance = SECURITY_GROUP(ec2_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
 
     def match_security_group(self, parent_attributes, child_attributes):
         child_security_group_id = child_attributes.get("id", None)
@@ -113,6 +119,58 @@ class ElasticacheRedis:
             return attributes.get(arg)
         else:
             return ""
+        
+    def get_security_group_names(self, attributes, arg):
+        security_group_ids = attributes.get(arg)
+        result=[]
+        for security_group_id in security_group_ids:
+            response = self.ec2_client.describe_security_groups(GroupIds=[security_group_id])
+            if not response or 'SecurityGroups' not in response or not response['SecurityGroups']:
+                # Handle this case as required, for example:
+                print(f"No security group information found for Security Group ID: {security_group_id}")
+                continue
+            #just get the security group name and not the Name tag
+            security_group_name = response['SecurityGroups'][0].get('GroupName', None)
+            if security_group_name is None:
+                print(f"No 'name found for Security Group ID: {security_group_id}")
+            else:
+                result.append(security_group_name)
+        return result
+        
+    def get_vpc_name_by_subnet(self, attributes, arg):
+        subnet_ids = attributes.get("subnet_ids")
+        if subnet_ids:
+            subnet_id = subnet_ids[0]
+            #get the vpc id for the subnet_id
+            response = self.ec2_client.describe_subnets(SubnetIds=[subnet_id])
+            if not response or 'Subnets' not in response or not response['Subnets']:
+                # Handle this case as required, for example:
+                print(f"No subnet information found for Subnet ID: {subnet_id}")
+                return None
+            vpc_id = response['Subnets'][0].get('VpcId', None)
+
+        response = self.ec2_client.describe_vpcs(VpcIds=[vpc_id])
+
+        if not response or 'Vpcs' not in response or not response['Vpcs']:
+            # Handle this case as required, for example:
+            print(f"No VPC information found for VPC ID: {vpc_id}")
+            return None
+
+        vpc_tags = response['Vpcs'][0].get('Tags', [])
+        vpc_name = next((tag['Value']
+                        for tag in vpc_tags if tag['Key'] == 'Name'), None)
+
+        if vpc_name is None:
+            print(f"No 'Name' tag found for VPC ID: {vpc_id}")
+
+        return vpc_name
+
+    def get_vpc_id_by_subnet(self, attributes, arg):
+        vpc_name = self.get_vpc_name_by_subnet(attributes, arg)
+        if vpc_name is None:
+            return attributes.get(arg)
+        else:
+            return ""        
 
     def get_security_group_rules(self, attributes, arg):
         key = attributes[arg]
@@ -151,15 +209,18 @@ class ElasticacheRedis:
         # self.aws_elasticache_user_group_association()
 
         functions = {
-            'match_security_group': self.match_security_group,
+            # 'match_security_group': self.match_security_group,
             'auto_minor_version_upgrade': self.auto_minor_version_upgrade,
             'build_dict_var': self.build_dict_var,
             'get_subnet_names': self.get_subnet_names,
             'get_vpc_name': self.get_vpc_name,
-            'get_security_group_rules': self.get_security_group_rules,
+            'get_vpc_name_by_subnet': self.get_vpc_name_by_subnet,
+            # 'get_security_group_rules': self.get_security_group_rules,
             'get_subnet_ids': self.get_subnet_ids,
             'get_vpc_id': self.get_vpc_id,
-            'aws_security_group_rule_import_id': self.aws_security_group_rule_import_id,
+            'get_vpc_id_by_subnet': self.get_vpc_id_by_subnet,
+            'get_security_group_names': self.get_security_group_names,
+            # 'aws_security_group_rule_import_id': self.aws_security_group_rule_import_id,
         }
 
         self.hcl.refresh_state()
@@ -217,10 +278,13 @@ class ElasticacheRedis:
         paginator = self.elasticache_client.get_paginator(
             "describe_replication_groups")
         for page in paginator.paginate():
-            for replication_group in page["ReplicationGroups"]:
+            for replication_group in page["ReplicationGroups"]:                
                 # Skip the groups that are not Redis
                 if "Engine" in replication_group and replication_group["Engine"] != "redis":
                     continue
+
+                # if replication_group['ReplicationGroupId'] != "bpu-replication-group":
+                #     continue
 
                 print(
                     f"  Processing ElastiCache Replication Group: {replication_group['ReplicationGroupId']}")
@@ -241,34 +305,33 @@ class ElasticacheRedis:
                     attributes["engine_version"] = replication_group["EngineVersion"]
 
                 # Track processed subnet and parameter groups to avoid duplicates
-                processed_subnet_groups = set()
-                processed_parameter_groups = set()
-                processed_security_groups = set()
+
 
                 # Process the member Cache Clusters
                 for cache_cluster_id in replication_group["MemberClusters"]:
                     cache_cluster = self.elasticache_client.describe_cache_clusters(
                         CacheClusterId=cache_cluster_id)["CacheClusters"][0]
 
-                    if "CacheSubnetGroupName" in cache_cluster and not cache_cluster["CacheSubnetGroupName"].startswith("default") and cache_cluster["CacheSubnetGroupName"] not in processed_subnet_groups:
+                    if "CacheSubnetGroupName" in cache_cluster and not cache_cluster["CacheSubnetGroupName"].startswith("default") and cache_cluster["CacheSubnetGroupName"] not in self.processed_subnet_groups:
                         self.aws_elasticache_subnet_group(
                             cache_cluster["CacheSubnetGroupName"])
-                        processed_subnet_groups.add(
+                        self.processed_subnet_groups.add(
                             cache_cluster["CacheSubnetGroupName"])
 
-                    if "CacheParameterGroup" in cache_cluster and "CacheParameterGroupName" in cache_cluster["CacheParameterGroup"] and not cache_cluster["CacheParameterGroup"]["CacheParameterGroupName"].startswith("default") and cache_cluster["CacheParameterGroup"]["CacheParameterGroupName"] not in processed_parameter_groups:
+                    if "CacheParameterGroup" in cache_cluster and "CacheParameterGroupName" in cache_cluster["CacheParameterGroup"] and not cache_cluster["CacheParameterGroup"]["CacheParameterGroupName"].startswith("default") and cache_cluster["CacheParameterGroup"]["CacheParameterGroupName"] not in self.processed_parameter_groups:
                         self.aws_elasticache_parameter_group(
                             cache_cluster["CacheParameterGroup"]["CacheParameterGroupName"])
-                        processed_parameter_groups.add(
+                        self.processed_parameter_groups.add(
                             cache_cluster["CacheParameterGroup"]["CacheParameterGroupName"])
 
                     # Processing Security Groups
                     if "SecurityGroups" in cache_cluster:
                         for sg in cache_cluster["SecurityGroups"]:
-                            if sg['Status'] == 'active' and sg['SecurityGroupId'] not in processed_security_groups:
-                                self.aws_security_group(
-                                    [sg['SecurityGroupId']])
-                                processed_security_groups.add(
+                            if sg['Status'] == 'active' and sg['SecurityGroupId'] not in self.processed_security_groups:
+                                # self.aws_security_group(
+                                #     [sg['SecurityGroupId']])
+                                self.security_group_instance.aws_security_group(sg['SecurityGroupId'])
+                                self.processed_security_groups.add(
                                     sg['SecurityGroupId'])
 
                 self.hcl.process_resource(

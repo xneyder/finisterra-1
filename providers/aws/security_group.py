@@ -38,15 +38,13 @@ class SECURITY_GROUP:
         self.aws_security_group()
 
         self.hcl.refresh_state()
-
         functions = {}
-
         self.hcl.module_hcl_code("terraform.tfstate", os.path.join(
             os.path.dirname(os.path.abspath(__file__)), "security_group.yaml"), functions, self.region, self.aws_account_id, self.additional_data)
 
         self.json_plan = self.hcl.json_plan
 
-    def aws_security_group(self):
+    def aws_security_group(self, security_group_id=None):
         print("Processing Security Groups...")
 
         # Create a response dictionary to collect responses for all security groups
@@ -54,6 +52,10 @@ class SECURITY_GROUP:
 
         for security_group in response["SecurityGroups"]:
             if security_group["GroupName"] == "default":
+                continue
+
+            # Process only the specified security group if security_group_id is provided
+            if security_group_id and security_group["GroupId"] != security_group_id:
                 continue
 
             # if security_group["GroupName"] != "launch-wizard-18":
