@@ -125,32 +125,9 @@ aws_vpc:
         field: cidr_block
       target_resource_name: private
       fields:
-        private_subnet_assign_ipv6_address_on_creation:
-          field: assign_ipv6_address_on_creation
-          type: bool
-          moudule_default: false
         private_subnets:
           function: add_private_subnet
           type: map
-        private_subnet_enable_dns64:
-          field: enable_dns64
-          type: bool
-          moudule_default: true
-        private_subnet_enable_resource_name_dns_aaaa_record_on_launch:
-          field: enable_resource_name_dns_aaaa_record_on_launch
-          type: bool
-          moudule_default: true
-        private_subnet_enable_resource_name_dns_a_record_on_launch:
-          field: enable_resource_name_dns_a_record_on_launch
-          type: bool
-          moudule_default: false
-        private_subnet_ipv6_native:
-          field: ipv6_native
-          type: bool
-          moudule_default: false
-        private_subnet_private_dns_hostname_type_on_launch:
-          field: private_dns_hostname_type_on_launch
-          type: string
       childs:
         aws_route_table_association:
           join:
@@ -216,7 +193,7 @@ aws_vpc:
         map_public_ip_on_launch:
           field: map_public_ip_on_launch
           type: bool
-          module_default: false
+          # module_default: false
         public_subnet_private_dns_hostname_type_on_launch:
           field: private_dns_hostname_type_on_launch
           type: string

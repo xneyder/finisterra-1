@@ -284,7 +284,7 @@ class HCL:
 
         return None
 
-    def match_fields(self, parent_attributes, child_attributes, join_field, functions):
+    def match_fields(self, parent_attributes, child_attributes, join_field, functions, additional_data):
         # print('join_field', join_field)
         if isinstance(join_field, tuple):
             parent_field, value_dict = join_field
@@ -294,27 +294,30 @@ class HCL:
             join_func = functions.get(join_function)
             func_name = value_dict.get('function')
             func = functions.get(func_name)
-            if not func and func_name:   
-                func = getattr(self.functions_module, func_name)
-
-            if not join_func and join_function:                    
-                func = getattr(self.functions_module, join_function)
+            arg = value_dict.get('arg')
 
             if func is not None:
-                arg = value_dict.get('arg')
                 child_value = None
                 if arg:
                     child_value = func(child_attributes, arg)
                 else:
                     child_value = func(child_attributes)
-                # print('parent value:', self.get_value_from_tfstate(
-                #     parent_attributes, parent_field))
-                # print('child value:', child_value)
                 if self.get_value_from_tfstate(parent_attributes, parent_field) == child_value:
                     return True
+            elif not func and func_name:
+                func = getattr(self.functions_module, func_name)
+                child_value = func(child_attributes, arg, additional_data)
+                if self.get_value_from_tfstate(parent_attributes, parent_field) == child_value:
+                    return True
+
             elif join_func is not None:
                 matches = join_func(parent_attributes, child_attributes)
                 return matches
+            elif not join_func and join_function:
+                join_func = getattr(self.functions_module, join_function)
+                matches = join_func(parent_attributes, child_attributes)
+                return matches
+            
             else:
                 child_field = value_dict.get('field', None)
                 if child_field:
@@ -328,9 +331,8 @@ class HCL:
 
         return False
 
-    def process_resource_module(self, resource, resources, config, functions={}):
+    def process_resource_module(self, resource, resources, config, functions={}, additional_data={}):
         root_attributes = set()
-
 
         def process_resource(resource, resources, config, parent_root_attribute_key_value=None):
 
@@ -400,17 +402,20 @@ class HCL:
             if isinstance(skip_if, dict) and 'function' in skip_if:
                 func_name = skip_if.get('function')
                 func = functions.get(func_name)
-
-                #look in functions/all.py shared functions file
-                if not func and func_name:                    
-                    func = getattr(self.functions_module, func_name)
+                arg = skip_if.get('arg', None)
 
                 if func is not None:
-                    arg = skip_if.get('arg')
                     if arg:
                         skip_if = func(resource_attributes, arg)
                     else:
                         skip_if = func(resource_attributes)
+                        
+                #look in functions/all.py shared functions file
+                elif not func and func_name:
+                    func = getattr(self.functions_module, func_name)
+                    skip_if = func(resource_attributes, arg, additional_data)
+                    
+
 
             if skip_if:
                 print(
@@ -425,16 +430,15 @@ class HCL:
             if isinstance(target_resource_name, dict) and 'function' in target_resource_name:
                 func_name = target_resource_name.get('function')
                 func = functions.get(func_name)
-                #look in functions/all.py shared functions file
-                if not func and func_name:
-                    func = getattr(self.functions_module, func_name)
-
+                arg = target_resource_name.get('arg')
                 if func is not None:
-                    arg = target_resource_name.get('arg')
                     if arg:
                         target_resource_name = func(resource_attributes, arg)
                     else:
                         target_resource_name = func(resource_attributes)
+                elif not func and func_name:
+                    func = getattr(self.functions_module, func_name)
+                    target_resource_name = func(resource_attributes, arg, additional_data)
 
             target_submodule = resource_config.get('target_submodule', "")
             root_attribute = resource_config.get('root_attribute', "")
@@ -479,17 +483,18 @@ class HCL:
                 state_field = field_info.get('field', '').split('.')
                 if func_name:
                     func = functions.get(func_name)
-                    #look in functions/all.py shared functions file
-                    if not func and func_name:
-                        func = getattr(self.functions_module, func_name)
-
+                    arg = field_info.get('arg', '')
+                    value = None
                     if func is not None:
-                        value = None
-                        arg = field_info.get('arg', '')
                         if arg:
                             value = func(resource_attributes, arg)
                         else:
                             value = func(resource_attributes)
+
+                    elif not func and func_name:
+                        func = getattr(self.functions_module, func_name)
+                        value = func(resource_attributes, arg, additional_data)
+
                 elif state_field:
                     value = self.get_value_from_tfstate(
                         resource_attributes, state_field, field_type)
@@ -556,15 +561,17 @@ class HCL:
                     else:
                         func_name = first_index.get('function')
                         func = functions.get(func_name)
-                        if not func and func_name:
-                            func = getattr(self.functions_module, func_name)
+                        arg = first_index.get('arg')
                         if func is not None:
-                            arg = first_index.get('arg')
                             if arg:
                                 first_index_value = func(
                                     resource_attributes, arg)
                             else:
                                 first_index_value = func(resource_attributes)
+                        elif not func and func_name:
+                            func = getattr(self.functions_module, func_name)
+                            first_index_value = func(resource_attributes, arg, additional_data)
+
                         else:
                             field_name = first_index.get('field')
                             if field_name:
@@ -580,16 +587,18 @@ class HCL:
                     else:
                         func_name = second_index.get('function')
                         func = functions.get(func_name)
-                        if not func and func_name:
-                            func = getattr(self.functions_module, func_name)
+                        arg = second_index.get('arg')
 
                         if func is not None:
-                            arg = second_index.get('arg')
                             if arg:
                                 second_index_value = func(
                                     resource_attributes, arg)
                             else:
                                 second_index_value = func(resource_attributes)
+                        elif not func and func_name:
+                            func = getattr(self.functions_module, func_name)
+                            second_index_value = func(resource_attributes, arg, additional_data)
+
                         else:
                             field_name = second_index.get('field')
                             if field_name:
@@ -601,16 +610,18 @@ class HCL:
                 if import_id:
                     func_name = import_id.get('function')
                     func = functions.get(func_name)
-                    if not func and func_name:
-                        func = getattr(self.functions_module, func_name)
+                    arg = import_id.get('arg')
 
                     if func is not None:
-                        arg = import_id.get('arg')
                         if arg:
                             import_id_value = func(
                                 resource_attributes, arg)
                         else:
                             import_id_value = func(resource_attributes)
+                    elif not func and func_name:
+                        func = getattr(self.functions_module, func_name)
+                        import_id_value = func(resource_attributes, arg, additional_data)
+
                     else:
                         field_name = import_id.get('field')
                         if field_name:
@@ -647,7 +658,7 @@ class HCL:
                     join_fields = [
                         item for item in child_config.get('join', {}).items()]
                     match = all(self.match_fields(
-                        resource_attributes, child_instance['instances'][0]['attributes'], join_field, functions) for join_field in join_fields)
+                        resource_attributes, child_instance['instances'][0]['attributes'], join_field, functions, additional_data) for join_field in join_fields)
                     if match:
                         child_attributes, child_resources = process_resource(
                             child_instance, resources, {child_type: child_config}, root_attribute_key_value)
@@ -832,7 +843,7 @@ class HCL:
         else:
             return []
 
-    def module_hcl_code(self, terraform_state_file, config_file, functions={}, aws_region="", aws_account_id=""):
+    def module_hcl_code(self, terraform_state_file, config_file, functions={}, aws_region="", aws_account_id="", additional_data={}):
 
         with open(config_file, 'r') as f:
             config = yaml.safe_load(f)
@@ -848,7 +859,7 @@ class HCL:
             if resource['type'] in config:  # Check if resource is root in the config
                 resource_config = config[resource['type']]
                 instance = self.process_resource_module(
-                    resource, resources, config, functions)
+                    resource, resources, config, functions, additional_data)
                 if not instance:
                     continue
                 instance['module'] = resource_config.get('terraform_module')

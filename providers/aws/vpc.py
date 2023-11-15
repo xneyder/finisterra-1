@@ -38,6 +38,7 @@ class VPC:
         self.network_acl_ids = {}
         self.network_acls = {}
         self.dhcp_options_domain_name = {}
+        self.default_routes={}
 
         self.iam_role_instance = IAM_ROLE(iam_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)        
 
@@ -92,6 +93,7 @@ class VPC:
         self.private_route_tables = {}
         self.network_acl_ids = {}
         self.network_acls = {}
+        # self.default_routes = {}
         # self.dhcp_options_domain_name = {}
 
         return None
@@ -102,13 +104,31 @@ class VPC:
         availability_zone = attributes.get('availability_zone')
         tags = attributes.get('tags', {})
         ipv6_cidr_block = attributes.get('ipv6_cidr_block')
+        assign_ipv6_address_on_creation = attributes.get(
+            'assign_ipv6_address_on_creation')
+        enable_dns64 = attributes.get('enable_dns64')
+        enable_resource_name_dns_aaaa_record_on_launch = attributes.get(
+            'enable_resource_name_dns_aaaa_record_on_launch')
+        enable_resource_name_dns_a_record_on_launch = attributes.get(
+            'enable_resource_name_dns_a_record_on_launch')
+        ipv6_native = attributes.get('ipv6_native')
+        map_public_ip_on_launch = attributes.get('map_public_ip_on_launch')
+        private_dns_hostname_type_on_launch = attributes.get(
+            'private_dns_hostname_type_on_launch')
         self.public_subnets[subnet_id] = {
             cidr_block: {
                 'az': availability_zone,
                 'ipv6_cidr_block': ipv6_cidr_block,
                 'tags': tags,
                 'route_tables': [],
-                'nat_gateway': {}
+                'nat_gateway': {},
+                'assign_ipv6_address_on_creation': assign_ipv6_address_on_creation,
+                'enable_dns64': enable_dns64,
+                'enable_resource_name_dns_aaaa_record_on_launch': enable_resource_name_dns_aaaa_record_on_launch,
+                'enable_resource_name_dns_a_record_on_launch': enable_resource_name_dns_a_record_on_launch,
+                'ipv6_native': ipv6_native,
+                'map_public_ip_on_launch': map_public_ip_on_launch,
+                'private_dns_hostname_type_on_launch': private_dns_hostname_type_on_launch,
             }
         }
         return self.public_subnets[subnet_id]
@@ -206,6 +226,37 @@ class VPC:
 
         return filtered_routes
 
+    ### in the function above it misses the gatewyid and eni routes, this is an approach but then it shows a drift in the terraform plan
+    # def default_route_table_routes(self, attributes):
+    #     id = attributes.get('id')
+
+    #     key_transform = {
+    #         'DestinationCidrBlock' : 'cidr_block',
+    #         'DestinationIpv6CidrBlock' : 'ipv6_cidr_block',
+    #         'DestinationPrefixListId' : 'destination_prefix_list_id',
+    #         'EgressOnlyInternetGatewayId' : 'egress_only_gateway_id',
+    #         'GatewayId' : 'gateway_id',
+    #         'InstanceId' : 'instance_id',
+    #         'NatGatewayId' : 'nat_gateway_id',
+    #         'NetworkInterfaceId' : 'network_interface_id',
+    #         'TransitGatewayId' : 'transit_gateway_id',
+    #         'VpcPeeringConnectionId' : 'vpc_peering_connection_id',
+
+    #     }
+
+    #     # Filter out entries with empty string values
+    #     filtered_routes = []
+    #     for route in self.default_routes[id]:
+    #         filtered_route={}
+    #         for k, v in route.items():                
+    #             # if not v:
+    #             #     continue
+    #             if k in key_transform:
+    #                 filtered_route[key_transform[k]] = v
+    #         filtered_routes.append(filtered_route)
+
+    #     return filtered_routes
+
     def add_eip(self, attributes):
         allocation_id = attributes.get('allocation_id')
         subnet_id, nat_gateway_name = self.public_subnets['allocations'][allocation_id]
@@ -265,12 +316,31 @@ class VPC:
         availability_zone = attributes.get('availability_zone')
         tags = attributes.get('tags', {})
         ipv6_cidr_block = attributes.get('ipv6_cidr_block')
+        assign_ipv6_address_on_creation = attributes.get(
+            'assign_ipv6_address_on_creation')
+        enable_dns64 = attributes.get('enable_dns64')
+        enable_resource_name_dns_aaaa_record_on_launch = attributes.get(
+            'enable_resource_name_dns_aaaa_record_on_launch')
+        enable_resource_name_dns_a_record_on_launch = attributes.get(
+            'enable_resource_name_dns_a_record_on_launch')
+        ipv6_native = attributes.get('ipv6_native')
+        private_dns_hostname_type_on_launch = attributes.get(
+            'private_dns_hostname_type_on_launch')
+        map_public_ip_on_launch = attributes.get('map_public_ip_on_launch')
+        
         self.private_subnets[subnet_id] = {
             cidr_block: {
                 'az': availability_zone,
                 'ipv6_cidr_block': ipv6_cidr_block,
                 'tags': tags,
-                'route_tables': []
+                'route_tables': [],
+                'assign_ipv6_address_on_creation': assign_ipv6_address_on_creation,
+                'enable_dns64': enable_dns64,
+                'enable_resource_name_dns_aaaa_record_on_launch': enable_resource_name_dns_aaaa_record_on_launch,
+                'enable_resource_name_dns_a_record_on_launch': enable_resource_name_dns_a_record_on_launch,
+                'ipv6_native': ipv6_native,
+                'private_dns_hostname_type_on_launch': private_dns_hostname_type_on_launch,
+                'map_public_ip_on_launch': map_public_ip_on_launch,
             }
         }
         return self.private_subnets[subnet_id]
@@ -528,8 +598,8 @@ class VPC:
             is_default = vpc.get("IsDefault", False)
             if not is_default:
                 vpc_id = vpc["VpcId"]
-                if vpc_id != "vpc-06cc176a61adea807":
-                    continue
+                # if vpc_id != "vpc-88ac14ee":
+                #     continue
                 print(f"  Processing VPC: {vpc_id}")
                 attributes = {
                     "id": vpc_id,
@@ -624,7 +694,13 @@ class VPC:
             route_table_id = route_table["RouteTableId"]
             print(
                 f"  Processing Default Route Table: {route_table_id} for VPC: {vpc_id}")
-
+            
+            self.default_routes[route_table_id] = []
+            for route in route_table["Routes"]:
+                if route.get("GatewayId", "") != "local":
+                    self.default_routes[route_table_id] = route_table["Routes"]
+                    self.default_routes[route_table_id].remove(route)
+            
             attributes = {
                 "id": route_table_id,
                 "vpc_id": vpc_id,
@@ -1477,10 +1553,14 @@ class VPC:
         route_tables = self.ec2_client.describe_route_tables()["RouteTables"]
 
         for rt in route_tables:
+            # Check if this is a default route table
+            if any(assoc.get("Main") for assoc in rt["Associations"]):
+                continue  # Skip this route table if it's the default one
+
             route_table_id = rt["RouteTableId"]
 
             for assoc in rt["Associations"]:
-                # check the subnet_id
+                # check the subnet_id and ensure this isn't a main association
                 if not assoc.get("Main") and assoc["SubnetId"] == subnet_id:
                     assoc_id = assoc["RouteTableAssociationId"]
                     print(
@@ -1495,6 +1575,7 @@ class VPC:
                         "aws_route_table_association", assoc_id.replace("-", "_"), attributes)
                     self.resource_list['aws_route_table_association'][assoc_id.replace(
                         "-", "_")] = attributes
+
 
     def aws_security_group(self):
         print("Processing Security Groups...")

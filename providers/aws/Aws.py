@@ -944,4 +944,3 @@ class Aws:
                                   self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.security_group()
         self.json_plan = instance.json_plan
-        self.resource_list['msk'] = instance.resource_list
