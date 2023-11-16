@@ -1,10 +1,10 @@
 import os
 from utils.hcl import HCL
-
+from providers.aws.iam_role import IAM_ROLE
 
 class Aurora:
     def __init__(self, rds_client, logs_client, iam_client, appautoscaling_client, script_dir, provider_name, schema_data, region, s3Bucket,
-                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id):
+                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id, hcl=None):
         self.rds_client = rds_client
         self.logs_client = logs_client
         self.iam_client = iam_client
@@ -19,8 +19,19 @@ class Aurora:
 
         self.workspace_id = workspace_id
         self.modules = modules
-        self.hcl = HCL(self.schema_data, self.provider_name,
+        self.s3Bucket = s3Bucket
+        self.dynamoDBTable = dynamoDBTable
+        self.state_key = state_key
+
+        
+        if not hcl:
+            self.hcl = HCL(self.schema_data, self.provider_name,
                        self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules)
+        else:
+            self.hcl = hcl
+
+        self.iam_role_instance = IAM_ROLE(iam_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
+
         self.resource_list = {}
         self.aws_rds_cluster_attrs = {}
 
@@ -666,7 +677,9 @@ class Aurora:
 
                     monitoring_role_arn = rds_instance.get("MonitoringRoleArn")
                     if monitoring_role_arn:
-                        self.aws_iam_role(monitoring_role_arn)
+                        role_name = monitoring_role_arn.split('/')[-1]
+                        self.iam_role_instance.aws_iam_role(role_name)
+                        # self.aws_iam_role(monitoring_role_arn)
 
                     # call aws_cloudwatch_log_group function with instance_id and each log export name as parameters
                     for log_export_name in rds_instance.get("EnabledCloudwatchLogsExports", []):

@@ -89,7 +89,7 @@ def main(aws_account_id, aws_region, group_code):
     elif group_code == 'iam':
         aws_region = "global"
         provider.iam_role()
-    elif group_code == 'kms':  # FIXME: This is not working
+    elif group_code == 'kms':
         provider.kms()
     elif group_code == 'aws_lambda':
         provider.aws_lambda()

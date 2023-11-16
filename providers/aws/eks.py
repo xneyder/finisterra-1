@@ -1,15 +1,16 @@
 import os
 from utils.hcl import HCL
 from providers.aws.iam_role import IAM_ROLE
-
+from providers.aws.kms import KMS
 
 class EKS:
-    def __init__(self, eks_client, logs_client, ec2_client, iam_client, autoscaling_client, script_dir, provider_name, schema_data, region, s3Bucket,
-                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id):
+    def __init__(self, eks_client, logs_client, ec2_client, iam_client, autoscaling_client, kms_client, script_dir, provider_name, schema_data, region, s3Bucket,
+                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id,hcl = None):
         self.eks_client = eks_client
         self.logs_client = logs_client
         self.ec2_client = ec2_client
         self.iam_client = iam_client
+        self.kms_client = kms_client
         self.autoscaling_client = autoscaling_client
         self.transform_rules = {}
         self.provider_name = provider_name
@@ -18,12 +19,16 @@ class EKS:
         self.region = region
         self.workspace_id = workspace_id
         self.modules = modules
-        self.hcl = HCL(self.schema_data, self.provider_name,
+        if not hcl:
+            self.hcl = HCL(self.schema_data, self.provider_name,
                        self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules)
+        else:
+            self.hcl = hcl
         self.resource_list = {}
         self.aws_account_id = aws_account_id
 
         self.iam_role_instance = IAM_ROLE(iam_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
+        self.kms_instance = KMS(kms_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
 
     def get_field_from_attrs(self, attributes, arg):
         keys = arg.split(".")
@@ -448,6 +453,7 @@ class EKS:
         for cluster_name in clusters:
             cluster = self.eks_client.describe_cluster(name=cluster_name)[
                 "cluster"]
+            
 
             if cluster_name != "jx-qa-cluster-use1":
                 continue
@@ -461,6 +467,10 @@ class EKS:
             }
             self.hcl.process_resource(
                 "aws_eks_cluster", cluster_name.replace("-", "_"), attributes)
+            
+            #kms key
+            if cluster['encryptionConfig']:
+                self.kms_instance.aws_kms_key(cluster['encryptionConfig'][0]['provider']['keyArn'])
 
             # Call aws_eks_addon for each cluster
             self.aws_eks_addon(cluster_name)
@@ -483,6 +493,7 @@ class EKS:
 
             # eks node group
             self.aws_eks_node_group(cluster_name)
+
 
     def aws_eks_addon(self, cluster_name):
         print(f"Processing EKS Add-ons for Cluster: {cluster_name}...")

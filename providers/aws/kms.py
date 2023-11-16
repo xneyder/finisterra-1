@@ -50,44 +50,53 @@ class KMS:
 
         self.json_plan = self.hcl.json_plan
 
-    def aws_kms_key(self):
+
+    def aws_kms_key(self, key_arn=None):
         print("Processing KMS Keys...")
-        paginator = self.kms_client.get_paginator("list_keys")
-        for page in paginator.paginate():
-            for key in page["Keys"]:
-                try:
-                    key_id = key["KeyId"]
-                    key_metadata = self.kms_client.describe_key(KeyId=key_id)["KeyMetadata"]
 
-                    # Skip this key if it is not customer-managed
-                    if key_metadata["KeyManager"] != "CUSTOMER":
-                        continue
+        if key_arn:
+            # Process only the key specified by the ARN
+            try:
+                key_metadata = self.kms_client.describe_key(KeyId=key_arn)["KeyMetadata"]
+                if key_metadata["KeyManager"] == "CUSTOMER":
+                    self.process_key(key_metadata)
+            except botocore.exceptions.ClientError as e:
+                print(f"  Error processing KMS Key: {e}")
+        else:
+            # Process all customer-managed keys
+            paginator = self.kms_client.get_paginator("list_keys")
+            for page in paginator.paginate():
+                for key in page["Keys"]:
+                    try:
+                        key_id = key["KeyId"]
+                        key_metadata = self.kms_client.describe_key(KeyId=key_id)["KeyMetadata"]
+                        if key_metadata["KeyManager"] == "CUSTOMER":
+                            self.process_key(key_metadata)
+                    except botocore.exceptions.ClientError as e:
+                        print(f"  Error processing KMS Key: {e}")
 
-                    # if key_id != "mrk-a3f5efac59dd4030af5952cbf152917d":
-                    #     continue
+    def process_key(self, key_metadata):
+        key_id = key_metadata["KeyId"]
+        print(f"  Processing KMS Key: {key_id}")
 
-                    print(f"  Processing KMS Key: {key_id}")
+        attributes = {
+            "id": key_id,
+            "key_id": key_id,
+            "arn": key_metadata["Arn"],
+            "creation_date": key_metadata["CreationDate"].isoformat(),
+            "enabled": key_metadata["Enabled"],
+            "key_usage": key_metadata["KeyUsage"],
+            "key_state": key_metadata["KeyState"],
+        }
+        self.hcl.process_resource(
+            "aws_kms_key", key_id.replace("-", "_"), attributes)
 
-                    attributes = {
-                        "id": key_id,
-                        "key_id": key_id,
-                        "arn": key_metadata["Arn"],
-                        "creation_date": key_metadata["CreationDate"].isoformat(),
-                        "enabled": key_metadata["Enabled"],
-                        "key_usage": key_metadata["KeyUsage"],
-                        "key_state": key_metadata["KeyState"],
-                    }
-                    self.hcl.process_resource(
-                        "aws_kms_key", key_id.replace("-", "_"), attributes)
+        self.aws_kms_key_policy(key_metadata["Arn"])
 
-                    self.aws_kms_key_policy(key_metadata["Arn"])
+        self.aws_kms_alias(key_metadata["Arn"])
 
-                    self.aws_kms_alias(key_metadata["Arn"])
-
-                    self.aws_kms_grant(key_metadata["Arn"])
-
-                except botocore.exceptions.ClientError as e:
-                    print(f"  Error processing KMS Key: {e}")        
+        self.aws_kms_grant(key_metadata["Arn"])
+    
 
     def aws_kms_alias(self, kms_arn):
         print("Processing KMS Aliases...")
