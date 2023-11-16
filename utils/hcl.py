@@ -476,6 +476,7 @@ class HCL:
                 value = None
                 unique = field_info.get('unique', "N/A")
                 multiline = field_info.get('multiline', False)
+                jsonfield = field_info.get('jsonfield', True)
                 jsonencode = field_info.get('jsonencode', False)
                 default = field_info.get('default', 'N/A')
                 module_default = field_info.get('module_default', 'N/A')
@@ -533,9 +534,11 @@ class HCL:
                         value = None
 
                 if value not in [None, "", [], {}] or defaulted:
-                    if multiline:
+                    if multiline and jsonfield:
                         value = "<<EOF\n" + \
                             json.dumps(json.loads(value), indent=4) + "\nEOF\n"
+                    elif multiline and not jsonfield:
+                        value = "<<EOF\n" + value + "\nEOF\n"
                     if jsonencode:
                         value = "jsonencode(" + \
                             json.dumps(json.loads(value), indent=4) + ")\n"

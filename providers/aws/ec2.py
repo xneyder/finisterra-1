@@ -1,5 +1,6 @@
 import os
 from utils.hcl import HCL
+import base64
 
 
 class EC2:
@@ -42,6 +43,28 @@ class EC2:
     def init_fields(self, attributes):
         self.additional_ips_count = 0
 
+        return None
+    
+    def decode_base64(self, encoded_str):
+        if encoded_str is not None:
+            # Decode the base64 string
+            decoded_bytes = base64.b64decode(encoded_str)
+            # Convert the bytes to a string
+            decoded_str = decoded_bytes.decode('utf-8')
+            return decoded_str
+        else:
+            return "No data to decode."    
+    
+    def get_user_data(self, attributes, arg):
+        instance_id = attributes.get(arg)
+        response = self.ec2_client.describe_instance_attribute(
+            InstanceId=instance_id, 
+            Attribute='userData'
+        )
+        #decode base64 response["UserData"]["value"]  and return it
+        if "UserData" in response:
+            if "value" in response["UserData"]:
+                return self.decode_base64(response["UserData"]["Value"])
         return None
 
     def get_field_from_attrs(self, attributes, arg):
@@ -109,11 +132,6 @@ class EC2:
     def ec2(self):
         self.hcl.prepare_folder(os.path.join("generated", "ec2"))
 
-# aws_iam_policy
-# aws_iam_role_policy_attachment
-# aws_iam_role_policy_attachment
-# aws_cloudwatch_metric_alarm
-
         self.aws_instance()
 
         self.hcl.refresh_state()
@@ -125,6 +143,7 @@ class EC2:
             'init_fields': self.init_fields,
             'get_device_name': self.get_device_name,
             'get_device_name_list': self.get_device_name_list,
+            'get_user_data': self.get_user_data,
         }
         self.hcl.module_hcl_code("terraform.tfstate", os.path.join(
             os.path.dirname(os.path.abspath(__file__)), "ec2.yaml"), functions, self.region, self.aws_account_id)
@@ -341,8 +360,8 @@ class EC2:
                         f"  Skipping EC2 Instance (managed by EKS): {instance_id}")
                     continue
 
-                if instance_id != "i-02ec9b74504b5245b":
-                    continue
+                # if instance_id != "i-02ec9b74504b5245b":
+                #     continue
                 print(f"  Processing EC2 Instance: {instance_id}")
 
                 attributes = {
@@ -361,8 +380,6 @@ class EC2:
                         "/")[-1]  # Updated this line
                     self.aws_iam_instance_profile(iam_instance_profile_id)
 
-                if "UserData" in instance:
-                    attributes["user_data"] = instance["UserData"]
 
                 self.hcl.process_resource(
                     "aws_instance", instance_id.replace("-", "_"), attributes)

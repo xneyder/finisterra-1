@@ -24,8 +24,11 @@ aws_instance:
       type: bool
       module_default: false
     user_data:
-      field: user_data
+      function: get_user_data
+      arg: id
       type: string
+      multiline: true
+      jsonfield: false
     user_data_base64:
       field: user_data_base64
       type: string
@@ -118,6 +121,11 @@ aws_instance:
       arg: metadata_options.http_endpoint
       type: string
       module_default: enabled
+    metadata_http_protocol_ipv6:
+      function: get_field_from_attrs
+      arg: metadata_options.http_protocol_ipv6
+      type: string
+      module_default: disabled
     metadata_instance_metadata_tags:
       function: get_field_from_attrs
       arg: metadata_options.instance_metadata_tags
