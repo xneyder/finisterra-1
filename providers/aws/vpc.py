@@ -40,7 +40,7 @@ class VPC:
         self.dhcp_options_domain_name = {}
         self.default_routes={}
 
-        self.iam_role_instance = IAM_ROLE(iam_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)        
+        self.iam_role_instance = IAM_ROLE(iam_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
 
     def get_field_from_attrs(self, attributes, arg):
         keys = arg.split(".")

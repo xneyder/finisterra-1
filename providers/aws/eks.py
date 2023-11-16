@@ -1,5 +1,6 @@
 import os
 from utils.hcl import HCL
+from providers.aws.iam_role import IAM_ROLE
 
 
 class EKS:
@@ -10,21 +11,7 @@ class EKS:
         self.ec2_client = ec2_client
         self.iam_client = iam_client
         self.autoscaling_client = autoscaling_client
-        self.transform_rules = {
-            "aws_eks_node_group": {
-                "hcl_drop_fields": {"update_config.max_unavailable_percentage": 0, "update_config.max_unavailable_percentage": 0},
-                "hcl_keep_fields": {
-                    "launch_template.name": True,
-                    "launch_template.version": True,
-                },
-            },
-            "aws_eks_cluster": {
-                "hcl_drop_fields": {"vpc_config.cluster_security_group_id": "ALL",
-                                    "vpc_config.vpc_id": "ALL",
-                                    },
-            },
-
-        }
+        self.transform_rules = {}
         self.provider_name = provider_name
         self.script_dir = script_dir
         self.schema_data = schema_data
@@ -35,6 +22,8 @@ class EKS:
                        self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules)
         self.resource_list = {}
         self.aws_account_id = aws_account_id
+
+        self.iam_role_instance = IAM_ROLE(iam_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
 
     def get_field_from_attrs(self, attributes, arg):
         keys = arg.split(".")
@@ -112,8 +101,10 @@ class EKS:
         return provider_url == expected_oidc_url.replace("https://", "")
 
     def join_node_group_launch_template(self, parent_attributes, child_attributes):
-        node_launch_template_id = parent_attributes.get(
-            "launch_template", [{}])[0].get("id", "")
+        node_launch_template_id=""
+        launch_template =  parent_attributes.get("launch_template")
+        if launch_template:
+            node_launch_template_id = launch_template[0].get("id", "")
         launch_template_id = child_attributes.get("id", "")
         return node_launch_template_id == launch_template_id
 
@@ -145,9 +136,11 @@ class EKS:
         result[self.node_group_name]['use_name_prefix'] = use_name_prefix
         result[self.node_group_name]['subnet_ids'] = attributes.get(
             "subnet_ids")
-        result[self.node_group_name]['min_size'] = attributes.get("min_size")
-        result[self.node_group_name]['max_size'] = attributes.get("max_size")
-        result[self.node_group_name]['desired_size'] = attributes.get(
+        scaling_config = attributes.get("scaling_config")
+        if scaling_config:
+            result[self.node_group_name]['min_size'] = scaling_config[0].get("min_size")
+            result[self.node_group_name]['max_size'] = scaling_config[0].get("max_size")
+            result[self.node_group_name]['desired_size'] = scaling_config[0].get(
             "desired_size")
         result[self.node_group_name]['ami_id'] = attributes.get("ami_id")
         result[self.node_group_name]['ami_type'] = attributes.get("ami_type")
@@ -166,6 +159,10 @@ class EKS:
             result[self.node_group_name]['remote_access'] = attributes.get(
                 "remote_access")[0]
         result[self.node_group_name]['taints'] = attributes.get("taints")
+        result[self.node_group_name]['iam_role_arn'] = attributes.get("node_role_arn")
+
+        if attributes.get("tags", {}) != {}:
+            result[self.node_group_name]['tags'] = attributes.get("tags")
         tmp = attributes.get("update_config")
         if tmp:
             result[self.node_group_name]['update_config'] = attributes.get(
@@ -210,11 +207,14 @@ class EKS:
             block_device_mappings)
         result[self.node_group_name]["launch_template_tags"] = attributes.get(
             "tags")
-        result[self.node_group_name]["tag_specifications"] = []
-        tag_specifications = attributes.get("tag_specifications")
-        for tag_specification in tag_specifications:
-            result[self.node_group_name]["tag_specifications"].append(
-                tag_specification["resource_type"])
+        result[self.node_group_name]["tag_specifications"] = attributes.get("tag_specifications")
+        # tag_specifications = attributes.get("tag_specifications")
+        # for tag_specification in tag_specifications:
+        #     result[self.node_group_name]["tag_specifications"].append(
+        #         tag_specification["resource_type"])
+        tmp = attributes.get("name")
+        if tmp:
+            result[self.node_group_name]["launch_template_name"] = tmp
         tmp = attributes.get("ebs_optimized")
         if tmp:
             result[self.node_group_name]["ebs_optimized"] = tmp
@@ -258,10 +258,9 @@ class EKS:
         if tmp:
             result[self.node_group_name]["metadata_options"] = attributes.get(
                 "metadata_options")[0]
-        tmp = attributes.get("enable_monitoring")
+        tmp = attributes.get("monitoring")
         if tmp:
-            result[self.node_group_name]["enable_monitoring"] = attributes.get(
-                "monitoring",)[0].get("enabled")
+            result[self.node_group_name]["enable_monitoring"] = tmp[0].get("enabled")
         result[self.node_group_name]["network_interfaces"] = attributes.get(
             "network_interfaces")
         tmp = attributes.get("placement")
@@ -276,6 +275,9 @@ class EKS:
         if tmp:
             result[self.node_group_name]["private_dns_name_options"] = attributes.get(
                 "private_dns_name_options")[0]
+        tmp = attributes.get("update_default_version")
+        if tmp:
+            result[self.node_group_name]["update_launch_template_default_version"] = tmp
 
         # Remove the keys that are empty
         result[self.node_group_name] = {k: v for k,
@@ -446,7 +448,13 @@ class EKS:
         for cluster_name in clusters:
             cluster = self.eks_client.describe_cluster(name=cluster_name)[
                 "cluster"]
+
+            if cluster_name != "jx-qa-cluster-use1":
+                continue
+
+
             print(f"  Processing EKS Cluster: {cluster_name}")
+
 
             attributes = {
                 "id": cluster_name,
@@ -690,7 +698,8 @@ class EKS:
 
             # Process IAM role associated with the EKS node group
             if 'nodeRole' in node_group:
-                self.aws_iam_role(node_group['nodeRole'])
+                role_name = node_group['nodeRole'].split('/')[-1]
+                self.iam_role_instance.aws_iam_role(role_name)
 
             # Process Auto Scaling schedules for the node group's associated Auto Scaling group
             for asg in node_group.get('resources', {}).get('autoScalingGroups', []):

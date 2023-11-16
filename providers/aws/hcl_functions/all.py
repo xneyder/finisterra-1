@@ -1,6 +1,7 @@
 import json
 
 #### IAM ####
+
 def get_policy_attachment_index(attributes, arg=None, additional_data=None):
     role = attributes.get('role')
     policy_name = attributes.get('policy_arn').split('/')[-1]
@@ -37,6 +38,7 @@ def get_policy_documents(attributes, arg=None, additional_data=None):
 #### IAM ####
 
 #### SECURITY GROUP ####
+
 def get_security_group_rules(attributes, arg=None, additional_data=None):
     key = attributes["id"]
     result = {key: {}}
@@ -65,3 +67,30 @@ def get_vpc_name(attributes, arg=None, additional_data=None):
     return vpc_name
 
 #### SECURITY GROUP ####
+
+### KMS ###
+
+def build_aliases(attributes, arg=None, additional_data=None):
+    name = attributes.get(arg)
+    return [name]
+
+def build_grants(attributes, arg=None, additional_data=None):
+    key = attributes.get("id")
+    result = {key: {}}
+    name = attributes.get("name")
+    grantee_principal = attributes.get("grantee_principal")
+    operations = attributes.get("operations")
+    constraints = attributes.get("constraints")
+    retiring_principal = attributes.get("retiring_principal")
+    grant_creation_tokens = attributes.get("grant_creation_tokens")
+    retire_on_delete = attributes.get("retire_on_delete")
+    result[key]["name"] = name
+    result[key]["grantee_principal"] = grantee_principal
+    result[key]["operations"] = operations
+    result[key]["constraints"] = constraints
+    result[key]["retiring_principal"] = retiring_principal
+    result[key]["grant_creation_tokens"] = grant_creation_tokens
+    result[key]["retire_on_delete"] = retire_on_delete
+    return result
+
+### KMS ###
