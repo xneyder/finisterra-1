@@ -45,20 +45,34 @@ class ECR:
             if not rules:
                 continue
             for rule in rules:
+                destinations = rule.get("destination", [])
+                records = []
+                for destination in destinations:
+                    records.append({
+                        "region": destination["region"],
+                        "registry_id": destination["registry_id"]
+                    })
                 formatted_rules.append({
-                    "destinations": [{
-                        "region": rule["destination"][0]["region"],
-                        "registry_id": rule["destination"][0]["registry_id"]
-                    }]
+                    "destinations": records
                 })
         return formatted_rules
+    
+    def get_registry_scan_rules(self, attributes):
+        result = []
+        rules = attributes.get("rule", [])
+        for rule in rules:
+            record={}
+            record["scan_frequency"] = rule.get("scan_frequency", None)
+            repository_filter= rule.get("repository_filter", {})
+            if repository_filter:
+                record["filter"] = repository_filter[0].get("filter")
+                record["filter_type"] = repository_filter[0].get("filter_type")
+            result.append(record)
+        return result
 
 
     def ecr(self):
         self.hcl.prepare_folder(os.path.join("generated", "ecr"))
-
-        # aws_ecrpublic_repository.this
-        # aws_ecrpublic_repository_policy.example
 
         self.aws_ecr_repository()
 
@@ -70,6 +84,7 @@ class ECR:
         functions = {
             'get_field_from_attrs': self.get_field_from_attrs,
             'build_registry_replication_rules': self.build_registry_replication_rules,
+            'get_registry_scan_rules': self.get_registry_scan_rules,
         }
 
         self.hcl.refresh_state()

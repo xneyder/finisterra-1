@@ -85,7 +85,7 @@ aws_ecr_repository:
           type: string
           module_default: "ENHANCED"
         registry_scan_rules:
-          field: rules
+          function: get_registry_scan_rules
           type: list
 
 aws_ecr_registry_policy:
