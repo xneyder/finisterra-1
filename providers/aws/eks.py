@@ -455,8 +455,8 @@ class EKS:
                 "cluster"]
             
 
-            if cluster_name != "jx-qa-cluster-use1":
-                continue
+            # if cluster_name != "jx-qa-cluster-use1":
+            #     continue
 
 
             print(f"  Processing EKS Cluster: {cluster_name}")
@@ -469,7 +469,7 @@ class EKS:
                 "aws_eks_cluster", cluster_name.replace("-", "_"), attributes)
             
             #kms key
-            if cluster['encryptionConfig']:
+            if 'encryptionConfig' in cluster:
                 self.kms_instance.aws_kms_key(cluster['encryptionConfig'][0]['provider']['keyArn'])
 
             # Call aws_eks_addon for each cluster
