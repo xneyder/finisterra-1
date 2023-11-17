@@ -143,6 +143,7 @@ aws_eks_cluster:
             eks_managed_node_groups:
               function: build_launch_templates
               type: map
+
         # aws_iam_role:
         #   join:
         #     node_role_arn:
