@@ -408,12 +408,10 @@ class EKS:
                 "cluster"]
             
 
-            # if cluster_name != "staging":
+            # if cluster_name != "ae-stg-cluster-use1":
             #     continue
 
-
             print(f"  Processing EKS Cluster: {cluster_name}")
-
 
             attributes = {
                 "id": cluster_name,
