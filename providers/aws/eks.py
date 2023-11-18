@@ -162,7 +162,7 @@ class EKS:
         if tmp:
             result[self.node_group_name]['remote_access'] = attributes.get(
                 "remote_access")[0]
-        result[self.node_group_name]['taints'] = attributes.get("taints")
+        result[self.node_group_name]['taints'] = attributes.get("taint")
         result[self.node_group_name]['iam_role_arn'] = attributes.get("node_role_arn")
 
         if attributes.get("tags", {}) != {}:
@@ -315,8 +315,8 @@ class EKS:
         if tmp:
             result[self.node_group_name]["ami_id"] = tmp 
 
+        result[self.node_group_name]["use_custom_launch_template"] = True 
         
-
         # Remove the keys that are empty
         result[self.node_group_name] = {k: v for k,
                                         v in result[self.node_group_name].items() if v}
@@ -408,7 +408,7 @@ class EKS:
                 "cluster"]
             
 
-            # if cluster_name != "ae-stg-cluster-use1":
+            # if cluster_name != "dev":
             #     continue
 
             print(f"  Processing EKS Cluster: {cluster_name}")

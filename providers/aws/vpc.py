@@ -264,15 +264,20 @@ class VPC:
             self.public_subnets[subnet_id][key]["nat_gateway"][nat_gateway_name]['eip_tags'] = attributes.get(
                 'tags', {})
         return self.public_subnets[subnet_id]
-
-    def add_public_route_table_association(self, attributes):
-        route_table_id = attributes.get('route_table_id')
+    
+    def get_public_route_table_name(self, route_table_id):
         if route_table_id not in self.public_route_table_ids:
             route_table_name = 'public_route_table_' + \
                 str(len(self.public_route_table_ids))
             self.public_route_table_ids[route_table_id] = route_table_name
         else:
             route_table_name = self.public_route_table_ids[route_table_id]
+
+        return route_table_name
+
+    def add_public_route_table_association(self, attributes):
+        route_table_id = attributes.get('route_table_id')
+        route_table_name = self.get_public_route_table_name(route_table_id)
 
         subnet_id = attributes.get('subnet_id')
         if 'association' not in self.public_subnets:
@@ -281,10 +286,10 @@ class VPC:
             self.public_subnets[subnet_id][key]['route_tables'].append(
                 route_table_name)
         return self.public_subnets[subnet_id]
-
+    
     def add_public_route_table(self, attributes):
         route_table_id = attributes.get('id')
-        route_table_name = self.public_route_table_ids[route_table_id]
+        route_table_name = self.get_public_route_table_name(route_table_id)
         tags = attributes.get('tags', {})
         tags = self.escape_dict_contents(tags)
         return {route_table_name: {"tags": tags}}
@@ -300,14 +305,22 @@ class VPC:
 
     def get_public_route_table_association_index(self, attributes, arg):
         route_table_id = attributes.get(arg)
-        route_table_name = self.public_route_table_ids[route_table_id]
+        route_table_name = self.get_public_route_table_name(route_table_id)
         subnet_id = attributes.get('subnet_id')
         for key in self.public_subnets[subnet_id].keys():
             return key+"-"+route_table_name
+        
+    def join_igw_route_table_id(self, parent_attributes, child_attributes):
+        gateway_id = parent_attributes.get('id')
+        route = child_attributes.get('route')
+        if route:
+            if route[0].get('gateway_id', None) == gateway_id:
+                return True
+        return False
 
     def get_public_route_table_id(self, attributes, arg):
         route_table_id = attributes.get(arg)
-        route_table_name = self.public_route_table_ids[route_table_id]
+        route_table_name = self.get_public_route_table_name(route_table_id)
         return route_table_name
 
     def add_private_subnet(self, attributes):
@@ -579,6 +592,7 @@ class VPC:
             'get_aws_route_import_id': self.get_aws_route_import_id,
             'aws_network_acl_rule_import_id': self.aws_network_acl_rule_import_id,
             'aws_iam_role_policy_attachment_import_id': self.aws_iam_role_policy_attachment_import_id,
+            'join_igw_route_table_id': self.join_igw_route_table_id,
 
         }
         self.hcl.refresh_state()
@@ -598,7 +612,7 @@ class VPC:
             is_default = vpc.get("IsDefault", False)
             if not is_default:
                 vpc_id = vpc["VpcId"]
-                # if vpc_id != "vpc-88ac14ee":
+                # if vpc_id != "vpc-0ab965167aa4a5aa5":
                 #     continue
                 print(f"  Processing VPC: {vpc_id}")
                 attributes = {

@@ -275,16 +275,29 @@ aws_vpc:
           field: tags
           type: map
       childs:
-        aws_route:
+        aws_route_table:
           join:
             id:
-              field: gateway_id
-          target_resource_name: public_internet_gateway
+              join_function: join_igw_route_table_id
+          target_resource_name: public
           second_index:
             function: get_public_route_table_id
-            arg: route_table_id
-          import_id:
-            function: get_aws_route_import_id
+            arg: id
+          fields:
+            public_route_tables:
+              function: add_public_route_table
+              type: list
+          childs:
+            aws_route:
+              join:
+                id:
+                  field: route_table_id
+              target_resource_name: public_internet_gateway
+              second_index:
+                function: get_public_route_table_id
+                arg: route_table_id
+              import_id:
+                function: get_aws_route_import_id
 
     aws_network_acl:
       join:
