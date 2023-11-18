@@ -12,36 +12,7 @@ class S3:
     def __init__(self, s3_session, script_dir, provider_name, schema_data, region, s3Bucket,
                  dynamoDBTable, state_key, workspace_id, modules, aws_account_id):
         self.s3_session = s3_session
-        self.transform_rules = {
-            "aws_s3_bucket_policy": {
-                "hcl_json_multiline": {"policy": True},
-            },
-            "aws_s3_bucket_acl": {
-                "hcl_keep_fields": {"owner.id": True},
-                "hcl_drop_fields": {"grantee.display_name": "ALL"},
-            },
-            "aws_s3_bucket": {
-                "hcl_keep_fields": {"bucket": True},
-                "hcl_drop_blocks": {"grant": "ALL",
-                                    "server_side_encryption_configuration": "ALL",
-                                    "versioning": "ALL",
-                                    "website": "ALL",
-                                    "acceleration_status": "ALL",
-                                    "acl": "ALL",
-                                    "cors_rule": "ALL",
-                                    "lifecycle_rule": "ALL",
-                                    "logging": "ALL",
-                                    "object_lock_configuration": "ALL",
-                                    "policy": "ALL",
-                                    "replication_configuration": "ALL",
-                                    "request_payer": "ALL"
-                                    },
-            },
-            "aws_s3_bucket_lifecycle_configuration": {
-                "hcl_keep_fields": {"rule.id": True},
-            },
-
-        }
+        self.transform_rules = {}
         self.provider_name = provider_name
         self.script_dir = script_dir
         self.schema_data = schema_data
@@ -75,6 +46,7 @@ class S3:
             'aws_s3_bucket_policy_policy': self.aws_s3_bucket_policy_policy,
             'build_logging': self.build_logging,
             'get_object_lock_configuration_rule': self.get_object_lock_configuration_rule,
+            'build_replication_configuration': self.build_replication_configuration,
         }
 
         self.hcl.module_hcl_code("terraform.tfstate",
@@ -96,6 +68,128 @@ class S3:
         if tmp:
             result['target_prefix'] = tmp
 
+        return result
+    
+    def build_replication_configuration(self, state, arg):
+        result = {}
+        result["role"] = state.get("role", "")
+
+        result["rule"] = []
+        rules = state.get("rule")
+        for rule in rules:
+            record = {}
+            tmp = rule.get("id", "")
+            if tmp:
+                record["id"] = tmp
+            tmp = rule.get("prefix", "")
+            if tmp:
+                record["prefix"] = tmp
+            tmp = rule.get("priority", "")
+            if tmp:
+                record["priority"] = tmp
+            tmp = rule.get("status", "")
+            if tmp:
+                record["status"] = tmp
+            #delete_marker_replication_status
+            tmp = rule.get("delete_marker_replication")
+            if tmp:
+                record["delete_marker_replication_status"] = tmp[0].get("status", "")
+            #existing_object_replication_status
+            tmp = rule.get("existing_object_replication")
+            if tmp:
+                record["existing_object_replication_status"] = tmp[0].get("status", "")
+            #destination
+            tmp = rule.get("destination")
+            if tmp:
+                record["destination"] = {}
+                tmp2 = tmp[0].get("bucket", "")
+                if tmp2:
+                    record["destination"]["bucket"] = tmp2
+                tmp2 = tmp[0].get("storage_class", "")
+                if tmp2:
+                    record["destination"]["storage_class"] = tmp2
+                tmp2 = tmp[0].get("account")
+                if tmp2:
+                    record["destination"]["account"] = tmp2[0].get("account", "")
+                #access_control_translation
+                tmp2 = tmp[0].get("access_control_translation")
+                if tmp2:
+                    record["destination"]["access_control_translation"] = tmp2[0].get("owner", "")
+            
+                #encryption_configuration
+                tmp2 = tmp[0].get("encryption_configuration")
+                if tmp2:
+                    record["destination"]["encryption_configuration"] = {}
+                    record["destination"]["encryption_configuration"]["replica_kms_key_id"] = tmp2[0].get("replica_kms_key_id", "")
+
+                #replication_time
+                tmp2 = tmp[0].get("replication_time")
+                if tmp2:
+                    record["destination"]["replication_time"] = {}
+                    record["destination"]["replication_time"]["status"] = tmp2[0].get("status", "")
+                    tmp3 = tmp2[0].get("time", [])
+                    if tmp3:
+                        record["destination"]["replication_time"]["minutes"] = tmp3[0].get("minutes", [])
+                #metrics
+                tmp2 = tmp[0].get("metrics")
+                if tmp2:
+                    record["destination"]["metrics"] = {}
+                    record["destination"]["metrics"]["status"] = tmp2[0].get("status", "")
+                    tmp3 = tmp2[0].get("event_threshold", [])
+                    if tmp3:
+                        record["destination"]["metrics"]["minutes"] = tmp3[0].get("minutes", [])
+                    # tmp3 = tmp2[0].get("replica_modifications", [])
+                    # if tmp3:
+                    #     record["destination"]["metrics"]["replica_modifications"] = {}
+                    #     record["destination"]["metrics"]["replica_modifications"]["status"] = tmp3[0].get("status", "")
+
+            #source_selection_criteria
+            tmp = rule.get("source_selection_criteria")
+            if tmp:
+                record["source_selection_criteria"] = {}
+                #replica_modifications
+                tmp2 = tmp[0].get("replica_modifications")
+                if tmp2:
+                    record["source_selection_criteria"]["replica_modifications"] = {}
+                    record["source_selection_criteria"]["replica_modifications"]["status"] = tmp2[0].get("status", "")
+                #sse_kms_encrypted_objects
+                tmp2 = tmp[0].get("sse_kms_encrypted_objects")
+                if tmp2:
+                    record["source_selection_criteria"]["sse_kms_encrypted_objects"] = {}
+                    record["source_selection_criteria"]["sse_kms_encrypted_objects"]["status"] = tmp2[0].get("status", "")
+                #tag_filters
+                tmp2 = tmp[0].get("tag_filters")
+                if tmp2:
+                    record["source_selection_criteria"]["tag_filters"] = {}
+                    record["source_selection_criteria"]["tag_filters"]["and"] = tmp2[0].get("and", [])
+                    record["source_selection_criteria"]["tag_filters"]["prefix"] = tmp2[0].get("prefix", "")
+                    record["source_selection_criteria"]["tag_filters"]["tag"] = tmp2[0].get("tag", [])
+                    record["source_selection_criteria"]["tag_filters"]["not_tag"] = tmp2[0].get("not_tag", [])
+                    record["source_selection_criteria"]["tag_filters"]["delimiter"] = tmp2[0].get("delimiter", "")
+            
+            #filter
+            tmp = rule.get("filter")
+            if tmp:
+                record["filter"] = {}
+                tmp2 = tmp[0].get("prefix", "")
+                if tmp2:
+                    record["filter"]["prefix"] = tmp2
+                tmp2 = tmp[0].get("tag", [])
+                if tmp2:
+                    record["filter"]["tag"] = tmp2
+                tmp2 = tmp[0].get("and", [])
+                if tmp2:
+                    record["filter"]["and"] = tmp2
+                tmp2 = tmp[0].get("not_tag", [])
+                if tmp2:
+                    record["filter"]["not_tag"] = tmp2
+                tmp2 = tmp[0].get("delimiter", "")
+                if tmp2:
+                    record["filter"]["delimiter"] = tmp2
+                if not record["filter"]:
+                    del record["filter"]
+            result["rule"].append(record)
+                
         return result
     
     def get_object_lock_configuration_rule(self, state):
@@ -169,11 +263,21 @@ class S3:
 
     def filter_empty_fields(self, input_data):
         if isinstance(input_data, dict):
-            return {k: self.filter_empty_fields(v) for k, v in input_data.items() if v and self.filter_empty_fields(v)}
+            # Create a new dictionary by recursively calling filter_empty_fields and excluding 
+            # keys with values that are None, empty strings, empty lists, or empty dicts
+            filtered_dict = {k: self.filter_empty_fields(v) for k, v in input_data.items() if v not in [None, '', [], {}]}
+            # Further filter out any keys that have None as their values after recursive filtering
+            filtered_dict = {k: v for k, v in filtered_dict.items() if v is not None}
+            return filtered_dict if filtered_dict else None
         elif isinstance(input_data, list):
-            return [self.filter_empty_fields(elem) for elem in input_data if elem and self.filter_empty_fields(elem)]
+            # Filter each element, excluding None, empty strings, empty lists, and empty dicts
+            filtered_list = [self.filter_empty_fields(elem) for elem in input_data if elem not in [None, '', [], {}]]
+            # Remove any None values that might have been introduced by filtering nested structures
+            filtered_list = [elem for elem in filtered_list if elem is not None]
+            return filtered_list if filtered_list else None
         else:
             return input_data
+
 
     def aws_s3_bucket_lifecycle_configuration_lifecycle_rule(self, state):
         rules = state["rule"]
@@ -182,6 +286,7 @@ class S3:
         # i = 0
         for rule in rules:
             transformed_rule = self.filter_empty_fields(rule)
+            # transformed_rule = rule
             # if transformed_rule:
             #     transformed_rule['id'] = 'rule-' + str(i)
             #     i += 1
@@ -257,7 +362,7 @@ class S3:
         for bucket in all_buckets:
             bucket_name = bucket["Name"]
 
-            # if bucket_name != "ae-dev-loadbalancer-logs" and bucket_name != "ae-eks-production-logs" and bucket_name !=  "ae-eks-staging-logs":
+            # if bucket_name != "jx-sql-backups":
             #     continue
 
             # Retrieve the region of the bucket

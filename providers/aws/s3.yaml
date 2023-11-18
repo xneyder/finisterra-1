@@ -153,7 +153,8 @@ aws_s3_bucket:
       target_resource_name: this
       fields:
         replication_configuration:
-          field: replication_configuration
+          function: build_replication_configuration
+          arg: id
 
     aws_s3_bucket_policy:
       join:
