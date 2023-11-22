@@ -9,25 +9,7 @@ class EC2:
         self.ec2_client = ec2_client
         self.iam_client = iam_client
         self.autoscaling_client = autoscaling_client
-        self.transform_rules = {
-            "aws_instance": {
-                "hcl_keep_fields": {
-                    "instance_type": True,
-                    "ami": True,
-                    "launch_template.name": True,
-                },
-                "hcl_drop_fields": {
-                    "ebs_block_device.volume_id": "ALL",
-                    "root_block_device.volume_id": "ALL",
-                    "root_block_device.device_name": "ALL",
-                },
-            },
-            "aws_launch_template": {
-                "hcl_drop_fields": {
-                    "ebs.throughput": 0,
-                },
-            },
-        }
+        self.transform_rules = {}
         self.provider_name = provider_name
         self.script_dir = script_dir
         self.schema_data = schema_data
@@ -44,6 +26,14 @@ class EC2:
         self.additional_ips_count = 0
 
         return None
+    
+    def get_public_ip_addresses(self, attributes, arg):
+        result ={}
+        public_ip = attributes.get("public_ip")
+        if public_ip is not None:
+            tags = attributes.get("tags")
+            result[public_ip] = {'tags': tags }
+        return result
     
     def decode_base64(self, encoded_str):
         if encoded_str is not None:
@@ -144,6 +134,7 @@ class EC2:
             'get_device_name': self.get_device_name,
             'get_device_name_list': self.get_device_name_list,
             'get_user_data': self.get_user_data,
+            'get_public_ip_addresses': self.get_public_ip_addresses
         }
         self.hcl.module_hcl_code("terraform.tfstate", os.path.join(
             os.path.dirname(os.path.abspath(__file__)), "ec2.yaml"), functions, self.region, self.aws_account_id)
@@ -360,8 +351,9 @@ class EC2:
                         f"  Skipping EC2 Instance (managed by EKS): {instance_id}")
                     continue
 
-                # if instance_id != "i-02ec9b74504b5245b":
+                # if instance_id != "i-0cb98c47cffb3242e":
                 #     continue
+
                 print(f"  Processing EC2 Instance: {instance_id}")
 
                 attributes = {

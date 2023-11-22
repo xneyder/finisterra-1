@@ -1,36 +1,33 @@
 import os
 from utils.hcl import HCL
-
+from providers.aws.iam_role import IAM_ROLE
 
 class RDS:
     def __init__(self, rds_client, logs_client, iam_client, script_dir, provider_name, schema_data, region, s3Bucket,
-                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id):
+                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id, hcl=None):
         self.rds_client = rds_client
         self.logs_client = logs_client
         self.iam_client = iam_client
-        self.transform_rules = {
-            "aws_db_parameter_group": {
-                "hcl_keep_fields": {"parameter.name": True},
-            },
-            # "aws_db_instance": {
-            #     "hcl_transform_fields": {
-            #         "apply_immediately": {'source': None, 'target': False},
-            #         "skip_final_snapshot": {'source': None, 'target': False},
-            #     },
-            #     # "hcl_keep_fields": {"delete_automated_backups": True},
-            # },
-        }
+        self.transform_rules = {}
         self.provider_name = provider_name
         self.script_dir = script_dir
         self.schema_data = schema_data
+        self.s3Bucket = s3Bucket
+        self.dynamoDBTable = dynamoDBTable
+        self.state_key = state_key
 
         self.region = region
         self.aws_account_id = aws_account_id
 
         self.workspace_id = workspace_id
         self.modules = modules
-        self.hcl = HCL(self.schema_data, self.provider_name,
+        if not hcl:
+            self.hcl = HCL(self.schema_data, self.provider_name,
                        self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules)
+        else:
+            self.hcl = hcl
+        
+        self.iam_role_instance = IAM_ROLE(iam_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
         self.resource_list = {}
 
     def cloudwatch_log_group_name(self, attributes):
@@ -46,6 +43,18 @@ class RDS:
             return parts[-1]
         else:
             return None
+        
+    def get_db_name(self, attributes, arg):
+        replicate_source_db = attributes.get("replicate_source_db", None)
+        if replicate_source_db:
+            return None
+        return attributes.get("db_name", None)
+    
+    def get_username(self, attributes, arg):
+        replicate_source_db = attributes.get("replicate_source_db", None)
+        if replicate_source_db:
+            return None
+        return attributes.get("username", None)
 
     def rds(self):
         self.hcl.prepare_folder(os.path.join("generated", "rds"))
@@ -54,7 +63,9 @@ class RDS:
 
         functions = {
             'cloudwatch_log_group_name': self.cloudwatch_log_group_name,
-            'get_log_group_name': self.get_log_group_name
+            'get_log_group_name': self.get_log_group_name,
+            'get_db_name': self.get_db_name,
+            'get_username': self.get_username,
         }
 
         self.hcl.refresh_state()
@@ -77,7 +88,7 @@ class RDS:
                 instance_id = instance["DBInstanceIdentifier"]
                 print(f"  Processing DB Instance: {instance_id}")
 
-                # if instance_id != "devops-devqa-awx-db-use1":
+                # if instance_id != "piwik-analytics":
                 #     continue
 
                 # Call the related functions with the respective group names
@@ -115,7 +126,9 @@ class RDS:
 
                 monitoring_role_arn = instance.get("MonitoringRoleArn")
                 if monitoring_role_arn:
-                    self.aws_iam_role(monitoring_role_arn)
+                    role_name = monitoring_role_arn.split('/')[-1]
+                    self.iam_role_instance.aws_iam_role(role_name)
+                    # self.aws_iam_role(monitoring_role_arn)
 
     def aws_db_option_group(self, option_group_name):
         print(f"Processing DB Option Group {option_group_name}")
@@ -193,17 +206,25 @@ class RDS:
                 if instance.get("ReadReplicaDBInstanceIdentifiers") and instance["DBInstanceArn"] == source_instance_arn:
                     if instance.get("Engine", None) not in ["mysql", "postgres"]:
                         continue
-                    source_instance_id = instance["DBInstanceIdentifier"]
-                    for replica_id in instance["ReadReplicaDBInstanceIdentifiers"]:
-                        print(
-                            f"  Processing DB Instance Automated Backups Replication for {source_instance_id} to {replica_id}")
-                        attributes = {
-                            "id": f"{source_instance_id}-{replica_id}",
-                            "source_db_instance_identifier": source_instance_id,
-                            "replica_db_instance_identifier": replica_id,
-                        }
-                        self.hcl.process_resource("aws_db_instance_automated_backups_replication",
-                                                  f"{source_instance_id}-{replica_id}".replace("-", "_"), attributes)
+                    
+                    # Fetching automated backup details
+                    backups_paginator = self.rds_client.get_paginator("describe_db_instance_automated_backups")
+                    backups_page = backups_paginator.paginate(DBInstanceIdentifier=instance["DBInstanceIdentifier"])
+
+                    for backup_page in backups_page:
+                        for backup in backup_page.get("DBInstanceAutomatedBackups", []):
+                            automated_backup_arn = backup["DBInstanceAutomatedBackupsArn"]
+
+                            source_instance_id = instance["DBInstanceIdentifier"]
+                            for replica_id in instance["ReadReplicaDBInstanceIdentifiers"]:
+                                print(
+                                    f"  Processing DB Instance Automated Backups Replication for {source_instance_id} to {replica_id}")
+                                attributes = {
+                                    "id": automated_backup_arn,
+                                }
+                                self.hcl.process_resource("aws_db_instance_automated_backups_replication",
+                                                        f"{source_instance_id}-{replica_id}".replace("-", "_"), attributes)
+
 
     def aws_cloudwatch_log_group(self, instance_id, log_export_name):
         print(

@@ -176,13 +176,17 @@ aws_instance:
       join:
         id:
           field: instance
-      defaults:
-        assign_eip_address: true
+      # defaults:
+      # assign_eip_address: true
+      second_index:
+        field: public_ip
       target_resource_name: default
       fields:
-        tags:
-          field: tags
+        public_ip_addresses:
+          function: get_public_ip_addresses
           type: map
+          arg: id
+
     aws_network_interface_attachment:
       join:
         id:

@@ -28,40 +28,7 @@ class Apigateway:
     def __init__(self, apigateway_client, script_dir, provider_name, schema_data, region, s3Bucket,
                  dynamoDBTable, state_key, workspace_id, modules, aws_account_id):
         self.apigateway_client = apigateway_client
-        self.transform_rules = {
-            "aws_api_gateway_authorizer": {
-                "hcl_apply_function": {
-                    "identity_validation_expression": {'function': [replace_backslashes]}
-                },
-            },
-            "aws_api_gateway_documentation_part": {
-                "hcl_apply_function": {
-                    "properties": {'function': [drop_new_lines, replace_backslashes, escape_quotes]}
-                },
-            },
-            "aws_api_gateway_integration": {
-                "hcl_apply_function_dict": {
-                    "request_templates": {'function': [process_template]}
-                },
-            },
-            "aws_api_gateway_gateway_response": {
-                "hcl_apply_function_dict": {
-                    "response_templates": {'function': [process_template]}
-                },
-            },
-            "aws_api_gateway_integration_response": {
-                "hcl_apply_function_dict": {
-                    "response_templates": {'function': [process_template]}
-                },
-            },
-            "aws_api_gateway_model": {
-                "hcl_json_multiline": {"schema": True}
-            },
-            "aws_api_gateway_rest_api_policy": {
-                "hcl_json_multiline": {"policy": True}
-            },
-
-        }
+        self.transform_rules = {}
         self.provider_name = provider_name
         self.script_dir = script_dir
         self.schema_data = schema_data
@@ -91,6 +58,47 @@ class Apigateway:
 
     def aws_api_gateway_deployment_import_id(self, attributes):
         return f"{attributes['rest_api_id']}/{attributes['id']}"
+    
+    def get_stage_name(self,attributes):
+        restApiId=attributes['rest_api_id']
+        deploymentId=attributes['id']
+        print(restApiId,deploymentId)
+        stages=self.apigateway_client.get_stages(restApiId=restApiId, deploymentId=deploymentId)
+        return stages['item'][0]['stageName']
+
+    
+    def build_deployment(self, attributes, arg):
+        description = attributes.get('description')
+        #use boto3 to get the stage name of the deployment
+        stage_name = self.get_stage_name(attributes)
+        result = {}
+        result[stage_name] = {}
+        result[stage_name]['deployment_description'] = description
+        return result
+
+    def build_stages(self, attributes, arg):
+        stage_name = attributes['stage_name']
+        result = {}
+        result[stage_name] = {}
+        result[stage_name]['xray_tracing_enabled'] = attributes.get('xray_tracing_enabled')
+        result[stage_name]['cache_cluster_enabled'] = attributes.get('cache_cluster_enabled')
+        tmp = attributes.get('cache_cluster_size')
+        if tmp:
+            result[stage_name]['cache_cluster_size'] = tmp
+        tmp = attributes.get('description')
+        if tmp:
+            result[stage_name]['description'] = tmp
+        tmp = attributes.get('tags')
+        if tmp:
+            result[stage_name]['tags'] = tmp
+        tmp = attributes.get('variables')
+        if tmp:
+            result[stage_name]['variables'] = tmp
+        tmp = attributes.get('access_log_settings')
+        if tmp:
+            result[stage_name]['access_log_settings'] = tmp
+
+        return result
 
     def apigateway(self):
         self.hcl.prepare_folder(os.path.join("generated", "apigateway"))
@@ -131,6 +139,9 @@ class Apigateway:
         functions = {
             'get_field_from_attrs': self.get_field_from_attrs,
             'aws_api_gateway_deployment_import_id': self.aws_api_gateway_deployment_import_id,
+            'build_stages': self.build_stages,
+            'build_deployment': self.build_deployment,
+            'get_stage_name': self.get_stage_name,
         }
 
         self.hcl.refresh_state()
@@ -167,7 +178,8 @@ class Apigateway:
         rest_apis = self.apigateway_client.get_rest_apis()["items"]
 
         for rest_api in rest_apis:
-            # if rest_api["name"] != "signal-r-hub":
+
+            # if rest_api["name"] != "identity-server":
             #     continue
 
             print(f"  Processing API Gateway REST API: {rest_api['name']}")
