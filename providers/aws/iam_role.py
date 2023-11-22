@@ -26,7 +26,7 @@ class IAM_ROLE:
             self.hcl = hcl
 
     def iam(self):        
-        self.hcl.prepare_folder(os.path.join("generated", "iam_role"))
+        self.hcl.prepare_folder(os.path.join("generated", "iam"))
 
         self.aws_iam_role()
         self.hcl.refresh_state()

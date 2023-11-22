@@ -20,6 +20,9 @@ def get_instance_profiles(attributes, arg=None, additional_data=None):
     name = attributes.get("name")
     tags = attributes.get("tags")
     result=[{"name":name, "tags": tags}]
+    path = attributes.get("path")
+    if path != "/":
+        result[0]["path"] = path
     return result
 
 def get_policy_documents(attributes, arg=None, additional_data=None):
