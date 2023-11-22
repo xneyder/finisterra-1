@@ -62,11 +62,9 @@ class Apigateway:
     def get_stage_name(self,attributes):
         restApiId=attributes['rest_api_id']
         deploymentId=attributes['id']
-        print(restApiId,deploymentId)
         stages=self.apigateway_client.get_stages(restApiId=restApiId, deploymentId=deploymentId)
         return stages['item'][0]['stageName']
 
-    
     def build_deployment(self, attributes, arg):
         description = attributes.get('description')
         #use boto3 to get the stage name of the deployment

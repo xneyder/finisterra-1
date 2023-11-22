@@ -6,9 +6,10 @@ import botocore
 
 
 class KMS:
-    def __init__(self, kms_client, script_dir, provider_name, schema_data, region, s3Bucket,
+    def __init__(self, kms_client, iam_client, script_dir, provider_name, schema_data, region, s3Bucket,
                  dynamoDBTable, state_key, workspace_id, modules, aws_account_id, hcl=None):
         self.kms_client = kms_client
+        self.iam_client = iam_client
 
         self.transform_rules = {
             "aws_kms_key_policy": {
@@ -69,6 +70,8 @@ class KMS:
                 for key in page["Keys"]:
                     try:
                         key_id = key["KeyId"]
+                        # if key_id != "e6a851cf-ad7f-4be1-8474-d9fb5c0c2af0":
+                        #     continue
                         key_metadata = self.kms_client.describe_key(KeyId=key_id)["KeyMetadata"]
                         if key_metadata["KeyManager"] == "CUSTOMER":
                             self.process_key(key_metadata)
@@ -109,6 +112,9 @@ class KMS:
                 target_key_id = alias.get("TargetKeyId", "")
                 if not target_key_id:
                     print(f"Skipping {alias_name} due to empty TargetKeyId")
+                    continue
+                if alias_name == "alias/":
+                    print(f"Skipping empty {alias_name}")
                     continue
 
                 print(f"  Processing KMS Alias: {alias_name}")
@@ -165,6 +171,36 @@ class KMS:
     #             "aws_kms_custom_key_store", cks_id.replace("-", "_"), attributes)
 
 
+    # def aws_kms_grant(self, kms_arn):
+    #     print("Processing KMS Grants...")
+    #     try:
+    #         # Directly list grants for the specified key ARN
+    #         grants = self.kms_client.list_grants(KeyId=kms_arn)["Grants"]
+
+    #         for grant in grants:
+    #             grant_id = grant["GrantId"]
+    #             print(f"  Processing KMS Grant: {grant_id}")
+
+    #             attributes = {
+    #                 "id": kms_arn + ":" + grant_id,
+    #                 # Additional attributes can be included as needed
+    #             }
+    #             self.hcl.process_resource(
+    #                 "aws_kms_grant", grant_id.replace("-", "_"), attributes)
+
+    #     except botocore.exceptions.ClientError as e:
+    #         print(f"  Error processing KMS Grants: {e}")
+
+    def check_iam_role_exists(self, role_name):
+        try:
+            self.iam_client.get_role(RoleName=role_name)
+            return True  # Role exists
+        except botocore.exceptions.ClientError as error:
+            if error.response['Error']['Code'] == 'NoSuchEntity':
+                return False  # Role does not exist
+            else:
+                raise  # Other AWS error
+
     def aws_kms_grant(self, kms_arn):
         print("Processing KMS Grants...")
         try:
@@ -173,8 +209,16 @@ class KMS:
 
             for grant in grants:
                 grant_id = grant["GrantId"]
-                print(f"  Processing KMS Grant: {grant_id}")
+                grantee_principal = grant.get("GranteePrincipal", "")
 
+                # Check if the GranteePrincipal is an IAM role
+                if ':' in grantee_principal:
+                    role_name = grantee_principal.split(':')[-1]
+                    if not self.check_iam_role_exists(role_name):
+                        print(f"  Skipping Grant ID: {grant_id} due to non-existent IAM role: {role_name}")
+                        continue
+
+                print(f"  Processing KMS Grant: {grant_id}")
                 attributes = {
                     "id": kms_arn + ":" + grant_id,
                     # Additional attributes can be included as needed
@@ -184,7 +228,6 @@ class KMS:
 
         except botocore.exceptions.ClientError as e:
             print(f"  Error processing KMS Grants: {e}")
-
 
 
     def aws_kms_key_policy(self, kms_arn):
