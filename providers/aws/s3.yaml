@@ -144,7 +144,6 @@ aws_s3_bucket:
           type: string
         object_lock_configuration_rule:
           function: get_object_lock_configuration_rule
-          # field: rule
           type: list
 
     aws_s3_bucket_replication_configuration:
@@ -164,19 +163,11 @@ aws_s3_bucket:
       target_resource_name: this
       defaults:
         attach_policy: true
-        # block_public_policy: false
-        # ignore_public_acls: false
-        # restrict_public_buckets: false
       fields:
         policy:
           function: aws_s3_bucket_policy_policy
           arg: policy
           multiline: true
-
-        # attach_policy:
-        #   function: is_field_set
-        #   arg: policy
-
     aws_s3_bucket_public_access_block:
       join:
         bucket:
@@ -198,7 +189,7 @@ aws_s3_bucket:
           field: restrict_public_buckets
           module_default: true
 
-    aws_s3_bucket_ownership_controls: #no tested
+    aws_s3_bucket_ownership_controls:
       join:
         bucket:
           field: bucket
@@ -227,20 +218,28 @@ aws_s3_bucket:
         metric_configuration:
           field: metric_configuration
 
-    aws_s3_bucket_inventory: #no tested
+    aws_s3_bucket_inventory:
       join:
         bucket:
           field: bucket
       target_resource_name: this
+      second_index:
+        field: name
       fields:
         inventory_configuration:
-          field: inventory_configuration
+          function: get_inventory_configuration
+          arg: id
+          type: list
 
-    aws_s3_bucket_analytics_configuration: #no tested
+    aws_s3_bucket_analytics_configuration:
       join:
         bucket:
           field: bucket
+      second_index:
+        field: name
       target_resource_name: this
       fields:
         analytics_configuration:
-          field: analytics_configuration
+          function: get_analytics_configuration
+          arg: id
+          type: list

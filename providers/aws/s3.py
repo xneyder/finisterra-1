@@ -47,6 +47,8 @@ class S3:
             'build_logging': self.build_logging,
             'get_object_lock_configuration_rule': self.get_object_lock_configuration_rule,
             'build_replication_configuration': self.build_replication_configuration,
+            'get_inventory_configuration': self.get_inventory_configuration,
+            'get_analytics_configuration': self.get_analytics_configuration,
         }
 
         self.hcl.module_hcl_code("terraform.tfstate",
@@ -70,6 +72,55 @@ class S3:
 
         return result
     
+    def get_inventory_configuration(self, state, arg):
+        name = state.get("name", "")
+        result = {}
+        result[name] = {}
+        result[name]["included_object_versions"] = state.get("included_object_versions", "")
+        result[name]["enabled"] = state.get("enabled", [])
+        result[name]["optional_fields"] = state.get("optional_fields", [])
+        tmp = state.get("destination", [])
+        if tmp:
+            result[name]["destination"] = {}
+            tmp2 = tmp[0].get("bucket", [])
+            if tmp2:
+                result[name]["destination"]["bucket_arn"] = tmp2[0].get("bucket_arn", "")
+                result[name]["destination"]["format"] = tmp2[0].get("format", "")
+                result[name]["destination"]["account_id"] = tmp2[0].get("account_id", "")
+                result[name]["destination"]["prefix"] = tmp2[0].get("prefix", "")
+                tmp3 = tmp2[0].get("encryption", [])
+                if tmp3:
+                    result[name]["destination"]["encryption"] = tmp3
+
+        tmp = state.get("schedule", [])
+        if tmp:
+            result[name]["frequency"] = tmp[0].get("frequency", "")
+        result[name]["filter"] = state.get("filter", [])
+        return result
+    
+    def get_analytics_configuration(self, state, arg):
+        name = state.get("name", "")
+        result = {}
+        result[name] = {}
+        result[name]["filter"] = state.get("filter", [])
+
+        tmp = state.get("storage_class_analysis", [])
+        if tmp:
+            result[name]["storage_class_analysis"] = {}
+            tmp2 = tmp[0].get("data_export", [])
+            if tmp2:
+                result[name]["storage_class_analysis"]["output_schema_version"] = tmp2[0].get("output_schema_version", "")
+                tmp3 = tmp2[0].get("destination", [])
+                if tmp3:
+                    tmp4 = tmp3[0].get("s3_bucket_destination", [])
+                    if tmp4:
+                        result[name]["storage_class_analysis"]["destination_bucket_arn"] = tmp4[0].get("bucket_arn", "")
+                        result[name]["storage_class_analysis"]["export_format"] = tmp4[0].get("format", "")
+                        result[name]["storage_class_analysis"]["destination_account_id"] = tmp4[0].get("bucket_account_id", "")
+                        result[name]["storage_class_analysis"]["export_prefix"] = tmp4[0].get("prefix", "")
+        return result
+
+
     def build_replication_configuration(self, state, arg):
         result = {}
         result["role"] = state.get("role", "")
@@ -360,9 +411,10 @@ class S3:
         for bucket in all_buckets:
             bucket_name = bucket["Name"]
 
-            # if bucket_name != 'sso.noovie.com-documents-redirect':
-            if 'noovie' in bucket_name:
-                continue
+            # if bucket_name != 'ncm-static-assets-dev':
+            # if 'neustar' not in bucket_name:
+            # if 'noovie' in bucket_name:
+            #     continue
 
             # Retrieve the region of the bucket
             bucket_location_response = self.s3_session.get_bucket_location(
@@ -517,11 +569,11 @@ class S3:
                 f"  Processing S3 Bucket Analytics Configuration: {config_id} for bucket {bucket_name}")
 
             attributes = {
-                "id": config_id,
-                "bucket": bucket_name,
-                "name": config_id,
-                "filter": config["Filter"],
-                "storage_class_analysis": config["StorageClassAnalysis"],
+                "id": bucket_name+":"+config_id,
+                # "bucket": bucket_name,
+                # "name": config_id,
+                # "filter": config["Filter"],
+                # "storage_class_analysis": config["StorageClassAnalysis"],
             }
             self.hcl.process_resource(
                 "aws_s3_bucket_analytics_configuration",
@@ -594,14 +646,14 @@ class S3:
                 f"  Processing S3 Bucket Inventory: {config_id} for bucket {bucket_name}")
 
             attributes = {
-                "id": config_id,
+                "id": bucket_name+":"+config_id,
                 "bucket": bucket_name,
-                "name": config_id,
-                "destination": config["Destination"],
-                "schedule": config["Schedule"],
-                "included_object_versions": config["IncludedObjectVersions"],
-                "optional_fields": config["OptionalFields"] if "OptionalFields" in config else [],
-                "filter": config["Filter"] if "Filter" in config else None,
+                # "name": config_id,
+                # "destination": config["Destination"],
+                # "schedule": config["Schedule"],
+                # "included_object_versions": config["IncludedObjectVersions"],
+                # "optional_fields": config["OptionalFields"] if "OptionalFields" in config else [],
+                # "filter": config["Filter"] if "Filter" in config else None,
             }
             self.hcl.process_resource(
                 "aws_s3_bucket_inventory", f"{bucket_name}-{config_id}".replace("-", "_"), attributes)
