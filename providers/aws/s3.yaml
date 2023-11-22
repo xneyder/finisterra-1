@@ -3,6 +3,7 @@ aws_s3_bucket:
   terraform_module: "github.com/finisterra-io/terraform-aws-s3-bucket.git?ref=main"
   terraform_module_version: "3.14.0"
   name_field: bucket
+  add_id_hash_to_name: true
   keys:
     - bucket
   target_resource_name: this
@@ -146,7 +147,7 @@ aws_s3_bucket:
           # field: rule
           type: list
 
-    aws_s3_bucket_replication_configuration: #Not tested
+    aws_s3_bucket_replication_configuration:
       join:
         bucket:
           field: bucket

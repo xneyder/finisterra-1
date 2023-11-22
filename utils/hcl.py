@@ -113,10 +113,28 @@ class HCL:
             json.dump(state_data, state_file, indent=2)
 
 
+    # def replace_special_chars(self, input_string):
+    #     # Replace spaces, "-", ".", and any special character with "_"
+    #     output_string = re.sub(r'\s|-|\.|\W', '_', input_string)
+    #     return output_string
+
     def replace_special_chars(self, input_string):
-        # Replace spaces, "-", ".", and any special character with "_"
-        output_string = re.sub(r'\s|-|\.|\W', '_', input_string)
-        return output_string
+        # Define a mapping of special characters to their ASCII representations
+        ascii_map = {
+            ' ': 'SPACE',
+            '-': 'DASH',
+            '.': 'DOT'
+            # Add more mappings as needed
+        }
+
+        # Function to replace each match
+        def replace(match):
+            char = match.group(0)
+            return ascii_map.get(char, f'_{ord(char):02X}_')  # Default to hex code representation
+
+        # Replace using a regular expression and the replace function
+        output_string = re.sub(r'\s|[-.]|\W', replace, input_string)
+        return output_string    
 
     def add_underscore(self, string):
         if string[0].isdigit():
