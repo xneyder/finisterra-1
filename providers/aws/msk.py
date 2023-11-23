@@ -1,10 +1,10 @@
 import os
 from utils.hcl import HCL
-
+from providers.aws.security_group import SECURITY_GROUP
 
 class MSK:
     def __init__(self, msk_client, ec2_client, appautoscaling_client, script_dir, provider_name, schema_data, region, s3Bucket,
-                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id):
+                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id, hcl=None):
         self.msk_client = msk_client
         self.ec2_client = ec2_client
         self.appautoscaling_client = appautoscaling_client
@@ -14,11 +14,20 @@ class MSK:
         self.script_dir = script_dir
         self.schema_data = schema_data
         self.region = region
+        self.s3Bucket = s3Bucket
+        self.dynamoDBTable = dynamoDBTable
+        self.state_key = state_key
         self.workspace_id = workspace_id
+
         self.modules = modules
-        self.hcl = HCL(self.schema_data, self.provider_name,
+        if not hcl:
+            self.hcl = HCL(self.schema_data, self.provider_name,
                        self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules)
+        else:
+            self.hcl = hcl
         self.resource_list = {}
+
+        self.security_group_instance = SECURITY_GROUP(ec2_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
 
     def get_field_from_attrs(self, attributes, arg):
         try:
@@ -40,6 +49,24 @@ class MSK:
 
         except Exception as e:
             return None
+        
+    def get_provisioned_throughput(self, attributes, arg):
+        record = {}
+        tmp0 = attributes.get("broker_node_group_info", [])
+        if tmp0:
+            tmp = tmp0[0].get("storage_info", [])
+            if tmp:
+                tmp2 = tmp[0].get("ebs_storage_info", [])
+                if tmp2:
+                    tmp3 = tmp2[0].get("provisioned_throughput", [])
+                    if tmp3:
+                        record["enabled"] =  tmp3[0].get("enabled")
+                        tmp4 = tmp3[0].get("volume_throughput", 0)
+                        if tmp4 > 0:
+                            record["volume_throughput"] = tmp4
+        if record:
+            return [record]
+        return None
 
     def get_server_properties(self, attributes, arg):
         server_properties_str = attributes.get(arg)
@@ -214,6 +241,7 @@ class MSK:
             'get_security_group_names': self.get_security_group_names,
             'aws_security_group_rule_import_id': self.aws_security_group_rule_import_id,
             'get_security_group_rules': self.get_security_group_rules,
+            'get_provisioned_throughput': self.get_provisioned_throughput,
 
         }
 
@@ -254,7 +282,9 @@ class MSK:
                 sg_ids = cluster_details["ClusterInfo"]["BrokerNodeGroupInfo"]["SecurityGroups"]
 
                 # Calling aws_security_group function with the extracted SG IDs
-                self.aws_security_group(sg_ids)
+                for sg in sg_ids:   
+                    self.security_group_instance.aws_security_group(sg)
+                # self.aws_security_group(sg_ids)
 
                 self.aws_msk_configuration(cluster_arn)
                 self.aws_msk_scram_secret_association(cluster_arn)
@@ -343,6 +373,10 @@ class MSK:
             ClusterArn=cluster_arn
         )
 
+        tmp = cluster_details["ClusterInfo"]["CurrentBrokerSoftwareInfo"]
+        if "ConfigurationArn" not in tmp:
+            return
+
         configuration_arn = cluster_details["ClusterInfo"]["CurrentBrokerSoftwareInfo"]["ConfigurationArn"]
 
         # Get the configuration details using the configuration ARN
@@ -363,58 +397,58 @@ class MSK:
         self.hcl.process_resource(
             "aws_msk_configuration", config_name, attributes)
 
-    def aws_security_group(self, security_group_ids):
-        print("Processing Security Groups...")
+    # def aws_security_group(self, security_group_ids):
+    #     print("Processing Security Groups...")
 
-        # Create a response dictionary to collect responses for all security groups
-        response = self.ec2_client.describe_security_groups(
-            GroupIds=security_group_ids
-        )
+    #     # Create a response dictionary to collect responses for all security groups
+    #     response = self.ec2_client.describe_security_groups(
+    #         GroupIds=security_group_ids
+    #     )
 
-        for security_group in response["SecurityGroups"]:
-            print(
-                f"  Processing Security Group: {security_group['GroupName']}")
+    #     for security_group in response["SecurityGroups"]:
+    #         print(
+    #             f"  Processing Security Group: {security_group['GroupName']}")
 
-            attributes = {
-                "id": security_group["GroupId"],
-                "name": security_group["GroupName"],
-                "description": security_group.get("Description", ""),
-                "vpc_id": security_group.get("VpcId", ""),
-                "owner_id": security_group.get("OwnerId", ""),
-            }
+    #         attributes = {
+    #             "id": security_group["GroupId"],
+    #             "name": security_group["GroupName"],
+    #             "description": security_group.get("Description", ""),
+    #             "vpc_id": security_group.get("VpcId", ""),
+    #             "owner_id": security_group.get("OwnerId", ""),
+    #         }
 
-            self.hcl.process_resource(
-                "aws_security_group", security_group["GroupName"].replace("-", "_"), attributes)
+    #         self.hcl.process_resource(
+    #             "aws_security_group", security_group["GroupName"].replace("-", "_"), attributes)
 
-            # Process egress rules
-            for rule in security_group.get('IpPermissionsEgress', []):
-                self.aws_security_group_rule(
-                    'egress', security_group, rule)
+    #         # Process egress rules
+    #         for rule in security_group.get('IpPermissionsEgress', []):
+    #             self.aws_security_group_rule(
+    #                 'egress', security_group, rule)
 
-            # Process ingress rules
-            for rule in security_group.get('IpPermissions', []):
-                self.aws_security_group_rule(
-                    'ingress', security_group, rule)
+    #         # Process ingress rules
+    #         for rule in security_group.get('IpPermissions', []):
+    #             self.aws_security_group_rule(
+    #                 'ingress', security_group, rule)
 
-    def aws_security_group_rule(self, rule_type, security_group, rule):
-        # Rule identifiers are often constructed by combining security group id, rule type, protocol, ports and security group references
-        rule_id = f"{security_group['GroupId']}_{rule_type}_{rule.get('IpProtocol', 'all')}"
-        print(f"Processing Security Groups Rule {rule_id}...")
-        if rule.get('FromPort'):
-            rule_id += f"_{rule['FromPort']}"
-        if rule.get('ToPort'):
-            rule_id += f"_{rule['ToPort']}"
+    # def aws_security_group_rule(self, rule_type, security_group, rule):
+    #     # Rule identifiers are often constructed by combining security group id, rule type, protocol, ports and security group references
+    #     rule_id = f"{security_group['GroupId']}_{rule_type}_{rule.get('IpProtocol', 'all')}"
+    #     print(f"Processing Security Groups Rule {rule_id}...")
+    #     if rule.get('FromPort'):
+    #         rule_id += f"_{rule['FromPort']}"
+    #     if rule.get('ToPort'):
+    #         rule_id += f"_{rule['ToPort']}"
 
-        attributes = {
-            "id": rule_id,
-            "type": rule_type,
-            "security_group_id": security_group['GroupId'],
-            "protocol": rule.get('IpProtocol', '-1'),  # '-1' stands for 'all'
-            "from_port": rule.get('FromPort', 0),
-            "to_port": rule.get('ToPort', 0),
-            "cidr_blocks": [ip_range['CidrIp'] for ip_range in rule.get('IpRanges', [])],
-            "source_security_group_ids": [sg['GroupId'] for sg in rule.get('UserIdGroupPairs', [])]
-        }
+    #     attributes = {
+    #         "id": rule_id,
+    #         "type": rule_type,
+    #         "security_group_id": security_group['GroupId'],
+    #         "protocol": rule.get('IpProtocol', '-1'),  # '-1' stands for 'all'
+    #         "from_port": rule.get('FromPort', 0),
+    #         "to_port": rule.get('ToPort', 0),
+    #         "cidr_blocks": [ip_range['CidrIp'] for ip_range in rule.get('IpRanges', [])],
+    #         "source_security_group_ids": [sg['GroupId'] for sg in rule.get('UserIdGroupPairs', [])]
+    #     }
 
-        self.hcl.process_resource(
-            "aws_security_group_rule", rule_id.replace("-", "_"), attributes)
+    #     self.hcl.process_resource(
+    #         "aws_security_group_rule", rule_id.replace("-", "_"), attributes)

@@ -4,6 +4,9 @@ aws_msk_cluster:
   terraform_module_version: "0.20.0"
   target_resource_name: default
   name_field: cluster_name
+  path: "msk"
+  dependencies:
+    - "../security_group"
   defaults:
     enabled: true
     autoscaling_enabled: false
@@ -48,6 +51,10 @@ aws_msk_cluster:
       arg: broker_node_group_info.storage_info.ebs_storage_info.volume_size
       type: number
       module_default: 1000
+    provisioned_throughput:
+      function: get_provisioned_throughput
+      arg: id
+      type: list
     public_access_enabled:
       function: get_public_access_enabled
       arg: broker_node_group_info.connectivity_info.public_access.type
@@ -67,30 +74,34 @@ aws_msk_cluster:
       function: get_field_from_attrs
       arg: encryption_info.encryption_at_rest_kms_key_arn
       type: string
-    client_allow_unauthenticated:
-      function: get_field_from_attrs
-      arg: broker_node_group_info.connectivity_info.vpc_connectivity.client_authentication.unauthenticated
-      type: bool
-      module_default: false
-    certificate_authority_arns:
-      function: get_field_from_attrs
-      arg: broker_node_group_info.connectivity_info.vpc_connectivity.client_authentication.tls.certificate_authority_arns
+    client_authentication:
+      field: client_authentication
       type: list
-    client_tls_auth_enabled:
-      function: get_field_from_attrs
-      arg: broker_node_group_info.connectivity_info.vpc_connectivity.client_authentication.tls
-      type: bool
-      module_default: false
-    client_sasl_scram_enabled:
-      function: get_field_from_attrs
-      arg: broker_node_group_info.connectivity_info.vpc_connectivity.client_authentication.sasl.scram
-      type: bool
-      module_default: false
-    client_sasl_iam_enabled:
-      function: get_field_from_attrs
-      arg: broker_node_group_info.connectivity_info.vpc_connectivity.client_authentication.sasl.iam
-      type: bool
-      module_default: false
+      # module_default: "TLS"
+    # client_allow_unauthenticated:
+    #   function: get_field_from_attrs
+    #   arg: broker_node_group_info.connectivity_info.vpc_connectivity.client_authentication.unauthenticated
+    #   type: bool
+    #   module_default: false
+    # certificate_authority_arns:
+    #   function: get_field_from_attrs
+    #   arg: broker_node_group_info.connectivity_info.vpc_connectivity.client_authentication.tls.certificate_authority_arns
+    #   type: list
+    # client_tls_auth_enabled:
+    #   function: get_field_from_attrs
+    #   arg: broker_node_group_info.connectivity_info.vpc_connectivity.client_authentication.tls
+    #   type: bool
+    #   module_default: false
+    # client_sasl_scram_enabled:
+    #   function: get_field_from_attrs
+    #   arg: broker_node_group_info.connectivity_info.vpc_connectivity.client_authentication.sasl.scram
+    #   type: bool
+    #   module_default: false
+    # client_sasl_iam_enabled:
+    #   function: get_field_from_attrs
+    #   arg: broker_node_group_info.connectivity_info.vpc_connectivity.client_authentication.sasl.iam
+    #   type: bool
+    #   module_default: false
     jmx_exporter_enabled:
       function: get_field_from_attrs
       arg: open_monitoring.prometheus.jmx_exporter.enabled_in_broker
@@ -153,38 +164,38 @@ aws_msk_cluster:
           arg: server_properties
           type: map
 
-    aws_security_group:
-      join:
-        id:
-          join_function: match_security_group
-      target_resource_name: default
-      fields:
-        create_security_group:
-          unique: true
-        security_group_name:
-          field: name
-          type: string
-        security_group_description:
-          field: description
-          type: string
-        security_group_tags:
-          field: tags
-          type: map
-      childs:
-        aws_security_group_rule:
-          join:
-            id:
-              field: security_group_id
-          target_resource_name: default
-          second_index:
-            field: id
-          import_id:
-            function: aws_security_group_rule_import_id
-          fields:
-            security_group_rules:
-              function: get_security_group_rules
-              arg: id
-              type: list
+    # aws_security_group:
+    #   join:
+    #     id:
+    #       join_function: match_security_group
+    #   target_resource_name: default
+    #   fields:
+    #     create_security_group:
+    #       unique: true
+    #     security_group_name:
+    #       field: name
+    #       type: string
+    #     security_group_description:
+    #       field: description
+    #       type: string
+    #     security_group_tags:
+    #       field: tags
+    #       type: map
+    #   childs:
+    #     aws_security_group_rule:
+    #       join:
+    #         id:
+    #           field: security_group_id
+    #       target_resource_name: default
+    #       second_index:
+    #         field: id
+    #       import_id:
+    #         function: aws_security_group_rule_import_id
+    #       fields:
+    #         security_group_rules:
+    #           function: get_security_group_rules
+    #           arg: id
+    #           type: list
     aws_appautoscaling_target:
       join:
         arn:
@@ -229,3 +240,59 @@ aws_msk_cluster:
         storage_autoscaling_disable_scale_in:
           field: target_tracking_scaling_policy_configuration.disable_scale_in
           type: bool
+
+aws_security_group:
+  # terraform_module: "../../../terraform-aws-modules/terraform-aws-security-group"
+  terraform_module: "github.com/finisterra-io/terraform-aws-security-group?ref=main"
+  terraform_module_version: "5.2.0"
+  target_resource_name: default
+  name_field: security_group_name
+  add_id_hash_to_name: true
+  path: "security_group"
+  defaults:
+    create_before_destroy: false
+  fields:
+    security_group_name:
+      field: name
+      type: string
+    vpc_name:
+      function: get_vpc_name
+      arg: vpc_id
+      type: string
+    vpc_id:
+      function: get_vpc_id
+      type: string
+      arg: vpc_id
+    security_group_description:
+      field: description
+      type: string
+    tags:
+      field: tags
+      type: map
+  childs:
+    aws_vpc_security_group_ingress_rule:
+      join:
+        id:
+          field: security_group_id
+      import_id:
+        field: security_group_rule_id
+      target_resource_name: dbc
+      second_index:
+        field: id
+      fields:
+        ingress_rules:
+          function: get_security_group_rules
+          type: map
+    aws_vpc_security_group_egress_rule:
+      join:
+        id:
+          field: security_group_id
+      import_id:
+        field: security_group_rule_id
+      target_resource_name: dbc
+      second_index:
+        field: id
+      fields:
+        egress_rules:
+          function: get_security_group_rules
+          type: map
