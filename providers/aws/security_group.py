@@ -28,9 +28,16 @@ class SECURITY_GROUP:
 
     def get_vpc_name(self, vpc_id):
         response = self.ec2_client.describe_vpcs(VpcIds=[vpc_id])
-        vpc_name = next(
-            (tag['Value'] for tag in response['Vpcs'][0]['Tags'] if tag['Key'] == 'Name'), None)
-        return vpc_name        
+        
+        # Check if 'Tags' key exists and if it has any tags
+        if 'Tags' in response['Vpcs'][0] and response['Vpcs'][0]['Tags']:
+            vpc_name = next(
+                (tag['Value'] for tag in response['Vpcs'][0]['Tags'] if tag['Key'] == 'Name'), None)
+        else:
+            # If 'Tags' key doesn't exist or is empty, set vpc_name to None or a default value
+            vpc_name = None
+
+        return vpc_name
 
     def security_group(self):
         self.hcl.prepare_folder(os.path.join("generated", "security_group"))
