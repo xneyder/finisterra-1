@@ -1,6 +1,7 @@
 import botocore
 import os
 from utils.hcl import HCL
+import copy
 
 
 def cors_config_transform(value):
@@ -90,8 +91,41 @@ class CloudFront:
         except Exception as e:
             return None
 
+    # def build_origin0(self, attributes):
+    #     origin_list = attributes.get("origin", [])
+    #     result = {}
+
+    #     for origin in origin_list:
+    #         origin_key = origin['origin_id']
+
+    #         # Remove empty fields and convert lists to their first item
+    #         transformed_origin = {}
+    #         for k, v in origin.items():
+    #             if v:  # check if the value is not empty
+    #                 if k in ("custom_header"):
+    #                     transformed_origin[k] = v
+    #                 elif isinstance(v, list):
+    #                     transformed_origin[k] = v[0]
+    #                 else:
+    #                     transformed_origin[k] = v
+
+    #         if 's3_origin_config' in transformed_origin:
+    #             if 'origin_access_identity' in transformed_origin['s3_origin_config']:
+    #                 if transformed_origin['s3_origin_config']['origin_access_identity'] != '':
+    #                     transformed_origin['s3_origin_config']['cloudfront_access_identity_path'] = transformed_origin[
+    #                         's3_origin_config']['origin_access_identity']
+    #                     del transformed_origin['s3_origin_config']['origin_access_identity']
+
+    #         result[origin_key] = transformed_origin
+
+    #     self.origin = result
+    #     return result
+
+
     def build_origin(self, attributes):
-        origin_list = attributes.get("origin", [])
+        # Create a deep copy of the attributes to avoid modifying the original
+        attributes_copy = copy.deepcopy(attributes)
+        origin_list = attributes_copy.get("origin", [])
         result = {}
 
         for origin in origin_list:
@@ -110,9 +144,24 @@ class CloudFront:
 
             if 's3_origin_config' in transformed_origin:
                 if 'origin_access_identity' in transformed_origin['s3_origin_config']:
-                    if transformed_origin['s3_origin_config']['origin_access_identity'] != '':
-                        transformed_origin['s3_origin_config']['cloudfront_access_identity_path'] = transformed_origin[
-                            's3_origin_config']['origin_access_identity']
+                    oai_path = transformed_origin['s3_origin_config']['origin_access_identity']
+                    if oai_path != '':
+                        # Extract the OAI ID
+                        oai_id = oai_path.split('/')[-1]
+
+                        # Get the OAI's comment using boto3
+                        oai_comment = None
+                        try:
+                            print(f"Fetching OAI Comment for {oai_id}")
+                            response = self.cloudfront_client.get_cloud_front_origin_access_identity(Id=oai_id)
+                            oai_comment = response['CloudFrontOriginAccessIdentity']['CloudFrontOriginAccessIdentityConfig']['Comment']
+                        except Exception as e:
+                            print(f"Error fetching OAI Comment: {e}")
+
+                        # Set the new field with the OAI comment
+                        if oai_comment:
+                            transformed_origin['s3_origin_config']['cloudfront_access_identity'] = oai_comment
+
                         del transformed_origin['s3_origin_config']['origin_access_identity']
 
             result[origin_key] = transformed_origin
@@ -245,16 +294,14 @@ class CloudFront:
     def join_origin_access_identity(self, parent_attributes, child_attributes):
         # Get child's identity (assuming it's in 'id' or you can modify as needed)
         child_identity = child_attributes.get('id')
-
         # Iterate over the origins in parent attributes
         for origin in parent_attributes.get('origin', []):
             s3_origin_configs = origin.get('s3_origin_config', [])
-
             # If the s3_origin_config contains a matching cloudfront_access_identity_path, return True
             for s3_origin in s3_origin_configs:
-                if s3_origin.get('cloudfront_access_identity_path', "").split('/')[-1] == child_identity:
+                if s3_origin.get('origin_access_identity', "").split('/')[-1] == child_identity:
                     return True
-
+                
         # If no matches found, return False
         return False
 
@@ -336,7 +383,7 @@ class CloudFront:
             for distribution_summary in items:
                 distribution_id = distribution_summary["Id"]
 
-                # if distribution_id != "E72U8YCZJXSEA":
+                # if distribution_id != "EJ137Y0762IK2":
                 #     continue
 
                 print(

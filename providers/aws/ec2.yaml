@@ -151,6 +151,9 @@ aws_instance:
     volume_tags:
       field: volume_tags
       type: map
+    launch_template:
+      field: launch_template
+      type: list
   childs:
     aws_volume_attachment:
       join:

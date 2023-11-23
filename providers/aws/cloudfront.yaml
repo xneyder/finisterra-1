@@ -3,7 +3,13 @@ aws_cloudfront_distribution:
   terraform_module: "github.com/finisterra-io/terraform-aws-cloudfront.git?ref=main"
   terraform_module_version: "6.1.0"
   target_resource_name: this
+  path: "cloudfront_distribution"
+  dependencies:
+    - "../origin_access_identity"
   fields:
+    enabled:
+      field: enabled
+      type: bool
     aliases:
       field: aliases
       type: list
@@ -75,15 +81,14 @@ aws_cloudfront_distribution:
           arg: monitoring_subscription.realtime_metrics_subscription_config.realtime_metrics_subscription_status
           type: string
           module_default: "Enabled"
-    aws_cloudfront_origin_access_identity:
-      join:
-        id:
-          join_function: join_origin_access_identity
-      target_resource_name: this
-      second_index:
-        field: id
-      fields:
-        create_origin_access_identity:
-          unique: true
-        origin_access_identities:
-          function: build_origin_access_identities
+
+aws_cloudfront_origin_access_identity:
+  terraform_module: "github.com/finisterra-io/terraform-aws-cloudfront//modules/origin_access_identity?ref=main"
+  terraform_module_version: "6.1.0"
+  target_resource_name: this
+  path: "origin_access_identity"
+  second_index:
+    field: id
+  fields:
+    origin_access_identities:
+      function: build_origin_access_identities
