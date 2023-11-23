@@ -152,7 +152,7 @@ class CloudFront:
                         # Get the OAI's comment using boto3
                         oai_comment = None
                         try:
-                            print(f"Fetching OAI Comment for {oai_id}")
+                            # print(f"Fetching OAI Comment for {oai_id}")
                             response = self.cloudfront_client.get_cloud_front_origin_access_identity(Id=oai_id)
                             oai_comment = response['CloudFrontOriginAccessIdentity']['CloudFrontOriginAccessIdentityConfig']['Comment']
                         except Exception as e:
@@ -383,8 +383,8 @@ class CloudFront:
             for distribution_summary in items:
                 distribution_id = distribution_summary["Id"]
 
-                if distribution_id != "EXMU07B7F4KIS":
-                    continue
+                # if distribution_id != "EXMU07B7F4KIS":
+                #     continue
 
                 print(
                     f"  Processing CloudFront Distribution: {distribution_id}")
