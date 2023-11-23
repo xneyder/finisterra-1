@@ -383,8 +383,8 @@ class CloudFront:
             for distribution_summary in items:
                 distribution_id = distribution_summary["Id"]
 
-                # if distribution_id != "EJ137Y0762IK2":
-                #     continue
+                if distribution_id != "EXMU07B7F4KIS":
+                    continue
 
                 print(
                     f"  Processing CloudFront Distribution: {distribution_id}")
