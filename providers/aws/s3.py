@@ -335,10 +335,11 @@ class S3:
         # i = 0
         for rule in rules:
             transformed_rule = self.filter_empty_fields(rule)
-            # transformed_rule = rule
-            # if transformed_rule:
-            #     transformed_rule['id'] = 'rule-' + str(i)
-            #     i += 1
+            for filter in transformed_rule.get('filter', []):
+                if 'and' in filter:
+                    object_size_less_than = filter['and'][0].get('object_size_less_than', 0)
+                    if object_size_less_than == 0:
+                        del filter['and'][0]['object_size_less_than']
             result.append(transformed_rule)
 
         return result
@@ -411,10 +412,10 @@ class S3:
         for bucket in all_buckets:
             bucket_name = bucket["Name"]
 
-            # if bucket_name != 'ncm-static-assets-dev':
+            # if bucket_name != 'stg-safeops-app-compliance-reports':
             # if 'neustar' not in bucket_name:
             # if 'noovie' in bucket_name:
-            #     continue
+                # continue
 
             # Retrieve the region of the bucket
             bucket_location_response = self.s3_session.get_bucket_location(
