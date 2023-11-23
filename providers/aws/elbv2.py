@@ -46,14 +46,16 @@ class ELBV2:
                 return True
         return False
 
-    def get_subnet_names(self, attributes, arg):
-        subnet_id = attributes.get(arg)
-        response = self.ec2_client.describe_subnets(SubnetIds=[subnet_id])
-        subnet_tags = response['Subnets'][0].get('Tags', [])
-        subnet_name = next(
-            (tag['Value'] for tag in subnet_tags if tag['Key'] == 'Name'), None)
+    # def get_subnet_names(self, attributes, arg):
+    #     subnet_id = attributes.get(arg)
+    #     response = self.ec2_client.describe_subnets(SubnetIds=[subnet_id])
+    #     subnet_info = response['Subnets'][0]
+    #     subnet_tags = subnet_info.get('Tags', [])
+    #     subnet_name = next((tag['Value'] for tag in subnet_tags if tag['Key'] == 'Name'), None)
+    #     subnet_cidr = subnet_info.get('CidrBlock', None)
 
-        return subnet_name
+    #     return [{'name': subnet_name, 'cidr_block': subnet_cidr}]
+
 
     def get_security_group_rules(self, attributes, arg):
         key = attributes[arg]
@@ -214,29 +216,32 @@ class ELBV2:
 
     def get_subnet_names(self, attributes, arg):
         subnet_ids = attributes.get(arg)
-        subnet_names = []
+        subnets_info = []
         for subnet_id in subnet_ids:
             response = self.ec2_client.describe_subnets(SubnetIds=[subnet_id])
 
             # Check if 'Subnets' key exists and it's not empty
             if not response or 'Subnets' not in response or not response['Subnets']:
-                print(
-                    f"No subnet information found for Subnet ID: {subnet_id}")
+                print(f"No subnet information found for Subnet ID: {subnet_id}")
                 continue
 
-            # Extract the 'Tags' key safely using get
-            subnet_tags = response['Subnets'][0].get('Tags', [])
+            subnet_info = response['Subnets'][0]
+            subnet_tags = subnet_info.get('Tags', [])
 
             # Extract the subnet name from the tags
             subnet_name = next(
                 (tag['Value'] for tag in subnet_tags if tag['Key'] == 'Name'), None)
 
-            if subnet_name:
-                subnet_names.append(subnet_name)
-            else:
-                print(f"No 'Name' tag found for Subnet ID: {subnet_id}")
+            # Extract the CIDR block
+            subnet_cidr = subnet_info.get('CidrBlock', None)
 
-        return subnet_names
+            if subnet_name and subnet_cidr:
+                subnets_info.append({'name': subnet_name, 'cidr_block': subnet_cidr})
+            else:
+                print(f"No 'Name' tag or CIDR block found for Subnet ID: {subnet_id}")
+
+        return subnets_info
+
 
     def get_subnet_ids(self, attributes, arg):
         subnet_names = self.get_subnet_names(attributes, arg)
