@@ -33,24 +33,25 @@ aws_api_gateway_rest_api:
       import_id:
         function: aws_api_gateway_deployment_import_id
       second_index:
-        function: get_stage_name
-      defaults:
-        create_api_gateway_deployment: true
+        field: id
+      # defaults:
+      #   create_api_gateway_deployment: true
       fields:
-        deployment_description:
-          field: description
-          type: string
+        deployments:
+          function: build_deployments
+          type: map
+          arg: id
     aws_api_gateway_stage:
       join:
         id:
           field: rest_api_id
       target_resource_name: this
-      defaults:
-        create_api_gateway_stage: true
+      # defaults:
+      #   create_api_gateway_stage: true
       second_index:
-        field: stage_name
+        function: get_stage_name_index
       fields:
-        stages:
+        deployments:
           function: build_stages
           type: map
           arg: id
