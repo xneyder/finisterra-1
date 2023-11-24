@@ -119,7 +119,7 @@ class MSK:
         else:
             return self.get_field_from_attrs(attributes, 'broker_node_group_info.client_subnets')
 
-    def get_vpc_id_internal(self, attributes):
+    def get_vpc_id_msk_internal(self, attributes):
         sg_ids = self.get_field_from_attrs(
             attributes, 'broker_node_group_info.security_groups')
 
@@ -137,8 +137,8 @@ class MSK:
         vpc_id = response["SecurityGroups"][0]["VpcId"]
         return vpc_id
 
-    def get_vpc_name(self, attributes):
-        vpc_id = self.get_vpc_id_internal(attributes)
+    def get_vpc_name_msk(self, attributes):
+        vpc_id = self.get_vpc_id_msk_internal(attributes)
         response = self.ec2_client.describe_vpcs(VpcIds=[vpc_id])
 
         if not response or 'Vpcs' not in response or not response['Vpcs']:
@@ -155,10 +155,10 @@ class MSK:
 
         return vpc_name
 
-    def get_vpc_id(self, attributes):
-        vpc_name = self.get_vpc_name(attributes)
+    def get_vpc_id_msk(self, attributes):
+        vpc_name = self.get_vpc_name_msk(attributes)
         if vpc_name is None:
-            return self.get_vpc_id_internal(attributes)
+            return self.get_vpc_id_msk_internal(attributes)
         else:
             return ""
 
@@ -213,15 +213,15 @@ class MSK:
         source = "_".join(cidr_blocks)
         return security_group_id+"_"+type+"_"+protocol+"_"+str(from_port)+"_"+str(to_port)+"_"+source
 
-    def get_security_group_rules(self, attributes, arg):
-        key = attributes.get(arg)
-        result = {key: {}}
-        for k in ['type', 'description', 'from_port', 'to_port', 'protocol', 'cidr_blocks']:
-            val = attributes.get(k)
-            if isinstance(val, str):
-                val = val.replace('${', '$${')
-            result[key][k] = val
-        return result
+    # def get_security_group_rules(self, attributes, arg):
+    #     key = attributes.get(arg)
+    #     result = {key: {}}
+    #     for k in ['type', 'description', 'from_port', 'to_port', 'protocol', 'cidr_blocks']:
+    #         val = attributes.get(k)
+    #         if isinstance(val, str):
+    #             val = val.replace('${', '$${')
+    #         result[key][k] = val
+    #     return result
 
     def msk(self):
         self.hcl.prepare_folder(os.path.join("generated", "msk"))
@@ -236,11 +236,11 @@ class MSK:
             'match_security_group': self.match_security_group,
             'get_server_properties': self.get_server_properties,
             'get_public_access_enabled': self.get_public_access_enabled,
-            'get_vpc_name': self.get_vpc_name,
-            'get_vpc_id': self.get_vpc_id,
+            'get_vpc_name_msk': self.get_vpc_name_msk,
+            'get_vpc_id_msk': self.get_vpc_id_msk,
             'get_security_group_names': self.get_security_group_names,
             'aws_security_group_rule_import_id': self.aws_security_group_rule_import_id,
-            'get_security_group_rules': self.get_security_group_rules,
+            # 'get_security_group_rules': self.get_security_group_rules,
             'get_provisioned_throughput': self.get_provisioned_throughput,
 
         }
@@ -307,8 +307,8 @@ class MSK:
                 "id": secret,
                 "arn": secret,
                 "cluster_arn": cluster_arn,
-                'get_vpc_name': self.get_vpc_name,
-                'get_vpc_id': self.get_vpc_id,
+                'get_vpc_name_msk': self.get_vpc_name_msk,
+                'get_vpc_id_msk': self.get_vpc_id_msk,
             }
 
             self.hcl.process_resource(

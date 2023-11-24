@@ -44,7 +44,7 @@ aws_msk_cluster:
       function: get_vpc_name
       type: string
     vpc_id:
-      function: get_vpc_id
+      function: get_vpc_id_msk
       type: string
     broker_volume_size:
       function: get_field_from_attrs

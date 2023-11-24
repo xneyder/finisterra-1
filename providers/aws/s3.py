@@ -412,7 +412,7 @@ class S3:
         for bucket in all_buckets:
             bucket_name = bucket["Name"]
 
-            # if bucket_name != 'stg-safeops-app-compliance-reports':
+            # if bucket_name != "posthog-cloud-dev-us-east-1-app-assets":
             # if 'neustar' not in bucket_name:
             # if 'noovie' in bucket_name:
                 # continue
