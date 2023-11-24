@@ -225,21 +225,21 @@ class Dynamodb:
                 }
 
                 # Extract the key schema
-                key_schema = table_description["KeySchema"]
+                # key_schema = table_description["KeySchema"]
 
-                # Get the hash key
-                hash_key = next(
-                    key["AttributeName"] for key in key_schema if key["KeyType"] == "HASH")
-                attributes["hash_key"] = hash_key
+                # # Get the hash key
+                # hash_key = next(
+                #     key["AttributeName"] for key in key_schema if key["KeyType"] == "HASH")
+                # attributes["hash_key"] = hash_key
 
-                # If there's a range key, get it
-                range_key = next(
-                    (key["AttributeName"] for key in key_schema if key["KeyType"] == "RANGE"), None)
-                if range_key is not None:
-                    attributes["range_key"] = range_key
+                # # If there's a range key, get it
+                # range_key = next(
+                #     (key["AttributeName"] for key in key_schema if key["KeyType"] == "RANGE"), None)
+                # if range_key is not None:
+                #     attributes["range_key"] = range_key
 
                 if "GlobalSecondaryIndexes" in table_description:
-                    attributes["global_secondary_index"] = table_description["GlobalSecondaryIndexes"]
+                    # attributes["global_secondary_index"] = table_description["GlobalSecondaryIndexes"]
                     # Process autoscaling for each global secondary index
                     for gsi in table_description["GlobalSecondaryIndexes"]:
                         index_name = gsi["IndexName"]
@@ -247,8 +247,8 @@ class Dynamodb:
                         index_resource_id = f'table/{table_name}/index/{index_name}'
                         self.aws_appautoscaling_target(index_resource_id)
 
-                if "LocalSecondaryIndexes" in table_description:
-                    attributes["local_secondary_index"] = table_description["LocalSecondaryIndexes"]
+                # if "LocalSecondaryIndexes" in table_description:
+                #     attributes["local_secondary_index"] = table_description["LocalSecondaryIndexes"]
 
                 self.hcl.process_resource(
                     "aws_dynamodb_table", table_name.replace("-", "_"), attributes)
