@@ -435,6 +435,7 @@ class ECS:
             'aws_appautoscaling_target_import_id': self.aws_appautoscaling_target_import_id,
             'get_iam_policy_name': self.get_iam_policy_name,
             'get_policy_attachment_index': self.get_policy_attachment_index,
+            'get_network_field': self.get_network_field,
         }
 
         self.hcl.module_hcl_code("terraform.tfstate", os.path.join(

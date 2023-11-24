@@ -81,7 +81,6 @@ aws_ecs_service:
   defaults:
     ignore_task_definition_changes: true
     create_task_definition: false
-    enable_autoscaling: false
     create_iam_role: false
     create_target_group: false
   import_id:
