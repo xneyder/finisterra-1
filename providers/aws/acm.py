@@ -79,11 +79,21 @@ class ACM:
                 # Get certificate details to check for expiration and type
                 cert_details = self.acm_client.describe_certificate(
                     CertificateArn=cert_arn)["Certificate"]
-                expiration_date = cert_details["NotAfter"]
                 certificate_type = cert_details["Type"]
 
-                # Skip expired certificates and imported certificates
-                if expiration_date < datetime.datetime.now(tz=datetime.timezone.utc) or certificate_type == "IMPORTED":
+                #skip imported certificates
+                if certificate_type == "IMPORTED":
+                    continue
+
+                #skip not issued certificates
+                status = cert_details["Status"]
+                if status != "ISSUED":
+                    continue
+
+                expiration_date = cert_details["NotAfter"]
+
+                # Skip expired certificates 
+                if expiration_date < datetime.datetime.now(tz=datetime.timezone.utc):
                     continue
 
                 print(f"  Processing ACM Certificate: {cert_arn}")

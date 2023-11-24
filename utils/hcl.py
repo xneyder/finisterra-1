@@ -898,7 +898,7 @@ class HCL:
             if instance["attributes"]:
                 instance["name"] = instance["name"].replace("\n", "")
                 module_instance_name = instance["name"].replace(
-                    '"', '').replace(" ", "_").replace(".", "_").replace("/", "_").replace("(", "_").replace(")", "_").replace("*", "_").replace("@", "_").replace("#", "_")
+                    '"', '').replace(" ", "_").replace(".", "_").replace("/", "_").replace("(", "_").replace(")", "_").replace("*", "_").replace("@", "_").replace("#", "_").replace("{", "_").replace("}", "_")
                 module_instance_name = f'{instance["type"]}-{module_instance_name}'
                 if instance["add_id_hash_to_name"]:
                     module_instance_name = f'{module_instance_name}_{instance["id_hash"]}'
@@ -1019,7 +1019,7 @@ class HCL:
 
         for instance in instances:
             module_instance_name = instance["name"].replace(
-                '"', '').replace(" ", "_").replace(".", "_").replace("/", "_").replace("(", "_").replace(")", "_").replace("*", "_").replace("@", "_").replace("#", "_")
+                '"', '').replace(" ", "_").replace(".", "_").replace("/", "_").replace("(", "_").replace(")", "_").replace("*", "_").replace("@", "_").replace("#", "_").replace("{", "_").replace("}", "_")
             module_instance_name = f'{instance["type"]}-{module_instance_name}'
             if instance["add_id_hash_to_name"]:
                 module_instance_name = f'{module_instance_name}_{instance["id_hash"]}'
