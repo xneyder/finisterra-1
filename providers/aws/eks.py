@@ -313,7 +313,12 @@ class EKS:
 
         tmp = attributes.get("image_id")
         if tmp:
-            result[self.node_group_name]["ami_id"] = tmp 
+            result[self.node_group_name]["ami_id"] = tmp
+
+        tmp = attributes.get("vpc_security_group_ids")
+        if tmp:
+            result[self.node_group_name]['vpc_security_group_ids'] = attributes.get(
+                "vpc_security_group_ids")
 
         result[self.node_group_name]["use_custom_launch_template"] = True 
         

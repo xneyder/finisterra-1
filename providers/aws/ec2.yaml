@@ -66,9 +66,9 @@ aws_instance:
       field: ipv6_address_count
       type: number
       module_default: 0
-    ipv6_addresses:
-      field: ipv6_addresses
-      type: list
+    # ipv6_addresses:
+    #   field: ipv6_addresses
+    #   type: list
     tenancy:
       field: tenancy
       type: string

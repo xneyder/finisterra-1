@@ -97,8 +97,8 @@ class HCL:
             # add resource to state
             state_data['resources'].append(resource)
         except Exception as e:
-            print(
-                f'State file "{self.terraform_state_file}" does not exist. Creating a new one.')
+            # print(
+            #     f'State file "{self.terraform_state_file}" does not exist. Creating a new one.')
             state_data = {
                 "version": 4,
                 "terraform_version": "1.5.0",

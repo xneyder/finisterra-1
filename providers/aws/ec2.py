@@ -351,7 +351,7 @@ class EC2:
                         f"  Skipping EC2 Instance (managed by EKS): {instance_id}")
                     continue
 
-                # if instance_id != "i-072964d6ceacad6a3":
+                # if instance_id != "i-09138835ee735c5df":
                 #     continue
 
                 print(f"  Processing EC2 Instance: {instance_id}")
