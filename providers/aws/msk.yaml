@@ -163,6 +163,9 @@ aws_msk_cluster:
           function: get_server_properties
           arg: server_properties
           type: map
+        config_kafka_versions:
+          field: kafka_versions
+          type: list
 
     # aws_security_group:
     #   join:
