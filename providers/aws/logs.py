@@ -4,7 +4,7 @@ from utils.hcl import HCL
 
 class Logs:
     def __init__(self, logs_client, script_dir, provider_name, schema_data, region, s3Bucket,
-                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id):
+                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id, hcl=None):
         self.logs_client = logs_client
         self.transform_rules = {
             "aws_cloudwatch_log_resource_policy": {
@@ -18,8 +18,14 @@ class Logs:
         self.region = region
         self.workspace_id = workspace_id
         self.modules = modules
-        self.hcl = HCL(self.schema_data, self.provider_name,
+        self.s3Bucket = s3Bucket
+        self.dynamoDBTable = dynamoDBTable
+        self.state_key = state_key
+        if not hcl:
+            self.hcl = HCL(self.schema_data, self.provider_name,
                        self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules)
+        else:
+            self.hcl = hcl
         self.resource_list = {}
 
     def logs(self):
@@ -112,7 +118,7 @@ class Logs:
                     print(
                         f"  No Destination Policy found for Log Destination: {destination_name}")
 
-    def aws_cloudwatch_log_group(self):
+    def aws_cloudwatch_log_group(self, specific_log_group_name=None):
         print("Processing CloudWatch Log Groups...")
 
         paginator = self.logs_client.get_paginator("describe_log_groups")
@@ -122,6 +128,10 @@ class Logs:
 
                 # Skip AWS managed log groups
                 if log_group_name.startswith("/aws"):
+                    continue
+
+                # Process only the specified log group if given
+                if specific_log_group_name and log_group_name != specific_log_group_name:
                     continue
 
                 print(f"  Processing CloudWatch Log Group: {log_group_name}")
@@ -142,6 +152,7 @@ class Logs:
 
                 self.hcl.process_resource(
                     "aws_cloudwatch_log_group", log_group_name.replace("-", "_"), attributes)
+
 
     def aws_cloudwatch_log_metric_filter(self):
         print("Processing CloudWatch Log Metric Filters...")

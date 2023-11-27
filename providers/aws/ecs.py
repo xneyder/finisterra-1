@@ -59,7 +59,8 @@ class ECS:
         return attributes.get('arn')
 
     def get_network_field(self, attributes, field):
-        if 'network_configuration' in attributes:
+        tmp = attributes.get('network_configuration')
+        if tmp:
             network_configuration = attributes['network_configuration'][0]
             if field in network_configuration:
                 return network_configuration[field]

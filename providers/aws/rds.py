@@ -1,6 +1,7 @@
 import os
 from utils.hcl import HCL
 from providers.aws.iam_role import IAM_ROLE
+from providers.aws.logs import Logs
 
 class RDS:
     def __init__(self, rds_client, logs_client, iam_client, script_dir, provider_name, schema_data, region, s3Bucket,
@@ -28,6 +29,8 @@ class RDS:
             self.hcl = hcl
         
         self.iam_role_instance = IAM_ROLE(iam_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
+        self.logs_instance = Logs(logs_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
+
         self.resource_list = {}
 
     def cloudwatch_log_group_name(self, attributes):
@@ -122,7 +125,8 @@ class RDS:
 
                 # call aws_cloudwatch_log_group function with instance_id and each log export name as parameters
                 for log_export_name in instance.get("EnabledCloudwatchLogsExports", []):
-                    self.aws_cloudwatch_log_group(instance_id, log_export_name)
+                    self.logs_instance.aws_cloudwatch_log_group(f"/aws/rds/instance/{instance_id}/{log_export_name}")
+                    # self.aws_cloudwatch_log_group(instance_id, log_export_name)
 
                 monitoring_role_arn = instance.get("MonitoringRoleArn")
                 if monitoring_role_arn:

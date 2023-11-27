@@ -159,14 +159,12 @@ class S3:
                 tmp2 = tmp[0].get("storage_class", "")
                 if tmp2:
                     record["destination"]["storage_class"] = tmp2
-                tmp2 = tmp[0].get("account")
-                if tmp2:
-                    record["destination"]["account"] = tmp2[0].get("account", "")
+                record["destination"]["account"] = tmp[0].get("account")
                 #access_control_translation
                 tmp2 = tmp[0].get("access_control_translation")
                 if tmp2:
-                    record["destination"]["access_control_translation"] = tmp2[0].get("owner", "")
-            
+                    record["destination"]["access_control_translation"] = {}
+                    record["destination"]["access_control_translation"]["owner"] = tmp2[0].get("owner", "")
                 #encryption_configuration
                 tmp2 = tmp[0].get("encryption_configuration")
                 if tmp2:

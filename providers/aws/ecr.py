@@ -63,10 +63,14 @@ class ECR:
         for rule in rules:
             record={}
             record["scan_frequency"] = rule.get("scan_frequency", None)
-            repository_filter= rule.get("repository_filter", {})
-            if repository_filter:
-                record["filter"] = repository_filter[0].get("filter")
-                record["filter_type"] = repository_filter[0].get("filter_type")
+            repository_filter = rule.get('repository_filter')
+            record["repository_filter"] = []
+            for filter in repository_filter:
+                record2 = {}
+                record2["filter"] = filter.get("filter")
+                record2["filter_type"] = filter.get("filter_type")
+                record["repository_filter"].append(record2)
+
             result.append(record)
         return result
 

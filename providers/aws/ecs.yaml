@@ -79,9 +79,7 @@ aws_ecs_service:
   dependencies:
     - "../iam_role"
   defaults:
-    ignore_task_definition_changes: true
     create_task_definition: false
-    create_iam_role: false
     create_target_group: false
   import_id:
     function: aws_ecs_service_import_id
@@ -91,19 +89,19 @@ aws_ecs_service:
       type: string
     alarms:
       field: alarms
-      type: map
+      type: list
     capacity_provider_strategy:
       field: capacity_provider_strategy
-      type: map
+      type: list
     cluster_arn:
       field: cluster
       type: string
     deployment_circuit_breaker:
       field: deployment_circuit_breaker
-      type: map
+      type: list
     deployment_controller:
       field: deployment_controller
-      type: map
+      type: list
     deployment_maximum_percent:
       field: deployment_maximum_percent
       type: number
@@ -134,10 +132,10 @@ aws_ecs_service:
       type: map
     ordered_placement_strategy:
       field: ordered_placement_strategy
-      type: map
+      type: list
     placement_constraints:
       field: placement_constraints
-      type: map
+      type: list
     platform_version:
       field: platform_version
       type: string
@@ -146,7 +144,7 @@ aws_ecs_service:
       type: string
     service_connect_configuration:
       field: service_connect_configuration
-      type: map
+      type: list
     service_registries:
       function: build_service_registries
       arg: service_registries
