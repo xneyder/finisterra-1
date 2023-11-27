@@ -933,7 +933,6 @@ class HCL:
 
                         name_field = f'{instance["name_field"]}'
 
-                        
                         if instance["add_id_hash_to_name"]:
                             name_field = f'{instance["name_field"]}_{instance["id_hash"]}'
                         else:
@@ -959,13 +958,20 @@ class HCL:
                                         r'\"' + re.escape(name_value) + r'\"', "local." + name_field, value)
 
                                 if instance["replace_name"]:
-
                                     def replace_value(match):
                                         prefix = match.group(1) or ''
                                         suffix = match.group(
                                             2) if match.group(2) else ''
                                         if prefix.endswith('$'):
-                                            return f'format("{prefix}%s{suffix}", local.{name_field})'
+                                            # Further check if it fits the pattern like '"key": "$'
+                                            if re.search(r'"\w+":\s*"\$$', prefix):
+                                                # Extract 'key' from the prefix
+                                                key = re.search(r'"\w+"', prefix).group()
+                                                # Return the formatted string with the key and the suffix
+                                                return f'    {key}: format("$%s{suffix}", local.{name_field})'
+                                            else:
+                                                # If it doesn't fit the '"key": "$' pattern, return the original format
+                                                return f'format("{prefix}%s{suffix}", local.{name_field})'
                                         elif prefix:
                                             if '"' in prefix:
                                                 return f'{prefix}${{local.{name_field}}}{suffix}"'
@@ -979,6 +985,7 @@ class HCL:
                                     
                                     value = re.sub(
                                         pattern, replace_value, value)
+                                    
                                     value = value.replace('#PUT_SCAPED_QUOTE_HERE#', '\"' )
 
                                 if aws_account_id:

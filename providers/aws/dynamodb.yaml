@@ -85,38 +85,19 @@ aws_dynamodb_table:
         name:
           function: get_name_from_arn
           arg: resource_id
-      defaults:
-        autoscaling_enabled: true
+      resource_type: aws_appautoscaling_target
       import_id:
         function: aws_appautoscaling_target_import_id
-      target_resource_name:
-        function: aws_appautoscaling_target_name
+      target_resource_name: this
+      second_index:
+        function: get_autosaling_type
+      defaults:
+        autoscaling_enabled: true
       fields:
-        autoscaling_read_enabled:
-          function: autoscaling_read_enabled
-          type: bool
-        autoscaling_write_enabled:
-          function: autoscaling_write_enabled
-          type: bool
-        read_capacity:
-          field: min_capacity
-          type: number
-        write_capacity:
-          field: min_capacity
-          type: number
-        read_max_capacity:
-          field: max_capacity
-          type: number
-        write_max_capacity:
-          field: max_capacity
-          type: number
-        autoscaling_read:
-          function: autoscaling_read
+        autoscaling:
+          function: build_autoscaling
+          arg: id
           type: map
-        autoscaling_write:
-          function: autoscaling_write
-          type: map
-
       childs:
         aws_appautoscaling_policy:
           join:
@@ -126,26 +107,13 @@ aws_dynamodb_table:
               field: service_namespace
             scalable_dimension:
               field: scalable_dimension
-          target_resource_name:
-            function: aws_appautoscaling_policy_name
+          target_resource_name: this
+          second_index:
+            function: get_autosaling_type
           import_id:
             function: aws_appautoscaling_policy_import_id
           fields:
-            table_read_policy_name:
-              function: table_read_policy_name
-              type: string
-            table_write_policy_name:
-              function: table_write_policy_name
-              type: string
-            index_read_policy_name:
-              function: index_read_policy_name
-              type: string
-            index_write_policy_name:
-              function: index_write_policy_name
-              type: string
-            autoscaling_read:
-              function: autoscaling_read
-              type: map
-            autoscaling_write:
-              function: autoscaling_write
+            autoscaling:
+              function: build_autoscaling_policy
+              arg: id
               type: map

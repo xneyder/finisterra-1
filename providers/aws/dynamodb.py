@@ -59,7 +59,27 @@ class Dynamodb:
             # split the string by '/' and take the last part as the cluster_arn
             return arn.split('/')[-1]
         return None
+    
+    def is_not_write_capacity(self, attributes, arg):
+        scalable_dimension = attributes.get("scalable_dimension", "")
+        if scalable_dimension != "dynamodb:table:WriteCapacityUnits":
+            return True
+        
+    def is_not_write_index_capacity(self, attributes, arg):
+        scalable_dimension = attributes.get("scalable_dimension", "")
+        if scalable_dimension != "dynamodb:index:WriteCapacityUnits":
+            return True
+        
+    def is_not_read_index_capacity(self, attributes, arg):
+        scalable_dimension = attributes.get("scalable_dimension", "")
+        if scalable_dimension != "dynamodb:index:ReadCapacityUnits":
+            return True
 
+    def is_not_read_capacity(self, attributes, arg):
+        scalable_dimension = attributes.get("scalable_dimension", "")
+        if scalable_dimension != "dynamodb:table:ReadCapacityUnits":
+            return True
+        
     def aws_appautoscaling_target_name(self, attributes):
         if attributes.get("scalable_dimension", "") == "dynamodb:table:ReadCapacityUnits":
             return "table_read"
@@ -154,6 +174,51 @@ class Dynamodb:
         if attributes.get("scalable_dimension", "") == "dynamodb:table:WriteCapacityUnits":
             return True
         return None
+    
+    def build_autoscaling(self, attributes,arg):
+        scalable_dimension = attributes.get("scalable_dimension", "")
+        name = self.get_scalable_dimension(scalable_dimension)
+        
+        result = {}
+        result[name] = {}
+        result[name]["max_capacity"] = attributes.get("max_capacity", None)
+        result[name]["min_capacity"] = attributes.get("min_capacity", None)
+        result[name]["scalable_dimension"] = scalable_dimension
+        return result
+    
+    def get_scalable_dimension(self, scalable_dimension):
+        if scalable_dimension == "dynamodb:table:ReadCapacityUnits":
+            name = "table_read_policy"
+        elif scalable_dimension == "dynamodb:table:WriteCapacityUnits":
+            name = "table_write_policy"
+        elif scalable_dimension == "dynamodb:index:ReadCapacityUnits":
+            name = "index_read_policy"
+        elif scalable_dimension == "dynamodb:index:WriteCapacityUnits":
+            name = "index_write_policy"
+
+        return name
+    
+    def get_autosaling_type(self, attributes):
+        scalable_dimension = attributes.get("scalable_dimension", "")
+        return self.get_scalable_dimension(scalable_dimension)
+
+    
+    def build_autoscaling_policy(self, attributes,arg):
+        scalable_dimension = attributes.get("scalable_dimension", "")
+        name = self.get_scalable_dimension(scalable_dimension)
+        result = {}
+        result[name] = {}
+        result[name]["policy_name"] = attributes.get("name", None)
+        tmp = attributes.get("target_tracking_scaling_policy_configuration", [])
+        if tmp:
+            tmp2 = tmp[0].get("predefined_metric_specification", [])
+            if tmp2:
+                result[name]["predefined_metric_type"] = tmp2[0].get("predefined_metric_type", None)
+            result[name]["scale_in_cooldown"] = tmp[0].get("scale_in_cooldown", None)
+            result[name]["scale_out_cooldown"] = tmp[0].get("scale_out_cooldown", None)
+            result[name]["target_value"] = tmp[0].get("target_value", None)
+
+        return result
 
     def dynamodb(self):
         self.hcl.prepare_folder(os.path.join("generated", "dynamodb"))
@@ -194,6 +259,13 @@ class Dynamodb:
             'aws_dyanmodb_target_name': self.aws_dyanmodb_target_name,
             'aws_appautoscaling_policy_import_id': self.aws_appautoscaling_policy_import_id,
             'aws_appautoscaling_target_import_id': self.aws_appautoscaling_target_import_id,
+            'is_not_read_capacity': self.is_not_read_capacity,
+            'is_not_write_capacity': self.is_not_write_capacity,
+            'is_not_read_index_capacity': self.is_not_read_index_capacity,
+            'is_not_write_index_capacity': self.is_not_write_index_capacity,
+            'build_autoscaling': self.build_autoscaling,
+            'build_autoscaling_policy': self.build_autoscaling_policy,
+            'get_autosaling_type': self.get_autosaling_type,
         }
         self.hcl.refresh_state()
 
@@ -212,7 +284,7 @@ class Dynamodb:
                 table_description = self.dynamodb_client.describe_table(
                     TableName=table_name)["Table"]
 
-                # if table_name != "documentation.Instance":
+                # if table_name != "staging_WallFeedItem":
                 #     continue
 
                 print(f"  Processing DynamoDB Table: {table_name}")
