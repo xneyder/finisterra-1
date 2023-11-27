@@ -358,12 +358,12 @@ class EC2:
 
                 attributes = {
                     "id": instance_id,
-                    "ami": instance.get("ImageId", None),
-                    "instance_type": instance.get("InstanceType", None),
-                    "availability_zone": instance.get("Placement", {}).get("AvailabilityZone", None),
-                    "key_name": instance.get("KeyName", None),
-                    "subnet_id": instance.get("SubnetId", None),
-                    "vpc_security_group_ids": [sg["GroupId"] for sg in instance.get("SecurityGroups", [])],
+                    # "ami": instance.get("ImageId", None),
+                    # "instance_type": instance.get("InstanceType", None),
+                    # "availability_zone": instance.get("Placement", {}).get("AvailabilityZone", None),
+                    # "key_name": instance.get("KeyName", None),
+                    # "subnet_id": instance.get("SubnetId", None),
+                    # "vpc_security_group_ids": [sg["GroupId"] for sg in instance.get("SecurityGroups", [])],
                 }
 
                 if "IamInstanceProfile" in instance:
