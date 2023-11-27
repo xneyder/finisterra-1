@@ -59,6 +59,7 @@ class EKS:
             "resolve_conflicts")
         result[addon_name]['service_account_role_arn'] = attributes.get(
             "service_account_role_arn")
+        result[addon_name]['tags'] = attributes.get("tags")
 
         # Remove the keys that are empty
         result[addon_name] = {k: v for k,
