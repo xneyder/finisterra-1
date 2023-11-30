@@ -6,6 +6,7 @@ aws_s3_bucket:
   add_id_hash_to_name: true
   keys:
     - bucket
+  path: "s3"
   target_resource_name: this
   fields:
     bucket:

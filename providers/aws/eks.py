@@ -377,7 +377,7 @@ class EKS:
         return self.node_group_name
 
     def eks(self):
-        self.hcl.prepare_folder(os.path.join("generated", "eks"))
+        self.hcl.prepare_folder(os.path.join("generated"))
 
         self.aws_eks_cluster()
 
@@ -401,10 +401,11 @@ class EKS:
 
         self.hcl.refresh_state()
         self.hcl.module_hcl_code("terraform.tfstate",
-                                 os.path.join(os.path.dirname(os.path.abspath(__file__)), "eks.yaml"), functions, self.region, self.aws_account_id)
+                                 os.path.join(os.path.dirname(os.path.abspath(__file__)), "eks.yaml"), functions, self.region, self.aws_account_id, {}, {})
         self.json_plan = self.hcl.json_plan
 
     def aws_eks_cluster(self):
+        resource_name = 'aws_eks_cluster'
         print("Processing EKS Clusters...")
 
         clusters = self.eks_client.list_clusters()["clusters"]
@@ -412,22 +413,27 @@ class EKS:
         for cluster_name in clusters:
             cluster = self.eks_client.describe_cluster(name=cluster_name)[
                 "cluster"]
+            tags = cluster.get("tags", {})
+            fstack = tags.get("ftstack", "eks")
             
-
             # if cluster_name != "dev":
             #     continue
 
             print(f"  Processing EKS Cluster: {cluster_name}")
+            id = cluster_name
 
             attributes = {
-                "id": cluster_name,
+                "id": id,
             }
             self.hcl.process_resource(
-                "aws_eks_cluster", cluster_name.replace("-", "_"), attributes)
+                resource_name, cluster_name.replace("-", "_"), attributes)
+            
+            self.hcl.add_stack(resource_name, id, fstack)
             
             #kms key
             if 'encryptionConfig' in cluster:
-                self.kms_instance.aws_kms_key(cluster['encryptionConfig'][0]['provider']['keyArn'])
+                tmp_resource_name, tmp_id = self.kms_instance.aws_kms_key(cluster['encryptionConfig'][0]['provider']['keyArn'])
+                self.hcl.add_stack(tmp_resource_name, tmp_id, fstack)
 
             # Call aws_eks_addon for each cluster
             self.aws_eks_addon(cluster_name)
@@ -453,6 +459,7 @@ class EKS:
 
 
     def aws_eks_addon(self, cluster_name):
+        resource_name = 'aws_eks_addon'
         print(f"Processing EKS Add-ons for Cluster: {cluster_name}...")
 
         addons = self.eks_client.list_addons(
@@ -464,13 +471,15 @@ class EKS:
             print(
                 f"  Processing EKS Add-on: {addon_name} for Cluster: {cluster_name}")
 
+            id = cluster_name + ":" + addon_name
             attributes = {
-                "id": cluster_name + ":" + addon_name,
+                "id": id,
                 "addon_name": addon_name,
                 "cluster_name": cluster_name,
             }
             self.hcl.process_resource(
-                "aws_eks_addon", f"{cluster_name}-{addon_name}".replace("-", "_"), attributes)
+                resource_name, f"{cluster_name}-{addon_name}".replace("-", "_"), attributes)
+            
 
     def aws_iam_openid_connect_provider(self, cluster_name):
         print(

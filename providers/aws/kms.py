@@ -47,12 +47,12 @@ class KMS:
 
         functions = {}
         self.hcl.module_hcl_code("terraform.tfstate", os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), "kms.yaml"), functions, self.region, self.aws_account_id, self.additional_data)
+            os.path.dirname(os.path.abspath(__file__)), "kms.yaml"), functions, self.region, self.aws_account_id, self.additional_data, {}, {})
 
         self.json_plan = self.hcl.json_plan
 
 
-    def aws_kms_key(self, key_arn=None):
+    def aws_kms_key(self, key_arn=None):        
         print("Processing KMS Keys...")
 
         if key_arn:
@@ -60,7 +60,7 @@ class KMS:
             try:
                 key_metadata = self.kms_client.describe_key(KeyId=key_arn)["KeyMetadata"]
                 if key_metadata["KeyManager"] == "CUSTOMER":
-                    self.process_key(key_metadata)
+                    return self.process_key(key_metadata)
             except botocore.exceptions.ClientError as e:
                 print(f"  Error processing KMS Key: {e}")
         else:
@@ -74,16 +74,20 @@ class KMS:
                         #     continue
                         key_metadata = self.kms_client.describe_key(KeyId=key_id)["KeyMetadata"]
                         if key_metadata["KeyManager"] == "CUSTOMER":
-                            self.process_key(key_metadata)
+                            return self.process_key(key_metadata)
                     except botocore.exceptions.ClientError as e:
                         print(f"  Error processing KMS Key: {e}")
+        return None, None
 
     def process_key(self, key_metadata):
+        resource_name = "aws_kms_key"
         key_id = key_metadata["KeyId"]
         print(f"  Processing KMS Key: {key_id}")
 
+        id = key_id
+
         attributes = {
-            "id": key_id,
+            "id": id,
             "key_id": key_id,
             "arn": key_metadata["Arn"],
             "creation_date": key_metadata["CreationDate"].isoformat(),
@@ -92,14 +96,15 @@ class KMS:
             "key_state": key_metadata["KeyState"],
         }
         self.hcl.process_resource(
-            "aws_kms_key", key_id.replace("-", "_"), attributes)
+            resource_name, key_id.replace("-", "_"), attributes)
 
         self.aws_kms_key_policy(key_metadata["Arn"])
 
         self.aws_kms_alias(key_metadata["Arn"])
 
         self.aws_kms_grant(key_metadata["Arn"])
-    
+
+        return resource_name,id
 
     def aws_kms_alias(self, kms_arn):
         print("Processing KMS Aliases...")

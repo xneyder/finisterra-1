@@ -47,7 +47,7 @@ class ACM:
 
 
     def acm(self):
-        self.hcl.prepare_folder(os.path.join("generated", "acm"))
+        self.hcl.prepare_folder(os.path.join("generated"))
 
         # aws_acm_certificate.this	resource
         # aws_acm_certificate_validation.this	resource
@@ -63,11 +63,12 @@ class ACM:
         self.hcl.refresh_state()
 
         self.hcl.module_hcl_code("terraform.tfstate", os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), "acm.yaml"), functions, self.region, self.aws_account_id)
+            os.path.dirname(os.path.abspath(__file__)), "acm.yaml"), functions, self.region, self.aws_account_id, {}, {})
 
         self.json_plan = self.hcl.json_plan
 
     def aws_acm_certificate(self):
+        resource_name="aws_acm_certificate"
         print("Processing ACM Certificates...")
 
         paginator = self.acm_client.get_paginator("list_certificates")
@@ -98,13 +99,28 @@ class ACM:
 
                 print(f"  Processing ACM Certificate: {cert_arn}")
 
+
+                try:
+                    response = self.acm_client.list_tags_for_certificate(CertificateArn=cert_arn)
+                    tags = response.get('Tags', {})
+                    for tag in tags:
+                        if tag['Key'] == 'ftstack':
+                            fstack = tag['Value']
+                            break
+                except Exception as e:
+                    print("Error occurred: ", e)
+
+                id = cert_arn
+
                 attributes = {
-                    "id": cert_arn,
+                    "id": id,
                     "domain_name": cert_domain,
                 }
 
                 self.hcl.process_resource(
-                    "aws_acm_certificate", cert_arn.replace("-", "_"), attributes)
+                    resource_name, cert_arn.replace("-", "_"), attributes)
+                
+                self.hcl.add_stack(resource_name, id, fstack)
 
                 self.aws_acm_certificate_validation(cert_arn, cert_details)
 

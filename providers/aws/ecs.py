@@ -440,7 +440,7 @@ class ECS:
         }
 
         self.hcl.module_hcl_code("terraform.tfstate", os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), "ecs.yaml"), functions, self.region, self.aws_account_id)
+            os.path.dirname(os.path.abspath(__file__)), "ecs.yaml"), functions, self.region, self.aws_account_id, {}, {})
 
         # self.hcl.generate_hcl_file()
         self.json_plan = self.hcl.json_plan

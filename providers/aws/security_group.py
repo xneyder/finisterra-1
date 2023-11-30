@@ -47,11 +47,12 @@ class SECURITY_GROUP:
         self.hcl.refresh_state()
         functions = {}
         self.hcl.module_hcl_code("terraform.tfstate", os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), "security_group.yaml"), functions, self.region, self.aws_account_id, self.additional_data)
+            os.path.dirname(os.path.abspath(__file__)), "security_group.yaml"), functions, self.region, self.aws_account_id, {}, self.additional_data)
 
         self.json_plan = self.hcl.json_plan
 
     def aws_security_group(self, security_group_id=None):
+        resource_name = "aws_security_group"
         print("Processing Security Groups...")
 
         # Create a response dictionary to collect responses for all security groups
@@ -84,8 +85,10 @@ class SECURITY_GROUP:
             
             vpc_id = security_group.get("VpcId", "")
 
+            id = security_group["GroupId"]
+
             attributes = {
-                "id": security_group["GroupId"],
+                "id": id,
                 "name": security_group["GroupName"],
                 "description": security_group.get("Description", ""),
                 "vpc_id": vpc_id,
@@ -93,7 +96,7 @@ class SECURITY_GROUP:
             }
 
             self.hcl.process_resource(
-                "aws_security_group", security_group["GroupId"].replace("-", "_"), attributes)
+                resource_name, security_group["GroupId"].replace("-", "_"), attributes)
             
             self.aws_vpc_security_group_ingress_rule(security_group["GroupId"])
             self.aws_vpc_security_group_egress_rule(security_group["GroupId"])
@@ -102,6 +105,10 @@ class SECURITY_GROUP:
             self.additional_data[vpc_id] = {
                 "name": vpc_name,
             }
+
+            if security_group_id:
+                return resource_name, id
+        return resource_name, None
                 
     def aws_vpc_security_group_ingress_rule(self, security_group_id):
         # Fetch security group rules

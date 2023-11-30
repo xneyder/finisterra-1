@@ -60,7 +60,7 @@ class SNS:
         self.hcl.refresh_state()
 
         self.hcl.module_hcl_code("terraform.tfstate", os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), "sns.yaml"), functions, self.region, self.aws_account_id)
+            os.path.dirname(os.path.abspath(__file__)), "sns.yaml"), functions, self.region, self.aws_account_id, {}, {})
 
         self.json_plan = self.hcl.json_plan
 

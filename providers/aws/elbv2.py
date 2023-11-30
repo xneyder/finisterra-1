@@ -1,10 +1,11 @@
 import os
 from utils.hcl import HCL
+from providers.aws.security_group import SECURITY_GROUP
 
 
 class ELBV2:
     def __init__(self, elbv2_client, ec2_client, acm_client, script_dir, provider_name, schema_data, region, s3Bucket,
-                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id):
+                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id, hcl=None):
         self.elbv2_client = elbv2_client
         self.ec2_client = ec2_client
         self.acm_client = acm_client
@@ -28,11 +29,19 @@ class ELBV2:
         self.schema_data = schema_data
         self.region = region
         self.workspace_id = workspace_id
+        self.s3Bucket = s3Bucket
+        self.dynamoDBTable = dynamoDBTable
+        self.state_key = state_key
+
         self.modules = modules
-        self.hcl = HCL(self.schema_data, self.provider_name,
+        if not hcl:
+            self.hcl = HCL(self.schema_data, self.provider_name,
                        self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules)
+        else:
+            self.hcl = hcl
         self.resource_list = {}
         self.listeners = {}
+        self.security_group_instance = SECURITY_GROUP(ec2_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
 
     def init_fields(self, attributes):
         self.listeners = {}
@@ -57,14 +66,14 @@ class ELBV2:
     #     return [{'name': subnet_name, 'cidr_block': subnet_cidr}]
 
 
-    def get_security_group_rules(self, attributes, arg):
-        key = attributes[arg]
-        result = {key: {}}
-        for k in ['type', 'description', 'from_port', 'to_port', 'protocol', 'cidr_blocks']:
-            val = attributes.get(k)
-            if isinstance(val, str):
-                val = val.replace('${', '$${')
-            result[key][k] = val
+    # def get_security_group_rules(self, attributes, arg):
+    #     key = attributes[arg]
+    #     result = {key: {}}
+    #     for k in ['type', 'description', 'from_port', 'to_port', 'protocol', 'cidr_blocks']:
+    #         val = attributes.get(k)
+    #         if isinstance(val, str):
+    #             val = val.replace('${', '$${')
+    #         result[key][k] = val
         return result
 
     def get_field_from_attrs(self, attributes, arg):
@@ -250,7 +259,7 @@ class ELBV2:
         else:
             return attributes.get(arg)
 
-    def get_vpc_name(self, attributes, arg):
+    def get_vpc_name_elbv2(self, attributes, arg):
         vpc_id = attributes.get(arg)
         response = self.ec2_client.describe_vpcs(VpcIds=[vpc_id])
 
@@ -268,8 +277,8 @@ class ELBV2:
 
         return vpc_name
 
-    def get_vpc_id(self, attributes, arg):
-        vpc_name = self.get_vpc_name(attributes, arg)
+    def get_vpc_id_elbv2(self, attributes, arg):
+        vpc_name = self.get_vpc_name_elbv2(attributes, arg)
         if vpc_name is None:
             return attributes.get(arg)
         else:
@@ -286,7 +295,7 @@ class ELBV2:
         return security_group_id+"_"+type+"_"+protocol+"_"+str(from_port)+"_"+str(to_port)+"_"+source
 
     def elbv2(self):
-        self.hcl.prepare_folder(os.path.join("generated", "elbv2"))
+        self.hcl.prepare_folder(os.path.join("generated"))
 
         self.aws_lb()
         # self.aws_lb_listener()
@@ -297,8 +306,8 @@ class ELBV2:
 
         functions = {
             'match_security_group': self.match_security_group,
-            'get_vpc_name': self.get_vpc_name,
-            'get_security_group_rules': self.get_security_group_rules,
+            'get_vpc_name_elbv2': self.get_vpc_name_elbv2,
+            # 'get_security_group_rules': self.get_security_group_rules,
             'get_field_from_attrs': self.get_field_from_attrs,
             'get_security_group_names': self.get_security_group_names,
             'get_subnet_names': self.get_subnet_names,
@@ -306,7 +315,7 @@ class ELBV2:
             'get_listener_certificate': self.get_listener_certificate,
             'get_port_domain_name': self.get_port_domain_name,
             'get_port': self.get_port,
-            'get_vpc_id': self.get_vpc_id,
+            'get_vpc_id_elbv2': self.get_vpc_id_elbv2,
             'get_subnet_ids': self.get_subnet_ids,
             'aws_security_group_rule_import_id': self.aws_security_group_rule_import_id,
             'init_fields': self.init_fields,
@@ -315,11 +324,12 @@ class ELBV2:
         self.hcl.refresh_state()
 
         self.hcl.module_hcl_code("terraform.tfstate",
-                                 os.path.join(os.path.dirname(os.path.abspath(__file__)), "elbv2.yaml"), functions, self.region, self.aws_account_id)
+                                 os.path.join(os.path.dirname(os.path.abspath(__file__)), "elbv2.yaml"), functions, self.region, self.aws_account_id, {}, {})\
 
         self.json_plan = self.hcl.json_plan
 
     def aws_lb(self):
+        resource_name = "aws_lb"
         print("Processing Load Balancers...")
 
         load_balancers = self.elbv2_client.describe_load_balancers()[
@@ -355,6 +365,14 @@ class ELBV2:
 
             print(f"  Processing Load Balancer: {lb_name}")
 
+            fstack="elbv2"
+            for tag in tags:
+                if tag['Key'] == 'ftstack':
+                    fstack = tag['Value']
+                    break
+
+            id = lb_arn
+
             attributes = {
                 "id": lb_arn,
                 "name": lb_name,
@@ -362,7 +380,10 @@ class ELBV2:
                 "arn": lb_arn,
             }
 
-            self.hcl.process_resource("aws_lb", lb_name, attributes)
+            self.hcl.process_resource(resource_name, lb_name, attributes)
+
+            self.hcl.add_stack(resource_name, id, fstack)
+
             load_balancer_arns.append(lb_arn)
 
             # Extract the security group IDs associated with this load balancer
@@ -370,8 +391,10 @@ class ELBV2:
 
             # Call the aws_security_group function for each security group ID
             # Block because we want to create the security groups in their own module
-            # if security_group_ids:
-            #     self.aws_security_group(security_group_ids)
+            for sg in security_group_ids:
+                tmp_resource_name, tmp_id = self.security_group_instance.aws_security_group(sg)
+                self.hcl.add_stack(tmp_resource_name, tmp_id, fstack)
+                # self.aws_security_group(security_group_ids)
 
         # Call the other functions for listeners and listener certificates
         listener_arns = self.aws_lb_listener(load_balancer_arns)

@@ -45,7 +45,7 @@ class IAM_POLICY:
         functions = {'get_policy_documents': self.get_policy_documents,}
 
         self.hcl.module_hcl_code("terraform.tfstate", os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), "iam_policy.yaml"), functions, self.region, self.aws_account_id)
+            os.path.dirname(os.path.abspath(__file__)), "iam_policy.yaml"), functions, self.region, self.aws_account_id, {}, {})
 
         self.json_plan = self.hcl.json_plan
 

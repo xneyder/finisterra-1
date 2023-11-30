@@ -59,6 +59,34 @@ class Apigateway:
     def aws_api_gateway_deployment_import_id(self, attributes):
         return f"{attributes['rest_api_id']}/{attributes['id']}"
     
+    def get_gateway_method_settings(self, attributes):
+        stage_name = attributes['stage_name']
+        method_path = attributes['method_path']
+        return f"{stage_name}/{method_path}"
+    
+    def build_api_gateway_method_settings(self, attributes, arg):
+        result = {}
+        stage_name = attributes['stage_name']
+        method_path = attributes['method_path']
+        key = f"{stage_name}/{method_path}"
+        result[key] = {}
+        result[key]['stage_name'] = stage_name
+        result[key]['method_path'] = method_path
+        settings = attributes.get('settings')
+        if settings:
+            result[key]['cache_data_encrypted'] = settings[0].get('cache_data_encrypted')
+            result[key]['cache_ttl_in_seconds'] = settings[0].get('cache_ttl_in_seconds')
+            result[key]['caching_enabled'] = settings[0].get('caching_enabled')
+            result[key]['data_trace_enabled'] = settings[0].get('caching_enabled')
+            result[key]['logging_level'] = settings[0].get('logging_level')
+            result[key]['metrics_enabled'] = settings[0].get('metrics_enabled')
+            result[key]['require_authorization_for_cache_control'] = settings[0].get('require_authorization_for_cache_control')
+            result[key]['throttling_burst_limit'] = settings[0].get('throttling_burst_limit')
+            result[key]['throttling_rate_limit'] = settings[0].get('throttling_rate_limit')
+            result[key]['unauthorized_cache_control_header_strategy'] = settings[0].get('unauthorized_cache_control_header_strategy')
+
+        return result
+    
     def get_stage_name(self,attributes):
         restApiId=attributes['rest_api_id']
         deploymentId=attributes['id']
@@ -158,12 +186,14 @@ class Apigateway:
             'get_stage_name': self.get_stage_name,
             'build_deployments': self.build_deployments,
             'get_stage_name_index': self.get_stage_name_index,
+            'get_gateway_method_settings': self.get_gateway_method_settings,
+            'build_api_gateway_method_settings': self.build_api_gateway_method_settings,
         }
 
         self.hcl.refresh_state()
 
         self.hcl.module_hcl_code("terraform.tfstate", os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), "apigateway.yaml"), functions, self.region, self.aws_account_id)
+            os.path.dirname(os.path.abspath(__file__)), "apigateway.yaml"), functions, self.region, self.aws_account_id, {}, {})
 
         self.json_plan = self.hcl.json_plan
 

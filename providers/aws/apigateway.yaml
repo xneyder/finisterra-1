@@ -61,55 +61,13 @@ aws_api_gateway_rest_api:
         id:
           field: rest_api_id
       target_resource_name: all
-      defaults:
-        create_api_gateway_method_settings: true
+      second_index:
+        function: get_gateway_method_settings
       fields:
-        stage_name:
-          field: stage_name
-          type: string
-        method_path:
-          field: method_path
-          type: string
-        cache_data_encrypted:
-          function: get_field_from_attrs
-          arg: settings.cache_data_encrypted
-          type: bool
-        cache_ttl_in_seconds:
-          function: get_field_from_attrs
-          arg: settings.cache_ttl_in_seconds
-          type: number
-        caching_enabled:
-          function: get_field_from_attrs
-          arg: settings.caching_enabled
-          type: bool
-        data_trace_enabled:
-          function: get_field_from_attrs
-          arg: settings.data_trace_enabled
-          type: bool
-        logging_level:
-          function: get_field_from_attrs
-          arg: settings.logging_level
-          type: string
-        metrics_enabled:
-          function: get_field_from_attrs
-          arg: settings.metrics_enabled
-          type: bool
-        require_authorization_for_cache_control:
-          function: get_field_from_attrs
-          arg: settings.require_authorization_for_cache_control
-          type: bool
-        throttling_burst_limit:
-          function: get_field_from_attrs
-          arg: settings.throttling_burst_limit
-          type: number
-        throttling_rate_limit:
-          function: get_field_from_attrs
-          arg: settings.throttling_rate_limit
-          type: number
-        unauthorized_cache_control_header_strategy:
-          function: get_field_from_attrs
-          arg: settings.unauthorized_cache_control_header_strategy
-          type: string
+        api_gateway_method_settings:
+          function: build_api_gateway_method_settings
+          type: map
+          arg: id
 
     aws_api_gateway_vpc_link:
       join:

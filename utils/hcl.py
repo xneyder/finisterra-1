@@ -10,6 +10,7 @@ import re
 from collections import OrderedDict
 import hashlib
 import importlib
+from utils.filesystem import create_tmp_terragrunt
 
 class HCL:
     def __init__(self, schema_data, provider_name, script_dir, transform_rules, region, bucket, dynamodb_table, state_key, workspace_id, modules):
@@ -32,6 +33,8 @@ class HCL:
 
         functions_module_name = 'providers.aws.hcl_functions.all'
         self.functions_module = importlib.import_module(functions_module_name)
+
+        self.ftstacks = {}
 
 
     def search_state_file(self, resource_type, resource_name, resource_id):
@@ -198,8 +201,8 @@ class HCL:
     def create_folder(self, folder):
         if os.path.exists(folder):
             print(f"Folder '{folder}' already exists removing it.")
-            shutil.rmtree(folder)
-        os.makedirs(folder)
+            # shutil.rmtree(folder)
+        os.makedirs(folder, exist_ok=True)
         print(f"Folder '{folder}' has been created.")
 
     def prepare_folder(self, folder):
@@ -213,9 +216,13 @@ class HCL:
             # create_data_file()
             # create_locals_file()
             destination_folder = os.getcwd()
+            create_tmp_terragrunt(os.path.join(destination_folder))
             print("Copying Terraform init files...")
-            shutil.copytree(temp_dir, os.path.join(
-                destination_folder, ".terraform"))
+            terraform_folder=os.path.join(
+                destination_folder, ".terraform")
+            if os.path.exists(terraform_folder):
+                shutil.rmtree(terraform_folder)
+            shutil.copytree(temp_dir, terraform_folder)
             print("Initializing Terraform...")
             subprocess.run(["terraform", "init"], check=True)
         except Exception as e:
@@ -865,8 +872,7 @@ class HCL:
         else:
             return []
 
-    def module_hcl_code(self, terraform_state_file, config_file, functions={}, aws_region="", aws_account_id="", additional_data={}):
-
+    def module_hcl_code(self, terraform_state_file, config_file, functions={}, aws_region="", aws_account_id="", to_remove = {}, additional_data={}):
         with open(config_file, 'r') as f:
             config = yaml.safe_load(f)
 
@@ -890,6 +896,12 @@ class HCL:
                     'dependencies', [])
                 instance['version'] = resource_config.get(
                     'terraform_module_version')
+                if resource['type'] in self.ftstacks:
+                    resource_id = resource["instances"][0]["attributes"]["id"]
+                    if resource_id in self.ftstacks[resource['type']]:
+                        ftstack = self.ftstacks[resource['type']][resource_id].get("ftstack", "")
+                        if ftstack:
+                            instance['ftstack'] = ftstack
                 if instance:
                     instances.append(instance)
 
@@ -906,14 +918,16 @@ class HCL:
                 name_value = ""
                 name_field = ""
 
-                module_file_path = os.path.join(
-                    instance["path"], f'{module_instance_name}.tf')
+                base_path = os.path.join(instance.get("ftstack", ""),
+                    instance["path"])
 
-                if instance["path"]:
+                module_file_path = os.path.join(base_path, f'{module_instance_name}.tf')
+
+                if base_path:
                     os.makedirs(os.path.dirname(
                         module_file_path), exist_ok=True)
-                if instance["path"] not in subfolders:
-                    subfolders[instance["path"]] = {
+                if base_path not in subfolders:
+                    subfolders[base_path] = {
                         'dependencies': instance["dependencies"]}
 
                 with open(module_file_path, 'w') as file:
@@ -1030,7 +1044,10 @@ class HCL:
             module_instance_name = f'{instance["type"]}-{module_instance_name}'
             if instance["add_id_hash_to_name"]:
                 module_instance_name = f'{module_instance_name}_{instance["id_hash"]}'
-            import_file_path = os.path.join(instance["path"], f'import.tf')
+
+            base_path = os.path.join(instance.get("ftstack", ""),
+                    instance["path"])
+            import_file_path = os.path.join(base_path, f'import-{module_instance_name}.tf')
 
             for deployed_resource in instance["deployed_resources"]:
 
@@ -1083,3 +1100,11 @@ class HCL:
         print("Running terragrunt plan on generated files...")
         os.rename("terraform.tfstate", "terraform.tfstate.disabled")
         subprocess.run(["terragrunt", "run-all", "plan"], check=True)
+
+    def add_stack(self, resource_name, id, ftstack):
+        if ftstack:
+            if resource_name not in self.ftstacks:
+                self.ftstacks[resource_name] = {}
+            if id not in self.ftstacks[resource_name]:
+                self.ftstacks[resource_name][id] = {}
+            self.ftstacks[resource_name][id]["ftstack"] = ftstack

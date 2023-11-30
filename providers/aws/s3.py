@@ -27,7 +27,7 @@ class S3:
         self.resource_list = {}
 
     def s3(self):
-        self.hcl.prepare_folder(os.path.join("generated", "s3"))
+        self.hcl.prepare_folder(os.path.join("generated"))
 
         self.aws_s3_bucket()
 
@@ -52,7 +52,7 @@ class S3:
         }
 
         self.hcl.module_hcl_code("terraform.tfstate",
-                                 os.path.join(os.path.dirname(os.path.abspath(__file__)), "s3.yaml"), functions, self.region, self.aws_account_id)
+                                 os.path.join(os.path.dirname(os.path.abspath(__file__)), "s3.yaml"), functions, self.region, self.aws_account_id, {}, {})
 
         # load_yaml_and_tfstate("terraform-aws-modules/s3-bucket/aws", "3.14.0", "terraform.tfstate",
         #                       os.path.join(os.path.dirname(os.path.abspath(__file__)), "aws_s3_bucket.yaml"))
@@ -400,6 +400,7 @@ class S3:
         return result
 
     def aws_s3_bucket(self):
+        resource_name = "aws_s3_bucket"
         print("Processing S3 Buckets...")
 
         response = self.s3_session.list_buckets()
@@ -447,13 +448,32 @@ class S3:
             if bucket_region == self.region:
                 print(f"  Processing S3 Bucket: {bucket_name}")
 
+                # describe the bucket and get the tags
+                fstack = ""
+                try:
+                    response = self.s3_session.get_bucket_tagging(Bucket=bucket_name)
+                    tags = response.get('TagSet', {})
+                    for tag in tags:
+                        if tag['Key'] == 'ftstack':
+                            fstack = tag['Value']
+                            break
+                except ClientError as e:
+                    if e.response['Error']['Code'] == 'NoSuchTagSet':
+                        pass
+                    else:
+                        raise e
+
+                id = bucket_name
+
                 attributes = {
-                    "id": bucket_name,
+                    "id": id,
                     "bucket": bucket_name,
                 }
 
                 self.hcl.process_resource(
-                    "aws_s3_bucket", bucket_name, attributes)
+                    resource_name, bucket_name, attributes)
+                
+                self.hcl.add_stack(resource_name, id, fstack)
             else:
                 print(
                     f"  Skipping S3 Bucket (different region): {bucket_name}")
