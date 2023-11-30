@@ -321,7 +321,7 @@ class CloudFront:
         return result
 
     def cloudfront(self):
-        self.hcl.prepare_folder(os.path.join("generated", "cloudfront"))
+        self.hcl.prepare_folder(os.path.join("generated"))
 
         if "gov" not in self.region:
             self.aws_cloudfront_distribution()
@@ -366,6 +366,7 @@ class CloudFront:
                     "aws_cloudfront_cache_policy", cache_policy_id.replace("-", "_"), attributes)
 
     def aws_cloudfront_distribution(self):
+        resource_type = "aws_cloudfront_distribution"
         print("Processing CloudFront Distributions...")
 
         paginator = self.cloudfront_client.get_paginator("list_distributions")
@@ -386,33 +387,45 @@ class CloudFront:
                 # if distribution_id != "EXMU07B7F4KIS":
                 #     continue
 
-                print(
-                    f"  Processing CloudFront Distribution: {distribution_id}")
+                print(f"  Processing CloudFront Distribution: {distribution_id}")
+
+                fstack = "cloudfront"
+                try:
+                    response = self.cloudfront_client.list_tags_for_resource(Resource=distribution_summary["ARN"])
+                    tags = response.get('Tags', {}).get('Items', [])
+                    for tag in tags:
+                        if tag['Key'] == 'ftstack':
+                            fstack = tag['Value']
+                            break
+                except Exception as e:
+                    print("Error occurred: ", e)
 
                 # Retrieve identity_id
-                origins = distribution_summary.get(
-                    "Origins", {}).get("Items", [])
+                origins = distribution_summary.get("Origins", {}).get("Items", [])
                 for origin in origins:
                     s3_origin_config = origin.get("S3OriginConfig")
                     if s3_origin_config:
-                        identity_id = s3_origin_config.get(
-                            "OriginAccessIdentity")
+                        identity_id = s3_origin_config.get("OriginAccessIdentity")
                         if identity_id:
                             # Call aws_cloudfront_origin_access_identity function filtered by the identity_id
                             identity_id = identity_id.split("/")[-1]
-                            self.aws_cloudfront_origin_access_identity(
-                                identity_id)
+                            self.aws_cloudfront_origin_access_identity(identity_id)
+                            self.hcl.add_stack("aws_cloudfront_origin_access_identity", identity_id, fstack)
+                            
+                id = distribution_id
 
                 attributes = {
-                    "id": distribution_id,
+                    "id": id,
                     "arn": distribution_summary["ARN"],
                     "domain_name": distribution_summary["DomainName"],
                 }
 
                 self.hcl.process_resource(
-                    "aws_cloudfront_distribution", distribution_id.replace("-", "_"), attributes)
+                    resource_type, distribution_id.replace("-", "_"), attributes)
 
                 self.aws_cloudfront_monitoring_subscription(distribution_id)
+                self.hcl.add_stack(resource_type, id, fstack)
+                
 
     def aws_cloudfront_field_level_encryption_config(self):
         print("Processing CloudFront Field-Level Encryption Configs...")

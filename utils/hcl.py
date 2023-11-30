@@ -899,9 +899,8 @@ class HCL:
                 if resource['type'] in self.ftstacks:
                     resource_id = resource["instances"][0]["attributes"]["id"]
                     if resource_id in self.ftstacks[resource['type']]:
-                        ftstack = self.ftstacks[resource['type']][resource_id].get("ftstack", "")
-                        if ftstack:
-                            instance['ftstack'] = ftstack
+                        ftstack_list = self.ftstacks[resource['type']][resource_id].get("ftstack_list", [""])
+                        instance['ftstack_list'] = ftstack_list
                 if instance:
                     instances.append(instance)
 
@@ -918,107 +917,107 @@ class HCL:
                 name_value = ""
                 name_field = ""
 
-                base_path = os.path.join(instance.get("ftstack", ""),
-                    instance["path"])
+                for fstack in instance.get("ftstack_list", [""]):
+                    base_path = os.path.join(fstack,instance["path"])
 
-                module_file_path = os.path.join(base_path, f'{module_instance_name}.tf')
+                    module_file_path = os.path.join(base_path, f'{module_instance_name}.tf')
 
-                if base_path:
-                    os.makedirs(os.path.dirname(
-                        module_file_path), exist_ok=True)
-                if base_path not in subfolders:
-                    subfolders[base_path] = {
-                        'dependencies': instance["dependencies"]}
+                    if base_path:
+                        os.makedirs(os.path.dirname(
+                            module_file_path), exist_ok=True)
+                    if base_path not in subfolders:
+                        subfolders[base_path] = {
+                            'dependencies': instance["dependencies"]}
 
-                with open(module_file_path, 'w') as file:
-                    if instance["replace_name"]:
-                        name_value = instance["name"].replace('"', '')
-                        name_value_replaced = name_value
+                    with open(module_file_path, 'w') as file:
+                        if instance["replace_name"]:
+                            name_value = instance["name"].replace('"', '')
+                            name_value_replaced = name_value
 
-                        if aws_account_id:
-                            name_value_replaced = re.sub(r'\b' + aws_account_id +
-                                                         r'\b', "${local.aws_account_id}", name_value_replaced)
-                        if aws_region:
-                            name_value_replaced = re.sub(
-                                r'\b(' + aws_region + r')(?=[a-z]?\b)', "${local.aws_region}", name_value_replaced)
-                            aws_partition = 'aws-us-gov' if 'gov' in aws_region else 'aws'
-                            name_value_replaced = re.sub(
-                                r'\barn:' + aws_partition + r':\b', "arn:${local.aws_partition}:", name_value_replaced)
+                            if aws_account_id:
+                                name_value_replaced = re.sub(r'\b' + aws_account_id +
+                                                            r'\b', "${local.aws_account_id}", name_value_replaced)
+                            if aws_region:
+                                name_value_replaced = re.sub(
+                                    r'\b(' + aws_region + r')(?=[a-z]?\b)', "${local.aws_region}", name_value_replaced)
+                                aws_partition = 'aws-us-gov' if 'gov' in aws_region else 'aws'
+                                name_value_replaced = re.sub(
+                                    r'\barn:' + aws_partition + r':\b', "arn:${local.aws_partition}:", name_value_replaced)
 
-                        name_field = f'{instance["name_field"]}'
+                            name_field = f'{instance["name_field"]}'
 
-                        if instance["add_id_hash_to_name"]:
-                            name_field = f'{instance["name_field"]}_{instance["id_hash"]}'
-                        else:
-                            hash_value = hashlib.sha256(
-                                name_value.encode()).hexdigest()[:10]
-                            name_field = f'{instance["name_field"]}_{hash_value}'
-                        file.write(f'locals {{\n')
+                            if instance["add_id_hash_to_name"]:
+                                name_field = f'{instance["name_field"]}_{instance["id_hash"]}'
+                            else:
+                                hash_value = hashlib.sha256(
+                                    name_value.encode()).hexdigest()[:10]
+                                name_field = f'{instance["name_field"]}_{hash_value}'
+                            file.write(f'locals {{\n')
+                            file.write(
+                                f'{name_field} = "{name_value_replaced}"\n')
+                            file.write(f'}}\n\n')
+
                         file.write(
-                            f'{name_field} = "{name_value_replaced}"\n')
-                        file.write(f'}}\n\n')
+                            f'module "{module_instance_name}" {{\n')
+                        file.write(f'source  = "{instance["module"]}"\n')
+                        # file.write(f'version = "{instance["version"]}"\n') # TO REMOVE COMMENT
+                        if instance["full_dump"]:
+                            file.write(instance["full_dump"]['attributes'])
+                        else:
+                            for index, value in instance["attributes"].items():
+                                try:
+                                    if instance["replace_name"] and "<<EOF" not in value:
+                                        value = re.sub(
+                                            r'\"' + re.escape(name_value) + r'\"', "local." + name_field, value)
 
-                    file.write(
-                        f'module "{module_instance_name}" {{\n')
-                    file.write(f'source  = "{instance["module"]}"\n')
-                    # file.write(f'version = "{instance["version"]}"\n') # TO REMOVE COMMENT
-                    if instance["full_dump"]:
-                        file.write(instance["full_dump"]['attributes'])
-                    else:
-                        for index, value in instance["attributes"].items():
-                            try:
-                                if instance["replace_name"] and "<<EOF" not in value:
-                                    value = re.sub(
-                                        r'\"' + re.escape(name_value) + r'\"', "local." + name_field, value)
-
-                                if instance["replace_name"]:
-                                    def replace_value(match):
-                                        prefix = match.group(1) or ''
-                                        suffix = match.group(
-                                            2) if match.group(2) else ''
-                                        if prefix.endswith('$'):
-                                            # Further check if it fits the pattern like '"key": "$'
-                                            if re.search(r'"\w+":\s*"\$$', prefix):
-                                                # Extract 'key' from the prefix
-                                                key = re.search(r'"\w+"', prefix).group()
-                                                # Return the formatted string with the key and the suffix
-                                                return f'    {key}: format("$%s{suffix}", local.{name_field})'
+                                    if instance["replace_name"]:
+                                        def replace_value(match):
+                                            prefix = match.group(1) or ''
+                                            suffix = match.group(
+                                                2) if match.group(2) else ''
+                                            if prefix.endswith('$'):
+                                                # Further check if it fits the pattern like '"key": "$'
+                                                if re.search(r'"\w+":\s*"\$$', prefix):
+                                                    # Extract 'key' from the prefix
+                                                    key = re.search(r'"\w+"', prefix).group()
+                                                    # Return the formatted string with the key and the suffix
+                                                    return f'    {key}: format("$%s{suffix}", local.{name_field})'
+                                                else:
+                                                    # If it doesn't fit the '"key": "$' pattern, return the original format
+                                                    return f'format("{prefix}%s{suffix}", local.{name_field})'
+                                            elif prefix:
+                                                if '"' in prefix:
+                                                    return f'{prefix}${{local.{name_field}}}{suffix}"'
+                                                else:
+                                                    return f'"{prefix}${{local.{name_field}}}{suffix}"'
                                             else:
-                                                # If it doesn't fit the '"key": "$' pattern, return the original format
-                                                return f'format("{prefix}%s{suffix}", local.{name_field})'
-                                        elif prefix:
-                                            if '"' in prefix:
-                                                return f'{prefix}${{local.{name_field}}}{suffix}"'
-                                            else:
-                                                return f'"{prefix}${{local.{name_field}}}{suffix}"'
-                                        else:
-                                            return f'"${{local.{name_field}}}{suffix}"'
+                                                return f'"${{local.{name_field}}}{suffix}"'
 
-                                    pattern = r'"?(.*\$?)' + \
-                                        re.escape(name_value) + r'([^"]*)"?'
-                                    
-                                    value = re.sub(
-                                        pattern, replace_value, value)
-                                    
-                                    value = value.replace('#PUT_SCAPED_QUOTE_HERE#', '\"' )
+                                        pattern = r'"?(.*\$?)' + \
+                                            re.escape(name_value) + r'([^"]*)"?'
+                                        
+                                        value = re.sub(
+                                            pattern, replace_value, value)
+                                        
+                                        value = value.replace('#PUT_SCAPED_QUOTE_HERE#', '\"' )
 
-                                if aws_account_id:
-                                    value = re.sub(r'\b' + aws_account_id +
-                                                   r'\b', "${local.aws_account_id}", value)
-                                if aws_region:
-                                    value = re.sub(
-                                        r'\b(' + aws_region + r')(?=[a-z]?\b)', "${local.aws_region}", value)
-                                    aws_partition = 'aws-us-gov' if 'gov' in aws_region else 'aws'
-                                    value = re.sub(
-                                        r'\barn:' + aws_partition + r':\b', "arn:${local.aws_partition}:", value)
+                                    if aws_account_id:
+                                        value = re.sub(r'\b' + aws_account_id +
+                                                    r'\b', "${local.aws_account_id}", value)
+                                    if aws_region:
+                                        value = re.sub(
+                                            r'\b(' + aws_region + r')(?=[a-z]?\b)', "${local.aws_region}", value)
+                                        aws_partition = 'aws-us-gov' if 'gov' in aws_region else 'aws'
+                                        value = re.sub(
+                                            r'\barn:' + aws_partition + r':\b', "arn:${local.aws_partition}:", value)
 
-                            except Exception as e:
-                                print(f"Error processing index {index}: {e}")
-                                print(value)
+                                except Exception as e:
+                                    print(f"Error processing index {index}: {e}")
+                                    print(value)
 
 
-                            file.write(f'{index} = {value}\n')
-                    file.write('}\n')
+                                file.write(f'{index} = {value}\n')
+                        file.write('}\n')
 
         for key, values in subfolders.items():
             terragrunt_path = os.path.join(key, "terragrunt.hcl")
@@ -1045,44 +1044,45 @@ class HCL:
             if instance["add_id_hash_to_name"]:
                 module_instance_name = f'{module_instance_name}_{instance["id_hash"]}'
 
-            base_path = os.path.join(instance.get("ftstack", ""),
-                    instance["path"])
-            import_file_path = os.path.join(base_path, f'import-{module_instance_name}.tf')
+            for fstack in instance.get("ftstack_list", [""]):
+                base_path = os.path.join(fstack,
+                        instance["path"])
+                import_file_path = os.path.join(base_path, f'import-{module_instance_name}.tf')
 
-            for deployed_resource in instance["deployed_resources"]:
+                for deployed_resource in instance["deployed_resources"]:
 
-                first_index_str = ""
-                if deployed_resource["first_index_value"]:
-                    if deployed_resource["first_index_value"] == "disabled":
-                        first_index_str = ""
-                    else:
-                        if isinstance(deployed_resource["first_index_value"], int):
-                            first_index_str = \
-                                f'[{deployed_resource["first_index_value"]}].'
+                    first_index_str = ""
+                    if deployed_resource["first_index_value"]:
+                        if deployed_resource["first_index_value"] == "disabled":
+                            first_index_str = ""
                         else:
-                            first_index_str = '["' + \
-                                deployed_resource["first_index_value"]+'"].'
+                            if isinstance(deployed_resource["first_index_value"], int):
+                                first_index_str = \
+                                    f'[{deployed_resource["first_index_value"]}].'
+                            else:
+                                first_index_str = '["' + \
+                                    deployed_resource["first_index_value"]+'"].'
 
-                if not first_index_str and deployed_resource["target_submodule"]:
-                    deployed_resource["target_submodule"] += "."
+                    if not first_index_str and deployed_resource["target_submodule"]:
+                        deployed_resource["target_submodule"] += "."
 
-                second_index_str = "[0]"
-                if deployed_resource["second_index_value"]:
-                    if deployed_resource["second_index_value"] == "disabled":
-                        second_index_str = ""
-                    else:
-                        if isinstance(deployed_resource["second_index_value"], int):
-                            second_index_str = \
-                                f'[{deployed_resource["second_index_value"]}]'
+                    second_index_str = "[0]"
+                    if deployed_resource["second_index_value"]:
+                        if deployed_resource["second_index_value"] == "disabled":
+                            second_index_str = ""
                         else:
-                            second_index_str = '["' + \
-                                deployed_resource["second_index_value"]+'"]'
+                            if isinstance(deployed_resource["second_index_value"], int):
+                                second_index_str = \
+                                    f'[{deployed_resource["second_index_value"]}]'
+                            else:
+                                second_index_str = '["' + \
+                                    deployed_resource["second_index_value"]+'"]'
 
-                resource_import_target = f'module.{module_instance_name}.{deployed_resource["target_submodule"]}{first_index_str}{deployed_resource["resource_type"]}.{deployed_resource["target_resource_name"]}{second_index_str}'
-                # Write to import.tf file
-                with open(import_file_path, 'a') as file:
-                    file.write(
-                        f'import {{\n  id = "{deployed_resource["import_id"]}"\n  to   = {resource_import_target}\n}}\n\n')
+                    resource_import_target = f'module.{module_instance_name}.{deployed_resource["target_submodule"]}{first_index_str}{deployed_resource["resource_type"]}.{deployed_resource["target_resource_name"]}{second_index_str}'
+                    # Write to import.tf file
+                    with open(import_file_path, 'a') as file:
+                        file.write(
+                            f'import {{\n  id = "{deployed_resource["import_id"]}"\n  to   = {resource_import_target}\n}}\n\n')
 
         print("Checking if terraform code was created...")
         file_path = os.path.join(os.getcwd(), "terragrunt.hcl")
@@ -1107,4 +1107,6 @@ class HCL:
                 self.ftstacks[resource_name] = {}
             if id not in self.ftstacks[resource_name]:
                 self.ftstacks[resource_name][id] = {}
-            self.ftstacks[resource_name][id]["ftstack"] = ftstack
+            if "ftstack_list" not in self.ftstacks[resource_name][id]:
+                self.ftstacks[resource_name][id]["ftstack_list"] = []
+            self.ftstacks[resource_name][id]["ftstack_list"].append(ftstack)

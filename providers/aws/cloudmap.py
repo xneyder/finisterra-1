@@ -52,7 +52,7 @@ class Cloudmap:
         return f"{namespace_id}:{vpc_id}"
 
     def cloudmap(self):
-        self.hcl.prepare_folder(os.path.join("generated", "cloudmap"))
+        self.hcl.prepare_folder(os.path.join("generated"))
 
         # self.aws_service_discovery_http_namespace()
         # self.aws_service_discovery_instance()
@@ -122,6 +122,7 @@ class Cloudmap:
                             "aws_service_discovery_instance", instance_id.replace("-", "_"), attributes)
 
     def aws_service_discovery_private_dns_namespace(self):
+        resource_type = "aws_service_discovery_private_dns_namespace"
         print("Processing AWS Service Discovery Private DNS Namespaces...")
 
         paginator = self.cloudmap_client.get_paginator("list_namespaces")
@@ -129,18 +130,28 @@ class Cloudmap:
             for namespace in page["Namespaces"]:
                 if namespace["Type"] == "DNS_PRIVATE":
                     namespace_id = namespace["Id"]
-                    private_dns_namespace = self.cloudmap_client.get_namespace(Id=namespace_id)[
-                        "Namespace"]
-                    print(
-                        f"  Processing AWS Service Discovery Private DNS Namespace: {namespace_id}")
+                    private_dns_namespace = self.cloudmap_client.get_namespace(Id=namespace_id)["Namespace"]
+                    print(f"  Processing AWS Service Discovery Private DNS Namespace: {namespace_id}")
 
                     # Get the hosted zone ID of the namespace
                     hosted_zone_id = private_dns_namespace["Properties"]["DnsProperties"]["HostedZoneId"]
 
                     # Get the VPC ID from the hosted zone
-                    hosted_zone = self.route53_client.get_hosted_zone(
-                        Id=hosted_zone_id)
+                    hosted_zone = self.route53_client.get_hosted_zone(Id=hosted_zone_id)
                     vpc_id = hosted_zone["VPCs"][0]["VPCId"]
+
+                    id = namespace_id
+
+                    fstack = ""
+                    try:
+                        response = self.cloudmap_client.list_tags_for_resource(ResourceARN=private_dns_namespace["Arn"])
+                        tags = response.get('Tags', [])
+                        for tag in tags:
+                            if tag['Key'] == 'ftstack':
+                                fstack = tag['Value']
+                                break
+                    except Exception as e:
+                        print("Error occurred: ", e)
 
                     attributes = {
                         "id": namespace_id,
@@ -153,6 +164,8 @@ class Cloudmap:
                         "aws_service_discovery_private_dns_namespace", namespace_id.replace("-", "_"), attributes)
 
                     self.aws_service_discovery_service(namespace_id)
+                    self.hcl.add_stack(resource_type, id, fstack)
+
 
     def aws_service_discovery_public_dns_namespace(self):
         print("Processing AWS Service Discovery Public DNS Namespaces...")

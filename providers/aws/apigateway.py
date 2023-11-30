@@ -143,7 +143,7 @@ class Apigateway:
         return result
 
     def apigateway(self):
-        self.hcl.prepare_folder(os.path.join("generated", "apigateway"))
+        self.hcl.prepare_folder(os.path.join("generated"))
 
         # aws_api_gateway_deployment.this
         # aws_api_gateway_method_settings.all
@@ -219,9 +219,13 @@ class Apigateway:
             "aws_api_gateway_account", "api_gateway_account", attributes)
 
     def aws_api_gateway_rest_api(self):
+        resource_type = "aws_api_gateway_rest_api"
         print("Processing API Gateway REST APIs...")
 
         rest_apis = self.apigateway_client.get_rest_apis()["items"]
+
+        # Get the region from the client
+        region = self.apigateway_client.meta.region_name
 
         for rest_api in rest_apis:
 
@@ -229,16 +233,33 @@ class Apigateway:
             #     continue
 
             print(f"  Processing API Gateway REST API: {rest_api['name']}")
+            api_id = rest_api["id"]
+
+            # Construct the ARN for the API Gateway REST API
+            arn = f"arn:aws:apigateway:{region}::/restapis/{api_id}"
+
+            fstack = ""
+            try:
+                response = self.apigateway_client.get_tags(resourceArn=arn)
+                tags = response.get('tags', {})
+                for tag_key, tag_value in tags.items():
+                    if tag_key == 'ftstack':
+                        fstack = tag_value
+                        break
+            except Exception as e:
+                print("Error occurred: ", e)
 
             attributes = {
-                "id": rest_api["id"],
+                "id": api_id,
             }
 
-            resource_name = f"{rest_api['id']}"
+            resource_name = f"{api_id}"
             self.hcl.process_resource(
-                "aws_api_gateway_rest_api", resource_name, attributes)
-
+                resource_type, resource_name, attributes)
             
+            self.hcl.add_stack(resource_type, api_id, fstack)
+
+
             # self.aws_api_gateway_method(rest_api["id"])
             self.aws_api_gateway_method_settings(rest_api["id"])
             self.aws_api_gateway_rest_api_policy(rest_api["id"])
