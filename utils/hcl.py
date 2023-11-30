@@ -201,7 +201,7 @@ class HCL:
     def create_folder(self, folder):
         if os.path.exists(folder):
             print(f"Folder '{folder}' already exists removing it.")
-            # shutil.rmtree(folder)
+            shutil.rmtree(folder)
         os.makedirs(folder, exist_ok=True)
         print(f"Folder '{folder}' has been created.")
 

@@ -127,12 +127,12 @@ def main(aws_account_id, aws_region, group_code):
 
     print("Finished processing AWS resources.")
 
-    create_gitignore_file("../")
+    create_gitignore_file("./")
 
     stateKey = f'finisterra/generated/aws/{aws_account_id}/{aws_region}'
 
     create_root_terragrunt(s3Bucket, aws_region,
-                           dynamoDBTable, stateKey, "../")
+                           dynamoDBTable, stateKey, "./")
 
 
 if __name__ == "__main__":
