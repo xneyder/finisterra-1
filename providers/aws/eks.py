@@ -454,7 +454,7 @@ class EKS:
             self.aws_iam_openid_connect_provider(cluster_name)
 
             # eks node group
-            self.aws_eks_node_group(cluster_name)
+            self.aws_eks_node_group(cluster_name, ftstack)
 
 
     def aws_eks_addon(self, cluster_name):
@@ -641,7 +641,7 @@ class EKS:
             print(
                 f"  Prepared tag for Resource {resource_id} with {key} = {value}")
 
-    def aws_eks_node_group(self, cluster_name):
+    def aws_eks_node_group(self, cluster_name, ftstack):
         print("Processing EKS Node Groups...")
 
         clusters = self.eks_client.list_clusters()["clusters"]
@@ -675,7 +675,7 @@ class EKS:
             # Process IAM role associated with the EKS node group
             if 'nodeRole' in node_group:
                 role_name = node_group['nodeRole'].split('/')[-1]
-                self.iam_role_instance.aws_iam_role(role_name)
+                self.iam_role_instance.aws_iam_role(role_name, ftstack)
 
             # Process Auto Scaling schedules for the node group's associated Auto Scaling group
             for asg in node_group.get('resources', {}).get('autoScalingGroups', []):
