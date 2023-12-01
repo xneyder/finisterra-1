@@ -917,8 +917,8 @@ class HCL:
                 name_value = ""
                 name_field = ""
 
-                for fstack in instance.get("ftstack_list", [""]):
-                    base_path = os.path.join(fstack,instance["path"])
+                for ftstack in instance.get("ftstack_list", [""]):
+                    base_path = os.path.join(ftstack,instance["path"])
 
                     module_file_path = os.path.join(base_path, f'{module_instance_name}.tf')
 
@@ -1044,8 +1044,8 @@ class HCL:
             if instance["add_id_hash_to_name"]:
                 module_instance_name = f'{module_instance_name}_{instance["id_hash"]}'
 
-            for fstack in instance.get("ftstack_list", [""]):
-                base_path = os.path.join(fstack,
+            for ftstack in instance.get("ftstack_list", [""]):
+                base_path = os.path.join(ftstack,
                         instance["path"])
                 import_file_path = os.path.join(base_path, f'import-{module_instance_name}.tf')
 
@@ -1108,5 +1108,5 @@ class HCL:
             if id not in self.ftstacks[resource_name]:
                 self.ftstacks[resource_name][id] = {}
             if "ftstack_list" not in self.ftstacks[resource_name][id]:
-                self.ftstacks[resource_name][id]["ftstack_list"] = []
-            self.ftstacks[resource_name][id]["ftstack_list"].append(ftstack)
+                self.ftstacks[resource_name][id]["ftstack_list"] = set()
+            self.ftstacks[resource_name][id]["ftstack_list"].add(ftstack)

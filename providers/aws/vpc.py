@@ -533,7 +533,7 @@ class VPC:
         return False
 
     def vpc(self):        
-        self.hcl.prepare_folder(os.path.join("generated", "vpc"))
+        self.hcl.prepare_folder(os.path.join("generated"))
 
         # aws_customer_gateway.this
         # aws_default_vpc.this
@@ -605,6 +605,7 @@ class VPC:
         self.json_plan = self.hcl.json_plan
 
     def aws_vpc(self):
+        resource_type = "aws_vpc"
         print("Processing VPCs...")
         self.resource_list['aws_vpc'] = {}
         vpcs = self.ec2_client.describe_vpcs()["Vpcs"]
@@ -615,11 +616,29 @@ class VPC:
                 # if vpc_id != "vpc-0ab965167aa4a5aa5":
                 #     continue
                 print(f"  Processing VPC: {vpc_id}")
+                id = vpc_id
+
+                ftstack = "vpc"
+                try:
+                    tags_response = self.ec2_client.describe_tags(
+                        Filters=[{'Name': 'resource-id', 'Values': [vpc_id]}]
+                    )
+                    tags = tags_response.get('Tags', [])
+                    for tag in tags:
+                        if tag['Key'] == 'ftstack':
+                            ftstack = tag['Value']
+                            break
+                except Exception as e:
+                    print("Error occurred: ", e)
+
                 attributes = {
-                    "id": vpc_id,
+                    "id": id,
                 }
                 self.hcl.process_resource(
-                    "aws_vpc", vpc_id.replace("-", "_"), attributes)
+                    resource_type, id, attributes)
+                
+                self.hcl.add_stack(resource_type, id, ftstack)                
+
                 self.resource_list['aws_vpc'][vpc_id.replace(
                     "-", "_")] = attributes
 
@@ -635,7 +654,7 @@ class VPC:
                 # call aws_network_acl with vpc_id
                 self.aws_network_acl(vpc_id)
                 # call aws_flow_log with vpc_id
-                self.aws_flow_log(vpc_id)
+                self.aws_flow_log(vpc_id, ftstack)
                 # call aws_vpc_dhcp_options with vpc_id
                 self.aws_vpc_dhcp_options_association(vpc_id)
                 # Nat Gateway
@@ -1082,7 +1101,7 @@ class VPC:
             self.resource_list['aws_egress_only_internet_gateway'][egress_only_igw_id.replace(
                 "-", "_")] = attributes
 
-    def aws_flow_log(self, vpc_id):
+    def aws_flow_log(self, vpc_id, ftstack):
         print("Processing Flow Logs...")
         self.resource_list['aws_flow_log'] = {}
         flow_logs = self.ec2_client.describe_flow_logs()["FlowLogs"]
@@ -1116,7 +1135,7 @@ class VPC:
                 if attributes["iam_role_arn"]:
                     # Assuming the role ARN ends with the role name
                     role_name = attributes["iam_role_arn"].split('/')[-1]
-                    self.iam_role_instance.aws_iam_role(role_name)
+                    self.iam_role_instance.aws_iam_role(role_name, ftstack)
                     # self.aws_iam_role(role_name)
 
     # def aws_iam_role(self, role_arn):

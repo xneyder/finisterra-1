@@ -38,7 +38,8 @@ class IAM_ROLE:
 
         self.json_plan = self.hcl.json_plan
 
-    def aws_iam_role(self, role_name=None):
+    def aws_iam_role(self, role_name=None, ftstack=None):
+        resource_type = "aws_iam_role"
         print("Processing IAM Roles...")
         paginator = self.iam_client.get_paginator("list_roles")
 
@@ -61,18 +62,22 @@ class IAM_ROLE:
                 #     continue
 
                 print(f"  Processing IAM Role: {current_role_name}")
+                id = current_role_name
 
                 attributes = {
-                    "id": current_role_name,
+                    "id": id,
                     "name": current_role_name,
                     "assume_role_policy": json.dumps(role["AssumeRolePolicyDocument"]),
                     "description": role.get("Description"),
                     "path": role_path,
                 }
-                self.hcl.process_resource("aws_iam_role", current_role_name, attributes)
+                self.hcl.process_resource(resource_type, current_role_name, attributes)   
+                if not ftstack:
+                    ftstack = "iam"   
+                self.hcl.add_stack(resource_type, id, ftstack)
 
                 # Call aws_iam_role_policy_attachment for the current role_name
-                self.aws_iam_role_policy_attachment(current_role_name)
+                self.aws_iam_role_policy_attachment(current_role_name, ftstack)
 
                 # Now call aws_iam_instance_profile for the current role_name
                 self.aws_iam_instance_profile(current_role_name)
@@ -103,7 +108,7 @@ class IAM_ROLE:
                 self.hcl.process_resource(
                     "aws_iam_instance_profile", instance_profile_name, attributes)
 
-    def aws_iam_role_policy_attachment(self, role_name):
+    def aws_iam_role_policy_attachment(self, role_name, ftstack):
         print(f"Processing IAM Role Policy Attachments for {role_name}...")
 
         policy_paginator = self.iam_client.get_paginator(
@@ -123,9 +128,10 @@ class IAM_ROLE:
                 self.hcl.process_resource(
                     "aws_iam_role_policy_attachment", f"{role_name}_{policy_arn.split(':')[-1]}", attributes)
                 
-                self.aws_iam_policy(policy_arn)
+                self.aws_iam_policy(policy_arn, ftstack)
 
-    def aws_iam_policy(self, policy_arn):
+    def aws_iam_policy(self, policy_arn, ftstack=None):
+        resource_type="aws_iam_policy"
         policy_name = policy_arn.split('/')[-1]
         # Ignore AWS managed policies and policies with '/service-role/' in the ARN
         if policy_arn.startswith('arn:aws:iam::aws:policy/') or '/service-role/' in policy_arn:
@@ -135,10 +141,14 @@ class IAM_ROLE:
         #     continue
 
         print(f"  Processing IAM Policy: {policy_name}")
+        id = policy_arn
         attributes = {
-            "id": policy_arn,
+            "id": id,
             "arn": policy_arn,
             "name": policy_name,
         }
         self.hcl.process_resource(
-            "aws_iam_policy", policy_name, attributes)
+            resource_type, policy_name, attributes)
+        if not ftstack:
+            ftstack = "iam"
+        self.hcl.add_stack(resource_type, id, ftstack)

@@ -62,7 +62,7 @@ class StepFunction:
         return [attributes.get(arg)]
 
     def stepfunction(self):
-        self.hcl.prepare_folder(os.path.join("generated", "stepfunction"))
+        self.hcl.prepare_folder(os.path.join("generated"))
 
         self.aws_sfn_state_machine()
 
@@ -82,13 +82,13 @@ class StepFunction:
         self.json_plan = self.hcl.json_plan
 
     def aws_sfn_state_machine(self):
+        resource_type = "aws_sfn_state_machine"
         print("Processing State Machines...")
 
         paginator = self.sfn_client.get_paginator("list_state_machines")
         for page in paginator.paginate():
             for state_machine_summary in page["stateMachines"]:
-                print(
-                    f"  Processing State Machine: {state_machine_summary['name']}")
+                print(f"  Processing State Machine: {state_machine_summary['name']}")
 
                 # if state_machine_summary['name'] != 'FormSubmission':
                 #     continue
@@ -99,16 +99,31 @@ class StepFunction:
                 )
 
                 role_arn = state_machine.get('roleArn', None)
+                state_machine_arn = state_machine["stateMachineArn"]
+
+                ftstack = ""
+                try:
+                    tags_response = self.sfn_client.list_tags_for_resource(resourceArn=state_machine_arn)
+                    tags = tags_response.get('tags', [])
+                    for tag in tags:
+                        if tag['key'] == 'ftstack':
+                            ftstack = tag['value']
+                            break
+                except Exception as e:
+                    print("Error occurred: ", e)
 
                 attributes = {
-                    "id": state_machine["stateMachineArn"],
+                    "id": state_machine_arn,
                     "name": state_machine["name"],
                     "definition": state_machine["definition"],
                     "role_arn": role_arn,
                 }
 
                 self.hcl.process_resource(
-                    "aws_sfn_state_machine", state_machine["name"].replace("-", "_"), attributes)
+                    resource_type, state_machine_arn, attributes)
+                
+                self.hcl.add_stack(resource_type, state_machine_arn, ftstack)
+
 
                 # Check if roleArn exists before proceeding
                 if role_arn:

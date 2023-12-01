@@ -193,7 +193,7 @@ class ElasticacheRedis:
         return security_group_id+"_"+type+"_"+protocol+"_"+str(from_port)+"_"+str(to_port)+"_"+source
 
     def elasticache_redis(self):
-        self.hcl.prepare_folder(os.path.join("generated", "elasticache_redis"))
+        self.hcl.prepare_folder(os.path.join("generated"))
 
         # aws_cloudwatch_metric_alarm.cache_cpu
         # aws_cloudwatch_metric_alarm.cache_memory
@@ -230,53 +230,12 @@ class ElasticacheRedis:
 
         self.json_plan = self.hcl.json_plan
 
-    # def aws_elasticache_cluster(self):
-    #     print("Processing ElastiCache Clusters...")
-
-    #     paginator = self.elasticache_client.get_paginator(
-    #         "describe_cache_clusters")
-    #     for page in paginator.paginate():
-    #         for cluster in page["CacheClusters"]:
-    #             print(
-    #                 f"  Processing ElastiCache Cluster: {cluster['CacheClusterId']}")
-
-    #             attributes = {
-    #                 "id": cluster["CacheClusterId"],
-    #                 "cache_cluster_id": cluster["CacheClusterId"],
-    #                 "engine": cluster["Engine"],
-    #                 "engine_version": cluster["EngineVersion"],
-    #                 "num_cache_nodes": cluster["NumCacheNodes"],
-    #                 "node_type": cluster["CacheNodeType"],
-    #             }
-
-    #             self.hcl.process_resource(
-    #                 "aws_elasticache_cluster", cluster["CacheClusterId"].replace("-", "_"), attributes)
-
-    # def aws_elasticache_global_replication_group(self):
-    #     print("Processing ElastiCache Global Replication Groups...")
-
-    #     paginator = self.elasticache_client.get_paginator(
-    #         "describe_global_replication_groups")
-    #     for page in paginator.paginate():
-    #         for global_replication_group in page["GlobalReplicationGroups"]:
-    #             print(
-    #                 f"  Processing ElastiCache Global Replication Group: {global_replication_group['GlobalReplicationGroupId']}")
-
-    #             attributes = {
-    #                 "id": global_replication_group["GlobalReplicationGroupId"],
-    #                 "global_replication_group_id": global_replication_group["GlobalReplicationGroupId"],
-    #                 "actual_engine_version": global_replication_group["ActualEngineVersion"],
-    #                 "global_replication_group_description": global_replication_group["GlobalReplicationGroupDescription"],
-    #             }
-
-    #             self.hcl.process_resource(
-    #                 "aws_elasticache_global_replication_group", global_replication_group["GlobalReplicationGroupId"].replace("-", "_"), attributes)
 
     def aws_elasticache_replication_group(self):
+        resource_type = "aws_elasticache_replication_group"
         print("Processing ElastiCache Replication Groups...")
 
-        paginator = self.elasticache_client.get_paginator(
-            "describe_replication_groups")
+        paginator = self.elasticache_client.get_paginator("describe_replication_groups")
         for page in paginator.paginate():
             for replication_group in page["ReplicationGroups"]:                
                 # Skip the groups that are not Redis
@@ -286,26 +245,30 @@ class ElasticacheRedis:
                 # if replication_group['ReplicationGroupId'] != "bpu-replication-group":
                 #     continue
 
-                print(
-                    f"  Processing ElastiCache Replication Group: {replication_group['ReplicationGroupId']}")
+                print(f"  Processing ElastiCache Replication Group: {replication_group['ReplicationGroupId']}")
+                id = replication_group["ReplicationGroupId"]
+
+                ftstack = "elasticache_redis"
+                try:
+                    tags_response = self.elasticache_client.list_tags_for_resource(ResourceName=replication_group["ARN"])
+                    tags = tags_response.get('TagList', [])
+                    for tag in tags:
+                        if tag['Key'] == 'ftstack':
+                            ftstack = tag['Value']
+                            break
+                except Exception as e:
+                    print("Error occurred: ", e)
 
                 attributes = {
-                    "id": replication_group["ReplicationGroupId"],
+                    "id": id,
                     "replication_group_id": replication_group["ReplicationGroupId"],
                     "replication_group_description": replication_group["Description"],
                 }
 
-                if "CacheNodeType" in replication_group:
-                    attributes["node_type"] = replication_group["CacheNodeType"]
-
-                if "Engine" in replication_group:
-                    attributes["engine"] = replication_group["Engine"]
-
-                if "EngineVersion" in replication_group:
-                    attributes["engine_version"] = replication_group["EngineVersion"]
-
-                # Track processed subnet and parameter groups to avoid duplicates
-
+                self.hcl.process_resource(
+                    resource_type, id, attributes)
+                
+                self.hcl.add_stack(resource_type, id, ftstack)
 
                 # Process the member Cache Clusters
                 for cache_cluster_id in replication_group["MemberClusters"]:
@@ -330,12 +293,10 @@ class ElasticacheRedis:
                             if sg['Status'] == 'active' and sg['SecurityGroupId'] not in self.processed_security_groups:
                                 # self.aws_security_group(
                                 #     [sg['SecurityGroupId']])
-                                self.security_group_instance.aws_security_group(sg['SecurityGroupId'])
+                                self.security_group_instance.aws_security_group(sg['SecurityGroupId'], ftstack)
                                 self.processed_security_groups.add(
                                     sg['SecurityGroupId'])
 
-                self.hcl.process_resource(
-                    "aws_elasticache_replication_group", replication_group["ReplicationGroupId"].replace("-", "_"), attributes)
 
     def aws_elasticache_parameter_group(self, group_name):
         print(f"    Processing ElastiCache Parameter Group: {group_name}...")

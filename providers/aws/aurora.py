@@ -167,7 +167,7 @@ class Aurora:
             return None
 
     def aurora(self):
-        self.hcl.prepare_folder(os.path.join("generated", "aurora"))
+        self.hcl.prepare_folder(os.path.join("generated"))
 
         self.aws_rds_cluster()
 
@@ -563,6 +563,7 @@ class Aurora:
                     "aws_db_subnet_group", db_subnet_group_name.replace("-", "_"), attributes)
 
     def aws_rds_cluster(self):
+        resource_type = "aws_rds_cluster"
         print("Processing RDS Clusters...")
 
         paginator = self.rds_client.get_paginator("describe_db_clusters")
@@ -573,8 +574,21 @@ class Aurora:
                     continue
                 rds_cluster_id = rds_cluster["DBClusterIdentifier"]
                 print(f"  Processing RDS Cluster: {rds_cluster_id}")
+                cluster_arn = rds_cluster["DBClusterArn"]
+
+                ftstack = "aurora"
+                try:
+                    tags_response = self.rds_client.list_tags_for_resource(ResourceName=cluster_arn)
+                    tags = tags_response.get('TagList', [])
+                    for tag in tags:
+                        if tag['Key'] == 'ftstack':
+                            ftstack = tag['Value']
+                            break
+                except Exception as e:
+                    print("Error occurred: ", e)
+
                 attributes = {
-                    "id": rds_cluster["DBClusterArn"],
+                    "id": cluster_arn,
                     "cluster_identifier": rds_cluster_id,
                     "engine": engine,
                     "engine_version": rds_cluster["EngineVersion"],
@@ -583,11 +597,13 @@ class Aurora:
                     "port": rds_cluster["Port"],
                 }
                 self.hcl.process_resource(
-                    "aws_rds_cluster", rds_cluster_id.replace("-", "_"), attributes)
+                    resource_type, cluster_arn, attributes)
+                
+                self.hcl.add_stack(resource_type, cluster_arn, ftstack)
 
                 parameter_group_name = rds_cluster.get(
                     "DBClusterParameterGroupName", "")
-                self.aws_rds_cluster_instance(rds_cluster_id)
+                self.aws_rds_cluster_instance(rds_cluster_id, ftstack)
                 self.aws_rds_cluster_parameter_group(parameter_group_name)
                 self.aws_rds_cluster_endpoint(rds_cluster_id)
                 self.aws_rds_cluster_role_association(rds_cluster_id)
@@ -642,7 +658,7 @@ class Aurora:
                     self.hcl.process_resource(
                         "aws_rds_cluster_endpoint", endpoint_id.replace("-", "_"), attributes)
 
-    def aws_rds_cluster_instance(self, cluster_id):
+    def aws_rds_cluster_instance(self, cluster_id, ftstack):
         print("Processing RDS Cluster Instances...")
 
         paginator = self.rds_client.get_paginator("describe_db_instances")
@@ -678,7 +694,7 @@ class Aurora:
                     monitoring_role_arn = rds_instance.get("MonitoringRoleArn")
                     if monitoring_role_arn:
                         role_name = monitoring_role_arn.split('/')[-1]
-                        self.iam_role_instance.aws_iam_role(role_name)
+                        self.iam_role_instance.aws_iam_role(role_name, ftstack)
                         # self.aws_iam_role(monitoring_role_arn)
 
                     # call aws_cloudwatch_log_group function with instance_id and each log export name as parameters

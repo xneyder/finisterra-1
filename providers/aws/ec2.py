@@ -120,7 +120,7 @@ class EC2:
         return result
 
     def ec2(self):
-        self.hcl.prepare_folder(os.path.join("generated", "ec2"))
+        self.hcl.prepare_folder(os.path.join("generated"))
 
         self.aws_instance()
 
@@ -331,6 +331,7 @@ class EC2:
         return bool(response["AutoScalingInstances"])
 
     def aws_instance(self):
+        resource_type = "aws_instance"
         print("Processing EC2 Instances...")
 
         instances = self.ec2_client.describe_instances()
@@ -355,9 +356,23 @@ class EC2:
                 #     continue
 
                 print(f"  Processing EC2 Instance: {instance_id}")
+                id = instance_id
+
+                ftstack = ""
+                try:
+                    tags_response = self.ec2_client.describe_tags(
+                        Filters=[{'Name': 'resource-id', 'Values': [instance_id]}]
+                    )
+                    tags = tags_response.get('Tags', [])
+                    for tag in tags:
+                        if tag['Key'] == 'ftstack':
+                            ftstack = tag['Value']
+                            break
+                except Exception as e:
+                    print("Error occurred: ", e)                
 
                 attributes = {
-                    "id": instance_id,
+                    "id": id,
                     # "ami": instance.get("ImageId", None),
                     # "instance_type": instance.get("InstanceType", None),
                     # "availability_zone": instance.get("Placement", {}).get("AvailabilityZone", None),
@@ -374,7 +389,8 @@ class EC2:
 
 
                 self.hcl.process_resource(
-                    "aws_instance", instance_id.replace("-", "_"), attributes)
+                    resource_type, instance_id.replace("-", "_"), attributes)
+                self.hcl.add_stack(resource_type, id, ftstack)
 
                 # Process all EIPs associated with the instance
                 eips_associated = self.ec2_client.describe_addresses(Filters=[{

@@ -76,7 +76,7 @@ class ECR:
 
 
     def ecr(self):
-        self.hcl.prepare_folder(os.path.join("generated", "ecr"))
+        self.hcl.prepare_folder(os.path.join("generated"))
 
         self.aws_ecr_repository()
 
@@ -99,6 +99,7 @@ class ECR:
         self.json_plan = self.hcl.json_plan
 
     def aws_ecr_repository(self):
+        resource_type = "aws_ecr_repository"
         print("Processing ECR Repositories...")
 
         repositories = self.ecr_client.describe_repositories()["repositories"]
@@ -107,13 +108,27 @@ class ECR:
             repository_arn = repo["repositoryArn"]
 
             print(f"  Processing ECR Repository: {repository_name}")
+            id = repository_name
+
+            ftstack = ""
+            try:
+                tags_response = self.ecr_client.list_tags_for_resource(resourceArn=repository_arn)
+                tags = tags_response.get('tags', [])
+                for tag in tags:
+                    if tag['Key'] == 'ftstack':
+                        ftstack = tag['Value']
+                        break
+            except Exception as e:
+                print("Error occurred: ", e)
 
             attributes = {
-                "id": repository_name,
+                "id": id,
                 "arn": repository_arn,
             }
             self.hcl.process_resource(
-                "aws_ecr_repository", repository_name.replace("-", "_"), attributes)
+                resource_type, repository_name.replace("-", "_"), attributes)
+            
+            self.hcl.add_stack(resource_type, id, ftstack)
 
             self.aws_ecr_repository_policy(repository_name)
             self.aws_ecr_lifecycle_policy(repository_name)

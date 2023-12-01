@@ -75,7 +75,7 @@ aws_ecs_service:
   # target_submodule: module.service
   # root_attribute: services
   # root_attribute_key: name
-  path: ecs
+  path: "ecs"
   dependencies:
     - "../iam_role"
   defaults:
@@ -189,76 +189,6 @@ aws_ecs_service:
       type: list
 
   childs:
-    # aws_iam_role:
-    #   join:
-    #     iam_role:
-    #       function: join_path_role_name
-    #   target_resource_name: service
-    #   defaults:
-    #     # create_iam_role: true
-    #     iam_role_use_name_prefix: false
-    #   fields:
-    #     create_iam_role:
-    #       unique: true
-    #     iam_role_arn:
-    #       field: arn
-    #       type: string
-    #     iam_role_name:
-    #       field: name
-    #       type: string
-    #     iam_role_path:
-    #       field: path
-    #       type: string
-    #     iam_role_description:
-    #       field: description
-    #       type: string
-    #     iam_role_permissions_boundary:
-    #       field: permissions_boundary
-    #       type: string
-    #     iam_role_tags:
-    #       field: tags
-    #       type: map
-    #     iam_role_inline_policies:
-    #       field: inline_policy
-    #       type: list
-
-    #   childs:
-    #     aws_iam_role_policy_attachment:
-    #       join:
-    #         name:
-    #           field: role
-    #       target_resource_name: service
-    #       fields:
-    #         create_iam_role:
-    #           unique: true
-    #         iam_policy_name:
-    #           function: get_iam_policy_name
-    #           arg: policy_arn
-    #           type: string
-
-    # childs:
-    #   aws_iam_policy:
-    #     join:
-    #       policy_arn:
-    #         field: arn
-    #     target_resource_name: service
-    #     fields:
-    #       create_iam_policy:
-    #         unique: true
-    #       iam_policy_name:
-    #         field: name
-    #         type: string
-    #       iam_policy_description:
-    #         field: description
-    #         type: string
-    #       iam_policy_path:
-    #         field: path
-    #         type: string
-    #       iam_policy_document:
-    #         field: policy
-    #         type: string
-    #         multiline: true
-
     aws_ecs_task_definition:
       join:
         task_definition:
@@ -342,135 +272,6 @@ aws_ecs_service:
           function: get_iam_role
           arg: execution_role_arn
           type: string
-
-      # childs:
-
-      # aws_iam_role:
-      #   join:
-      #     task_role_arn:
-      #       function: get_arn
-      #   # root_attribute: services
-      #   # root_attribute_key: name
-      #   # root_attribute_key_parent: true #Take the field from the parent attributes
-      #   target_resource_name: tasks
-      #   # target_submodule: module.service
-      #   defaults:
-      #     # create_tasks_iam_role: true
-      #     tasks_iam_role_use_name_prefix: false
-      #   fields:
-      #     create_tasks_iam_role:
-      #       unique: true
-      #     tasks_iam_role_arn:
-      #       field: arn
-      #       type: string
-      #     tasks_iam_role_name:
-      #       field: name
-      #       type: string
-      #     tasks_iam_role_path:
-      #       field: path
-      #       type: string
-      #     tasks_iam_role_description:
-      #       field: description
-      #       type: string
-      #     tasks_iam_role_permissions_boundary:
-      #       field: permissions_boundary
-      #       type: string
-      #     tasks_iam_role_tags:
-      #       field: tags
-      #       type: map
-      #     tasks_assume_role_policy:
-      #       field: assume_role_policy
-      #       type: string
-      #       multiline: true
-      #     tasks_iam_role_inline_policies:
-      #       field: inline_policy
-      #       type: list
-      #   childs:
-      #     aws_iam_role_policy_attachment:
-      #       join:
-      #         name:
-      #           function: get_field_from_attrs
-      #           arg: role
-      #       # root_attribute: services
-      #       # root_attribute_key: name
-      #       target_resource_name: tasks
-      #       second_index:
-      #         function: get_name_from_arn
-      #         arg: policy_arn
-      #       # target_submodule: module.service
-      #       fields:
-      #         tasks_iam_role_policies:
-      #           function: tasks_iam_role_policies
-      #           type: string
-      #         create_tasks_iam_role:
-      #           unique: true
-
-      # Task execution IAM role
-      # create_task_exec_iam_role               = try(each.value.create_task_exec_iam_role, true)
-      # task_exec_iam_role_arn                  = lookup(each.value, "task_exec_iam_role_arn", null)
-      # task_exec_iam_role_name                 = try(each.value.task_exec_iam_role_name, null)
-      # task_exec_iam_role_use_name_prefix      = try(each.value.task_exec_iam_role_use_name_prefix, true)
-      # task_exec_iam_role_path                 = try(each.value.task_exec_iam_role_path, null)
-      # task_exec_iam_role_description          = try(each.value.task_exec_iam_role_description, null)
-      # task_exec_iam_role_permissions_boundary = try(each.value.task_exec_iam_role_permissions_boundary, null)
-      # task_exec_iam_role_tags                 = try(each.value.task_exec_iam_role_tags, {})
-      # task_exec_iam_role_policies             = try(each.value.task_exec_iam_role_policies, {})
-
-      # aws_iam_role_exec:
-      #   resource_type: aws_iam_role
-      #   join:
-      #     execution_role_arn:
-      #       function: get_arn
-      #   target_resource_name: task_exec
-      #   # defaults:
-      #   #   create_task_exec_iam_role: true
-      #   fields:
-      #     create_task_exec_iam_role:
-      #       unique: true
-      #     task_exec_iam_role_arn:
-      #       field: arn
-      #       type: string
-      #     task_exec_iam_role_name:
-      #       field: name
-      #       type: string
-      #     task_exec_iam_role_path:
-      #       field: path
-      #       type: string
-      #     task_exec_iam_role_description:
-      #       field: description
-      #       type: string
-      #     task_exec_iam_role_permissions_boundary:
-      #       field: permissions_boundary
-      #       type: string
-      #     task_exec_iam_role_tags:
-      #       field: tags
-      #       type: map
-      #     task_exec_assume_role_policy:
-      #       field: assume_role_policy
-      #       type: string
-      #       multiline: true
-      #     task_exec_iam_role_inline_policies:
-      #       field: inline_policy
-      #       type: list
-      #   childs:
-      #     aws_iam_role_policy_attachment:
-      #       join:
-      #         name:
-      #           function: get_field_from_attrs
-      #           arg: role
-      #       # root_attribute: services
-      #       # root_attribute_key: name
-      #       target_resource_name: tasks
-      #       second_index:
-      #         function: get_name_from_arn
-      #         arg: policy_arn
-      #       # target_submodule: module.service
-      #       fields:
-      #         task_exec_iam_role_policies:
-      #           function: tasks_iam_role_policies
-      #           type: string
-      #         create_task_exec_iam_role:
-      #           unique: true
 
     aws_appautoscaling_target:
       join:
@@ -598,31 +399,6 @@ aws_ecs_service:
               arg: load_balancer_arn
               type: string
 
-aws_iam_policy:
-  # terraform_module: "../../../terraform-aws-modules/terraform-aws-iam//modules/iam_policy"
-  terraform_module: "github.com/finisterra-io/terraform-aws-iam//modules/iam_policy?ref=main"
-  terraform_module_version: "5.2.0"
-  target_resource_name: default
-  name_field: policy_name
-  path: "iam_policy"
-  fields:
-    policy_documents:
-      field: policy
-      type: string
-      multiline: true
-    policy_name:
-      field: name
-      type: string
-    policy_description:
-      field: description
-      type: string
-    path:
-      field: path
-      type: string
-    tags:
-      field: tags
-      type: map
-
 aws_iam_role:
   # terraform_module: "../../../terraform-aws-modules/terraform-aws-iam//modules/iam_role"
   terraform_module: "github.com/finisterra-io/terraform-aws-iam//modules/iam_role?ref=main"
@@ -632,8 +408,6 @@ aws_iam_role:
   path: "iam_role"
   dependencies:
     - "../iam_policy"
-  defaults:
-    instance_profile_enabled: false
   fields:
     role_name:
       field: name
@@ -649,7 +423,7 @@ aws_iam_role:
       field: max_session_duration
       type: number
     inline_policies:
-      field: inline_policy
+      function: get_inline_policies
       type: list
     permissions_boundary:
       field: permissions_boundary
@@ -675,10 +449,35 @@ aws_iam_role:
       join:
         name:
           field: role
-      defaults:
-        instance_profile_enabled: true
       target_resource_name: default
+      second_index:
+        field: name
       fields:
-        instance_profile_name:
-          field: name
-          type: string
+        instance_profiles:
+          function: get_instance_profiles
+          type: list
+
+aws_iam_policy:
+  # terraform_module: "../../../terraform-aws-modules/terraform-aws-iam//modules/iam_policy"
+  terraform_module: "github.com/finisterra-io/terraform-aws-iam//modules/iam_policy?ref=main"
+  terraform_module_version: "5.2.0"
+  target_resource_name: default
+  name_field: policy_name
+  path: "iam_policy"
+  fields:
+    policy_documents:
+      function: get_policy_documents
+      type: string
+      multiline: true
+    policy_name:
+      field: name
+      type: string
+    policy_description:
+      field: description
+      type: string
+    path:
+      field: path
+      type: string
+    tags:
+      field: tags
+      type: map

@@ -44,7 +44,7 @@ class SQS:
         return None
 
     def sqs(self):
-        self.hcl.prepare_folder(os.path.join("generated", "sqs"))
+        self.hcl.prepare_folder(os.path.join("generated"))
 
         self.aws_sqs_queue()
 
@@ -62,6 +62,7 @@ class SQS:
         self.json_plan = self.hcl.json_plan
 
     def aws_sqs_queue(self):
+        resource_type = "aws_sqs_queue"
         print("Processing SQS Queues...")
 
         paginator = self.sqs_client.get_paginator("list_queues")
@@ -73,12 +74,22 @@ class SQS:
                 #     continue
 
                 print(f"Processing SQS Queue: {queue_name}")
+                id = queue_url
+
+                fstack = ""
+                try:
+                    tags_response = self.sqs_client.list_queue_tags(QueueUrl=queue_url)
+                    tags = tags_response.get('Tags', {})
+                    fstack = tags.get('ftstack', '')
+                except Exception as e:
+                    print("Error occurred: ", e)
 
                 attributes = {
-                    "id": queue_url,
+                    "id": id,
                 }
                 self.hcl.process_resource(
-                    "aws_sqs_queue", queue_name.replace("-", "_"), attributes)
+                    resource_type, id, attributes)
+                self.hcl.add_stack(resource_type, id, fstack)
 
                 # Call aws_sqs_queue_policy with the queue_url as an argument
                 self.aws_sqs_queue_policy(queue_url)

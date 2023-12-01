@@ -37,7 +37,7 @@ class KMS:
         self.additional_data = {}
 
     def kms(self):
-        self.hcl.prepare_folder(os.path.join("generated", "kms"))
+        self.hcl.prepare_folder(os.path.join("generated"))
         self.aws_kms_key()
         self.aws_kms_replica_key()
         self.aws_kms_external_key()
@@ -52,15 +52,17 @@ class KMS:
         self.json_plan = self.hcl.json_plan
 
 
-    def aws_kms_key(self, key_arn=None):        
+    def aws_kms_key(self, key_arn=None, ftstack=None):
         print("Processing KMS Keys...")
+        if not ftstack:
+            ftstack = "kms"
 
         if key_arn:
             # Process only the key specified by the ARN
             try:
                 key_metadata = self.kms_client.describe_key(KeyId=key_arn)["KeyMetadata"]
                 if key_metadata["KeyManager"] == "CUSTOMER":
-                    return self.process_key(key_metadata)
+                    self.process_key(key_metadata, ftstack)
             except botocore.exceptions.ClientError as e:
                 print(f"  Error processing KMS Key: {e}")
         else:
@@ -74,13 +76,12 @@ class KMS:
                         #     continue
                         key_metadata = self.kms_client.describe_key(KeyId=key_id)["KeyMetadata"]
                         if key_metadata["KeyManager"] == "CUSTOMER":
-                            return self.process_key(key_metadata)
+                            self.process_key(key_metadata,ftstack)
                     except botocore.exceptions.ClientError as e:
                         print(f"  Error processing KMS Key: {e}")
-        return None, None
 
-    def process_key(self, key_metadata):
-        resource_name = "aws_kms_key"
+    def process_key(self, key_metadata, ftstack):
+        resource_type = "aws_kms_key"
         key_id = key_metadata["KeyId"]
         print(f"  Processing KMS Key: {key_id}")
 
@@ -96,7 +97,8 @@ class KMS:
             "key_state": key_metadata["KeyState"],
         }
         self.hcl.process_resource(
-            resource_name, key_id.replace("-", "_"), attributes)
+            resource_type, key_id.replace("-", "_"), attributes)
+        self.hcl.add_stack(resource_type, id, ftstack)
 
         self.aws_kms_key_policy(key_metadata["Arn"])
 
@@ -104,7 +106,6 @@ class KMS:
 
         self.aws_kms_grant(key_metadata["Arn"])
 
-        return resource_name,id
 
     def aws_kms_alias(self, kms_arn):
         print("Processing KMS Aliases...")

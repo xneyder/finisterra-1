@@ -224,7 +224,7 @@ class MSK:
     #     return result
 
     def msk(self):
-        self.hcl.prepare_folder(os.path.join("generated", "msk"))
+        self.hcl.prepare_folder(os.path.join("generated"))
 
         self.aws_msk_cluster()
 
@@ -253,6 +253,7 @@ class MSK:
         self.json_plan = self.hcl.json_plan
 
     def aws_msk_cluster(self):
+        resource_type = "aws_msk_cluster"
         print("Processing MSK Clusters...")
 
         # Pagination for list_clusters, if applicable
@@ -264,15 +265,25 @@ class MSK:
                 cluster_arn = cluster_info["ClusterArn"]
                 cluster_name = cluster_info["ClusterName"]
                 print(f"  Processing MSK Cluster: {cluster_name}")
+                id = cluster_name
+
+                ftstack = "msk"
+                try:
+                    tags_response = self.msk_client.list_tags_for_resource(ResourceArn=cluster_arn)
+                    tags = tags_response.get('Tags', {})
+                    ftstack = tags.get('ftstack', 'msk')
+                except Exception as e:
+                    print("Error occurred: ", e)
 
                 attributes = {
-                    "id": cluster_arn,
+                    "id": id,
                     "arn": cluster_arn,
                     "name": cluster_name,
                 }
 
                 self.hcl.process_resource(
-                    "aws_msk_cluster", cluster_name, attributes)
+                    resource_type, id, attributes)
+                self.hcl.add_stack(resource_type, id, ftstack)
 
                 # Extracting the Security Group IDs for the MSK Cluster
                 cluster_details = self.msk_client.describe_cluster(
@@ -283,7 +294,7 @@ class MSK:
 
                 # Calling aws_security_group function with the extracted SG IDs
                 for sg in sg_ids:   
-                    self.security_group_instance.aws_security_group(sg)
+                    self.security_group_instance.aws_security_group(sg, ftstack)
                 # self.aws_security_group(sg_ids)
 
                 self.aws_msk_configuration(cluster_arn)

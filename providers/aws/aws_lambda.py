@@ -4,7 +4,7 @@ import botocore
 import json
 import http.client
 from urllib.parse import urlparse
-
+from providers.aws.iam_role import IAM_ROLE
 
 def convert_to_terraform_format(env_variables_dict):
     # Format the dictionary to Terraform format
@@ -44,6 +44,7 @@ class AwsLambda:
         self.hcl = HCL(self.schema_data, self.provider_name,
                        self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules)
         self.resource_list = {}
+        self.iam_role_instance = IAM_ROLE(iam_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
 
     def get_field_from_attrs(self, attributes, arg):
         keys = arg.split(".")
@@ -85,7 +86,7 @@ class AwsLambda:
         return [attributes.get(arg)]
 
     def aws_lambda(self):
-        self.hcl.prepare_folder(os.path.join("generated", "aws_lambda"))
+        self.hcl.prepare_folder(os.path.join("generated"))
 
         # aws_iam_policy.ssm
         # aws_iam_role.this
@@ -123,8 +124,11 @@ class AwsLambda:
             os.path.dirname(os.path.abspath(__file__)), "aws_lambda.yaml"), functions, self.region, self.aws_account_id, {}, {})
 
         self.json_plan = self.hcl.json_plan
+        
+
 
     def aws_lambda_function(self):
+        resource_type = "aws_lambda_function"
         print("Processing Lambda Functions...")
 
         functions = self.lambda_client.list_functions()["Functions"]
@@ -138,8 +142,16 @@ class AwsLambda:
             print(f"  Processing Lambda Function: {function_name}")
 
             # Get more detailed information about the function
-            function_details = self.lambda_client.get_function(
-                FunctionName=function_name)
+            function_details = self.lambda_client.get_function(FunctionName=function_name)
+
+            function_arn = function_details["Configuration"]["FunctionArn"]
+
+            ftstack = "aws_lambda"
+            try:
+                tags = self.lambda_client.list_tags(Resource=function_arn)['Tags']
+                ftstack = tags.get('ftstack', 'aws_lambda')
+            except Exception as e:
+                print("Error occurred: ", e)            
 
             s3_bucket = ''
             s3_key = ''
@@ -159,14 +171,16 @@ class AwsLambda:
             conn.request("GET", url_parts.path)
             response = conn.getresponse()
 
-            filename = f"{function_name}.zip"
+            folder = os.path.join(ftstack, "aws_lambda")
+            os.makedirs(folder, exist_ok=True)
+            filename = os.path.join(folder, f"{function_name}.zip")
             with open(filename, "wb") as f:
                 f.write(response.read())
 
             print(f"  Lambda Function code saved as: {filename}")
 
             attributes = {
-                "id": function_details["Configuration"]["FunctionArn"],
+                "id": function_arn,
                 "function_name": function_name,
                 "runtime": function_details["Configuration"]["Runtime"],
                 "role": function_details["Configuration"]["Role"],
@@ -180,87 +194,91 @@ class AwsLambda:
                 "filename": filename,  # Add filename to the attributes
             }
             self.hcl.process_resource(
-                "aws_lambda_function", function_name.replace("-", "_"), attributes)
+                resource_type, function_arn, attributes)
+            
+            self.hcl.add_stack(resource_type, function_arn, ftstack)
+            role_name = function_details["Configuration"]["Role"].split('/')[-1]
+            self.iam_role_instance.aws_iam_role(role_name, ftstack)
 
-            self.aws_iam_role(function_details["Configuration"]["Role"])
+            # self.aws_iam_role(function_details["Configuration"]["Role"])
 
             # Process the CloudWatch Log Group for this Lambda function
             log_group_name = f"/aws/lambda/{function_name}"
             self.aws_cloudwatch_log_group(log_group_name)
 
-    def aws_iam_role(self, role_arn, aws_iam_policy=False):
-        print(f"Processing IAM Role: {role_arn}...")
+    # def aws_iam_role(self, role_arn, aws_iam_policy=False):
+    #     print(f"Processing IAM Role: {role_arn}...")
 
-        role_name = role_arn.split('/')[-1]  # Extract role name from ARN
+    #     role_name = role_arn.split('/')[-1]  # Extract role name from ARN
 
-        try:
-            role = self.iam_client.get_role(RoleName=role_name)['Role']
+    #     try:
+    #         role = self.iam_client.get_role(RoleName=role_name)['Role']
 
-            print(f"  Processing IAM Role: {role['Arn']}")
+    #         print(f"  Processing IAM Role: {role['Arn']}")
 
-            attributes = {
-                "id": role['RoleName'],
-            }
-            self.hcl.process_resource(
-                "aws_iam_role", role['RoleName'], attributes)
-            # Process IAM role policy attachments for the role
-            self.aws_iam_role_policy_attachment(
-                role['RoleName'], aws_iam_policy)
-        except Exception as e:
-            print(f"Error processing IAM role: {role_name}: {str(e)}")
+    #         attributes = {
+    #             "id": role['RoleName'],
+    #         }
+    #         self.hcl.process_resource(
+    #             "aws_iam_role", role['RoleName'], attributes)
+    #         # Process IAM role policy attachments for the role
+    #         self.aws_iam_role_policy_attachment(
+    #             role['RoleName'], aws_iam_policy)
+    #     except Exception as e:
+    #         print(f"Error processing IAM role: {role_name}: {str(e)}")
 
-    def aws_iam_role_policy_attachment(self, role_name, aws_iam_policy=False):
-        print(
-            f"Processing IAM Role Policy Attachments for role: {role_name}...")
+    # def aws_iam_role_policy_attachment(self, role_name, aws_iam_policy=False):
+    #     print(
+    #         f"Processing IAM Role Policy Attachments for role: {role_name}...")
 
-        try:
-            paginator = self.iam_client.get_paginator(
-                'list_attached_role_policies')
-            for page in paginator.paginate(RoleName=role_name):
-                for policy in page['AttachedPolicies']:
-                    print(
-                        f"  Processing IAM Role Policy Attachment: {policy['PolicyName']} for role: {role_name}")
+    #     try:
+    #         paginator = self.iam_client.get_paginator(
+    #             'list_attached_role_policies')
+    #         for page in paginator.paginate(RoleName=role_name):
+    #             for policy in page['AttachedPolicies']:
+    #                 print(
+    #                     f"  Processing IAM Role Policy Attachment: {policy['PolicyName']} for role: {role_name}")
 
-                    resource_name = f"{role_name}-{policy['PolicyName']}"
-                    attributes = {
-                        "id": f"{role_name}/{policy['PolicyArn']}",
-                        "role": role_name,
-                        "policy_arn": policy['PolicyArn']
-                    }
-                    self.hcl.process_resource(
-                        "aws_iam_role_policy_attachment", resource_name, attributes)
+    #                 resource_name = f"{role_name}-{policy['PolicyName']}"
+    #                 attributes = {
+    #                     "id": f"{role_name}/{policy['PolicyArn']}",
+    #                     "role": role_name,
+    #                     "policy_arn": policy['PolicyArn']
+    #                 }
+    #                 self.hcl.process_resource(
+    #                     "aws_iam_role_policy_attachment", resource_name, attributes)
 
-                    if aws_iam_policy:
-                        self.aws_iam_policy(policy['PolicyArn'])
+    #                 if aws_iam_policy:
+    #                     self.aws_iam_policy(policy['PolicyArn'])
 
-        except Exception as e:
-            print(
-                f"Error processing IAM role policy attachments for role: {role_name}: {str(e)}")
+    #     except Exception as e:
+    #         print(
+    #             f"Error processing IAM role policy attachments for role: {role_name}: {str(e)}")
 
-    def aws_iam_policy(self, policy_arn):
-        print(f"Processing IAM Policy: {policy_arn}...")
+    # def aws_iam_policy(self, policy_arn):
+    #     print(f"Processing IAM Policy: {policy_arn}...")
 
-        try:
-            response = self.iam_client.get_policy(PolicyArn=policy_arn)
-            policy = response.get('Policy', {})
+    #     try:
+    #         response = self.iam_client.get_policy(PolicyArn=policy_arn)
+    #         policy = response.get('Policy', {})
 
-            if policy:
-                print(f"  Processing IAM Policy: {policy_arn}")
+    #         if policy:
+    #             print(f"  Processing IAM Policy: {policy_arn}")
 
-                attributes = {
-                    "id": policy_arn,
-                    "arn": policy_arn,
-                    "name": policy['PolicyName'],
-                    "path": policy['Path'],
-                    "description": policy.get('Description', ''),
-                }
-                self.hcl.process_resource(
-                    "aws_iam_policy", policy['PolicyName'], attributes)
-            else:
-                print(f"No IAM Policy found with ARN: {policy_arn}")
+    #             attributes = {
+    #                 "id": policy_arn,
+    #                 "arn": policy_arn,
+    #                 "name": policy['PolicyName'],
+    #                 "path": policy['Path'],
+    #                 "description": policy.get('Description', ''),
+    #             }
+    #             self.hcl.process_resource(
+    #                 "aws_iam_policy", policy['PolicyName'], attributes)
+    #         else:
+    #             print(f"No IAM Policy found with ARN: {policy_arn}")
 
-        except Exception as e:
-            print(f"Error processing IAM Policy: {policy_arn}: {str(e)}")
+    #     except Exception as e:
+    #         print(f"Error processing IAM Policy: {policy_arn}: {str(e)}")
 
     def aws_cloudwatch_log_group(self, log_group_name):
         print(f"Processing CloudWatch Log Group for Lambda function...")

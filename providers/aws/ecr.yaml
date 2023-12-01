@@ -6,6 +6,7 @@ aws_ecr_repository:
   name_field: repository_name
   keys:
     - repository_name
+  path: "ecr"
   target_resource_name: this
   defaults:
     attach_repository_policy: false
@@ -93,6 +94,7 @@ aws_ecr_registry_policy:
   terraform_module: "../../../terraform-aws-modules/terraform-aws-ecr"
   terraform_module_version: "1.6.0"
   target_resource_name: this
+  path: "ecr"
   defaults:
     create_registry_policy: true
     create_repository: false
@@ -107,6 +109,7 @@ aws_ecr_pull_through_cache_rule:
   terraform_module: "../../../terraform-aws-modules/terraform-aws-ecr"
   terraform_module_version: "1.6.0"
   target_resource_name: this
+  path: "ecr"
   defaults:
     create_repository: false
   fields:
@@ -119,6 +122,7 @@ aws_ecr_replication_configuration:
   terraform_module: "../../../terraform-aws-modules/terraform-aws-ecr"
   terraform_module_version: "1.6.0"
   target_resource_name: this
+  path: "ecr"
   defaults:
     create_registry_replication_configuration: true
     create_repository: false

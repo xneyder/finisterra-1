@@ -414,7 +414,7 @@ class EKS:
             cluster = self.eks_client.describe_cluster(name=cluster_name)[
                 "cluster"]
             tags = cluster.get("tags", {})
-            fstack = tags.get("ftstack", "eks")
+            ftstack = tags.get("ftstack", "eks")
             
             # if cluster_name != "dev":
             #     continue
@@ -428,12 +428,11 @@ class EKS:
             self.hcl.process_resource(
                 resource_name, cluster_name.replace("-", "_"), attributes)
             
-            self.hcl.add_stack(resource_name, id, fstack)
+            self.hcl.add_stack(resource_name, id, ftstack)
             
             #kms key
             if 'encryptionConfig' in cluster:
-                tmp_resource_name, tmp_id = self.kms_instance.aws_kms_key(cluster['encryptionConfig'][0]['provider']['keyArn'])
-                self.hcl.add_stack(tmp_resource_name, tmp_id, fstack)
+                self.kms_instance.aws_kms_key(cluster['encryptionConfig'][0]['provider']['keyArn'], ftstack)
 
             # Call aws_eks_addon for each cluster
             self.aws_eks_addon(cluster_name)

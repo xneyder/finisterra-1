@@ -290,13 +290,13 @@ class Dynamodb:
                 print(f"  Processing DynamoDB Table: {table_name}")
                 id = table_name
 
-                fstack = ""
+                ftstack = ""
                 try:
                     response = self.dynamodb_client.list_tags_of_resource(ResourceArn=table_description["TableArn"])
                     tags = response.get('Tags', [])
                     for tag in tags:
                         if tag['Key'] == 'ftstack':
-                            fstack = tag['Value']
+                            ftstack = tag['Value']
                             break
                 except Exception as e:
                     print("Error occurred: ", e)
@@ -316,7 +316,7 @@ class Dynamodb:
 
                 self.hcl.process_resource(
                     resource_type, table_name.replace("-", "_"), attributes)
-                self.hcl.add_stack(resource_type, id, fstack)
+                self.hcl.add_stack(resource_type, id, ftstack)
 
                 self.aws_appautoscaling_target(table_name)
 

@@ -142,13 +142,13 @@ class Cloudmap:
 
                     id = namespace_id
 
-                    fstack = ""
+                    ftstack = ""
                     try:
                         response = self.cloudmap_client.list_tags_for_resource(ResourceARN=private_dns_namespace["Arn"])
                         tags = response.get('Tags', [])
                         for tag in tags:
                             if tag['Key'] == 'ftstack':
-                                fstack = tag['Value']
+                                ftstack = tag['Value']
                                 break
                     except Exception as e:
                         print("Error occurred: ", e)
@@ -164,7 +164,7 @@ class Cloudmap:
                         "aws_service_discovery_private_dns_namespace", namespace_id.replace("-", "_"), attributes)
 
                     self.aws_service_discovery_service(namespace_id)
-                    self.hcl.add_stack(resource_type, id, fstack)
+                    self.hcl.add_stack(resource_type, id, ftstack)
 
 
     def aws_service_discovery_public_dns_namespace(self):

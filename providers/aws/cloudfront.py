@@ -389,13 +389,13 @@ class CloudFront:
 
                 print(f"  Processing CloudFront Distribution: {distribution_id}")
 
-                fstack = "cloudfront"
+                ftstack = "cloudfront"
                 try:
                     response = self.cloudfront_client.list_tags_for_resource(Resource=distribution_summary["ARN"])
                     tags = response.get('Tags', {}).get('Items', [])
                     for tag in tags:
                         if tag['Key'] == 'ftstack':
-                            fstack = tag['Value']
+                            ftstack = tag['Value']
                             break
                 except Exception as e:
                     print("Error occurred: ", e)
@@ -410,7 +410,7 @@ class CloudFront:
                             # Call aws_cloudfront_origin_access_identity function filtered by the identity_id
                             identity_id = identity_id.split("/")[-1]
                             self.aws_cloudfront_origin_access_identity(identity_id)
-                            self.hcl.add_stack("aws_cloudfront_origin_access_identity", identity_id, fstack)
+                            self.hcl.add_stack("aws_cloudfront_origin_access_identity", identity_id, ftstack)
                             
                 id = distribution_id
 
@@ -424,7 +424,7 @@ class CloudFront:
                     resource_type, distribution_id.replace("-", "_"), attributes)
 
                 self.aws_cloudfront_monitoring_subscription(distribution_id)
-                self.hcl.add_stack(resource_type, id, fstack)
+                self.hcl.add_stack(resource_type, id, ftstack)
                 
 
     def aws_cloudfront_field_level_encryption_config(self):

@@ -60,7 +60,7 @@ class RDS:
         return attributes.get("username", None)
 
     def rds(self):
-        self.hcl.prepare_folder(os.path.join("generated", "rds"))
+        self.hcl.prepare_folder(os.path.join("generated"))
 
         self.aws_db_instance()
 
@@ -77,6 +77,7 @@ class RDS:
         self.json_plan = self.hcl.json_plan
 
     def aws_db_instance(self):
+        resource_type = "aws_db_instance"
         print("Processing DB Instances...")
 
         paginator = self.rds_client.get_paginator("describe_db_instances")
@@ -94,7 +95,18 @@ class RDS:
                 # if instance_id != "piwik-analytics":
                 #     continue
 
-                # Call the related functions with the respective group names
+                id = instance_id
+
+                ftstack = "rds"
+                try:
+                    tags_response = self.rds_client.list_tags_for_resource(ResourceName=instance["DBInstanceArn"])
+                    tags = tags_response.get('TagList', [])
+                    for tag in tags:
+                        if tag['Key'] == 'ftstack':
+                            ftstack = tag['Value']
+                            break
+                except Exception as e:
+                    print("Error occurred: ", e)
 
                 attributes = {
                     "id": instance_id,
@@ -103,7 +115,8 @@ class RDS:
                     "skip_final_snapshot": False,
                 }
                 self.hcl.process_resource(
-                    "aws_db_instance", instance_id.replace("-", "_"), attributes)
+                    resource_type, id, attributes)
+                self.hcl.add_stack(resource_type, id, ftstack)
 
                 db_option_group_name = instance.get(
                     'OptionGroupMemberships', [{}])[0].get('OptionGroupName', None)
@@ -121,17 +134,17 @@ class RDS:
                     self.aws_db_subnet_group(db_subnet_group_name)
 
                 arn = instance.get("DBInstanceArn")
-                self.aws_db_instance_automated_backups_replication(arn)
+                self.aws_db_instance_automated_backups_replication(arn, ftstack)
 
                 # call aws_cloudwatch_log_group function with instance_id and each log export name as parameters
                 for log_export_name in instance.get("EnabledCloudwatchLogsExports", []):
-                    self.logs_instance.aws_cloudwatch_log_group(f"/aws/rds/instance/{instance_id}/{log_export_name}")
+                    self.logs_instance.aws_cloudwatch_log_group(f"/aws/rds/instance/{instance_id}/{log_export_name}", ftstack)
                     # self.aws_cloudwatch_log_group(instance_id, log_export_name)
 
                 monitoring_role_arn = instance.get("MonitoringRoleArn")
                 if monitoring_role_arn:
                     role_name = monitoring_role_arn.split('/')[-1]
-                    self.iam_role_instance.aws_iam_role(role_name)
+                    self.iam_role_instance.aws_iam_role(role_name, ftstack)
                     # self.aws_iam_role(monitoring_role_arn)
 
     def aws_db_option_group(self, option_group_name):
@@ -200,7 +213,8 @@ class RDS:
                 self.hcl.process_resource(
                     "aws_db_subnet_group", db_subnet_group_name.replace("-", "_"), attributes)
 
-    def aws_db_instance_automated_backups_replication(self, source_instance_arn):
+    def aws_db_instance_automated_backups_replication(self, source_instance_arn, ftstack):
+        resource_type = "aws_db_instance_automated_backups_replication"
         print(
             f"Processing DB Instance Automated Backups Replication {source_instance_arn}")
 
@@ -223,12 +237,12 @@ class RDS:
                             for replica_id in instance["ReadReplicaDBInstanceIdentifiers"]:
                                 print(
                                     f"  Processing DB Instance Automated Backups Replication for {source_instance_id} to {replica_id}")
+                                id=automated_backup_arn
                                 attributes = {
                                     "id": automated_backup_arn,
                                 }
-                                self.hcl.process_resource("aws_db_instance_automated_backups_replication",
-                                                        f"{source_instance_id}-{replica_id}".replace("-", "_"), attributes)
-
+                                self.hcl.process_resource(resource_type, id, attributes)
+                                self.hcl.add_stack(resource_type, id, ftstack)
 
     def aws_cloudwatch_log_group(self, instance_id, log_export_name):
         print(

@@ -238,13 +238,13 @@ class Apigateway:
             # Construct the ARN for the API Gateway REST API
             arn = f"arn:aws:apigateway:{region}::/restapis/{api_id}"
 
-            fstack = ""
+            ftstack = ""
             try:
                 response = self.apigateway_client.get_tags(resourceArn=arn)
                 tags = response.get('tags', {})
                 for tag_key, tag_value in tags.items():
                     if tag_key == 'ftstack':
-                        fstack = tag_value
+                        ftstack = tag_value
                         break
             except Exception as e:
                 print("Error occurred: ", e)
@@ -257,7 +257,7 @@ class Apigateway:
             self.hcl.process_resource(
                 resource_type, resource_name, attributes)
             
-            self.hcl.add_stack(resource_type, api_id, fstack)
+            self.hcl.add_stack(resource_type, api_id, ftstack)
 
 
             # self.aws_api_gateway_method(rest_api["id"])

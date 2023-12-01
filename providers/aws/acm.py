@@ -105,7 +105,7 @@ class ACM:
                     tags = response.get('Tags', {})
                     for tag in tags:
                         if tag['Key'] == 'ftstack':
-                            fstack = tag['Value']
+                            ftstack = tag['Value']
                             break
                 except Exception as e:
                     print("Error occurred: ", e)
@@ -120,7 +120,7 @@ class ACM:
                 self.hcl.process_resource(
                     resource_name, cert_arn.replace("-", "_"), attributes)
                 
-                self.hcl.add_stack(resource_name, id, fstack)
+                self.hcl.add_stack(resource_name, id, ftstack)
 
                 self.aws_acm_certificate_validation(cert_arn, cert_details)
 

@@ -5,9 +5,12 @@ aws_lambda_function:
   target_resource_name: this
   defaults:
     enabled: true
-    create_iam_role: false
+    # create_iam_role: false
   import_id:
     field: function_name
+  path: "aws_lambda"
+  dependencies:
+    - "../iam_role"
   fields:
     architectures:
       field: architectures
@@ -111,67 +114,128 @@ aws_lambda_function:
           field: tags
           type: map
 
-    aws_iam_role:
+    # aws_iam_role:
+    #   join:
+    #     role:
+    #       field: arn
+    #   target_resource_name: this
+    #   fields:
+    #     create_iam_role:
+    #       unique: true
+    #     iam_role_name:
+    #       field: name
+    #       type: string
+    #     iam_role_permissions_boundary:
+    #       field: permissions_boundary
+    #       type: string
+    #     assume_role_policy:
+    #       field: assume_role_policy
+    #       type: string
+    #       multiline: true
+    #     iam_role_description:
+    #       field: description
+    #       type: string
+    #     iam_role_path:
+    #       field: path
+    #       type: string
+    #     iam_role_tags:
+    #       field: tags
+    #       type: map
+    #   childs:
+    #     aws_iam_role_policy_attachment:
+    #       join:
+    #         name:
+    #           field: role
+    #       target_resource_name: custom
+    #       second_index:
+    #         field: policy_arn
+    #       fields:
+    #         create_iam_role:
+    #           unique: true
+    #         iam_policy_arns:
+    #           function: to_list
+    #           arg: policy_arn
+    #           type: list
+
+aws_iam_role:
+  # terraform_module: "../../../terraform-aws-modules/terraform-aws-iam//modules/iam_role"
+  terraform_module: "github.com/finisterra-io/terraform-aws-iam//modules/iam_role?ref=main"
+  terraform_module_version: "5.2.0"
+  target_resource_name: default
+  name_field: role_name
+  path: "iam_role"
+  dependencies:
+    - "../iam_policy"
+  fields:
+    role_name:
+      field: name
+      type: string
+    assume_role_policy:
+      field: assume_role_policy
+      type: string
+      multiline: true
+    role_description:
+      field: description
+      type: string
+    max_session_duration:
+      field: max_session_duration
+      type: number
+    inline_policies:
+      function: get_inline_policies
+      type: list
+    permissions_boundary:
+      field: permissions_boundary
+      type: string
+    path:
+      field: path
+      type: string
+    tags:
+      field: tags
+      type: map
+    managed_policy_arns:
+      field: managed_policy_arns
+      type: list
+  childs:
+    aws_iam_role_policy_attachment:
       join:
-        role:
-          field: arn
-      target_resource_name: this
+        name:
+          field: role
+      target_resource_name: managed
+      second_index:
+        function: get_policy_attachment_index
+    aws_iam_instance_profile:
+      join:
+        name:
+          field: role
+      target_resource_name: default
+      second_index:
+        field: name
       fields:
-        create_iam_role:
-          unique: true
-        iam_role_name:
-          field: name
-          type: string
-        iam_role_permissions_boundary:
-          field: permissions_boundary
-          type: string
-        assume_role_policy:
-          field: assume_role_policy
-          type: string
-          multiline: true
-        iam_role_description:
-          field: description
-          type: string
-        iam_role_path:
-          field: path
-          type: string
-        iam_role_tags:
-          field: tags
-          type: map
-      childs:
-        aws_iam_role_policy_attachment:
-          join:
-            name:
-              field: role
-          target_resource_name: custom
-          second_index:
-            field: policy_arn
-          fields:
-            create_iam_role:
-              unique: true
-            iam_policy_arns:
-              function: to_list
-              arg: policy_arn
-              type: list
-      #     childs:
-      #       aws_iam_policy:
-      #         join:
-      #           policy_arn:
-      #             field: arn
-      #         target_resource_name: service
-      #         fields:
-      #           create_iam_role:
-      #             unique: true
-      #           iam_policy_name:
-      #             field: name
-      #             type: string
-      #           iam_policy_description:
-      #             field: description
-      #             type: string
-      #           iam_policy_path:
-      #             field: path
-      #             type: string
-      #           iam_policy_document:
-      #             field: policy
-      #             type: string
-      #             multiline: true
+        instance_profiles:
+          function: get_instance_profiles
+          type: list
+
+aws_iam_policy:
+  # terraform_module: "../../../terraform-aws-modules/terraform-aws-iam//modules/iam_policy"
+  terraform_module: "github.com/finisterra-io/terraform-aws-iam//modules/iam_policy?ref=main"
+  terraform_module_version: "5.2.0"
+  target_resource_name: default
+  name_field: policy_name
+  path: "iam_policy"
+  fields:
+    policy_documents:
+      function: get_policy_documents
+      type: string
+      multiline: true
+    policy_name:
+      field: name
+      type: string
+    policy_description:
+      field: description
+      type: string
+    path:
+      field: path
+      type: string
+    tags:
+      field: tags
+      type: map

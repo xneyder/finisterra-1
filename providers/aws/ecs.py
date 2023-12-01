@@ -2,6 +2,7 @@ import os
 from utils.hcl import HCL
 import json
 import re
+from providers.aws.iam_role import IAM_ROLE
 
 
 class ECS:
@@ -31,6 +32,7 @@ class ECS:
         self.hcl = HCL(self.schema_data, self.provider_name,
                        self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules)
         self.resource_list = {}
+        self.iam_role_instance = IAM_ROLE(iam_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)        
 
     def cloudwatch_log_group_name(self, attributes):
         # The name is expected to be in the format /aws/ecs/{cluster_name}
@@ -388,7 +390,7 @@ class ECS:
 
 
     def ecs(self):
-        self.hcl.prepare_folder(os.path.join("generated", "ecs"))
+        self.hcl.prepare_folder(os.path.join("generated"))
 
         self.aws_ecs_cluster()
 
@@ -446,31 +448,45 @@ class ECS:
         self.json_plan = self.hcl.json_plan
 
     def aws_ecs_cluster(self):
+        resource_type = "aws_ecs_cluster"
         print("Processing ECS Clusters...")
 
         clusters_arns = self.ecs_client.list_clusters()["clusterArns"]
-        clusters = self.ecs_client.describe_clusters(
-            clusters=clusters_arns)["clusters"]
+        clusters = self.ecs_client.describe_clusters(clusters=clusters_arns)["clusters"]
 
         for cluster in clusters:
             cluster_name = cluster["clusterName"]
             cluster_arn = cluster["clusterArn"]
 
             print(f"  Processing ECS Cluster: {cluster_name}")
+            id = cluster_name
+
+            ftstack = "ecs"
+            try:
+                tags_response = self.ecs_client.list_tags_for_resource(resourceArn=cluster_arn)
+                tags = tags_response.get('tags', [])
+                for tag in tags:
+                    if tag['key'] == 'ftstack':
+                        ftstack = tag['value']
+                        break
+            except Exception as e:
+                print("Error occurred: ", e)
 
             attributes = {
-                "id": cluster_name,
+                "id": id,
                 "name": cluster_name,
             }
             self.hcl.process_resource(
-                "aws_ecs_cluster", cluster_name.replace("-", "_"), attributes)
+                resource_type, cluster_name.replace("-", "_"), attributes)
+            
+            self.hcl.add_stack(resource_type, id, ftstack)
 
             self.aws_cloudwatch_log_group(cluster_name)
             self.aws_ecs_cluster_capacity_providers(cluster_name)
             self.aws_ecs_capacity_provider(cluster_name)
             # if cluster_name != "CloudStorageSecCluster-97tzz35":
             #     continue
-            self.aws_ecs_service(cluster_name)
+            self.aws_ecs_service(cluster_name, ftstack)
 
     def aws_cloudwatch_log_group(self, log_group_name):
         print(f"Processing CloudWatch Log Group...")
@@ -558,7 +574,8 @@ class ECS:
             else:
                 print(f"Skipping aws_ecs_capacity_provider: {cluster['clusterName']}")
 
-    def aws_ecs_service(self, cluster_name):
+    def aws_ecs_service(self, cluster_name, ftstack):
+        resource_type = "aws_ecs_service"
         print(f"Processing ECS Services for cluster: {cluster_name}...")
 
         clusters_arns = self.ecs_client.list_clusters()["clusterArns"]
@@ -597,19 +614,22 @@ class ECS:
                             "cluster": cluster_arn,
                         }
                         self.hcl.process_resource(
-                            "aws_ecs_service", service_name.replace("-", "_"), attributes)
+                            resource_type, service_name.replace("-", "_"), attributes)
+                        self.hcl.add_stack(resource_type, service_arn, ftstack)
 
                         self.aws_appautoscaling_target(
                             cluster_name, service_name)
 
                         # Call role for service
                         if service.get('roleArn'):
-                            self.aws_iam_role(service['roleArn'], True)
+                            role_name = service['roleArn'].split('/')[-1]
+                            self.iam_role_instance.aws_iam_role(role_name, ftstack)
+                            # self.aws_iam_role(service['roleArn'], True)
 
                         # Call task definition for this service's task definition
                         if service.get('taskDefinition'):
                             self.aws_ecs_task_definition(
-                                service['taskDefinition'])
+                                service['taskDefinition'], ftstack)
 
                         # Process load balancer target groups if present
                         for lb in service.get('loadBalancers', []):
@@ -619,7 +639,7 @@ class ECS:
             else:
                 print(f"Skipping aws_ecs_service: {cluster['clusterName']}")
 
-    def aws_ecs_task_definition(self, task_definition_arn):
+    def aws_ecs_task_definition(self, task_definition_arn, ftstack):
         print(f"Processing ECS Task Definition: {task_definition_arn}...")
 
         task_definition = self.ecs_client.describe_task_definition(
@@ -637,9 +657,13 @@ class ECS:
 
         # Process IAM roles for the task
         if task_definition.get('taskRoleArn'):
-            self.aws_iam_role(task_definition.get('taskRoleArn'))
+            role_name = task_definition.get('taskRoleArn').split('/')[-1]
+            self.iam_role_instance.aws_iam_role(role_name, ftstack)
+            # self.aws_iam_role(task_definition.get('taskRoleArn'))
         if task_definition.get('executionRoleArn'):
-            self.aws_iam_role(task_definition.get('executionRoleArn'))
+            role_name = task_definition.get('executionRoleArn').split('/')[-1]
+            self.iam_role_instance.aws_iam_role(role_name, ftstack)
+            # self.aws_iam_role(task_definition.get('executionRoleArn'))
 
     def aws_iam_role(self, role_arn, aws_iam_policy=False):
         print(f"Processing IAM Role: {role_arn}...")

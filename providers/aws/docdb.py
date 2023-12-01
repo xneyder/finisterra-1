@@ -91,7 +91,7 @@ class DocDb:
         return False
 
     def docdb(self):
-        self.hcl.prepare_folder(os.path.join("generated", "docdb"))
+        self.hcl.prepare_folder(os.path.join("generated"))
 
         # aws_docdb_cluster.default
         # aws_docdb_cluster_instance.default
@@ -128,27 +128,42 @@ class DocDb:
         self.json_plan = self.hcl.json_plan
 
     def aws_docdb_cluster(self):
+        resource_type = "aws_docdb_cluster"
         print("Processing DocumentDB Clusters...")
 
         paginator = self.docdb_client.get_paginator("describe_db_clusters")
         for page in paginator.paginate():
             for db_cluster in page["DBClusters"]:
                 if db_cluster["Engine"] == "docdb":
-                    print(
-                        f"  Processing DocumentDB Cluster: {db_cluster['DBClusterIdentifier']}")
+                    print(f"  Processing DocumentDB Cluster: {db_cluster['DBClusterIdentifier']}")
+
+                    id = db_cluster["DBClusterIdentifier"]
+
+                    ftstack = ""
+                    try:
+                        response = self.docdb_client.list_tags_for_resource(ResourceName=db_cluster["DBClusterArn"])
+                        tags = response.get('TagList', [])
+                        for tag in tags:
+                            if tag['Key'] == 'ftstack':
+                                ftstack = tag['Value']
+                                break
+                    except Exception as e:
+                        print("Error occurred: ", e)
 
                     attributes = {
                         "id": db_cluster["DBClusterIdentifier"],
                     }
                     self.hcl.process_resource(
-                        "aws_docdb_cluster", db_cluster["DBClusterIdentifier"].replace("-", "_"), attributes)
+                        resource_type, id.replace("-", "_"), attributes)
+                    
+                    self.hcl.add_stack(resource_type, id, ftstack)
 
                     # Call aws_docdb_cluster_instance with db_cluster as an argument
                     self.aws_docdb_cluster_instance(db_cluster)
 
                     # Call aws_security_group with the list of VpcSecurityGroups
                     vpc_security_group_ids = [sg["VpcSecurityGroupId"]
-                                              for sg in db_cluster.get("VpcSecurityGroups", [])]
+                                            for sg in db_cluster.get("VpcSecurityGroups", [])]
                     self.aws_security_group(vpc_security_group_ids)
                     if db_cluster.get("KmsKeyId", None):
                         self.aws_kms_key(db_cluster.get("KmsKeyId", None))

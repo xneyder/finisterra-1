@@ -8,6 +8,7 @@ aws_sns_topic:
     use_name_prefix: false
     create_topic_policy: false
     create_topic_policy_document: false
+  path: "sns"
   fields:
     name:
       field: name

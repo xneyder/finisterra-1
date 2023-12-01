@@ -106,7 +106,7 @@ class ElasticBeanstalk:
         return [attributes.get(arg)]
 
     def elasticbeanstalk(self):
-        self.hcl.prepare_folder(os.path.join("generated", "elasticbeanstalk"))
+        self.hcl.prepare_folder(os.path.join("generated"))
 
         # self.aws_elastic_beanstalk_application()
         self.aws_elastic_beanstalk_environment()
@@ -233,10 +233,10 @@ class ElasticBeanstalk:
                         "aws_elastic_beanstalk_configuration_template", template_id, attributes)
 
     def aws_elastic_beanstalk_environment(self):
+        resource_type = "aws_elastic_beanstalk_environment"
         print("Processing Elastic Beanstalk Environments...")
 
-        environments = self.elasticbeanstalk_client.describe_environments()[
-            "Environments"]
+        environments = self.elasticbeanstalk_client.describe_environments()["Environments"]
 
         for env in environments:
             env_id = env["EnvironmentId"]
@@ -244,15 +244,31 @@ class ElasticBeanstalk:
             # if env_id != "e-asi52zmcu8":
             #     continue
             print(f"  Processing Elastic Beanstalk Environment: {env_id}")
+            id = env_id
+
+            ftstack = "beanstalk"
+            try:
+                tags_response = self.elasticbeanstalk_client.list_tags_for_resource(
+                    ResourceArn=env["EnvironmentArn"]
+                )
+                tags = tags_response.get('ResourceTags', [])
+                for tag in tags:
+                    if tag['Key'] == 'ftstack':
+                        ftstack = tag['Value']
+                        break
+            except Exception as e:
+                print("Error occurred: ", e)
 
             attributes = {
-                "id": env_id,
+                "id": id,
                 "name": env["EnvironmentName"],
                 "application": env["ApplicationName"],
                 "cname_prefix": env.get("CNAMEPrefix", ""),
             }
             self.hcl.process_resource(
-                "aws_elastic_beanstalk_environment", env_id, attributes)
+                resource_type, id, attributes)
+            
+            self.hcl.add_stack(resource_type, id, ftstack)
 
             # Retrieve the environment configuration details
             config_settings = self.elasticbeanstalk_client.describe_configuration_settings(
@@ -269,8 +285,7 @@ class ElasticBeanstalk:
             # Process IAM roles
             if service_role:
                 self.service_roles[env_id] = service_role
-                self.iam_role_instance.aws_iam_role(service_role)
-                # self.aws_iam_role(service_role)
+                self.iam_role_instance.aws_iam_role(service_role, ftstack)
 
             # Process the EC2 Role
             ec2_instance_profile = None
@@ -285,7 +300,7 @@ class ElasticBeanstalk:
                     InstanceProfileName=ec2_instance_profile)
                 ec2_role = instance_profile['InstanceProfile']['Roles'][0]['Arn']
                 self.ec2_roles[env_id] = ec2_role.split('/')[-1]
-                self.iam_role_instance.aws_iam_role(ec2_role)
+                self.iam_role_instance.aws_iam_role(ec2_role, ftstack)
                 # self.aws_iam_role(ec2_role)
 
             # Identify the Auto Scaling Group associated with the Elastic Beanstalk environment
@@ -317,133 +332,6 @@ class ElasticBeanstalk:
             if security_group_ids:
                 self.security_groups[env_id] = security_group_ids[0]
                 for sg in security_group_ids:
-                    self.security_group_instance.aws_security_group(sg)
+                    self.security_group_instance.aws_security_group(sg, ftstack)
                 # self.aws_security_group(security_group_ids)
 
-    # def aws_iam_role(self, role_arn, aws_iam_policy=False):
-    #     print(f"Processing IAM Role: {role_arn}...")
-
-    #     role_name = role_arn.split('/')[-1]  # Extract role name from ARN
-
-    #     try:
-    #         role = self.iam_client.get_role(RoleName=role_name)['Role']
-
-    #         print(f"  Processing IAM Role: {role['Arn']}")
-
-    #         attributes = {
-    #             "id": role['RoleName'],
-    #         }
-    #         self.hcl.process_resource(
-    #             "aws_iam_role", role['RoleName'], attributes)
-    #         # Process IAM role policy attachments for the role
-    #         self.aws_iam_role_policy_attachment(
-    #             role['RoleName'], aws_iam_policy)
-    #     except Exception as e:
-    #         print(f"Error processing IAM role: {role_name}: {str(e)}")
-
-    # def aws_iam_role_policy_attachment(self, role_name, aws_iam_policy=False):
-    #     print(
-    #         f"Processing IAM Role Policy Attachments for role: {role_name}...")
-
-    #     try:
-    #         paginator = self.iam_client.get_paginator(
-    #             'list_attached_role_policies')
-    #         for page in paginator.paginate(RoleName=role_name):
-    #             for policy in page['AttachedPolicies']:
-    #                 print(
-    #                     f"  Processing IAM Role Policy Attachment: {policy['PolicyName']} for role: {role_name}")
-
-    #                 resource_name = f"{role_name}-{policy['PolicyName']}"
-    #                 attributes = {
-    #                     "id": f"{role_name}/{policy['PolicyArn']}",
-    #                     "role": role_name,
-    #                     "policy_arn": policy['PolicyArn']
-    #                 }
-    #                 self.hcl.process_resource(
-    #                     "aws_iam_role_policy_attachment", resource_name, attributes)
-
-    #                 if aws_iam_policy:
-    #                     self.aws_iam_policy(policy['PolicyArn'])
-
-    #     except Exception as e:
-    #         print(
-    #             f"Error processing IAM role policy attachments for role: {role_name}: {str(e)}")
-
-    # def aws_iam_instance_profile(self, instance_profile_name):
-    #     print(f"Processing IAM Instance Profile: {instance_profile_name}...")
-
-    #     try:
-    #         instance_profile = self.iam_client.get_instance_profile(
-    #             InstanceProfileName=instance_profile_name)['InstanceProfile']
-
-    #         print(
-    #             f"  Processing IAM Instance Profile: {instance_profile['Arn']}")
-
-    #         attributes = {
-    #             "id": instance_profile['InstanceProfileName'],
-    #             "name": instance_profile['InstanceProfileName'],
-    #             "path": instance_profile['Path'],
-    #             "roles": [role['RoleName'] for role in instance_profile['Roles']],
-    #             "arn": instance_profile['Arn'],
-    #         }
-    #         self.hcl.process_resource(
-    #             "aws_iam_instance_profile", instance_profile['InstanceProfileName'], attributes)
-    #     except Exception as e:
-    #         print(
-    #             f"Error processing IAM Instance Profile: {instance_profile_name}: {str(e)}")
-
-    # def aws_security_group(self, security_group_ids):
-    #     print("Processing Security Groups...")
-
-    #     # Create a response dictionary to collect responses for all security groups
-    #     response = self.ec2_client.describe_security_groups(
-    #         GroupIds=security_group_ids
-    #     )
-
-    #     for security_group in response["SecurityGroups"]:
-    #         print(
-    #             f"  Processing Security Group: {security_group['GroupName']}")
-
-    #         attributes = {
-    #             "id": security_group["GroupId"],
-    #             "name": security_group["GroupName"],
-    #             "description": security_group.get("Description", ""),
-    #             "vpc_id": security_group.get("VpcId", ""),
-    #             "owner_id": security_group.get("OwnerId", ""),
-    #         }
-
-    #         self.hcl.process_resource(
-    #             "aws_security_group", security_group["GroupName"].replace("-", "_"), attributes)
-
-    #         # Process egress rules
-    #         for rule in security_group.get('IpPermissionsEgress', []):
-    #             self.aws_security_group_rule(
-    #                 'egress', security_group, rule)
-
-    #         # Process ingress rules
-    #         for rule in security_group.get('IpPermissions', []):
-    #             self.aws_security_group_rule(
-    #                 'ingress', security_group, rule)
-
-    # def aws_security_group_rule(self, rule_type, security_group, rule):
-    #     # Rule identifiers are often constructed by combining security group id, rule type, protocol, ports and security group references
-    #     rule_id = f"{security_group['GroupId']}_{rule_type}_{rule.get('IpProtocol', 'all')}"
-    #     print(f"Processing Security Groups Rule {rule_id}...")
-    #     if rule.get('FromPort'):
-    #         rule_id += f"_{rule['FromPort']}"
-    #     if rule.get('ToPort'):
-    #         rule_id += f"_{rule['ToPort']}"
-
-    #     attributes = {
-    #         "id": rule_id,
-    #         "type": rule_type,
-    #         "security_group_id": security_group['GroupId'],
-    #         "protocol": rule.get('IpProtocol', '-1'),  # '-1' stands for 'all'
-    #         "from_port": rule.get('FromPort', 0),
-    #         "to_port": rule.get('ToPort', 0),
-    #         "cidr_blocks": [ip_range['CidrIp'] for ip_range in rule.get('IpRanges', [])],
-    #         "source_security_group_ids": [sg['GroupId'] for sg in rule.get('UserIdGroupPairs', [])]
-    #     }
-
-    #     self.hcl.process_resource(
-    #         "aws_security_group_rule", rule_id.replace("-", "_"), attributes)

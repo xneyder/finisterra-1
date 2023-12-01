@@ -329,7 +329,7 @@ class ELBV2:
         self.json_plan = self.hcl.json_plan
 
     def aws_lb(self):
-        resource_name = "aws_lb"
+        resource_type = "aws_lb"
         print("Processing Load Balancers...")
 
         load_balancers = self.elbv2_client.describe_load_balancers()[
@@ -365,24 +365,24 @@ class ELBV2:
 
             print(f"  Processing Load Balancer: {lb_name}")
 
-            fstack="elbv2"
+            ftstack="elbv2"
             for tag in tags:
                 if tag['Key'] == 'ftstack':
-                    fstack = tag['Value']
+                    ftstack = tag['Value']
                     break
 
             id = lb_arn
 
             attributes = {
-                "id": lb_arn,
+                "id": id,
                 "name": lb_name,
                 "type": lb["Type"],
                 "arn": lb_arn,
             }
 
-            self.hcl.process_resource(resource_name, lb_name, attributes)
+            self.hcl.process_resource(resource_type, lb_name, attributes)
 
-            self.hcl.add_stack(resource_name, id, fstack)
+            self.hcl.add_stack(resource_type, id, ftstack)
 
             load_balancer_arns.append(lb_arn)
 
@@ -392,8 +392,7 @@ class ELBV2:
             # Call the aws_security_group function for each security group ID
             # Block because we want to create the security groups in their own module
             for sg in security_group_ids:
-                tmp_resource_name, tmp_id = self.security_group_instance.aws_security_group(sg)
-                self.hcl.add_stack(tmp_resource_name, tmp_id, fstack)
+                self.security_group_instance.aws_security_group(sg, ftstack)
                 # self.aws_security_group(security_group_ids)
 
         # Call the other functions for listeners and listener certificates

@@ -118,7 +118,8 @@ class Logs:
                     print(
                         f"  No Destination Policy found for Log Destination: {destination_name}")
 
-    def aws_cloudwatch_log_group(self, specific_log_group_name=None):
+    def aws_cloudwatch_log_group(self, specific_log_group_name=None, ftstack = None):
+        resource_type = "aws_cloudwatch_log_group"
         print("Processing CloudWatch Log Groups...")
 
         paginator = self.logs_client.get_paginator("describe_log_groups")
@@ -135,9 +136,10 @@ class Logs:
                     continue
 
                 print(f"  Processing CloudWatch Log Group: {log_group_name}")
+                id = log_group_name
 
                 attributes = {
-                    "id": log_group_name,
+                    "id": id,
                     "name": log_group_name,
                 }
 
@@ -151,7 +153,10 @@ class Logs:
                     attributes["tags"] = log_group["tags"]
 
                 self.hcl.process_resource(
-                    "aws_cloudwatch_log_group", log_group_name.replace("-", "_"), attributes)
+                    resource_type, id, attributes)
+                if not ftstack:
+                    ftstack = "logs"
+                self.hcl.add_stack(resource_type, id, ftstack)
 
 
     def aws_cloudwatch_log_metric_filter(self):

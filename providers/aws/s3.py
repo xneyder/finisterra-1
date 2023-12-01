@@ -449,13 +449,13 @@ class S3:
                 print(f"  Processing S3 Bucket: {bucket_name}")
 
                 # describe the bucket and get the tags
-                fstack = ""
+                ftstack = ""
                 try:
                     response = self.s3_session.get_bucket_tagging(Bucket=bucket_name)
                     tags = response.get('TagSet', {})
                     for tag in tags:
                         if tag['Key'] == 'ftstack':
-                            fstack = tag['Value']
+                            ftstack = tag['Value']
                             break
                 except ClientError as e:
                     if e.response['Error']['Code'] == 'NoSuchTagSet':
@@ -473,7 +473,7 @@ class S3:
                 self.hcl.process_resource(
                     resource_name, bucket_name, attributes)
                 
-                self.hcl.add_stack(resource_name, id, fstack)
+                self.hcl.add_stack(resource_name, id, ftstack)
             else:
                 print(
                     f"  Skipping S3 Bucket (different region): {bucket_name}")

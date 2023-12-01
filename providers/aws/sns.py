@@ -45,7 +45,7 @@ class SNS:
         return None
 
     def sns(self):
-        self.hcl.prepare_folder(os.path.join("generated", "sns"))
+        self.hcl.prepare_folder(os.path.join("generated"))
 
         # self.aws_sns_platform_application()
         # self.aws_sns_sms_preferences()
@@ -94,6 +94,7 @@ class SNS:
             print(f"Error retrieving SNS SMS Preferences: {str(e)}")
 
     def aws_sns_topic(self):
+        resource_type = "aws_sns_topic"
         print("Processing SNS Topics...")
 
         paginator = self.sns_client.get_paginator("list_topics")
@@ -105,13 +106,27 @@ class SNS:
                 # if name != 'learning-mediaAssetModified':
                 #     continue
                 print(f"  Processing SNS Topic: {name}")
+                id = arn
+
+                ftstack = ""
+                try:
+                    tags_response = self.sns_client.list_tags_for_resource(ResourceArn=arn)
+                    tags = tags_response.get('Tags', [])
+                    for tag in tags:
+                        if tag['Key'] == 'ftstack':
+                            ftstack = tag['Value']
+                            break
+                except Exception as e:
+                    print("Error occurred: ", e)
 
                 attributes = {
-                    "id": arn,
+                    "id": id,
                     "name": name,
                 }
                 self.hcl.process_resource(
-                    "aws_sns_topic", name.replace("-", "_"), attributes)
+                    resource_type, id, attributes)
+                self.hcl.add_stack(resource_type, id, ftstack)
+
 
                 self.aws_sns_topic_policy(arn)
                 self.aws_sns_topic_data_protection_policy(arn)

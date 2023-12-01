@@ -51,8 +51,8 @@ class SECURITY_GROUP:
 
         self.json_plan = self.hcl.json_plan
 
-    def aws_security_group(self, security_group_id=None):
-        resource_name = "aws_security_group"
+    def aws_security_group(self, security_group_id=None, ftstack=None):
+        resource_type = "aws_security_group"
         print("Processing Security Groups...")
 
         # Create a response dictionary to collect responses for all security groups
@@ -96,7 +96,10 @@ class SECURITY_GROUP:
             }
 
             self.hcl.process_resource(
-                resource_name, security_group["GroupId"].replace("-", "_"), attributes)
+                resource_type, security_group["GroupId"].replace("-", "_"), attributes)
+            if not ftstack:
+                ftstack = "security_group"
+            self.hcl.add_stack(resource_type, id, ftstack)
             
             self.aws_vpc_security_group_ingress_rule(security_group["GroupId"])
             self.aws_vpc_security_group_egress_rule(security_group["GroupId"])
@@ -106,9 +109,6 @@ class SECURITY_GROUP:
                 "name": vpc_name,
             }
 
-            if security_group_id:
-                return resource_name, id
-        return resource_name, None
                 
     def aws_vpc_security_group_ingress_rule(self, security_group_id):
         # Fetch security group rules
