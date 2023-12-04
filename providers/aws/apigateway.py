@@ -238,7 +238,7 @@ class Apigateway:
             # Construct the ARN for the API Gateway REST API
             arn = f"arn:aws:apigateway:{region}::/restapis/{api_id}"
 
-            ftstack = ""
+            ftstack = "apigateway"
             try:
                 response = self.apigateway_client.get_tags(resourceArn=arn)
                 tags = response.get('tags', {})

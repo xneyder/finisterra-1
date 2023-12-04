@@ -6,7 +6,7 @@ aws_ecr_repository:
   name_field: repository_name
   keys:
     - repository_name
-  path: "ecr"
+  # path: "ecr"
   target_resource_name: this
   defaults:
     attach_repository_policy: false

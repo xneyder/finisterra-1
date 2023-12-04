@@ -290,7 +290,7 @@ class Dynamodb:
                 print(f"  Processing DynamoDB Table: {table_name}")
                 id = table_name
 
-                ftstack = ""
+                ftstack = "dynamodb"
                 try:
                     response = self.dynamodb_client.list_tags_of_resource(ResourceArn=table_description["TableArn"])
                     tags = response.get('Tags', [])

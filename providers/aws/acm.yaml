@@ -5,7 +5,7 @@ aws_acm_certificate:
   target_resource_name: this
   name_field: domain_name
   add_id_hash_to_name: true
-  path: "acm"
+  # path: "acm"
   defaults:
     create_certificate: true
     validate_certificate: false

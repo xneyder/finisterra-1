@@ -10,7 +10,7 @@ aws_dynamodb_table:
   defaults:
     autoscaling_enabled: false
     ignore_changes_global_secondary_index: true
-  path: "dynamodb"
+  # path: "dynamodb"
   fields:
     name:
       field: name

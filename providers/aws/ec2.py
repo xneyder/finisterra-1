@@ -358,7 +358,7 @@ class EC2:
                 print(f"  Processing EC2 Instance: {instance_id}")
                 id = instance_id
 
-                ftstack = ""
+                ftstack = "ec2"
                 try:
                     tags_response = self.ec2_client.describe_tags(
                         Filters=[{'Name': 'resource-id', 'Values': [instance_id]}]

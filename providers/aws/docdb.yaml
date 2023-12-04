@@ -9,7 +9,7 @@ aws_docdb_cluster:
     enabled: true
     create_random_password: false
     create_kms_key: false
-  path: "docdb"
+  # path: "docdb"
   fields:
     cluster_identifier:
       field: cluster_identifier

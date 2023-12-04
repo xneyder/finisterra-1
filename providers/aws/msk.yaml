@@ -4,9 +4,9 @@ aws_msk_cluster:
   terraform_module_version: "0.20.0"
   target_resource_name: default
   name_field: cluster_name
-  path: "msk"
-  dependencies:
-    - "../security_group"
+  # path: "msk"
+  # dependencies:
+  #   - "../security_group"
   defaults:
     enabled: true
     autoscaling_enabled: false
@@ -251,7 +251,7 @@ aws_security_group:
   target_resource_name: default
   name_field: security_group_name
   add_id_hash_to_name: true
-  path: "security_group"
+  # path: "security_group"
   defaults:
     create_before_destroy: false
   fields:

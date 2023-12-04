@@ -839,11 +839,7 @@ class HCL:
         if config[resource['type']].get('dict_to_hcl', False):
             for key, value in attributes.items():
                 if not str(value).startswith('<<EOF') and not str(value).startswith('jsonencode('):
-                    # print("===========================")
-                    # print(key, value)
                     attributes[key] = value_to_hcl(value)
-                    # print(key, attributes[key])
-                    # print("===========================")
 
         if attributes or deployed_resources:
             name_field = config[resource['type']].get("name_field", "name")

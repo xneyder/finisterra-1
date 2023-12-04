@@ -171,7 +171,7 @@ class AwsLambda:
             conn.request("GET", url_parts.path)
             response = conn.getresponse()
 
-            folder = os.path.join(ftstack, "aws_lambda")
+            folder = os.path.join(ftstack)
             os.makedirs(folder, exist_ok=True)
             filename = os.path.join(folder, f"{function_name}.zip")
             with open(filename, "wb") as f:

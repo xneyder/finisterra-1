@@ -3,9 +3,9 @@ aws_cloudfront_distribution:
   terraform_module: "github.com/finisterra-io/terraform-aws-cloudfront.git?ref=main"
   terraform_module_version: "6.1.0"
   target_resource_name: this
-  path: "cloudfront_distribution"
-  dependencies:
-    - "../origin_access_identity"
+  # path: "cloudfront_distribution"
+  # dependencies:
+  #   - "../origin_access_identity"
   fields:
     enabled:
       field: enabled
@@ -86,7 +86,7 @@ aws_cloudfront_origin_access_identity:
   terraform_module: "github.com/finisterra-io/terraform-aws-cloudfront//modules/origin_access_identity?ref=main"
   terraform_module_version: "6.1.0"
   target_resource_name: this
-  path: "origin_access_identity"
+  # path: "origin_access_identity"
   second_index:
     field: id
   fields:

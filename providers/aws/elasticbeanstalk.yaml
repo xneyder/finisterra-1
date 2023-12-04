@@ -3,7 +3,7 @@ aws_elastic_beanstalk_application:
   terraform_module: "github.com/finisterra-io/terraform-aws-elastic-beanstalk-application.git?ref=main"
   terraform_module_version: "0.20.0"
   target_resource_name: default
-  path: "beanstalk"
+  # path: "beanstalk"
   defaults:
     enabled: true
   fields:
@@ -34,10 +34,10 @@ aws_elastic_beanstalk_environment:
   terraform_module: "github.com/finisterra-io/terraform-aws-elastic-beanstalk-environment.git?ref=main"
   terraform_module_version: "0.20.0"
   target_resource_name: default
-  path: "beanstalk"
-  dependencies:
-    - "../iam_role"
-    - "../security_group"
+  # path: "beanstalk"
+  # dependencies:
+  #   - "../iam_role"
+  #   - "../security_group"
   defaults:
     enabled: true
   fields:
@@ -75,9 +75,9 @@ aws_iam_role:
   terraform_module_version: "5.2.0"
   target_resource_name: default
   name_field: role_name
-  path: "iam_role"
-  dependencies:
-    - "../iam_policy"
+  # path: "iam_role"
+  # dependencies:
+  #   - "../iam_policy"
   fields:
     role_name:
       field: name
@@ -133,7 +133,7 @@ aws_iam_policy:
   terraform_module_version: "5.2.0"
   target_resource_name: default
   name_field: policy_name
-  path: "iam_policy"
+  # path: "iam_policy"
   fields:
     policy_documents:
       function: get_policy_documents
@@ -159,7 +159,7 @@ aws_security_group:
   target_resource_name: default
   name_field: security_group_name
   add_id_hash_to_name: true
-  path: "security_group"
+  # path: "security_group"
   defaults:
     create_before_destroy: false
   fields:

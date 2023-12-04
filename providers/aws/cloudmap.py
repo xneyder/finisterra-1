@@ -142,7 +142,7 @@ class Cloudmap:
 
                     id = namespace_id
 
-                    ftstack = ""
+                    ftstack = "cloudmap"
                     try:
                         response = self.cloudmap_client.list_tags_for_resource(ResourceARN=private_dns_namespace["Arn"])
                         tags = response.get('Tags', [])

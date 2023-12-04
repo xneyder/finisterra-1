@@ -7,10 +7,10 @@ aws_db_instance:
   target_resource_name: this
   target_submodule: module.db_instance
   name_field: identifier
-  path: "db_instance"
-  dependencies:
-    - "../iam_role"
-    - "../log_group"
+  # path: "db_instance"
+  # dependencies:
+  #   - "../iam_role"
+  #   - "../log_group"
   defaults:
     create_db_instance: true
     create_db_subnet_group: false
@@ -297,9 +297,9 @@ aws_db_instance_automated_backups_replication:
   terraform_module: "github.com/finisterra-io/terraform-aws-rds//modules/db_instance_automated_backups_replication?ref=main"
   terraform_module_version: "5.2.0"
   target_resource_name: this
-  path: "automated_backups_replication"
-  dependencies:
-    - "../rds"
+  # path: "automated_backups_replication"
+  # dependencies:
+  #   - "../rds"
   fields:
     source_db_instance_arn:
       field: source_db_instance_arn
@@ -320,9 +320,9 @@ aws_iam_role:
   terraform_module_version: "5.2.0"
   target_resource_name: default
   name_field: role_name
-  path: "iam_role"
-  dependencies:
-    - "../iam_policy"
+  # path: "iam_role"
+  # dependencies:
+  #   - "../iam_policy"
   fields:
     role_name:
       field: name
@@ -378,7 +378,7 @@ aws_iam_policy:
   terraform_module_version: "5.2.0"
   target_resource_name: default
   name_field: policy_name
-  path: "iam_policy"
+  # path: "iam_policy"
   fields:
     policy_documents:
       function: get_policy_documents
@@ -403,7 +403,7 @@ aws_cloudwatch_log_group:
   terraform_module_version: "6.1.0"
   target_resource_name: this
   name_field: name
-  path: "log_group"
+  # path: "log_group"
   defaults:
     create: true
   fields:

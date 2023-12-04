@@ -101,7 +101,7 @@ class StepFunction:
                 role_arn = state_machine.get('roleArn', None)
                 state_machine_arn = state_machine["stateMachineArn"]
 
-                ftstack = ""
+                ftstack = "stepfunction"
                 try:
                     tags_response = self.sfn_client.list_tags_for_resource(resourceArn=state_machine_arn)
                     tags = tags_response.get('tags', [])

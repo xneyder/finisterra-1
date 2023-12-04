@@ -7,7 +7,7 @@ aws_service_discovery_private_dns_namespace:
   name_field: namespace_name
   defaults:
     create_private_dns_namespace: true
-  path: "cloudmap"
+  # path: "cloudmap"
   import_id:
     function: aws_service_discovery_private_dns_namespace_import_id
   fields:

@@ -76,11 +76,11 @@ class SQS:
                 print(f"Processing SQS Queue: {queue_name}")
                 id = queue_url
 
-                fstack = ""
+                fstack = "sqs"
                 try:
                     tags_response = self.sqs_client.list_queue_tags(QueueUrl=queue_url)
                     tags = tags_response.get('Tags', {})
-                    fstack = tags.get('ftstack', '')
+                    fstack = tags.get('ftstack', 'sqs')
                 except Exception as e:
                     print("Error occurred: ", e)
 

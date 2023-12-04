@@ -73,7 +73,7 @@ class IAM_ROLE:
                 }
                 self.hcl.process_resource(resource_type, current_role_name, attributes)   
                 if not ftstack:
-                    ftstack = "iam"   
+                    ftstack = "iam"
                 self.hcl.add_stack(resource_type, id, ftstack)
 
                 # Call aws_iam_role_policy_attachment for the current role_name
@@ -128,14 +128,15 @@ class IAM_ROLE:
                 self.hcl.process_resource(
                     "aws_iam_role_policy_attachment", f"{role_name}_{policy_arn.split(':')[-1]}", attributes)
                 
-                self.aws_iam_policy(policy_arn, ftstack)
+                if not policy_arn.startswith('arn:aws:iam::aws:policy/') and '/service-role/' not in policy_arn:
+                    self.aws_iam_policy(policy_arn, ftstack)
 
     def aws_iam_policy(self, policy_arn, ftstack=None):
         resource_type="aws_iam_policy"
         policy_name = policy_arn.split('/')[-1]
         # Ignore AWS managed policies and policies with '/service-role/' in the ARN
-        if policy_arn.startswith('arn:aws:iam::aws:policy/') or '/service-role/' in policy_arn:
-            return
+        # if policy_arn.startswith('arn:aws:iam::aws:policy/') or '/service-role/' in policy_arn:
+        #     return
 
         # if policy_name != "DenyCannedPublicACL":
         #     continue

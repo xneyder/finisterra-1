@@ -4,10 +4,10 @@ aws_eks_cluster:
   terraform_module_version: "0.20.0"
   target_resource_name: this
   name_field: cluster_name
-  path: "eks"
-  dependencies:
-    - "../iam_role"
-    - "../kms"
+  # path: "eks"
+  # dependencies:
+  #   - "../iam_role"
+  #   - "../kms"
   defaults:
     create_cluster_security_group: false
     create_node_security_group: false
@@ -111,13 +111,6 @@ aws_eks_cluster:
         custom_oidc_thumbprints:
           field: thumbprint_list
           type: list
-        #   module_default:
-        #     [
-        #       "9e99a48a9960b14926bb7f3b02e22da2b0ab7280",
-        #       "06b25927c42a721631c1efd9431e648fa62e1e39",
-        #       "414a2060b738c635cc7fc243e052615592830c53",
-        #       "aaa68bb211d468db8a8a19561ccba2e4043dcc80",
-        #     ]
     aws_eks_node_group:
       join:
         name:
@@ -144,33 +137,6 @@ aws_eks_cluster:
               function: build_launch_templates
               type: map
 
-        # aws_iam_role:
-        #   join:
-        #     node_role_arn:
-        #       field: arn
-        #   target_resource_name: this
-        #   target_submodule: module.eks_managed_node_group
-        #   first_index:
-        #     function: get_node_group_name
-        #   fields:
-        #     eks_managed_node_groups:
-        #       function: build_node_group_roles
-        #       type: map
-        #   childs:
-        #     aws_iam_role_policy_attachment:
-        #       join:
-        #         name:
-        #           field: role
-        #       target_resource_name: this
-        #       target_submodule: module.eks_managed_node_group
-        #       first_index:
-        #         function: get_node_group_name
-        #       second_index:
-        #         field: policy_arn
-        #       fields:
-        #         eks_managed_node_groups:
-        #           function: build_node_group_role_policy_attachments
-        #           type: map
         aws_autoscaling_schedule:
           join:
             name:
@@ -190,9 +156,9 @@ aws_iam_role:
   terraform_module_version: "5.2.0"
   target_resource_name: default
   name_field: role_name
-  path: "iam_role"
-  dependencies:
-    - "../iam_policy"
+  # path: "iam_role"
+  # dependencies:
+  #   - "../iam_policy"
   fields:
     role_name:
       field: name
@@ -248,7 +214,7 @@ aws_iam_policy:
   terraform_module_version: "5.2.0"
   target_resource_name: default
   name_field: policy_name
-  path: "iam_policy"
+  # path: "iam_policy"
   fields:
     policy_documents:
       function: get_policy_documents
@@ -272,7 +238,7 @@ aws_kms_key:
   terraform_module: "github.com/finisterra-io/terraform-aws-kms?ref=main"
   terraform_module_version: "5.2.0"
   target_resource_name: this
-  path: "kms"
+  # path: "kms"
   defaults:
     create_external: false
     create_replica: false

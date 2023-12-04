@@ -449,7 +449,7 @@ class S3:
                 print(f"  Processing S3 Bucket: {bucket_name}")
 
                 # describe the bucket and get the tags
-                ftstack = ""
+                ftstack = "s3"
                 try:
                     response = self.s3_session.get_bucket_tagging(Bucket=bucket_name)
                     tags = response.get('TagSet', {})

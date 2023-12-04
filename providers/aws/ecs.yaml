@@ -2,9 +2,9 @@ aws_ecs_cluster:
   # terraform_module: "../../../terraform-aws-modules/terraform-aws-ecs/modules/cluster/"
   terraform_module: "github.com/finisterra-io/terraform-aws-ecs//modules/cluster?ref=main"
   terraform_module_version: "5.2.0"
-  path: ecs
-  dependencies:
-    - "../iam_role"
+  # path: ecs
+  # dependencies:
+  #   - "../iam_role"
   keys:
     - name
   target_resource_name: this
@@ -75,7 +75,7 @@ aws_ecs_service:
   # target_submodule: module.service
   # root_attribute: services
   # root_attribute_key: name
-  path: "ecs"
+  # path: "ecs"
   dependencies:
     - "../iam_role"
   defaults:
@@ -257,10 +257,10 @@ aws_ecs_service:
         task_tags:
           field: tags
           type: map
-        container_definition_defaults:
-          field: container_definition_defaults
-          type: map
-          default: { enable_cloudwatch_logging: false }
+        # container_definition_defaults:
+        #   field: container_definition_defaults
+        #   type: map
+        #   default: { enable_cloudwatch_logging: false }
         task_definition_placement_constraints:
           field: placement_constraints
           type: list
@@ -405,9 +405,9 @@ aws_iam_role:
   terraform_module_version: "5.2.0"
   target_resource_name: default
   name_field: role_name
-  path: "iam_role"
-  dependencies:
-    - "../iam_policy"
+  # path: "iam_role"
+  # dependencies:
+  #   - "../iam_policy"
   fields:
     role_name:
       field: name
@@ -463,7 +463,7 @@ aws_iam_policy:
   terraform_module_version: "5.2.0"
   target_resource_name: default
   name_field: policy_name
-  path: "iam_policy"
+  # path: "iam_policy"
   fields:
     policy_documents:
       function: get_policy_documents

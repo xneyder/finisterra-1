@@ -108,7 +108,7 @@ class SNS:
                 print(f"  Processing SNS Topic: {name}")
                 id = arn
 
-                ftstack = ""
+                ftstack = "sns"
                 try:
                     tags_response = self.sns_client.list_tags_for_resource(ResourceArn=arn)
                     tags = tags_response.get('Tags', [])

@@ -110,7 +110,7 @@ class ECR:
             print(f"  Processing ECR Repository: {repository_name}")
             id = repository_name
 
-            ftstack = ""
+            ftstack = "ecr"
             try:
                 tags_response = self.ecr_client.list_tags_for_resource(resourceArn=repository_arn)
                 tags = tags_response.get('tags', [])

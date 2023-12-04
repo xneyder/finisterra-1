@@ -8,7 +8,7 @@ aws_sqs_queue:
     create_queue_policy: false
     use_name_prefix: false
     create_dlq: false
-  path: "sqs"
+  # path: "sqs"
   skip_if:
     function: is_dql
     arg: url

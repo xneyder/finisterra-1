@@ -4,9 +4,9 @@ aws_rds_cluster:
   terraform_module_version: "6.1.0"
   target_resource_name: this
   name_field: cluster_identifier
-  path: "aurora"
-  dependencies:
-    - "../iam_role"
+  # path: "aurora"
+  # dependencies:
+  #   - "../iam_role"
   defaults:
     create_db_subnet_group: false
     manage_master_user_password: false
@@ -258,41 +258,6 @@ aws_rds_cluster:
             cloudwatch_log_group_kms_key_id:
               field: kms_key_id
               type: string
-        # aws_iam_role:
-        #   join:
-        #     monitoring_role_arn:
-        #       field: arn
-        #   target_resource_name: rds_enhanced_monitoring
-        #   fields:
-        #     create_monitoring_role:
-        #       unique: true
-        #     monitoring_role_name:
-        #       field: name
-        #       type: string
-        #     monitoring_role_description:
-        #       field: description
-        #       type: string
-        #     monitoring_role_permissions_boundary:
-        #       field: permissions_boundary
-        #       type: string
-        #     monitoring_role_path:
-        #       field: path
-        #       type: string
-        #     monitoring_role_tags:
-        #       field: tags
-        #       type: map
-        #     monitoring_role_max_session_duration:
-        #       field: max_session_duration
-        #       type: number
-        #   childs:
-        #     aws_iam_role_policy_attachment:
-        #       join:
-        #         name:
-        #           field: role
-        #       target_resource_name: rds_enhanced_monitoring
-        #       fields:
-        #         create_monitoring_role:
-        #           unique: true
         aws_db_subnet_group:
           join:
             db_subnet_group_name:
@@ -347,9 +312,9 @@ aws_iam_role:
   terraform_module_version: "5.2.0"
   target_resource_name: default
   name_field: role_name
-  path: "iam_role"
-  dependencies:
-    - "../iam_policy"
+  # path: "iam_role"
+  # dependencies:
+  #   - "../iam_policy"
   fields:
     role_name:
       field: name
@@ -405,7 +370,7 @@ aws_iam_policy:
   terraform_module_version: "5.2.0"
   target_resource_name: default
   name_field: policy_name
-  path: "iam_policy"
+  # path: "iam_policy"
   fields:
     policy_documents:
       function: get_policy_documents

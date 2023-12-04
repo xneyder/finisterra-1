@@ -7,9 +7,9 @@ aws_lb:
   defaults:
     enabled: true
     create_security_group: false
-  path: "alb"
-  dependencies:
-    - "../security_group"
+  # path: "alb"
+  # dependencies:
+  #   - "../security_group"
   fields:
     init:
       function: init_fields
@@ -110,44 +110,6 @@ aws_lb:
             aws_lb_listeners:
               function: get_listener_certificate
               type: map
-    # aws_security_group:
-    #   join:
-    #     id:
-    #       join_function: match_security_group
-    #   target_resource_name: default
-    #   fields:
-    #     create_security_group:
-    #       unique: true
-    #     security_group_name:
-    #       field: name
-    #       type: string
-    #     security_group_description:
-    #       field: description
-    #       type: string
-    #     security_group_tags:
-    #       field: tags
-    #       type: map
-    #   childs:
-    #     aws_security_group_rule:
-    #       join:
-    #         id:
-    #           field: security_group_id
-    #       target_resource_name: default
-    #       second_index:
-    #         field: id
-    #       import_id:
-    #         function: aws_security_group_rule_import_id
-    #       fields:
-    #         create_security_group:
-    #           unique: true
-    #         security_group_rules:
-    #           function: get_security_group_rules
-    #           arg: id
-    #           type: list
-    #         fields:
-    #           oidc_provider_tags:
-    #             field: tags
-    #             type: map
 
 aws_security_group:
   # terraform_module: "../../../terraform-aws-modules/terraform-aws-security-group"
@@ -156,7 +118,7 @@ aws_security_group:
   target_resource_name: default
   name_field: security_group_name
   add_id_hash_to_name: true
-  path: "security_group"
+  # path: "security_group"
   defaults:
     create_before_destroy: false
   fields:

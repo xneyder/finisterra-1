@@ -6,25 +6,6 @@ import copy
 
 def cors_config_transform(value):
     return "{items="+str(value)+"}\n"
-    # if value == []:
-    #     return {"items": []}
-    # else:
-    #     return value
-
-
-# def convert_to_terraform_format(env_variables_dict):
-#     # Format the dictionary to Terraform format
-#     # terraform_format = "variables = {\n"
-#     print(env_variables_dict)
-#     terraform_format = "{\n"
-#     for key, value in env_variables_dict.items():
-#         # Escape the double quotes
-#         value = str(value).replace('"', '\\"')
-#         terraform_format += f"  {key} = \"{value}\"\n"
-#     terraform_format += "}"
-
-#     return terraform_format
-
 
 class CloudFront:
     def __init__(self, cloudfront_client, script_dir, provider_name, schema_data, region, s3Bucket,
@@ -40,23 +21,6 @@ class CloudFront:
             "aws_cloudfront_distribution": {
                 "hcl_keep_fields": {"origin.domain_name": True, },
             },
-            # "aws_cloudfront_response_headers_policy": {
-            #     "hcl_keep_fields": {'source': [], 'target': '{items=[]}'},
-            # },
-            # "aws_cloudfront_response_headers_policy": {
-            #     "hcl_transform_fields": {
-            #         "access_control_allow_headers": {'source': [], 'target': '{items=[]}'},
-            #     },
-            # },
-            # "aws_cloudfront_response_headers_policy": {
-            #     "hcl_apply_function": {
-            #         "identity_validation_expression": {'function': [replace_backslashes]}
-            #     },
-            # },
-
-            # "aws_cloudfront_response_headers_policy": {
-            #     "hcl_keep_fields": {"cors_config.access_control_allow_headers": True},
-            # },
         }
         self.provider_name = provider_name
         self.script_dir = script_dir
@@ -90,37 +54,6 @@ class CloudFront:
 
         except Exception as e:
             return None
-
-    # def build_origin0(self, attributes):
-    #     origin_list = attributes.get("origin", [])
-    #     result = {}
-
-    #     for origin in origin_list:
-    #         origin_key = origin['origin_id']
-
-    #         # Remove empty fields and convert lists to their first item
-    #         transformed_origin = {}
-    #         for k, v in origin.items():
-    #             if v:  # check if the value is not empty
-    #                 if k in ("custom_header"):
-    #                     transformed_origin[k] = v
-    #                 elif isinstance(v, list):
-    #                     transformed_origin[k] = v[0]
-    #                 else:
-    #                     transformed_origin[k] = v
-
-    #         if 's3_origin_config' in transformed_origin:
-    #             if 'origin_access_identity' in transformed_origin['s3_origin_config']:
-    #                 if transformed_origin['s3_origin_config']['origin_access_identity'] != '':
-    #                     transformed_origin['s3_origin_config']['cloudfront_access_identity_path'] = transformed_origin[
-    #                         's3_origin_config']['origin_access_identity']
-    #                     del transformed_origin['s3_origin_config']['origin_access_identity']
-
-    #         result[origin_key] = transformed_origin
-
-    #     self.origin = result
-    #     return result
-
 
     def build_origin(self, attributes):
         # Create a deep copy of the attributes to avoid modifying the original
@@ -310,14 +243,6 @@ class CloudFront:
         comment = attributes.get("comment")
         id = attributes.get("id")
         result = {id: comment}
-
-        # # Search for the origin with the matching origin_access_identity
-        # for origin_id, origin_data in self.origin.items():
-        #     s3_origin_config = origin_data.get("s3_origin_config", {})
-        #     if s3_origin_config.get("origin_access_identity", "").split('/')[-1] == key:
-        #         # Assuming comment is directly in attributes
-        #         result[origin_id] = comment
-
         return result
 
     def cloudfront(self):
@@ -325,9 +250,6 @@ class CloudFront:
 
         if "gov" not in self.region:
             self.aws_cloudfront_distribution()
-            # self.aws_cloudfront_origin_access_identity()
-            # self.aws_cloudfront_origin_access_control()
-            # self.aws_cloudfront_monitoring_subscription()
 
         functions = {
             'get_field_from_attrs': self.get_field_from_attrs,

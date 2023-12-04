@@ -99,7 +99,7 @@ class ACM:
 
                 print(f"  Processing ACM Certificate: {cert_arn}")
 
-
+                ftstack = "acm"
                 try:
                     response = self.acm_client.list_tags_for_certificate(CertificateArn=cert_arn)
                     tags = response.get('Tags', {})

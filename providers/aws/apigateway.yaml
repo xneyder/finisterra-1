@@ -6,7 +6,7 @@ aws_api_gateway_rest_api:
   defaults:
     enabled: true
   add_id_hash_to_name: true
-  path: "apigateway"
+  # path: "apigateway"
   fields:
     name:
       field: name

@@ -139,7 +139,7 @@ class DocDb:
 
                     id = db_cluster["DBClusterIdentifier"]
 
-                    ftstack = ""
+                    ftstack = "docdb"
                     try:
                         response = self.docdb_client.list_tags_for_resource(ResourceName=db_cluster["DBClusterArn"])
                         tags = response.get('TagList', [])
