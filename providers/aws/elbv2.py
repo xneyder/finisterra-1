@@ -368,7 +368,8 @@ class ELBV2:
             ftstack="elbv2"
             for tag in tags:
                 if tag['Key'] == 'ftstack':
-                    ftstack = tag['Value']
+                    if tag['Value'] != 'elbv2':
+                        ftstack = "stack_"+tag['Value']
                     break
 
             id = lb_arn

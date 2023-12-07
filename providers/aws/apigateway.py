@@ -244,7 +244,8 @@ class Apigateway:
                 tags = response.get('tags', {})
                 for tag_key, tag_value in tags.items():
                     if tag_key == 'ftstack':
-                        ftstack = tag_value
+                        if tag_value != 'apigateway':
+                            ftstack = "stack_"+tag_value
                         break
             except Exception as e:
                 print("Error occurred: ", e)

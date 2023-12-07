@@ -366,7 +366,8 @@ class EC2:
                     tags = tags_response.get('Tags', [])
                     for tag in tags:
                         if tag['Key'] == 'ftstack':
-                            ftstack = tag['Value']
+                            if tag['Value'] != 'ec2':
+                                ftstack = "stack_"+tag['Value']
                             break
                 except Exception as e:
                     print("Error occurred: ", e)                

@@ -455,7 +455,8 @@ class S3:
                     tags = response.get('TagSet', {})
                     for tag in tags:
                         if tag['Key'] == 'ftstack':
-                            ftstack = tag['Value']
+                            if tag['Value'] != 's3':
+                                ftstack = "stack_"+tag['Value']
                             break
                 except ClientError as e:
                     if e.response['Error']['Code'] == 'NoSuchTagSet':

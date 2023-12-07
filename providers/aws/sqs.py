@@ -80,7 +80,8 @@ class SQS:
                 try:
                     tags_response = self.sqs_client.list_queue_tags(QueueUrl=queue_url)
                     tags = tags_response.get('Tags', {})
-                    fstack = tags.get('ftstack', 'sqs')
+                    if tags.get('ftstack', 'sqs') != 'sqs':
+                        fstack = "stack_"+tags.get('ftstack', 'sqs')
                 except Exception as e:
                     print("Error occurred: ", e)
 

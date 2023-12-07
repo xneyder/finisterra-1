@@ -116,7 +116,8 @@ class ECR:
                 tags = tags_response.get('tags', [])
                 for tag in tags:
                     if tag['Key'] == 'ftstack':
-                        ftstack = tag['Value']
+                        if tag['Value'] != 'ecr':
+                            ftstack = "stack_"+tag['Value']
                         break
             except Exception as e:
                 print("Error occurred: ", e)

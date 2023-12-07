@@ -254,7 +254,8 @@ class ElasticBeanstalk:
                 tags = tags_response.get('ResourceTags', [])
                 for tag in tags:
                     if tag['Key'] == 'ftstack':
-                        ftstack = tag['Value']
+                        if tag['Value'] != 'beanstalk':
+                            ftstack = "stack_"+tag['Value']
                         break
             except Exception as e:
                 print("Error occurred: ", e)

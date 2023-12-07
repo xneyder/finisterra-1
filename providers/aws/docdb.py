@@ -145,7 +145,8 @@ class DocDb:
                         tags = response.get('TagList', [])
                         for tag in tags:
                             if tag['Key'] == 'ftstack':
-                                ftstack = tag['Value']
+                                if tag['Value'] != 'docdb':
+                                    ftstack = "docdb_"+tag['Value']
                                 break
                     except Exception as e:
                         print("Error occurred: ", e)

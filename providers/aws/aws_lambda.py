@@ -149,7 +149,8 @@ class AwsLambda:
             ftstack = "aws_lambda"
             try:
                 tags = self.lambda_client.list_tags(Resource=function_arn)['Tags']
-                ftstack = tags.get('ftstack', 'aws_lambda')
+                if tags.get('ftstack', 'aws_lambda') != 'aws_lambda':
+                    ftstack = "stack_"+tags.get('ftstack', 'aws_lambda')
             except Exception as e:
                 print("Error occurred: ", e)            
 

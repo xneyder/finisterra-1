@@ -271,7 +271,8 @@ class MSK:
                 try:
                     tags_response = self.msk_client.list_tags_for_resource(ResourceArn=cluster_arn)
                     tags = tags_response.get('Tags', {})
-                    ftstack = tags.get('ftstack', 'msk')
+                    if tags.get('ftstack', 'msk') != 'msk':
+                        ftstack = "stack_"+tags.get('ftstack', 'msk')
                 except Exception as e:
                     print("Error occurred: ", e)
 

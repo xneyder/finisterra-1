@@ -582,7 +582,8 @@ class Aurora:
                     tags = tags_response.get('TagList', [])
                     for tag in tags:
                         if tag['Key'] == 'ftstack':
-                            ftstack = tag['Value']
+                            if tag['Value'] != 'aurora':
+                                ftstack = "stack_"+tag['Value']
                             break
                 except Exception as e:
                     print("Error occurred: ", e)

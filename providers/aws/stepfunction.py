@@ -107,7 +107,8 @@ class StepFunction:
                     tags = tags_response.get('tags', [])
                     for tag in tags:
                         if tag['key'] == 'ftstack':
-                            ftstack = tag['value']
+                            if tag['value'] != 'stepfunction':
+                                ftstack = "stack_"+tag['value']
                             break
                 except Exception as e:
                     print("Error occurred: ", e)
