@@ -414,6 +414,7 @@ class EKS:
             cluster = self.eks_client.describe_cluster(name=cluster_name)[
                 "cluster"]
             tags = cluster.get("tags", {})
+            ftstack = "eks"
             if tags.get("ftstack", "eks") != "eks":
                 ftstack = "stack_"+tags.get("ftstack", "eks")
             
