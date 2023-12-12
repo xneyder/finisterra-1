@@ -11,6 +11,24 @@ aws_eks_cluster:
   defaults:
     create_cluster_security_group: false
     create_node_security_group: false
+  joined_fields:
+    iam_role_arn:
+      sub_fields:
+        - iam_role_arn
+    cluster_encryption_config:
+      sub_fields:
+        - key_arn
+    cluster_security_group_ids:
+      sub_fields:
+        - cluster_security_group_ids
+    cluster_addons:
+      sub_fields:
+        - service_account_role_arn
+    eks_managed_node_groups:
+      sub_fields:
+        - iam_role_arn
+        - vpc_security_group_ids
+
   fields:
     cluster_name:
       field: name
@@ -24,14 +42,28 @@ aws_eks_cluster:
     cluster_enabled_log_types:
       field: enabled_cluster_log_types
       type: list
-    cluster_additional_security_group_ids:
+    cluster_security_group_ids:
       function: get_field_from_attrs
       arg: vpc_config.security_group_ids
       type: list
-    subnet_ids:
-      function: get_field_from_attrs
-      arg: vpc_config.subnet_ids
+    # subnet_ids:
+    #   function: get_field_from_attrs
+    #   arg: vpc_config.subnet_ids
+    #   type: list
+    subnet_names:
+      function: get_subnet_names
+      arg: id
       type: list
+    subnet_ids:
+      function: get_subnet_ids
+      arg: id
+      type: list
+    vpc_name:
+      function: get_vpc_name_eks
+      type: string
+    vpc_id:
+      function: get_vpc_id_eks
+      type: string
     cluster_endpoint_private_access:
       function: get_field_from_attrs
       arg: vpc_config.endpoint_private_access
@@ -159,6 +191,10 @@ aws_iam_role:
   # path: "iam_role"
   # dependencies:
   #   - "../iam_policy"
+  joined_fields:
+    managed_policy_arns:
+      sub_fields:
+        - managed_policy_arns
   fields:
     role_name:
       field: name
@@ -313,4 +349,60 @@ aws_kms_key:
         grants:
           function: build_grants
           arg: id
+          type: map
+
+aws_security_group:
+  # terraform_module: "../../../terraform-aws-modules/terraform-aws-security-group"
+  terraform_module: "github.com/finisterra-io/terraform-aws-security-group?ref=main"
+  terraform_module_version: "5.2.0"
+  target_resource_name: default
+  name_field: security_group_name
+  add_id_hash_to_name: true
+  # path: "security_group"
+  defaults:
+    create_before_destroy: false
+  fields:
+    security_group_name:
+      field: name
+      type: string
+    vpc_name:
+      function: get_vpc_name
+      arg: vpc_id
+      type: string
+    vpc_id:
+      function: get_vpc_id
+      type: string
+      arg: vpc_id
+    security_group_description:
+      field: description
+      type: string
+    tags:
+      field: tags
+      type: map
+  childs:
+    aws_vpc_security_group_ingress_rule:
+      join:
+        id:
+          field: security_group_id
+      import_id:
+        field: security_group_rule_id
+      target_resource_name: dbc
+      second_index:
+        field: id
+      fields:
+        ingress_rules:
+          function: get_security_group_rules
+          type: map
+    aws_vpc_security_group_egress_rule:
+      join:
+        id:
+          field: security_group_id
+      import_id:
+        field: security_group_rule_id
+      target_resource_name: dbc
+      second_index:
+        field: id
+      fields:
+        egress_rules:
+          function: get_security_group_rules
           type: map

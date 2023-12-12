@@ -1,4 +1,5 @@
 import json
+import hashlib
 
 #### IAM ####
 
@@ -79,6 +80,10 @@ def build_aliases(attributes, arg=None, additional_data=None):
 
 def build_grants(attributes, arg=None, additional_data=None):
     key = attributes.get("id")
+    #hash the key and get the last 8 chars
+    # key = hashlib.sha256(key.encode()).hexdigest()[:8]
+    # key = "grant_"+key
+    
     result = {key: {}}
     name = attributes.get("name")
     grantee_principal = attributes.get("grantee_principal")

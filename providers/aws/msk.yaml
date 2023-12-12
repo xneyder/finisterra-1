@@ -41,7 +41,7 @@ aws_msk_cluster:
       arg: subnets
       type: list
     vpc_name:
-      function: get_vpc_name
+      function: get_vpc_name_msk
       type: string
     vpc_id:
       function: get_vpc_id_msk

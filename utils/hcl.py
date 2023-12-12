@@ -7,10 +7,11 @@ from utils.filesystem import create_version_file, create_backend_file, create_da
 from utils.terraform import Terraform
 import yaml
 import re
-from collections import OrderedDict
 import hashlib
 import importlib
 from utils.filesystem import create_tmp_terragrunt
+import traceback
+
 
 class HCL:
     def __init__(self, schema_data, provider_name, script_dir, transform_rules, region, bucket, dynamodb_table, state_key, workspace_id, modules):
@@ -59,14 +60,6 @@ class HCL:
             if found:
                 break
 
-        # Check if the resource was found
-        # if found:
-        #     print(
-        #         f'Resource "{resource_name}" of type "{resource_type}" with ID "{resource_id}" was found in the state.')
-        # else:
-        #     print(
-        #         f'Resource "{resource_name}" of type "{resource_type}" with ID "{resource_id}" was not found in the state.')
-
         return found
 
     def create_state_file(self, resource_type, resource_name, attributes):
@@ -100,8 +93,6 @@ class HCL:
             # add resource to state
             state_data['resources'].append(resource)
         except Exception as e:
-            # print(
-            #     f'State file "{self.terraform_state_file}" does not exist. Creating a new one.')
             state_data = {
                 "version": 4,
                 "terraform_version": "1.5.0",
@@ -115,11 +106,6 @@ class HCL:
         with open(self.terraform_state_file, 'w') as state_file:
             json.dump(state_data, state_file, indent=2)
 
-
-    # def replace_special_chars(self, input_string):
-    #     # Replace spaces, "-", ".", and any special character with "_"
-    #     output_string = re.sub(r'\s|-|\.|\W', '_', input_string)
-    #     return output_string
 
     def replace_special_chars(self, input_string):
         # Define a mapping of special characters to their ASCII representations
@@ -349,10 +335,6 @@ class HCL:
                 child_field = value_dict.get('field', None)
                 if child_field:
                     child_field = child_field.split('.')
-                    # print('parent', self.get_value_from_tfstate(
-                    #     parent_attributes, parent_field))
-                    # print('child', self.get_value_from_tfstate(
-                    #     child_attributes, child_field))
                     return self.get_value_from_tfstate(parent_attributes, parent_field) == self.get_value_from_tfstate(
                         child_attributes, child_field)
 
@@ -442,8 +424,6 @@ class HCL:
                     func = getattr(self.functions_module, func_name)
                     skip_if = func(resource_attributes, arg, additional_data)
                     
-
-
             if skip_if:
                 print(
                     f"Warning: condition not met {resource_type}. Skipping.")
@@ -559,7 +539,7 @@ class HCL:
                     if are_equivalent(value, module_default):
                         value = None
 
-                if value not in [None, "", [], {}] or defaulted:
+                if value not in [None, "", [], {}, "null"] or defaulted:
                     if multiline and jsonfield:
                         value = "<<EOF\n" + \
                             json.dumps(json.loads(value), indent=4) + "\nEOF\n"
@@ -724,125 +704,13 @@ class HCL:
 
             return attributes, deployed_resources
 
-        def dict_to_hcl(input_dict, indent=0, root=True):
-            def escape_special_characters(input_str):
-                return input_str.replace("\\", "\\\\")
-
-            def indent_str(level):
-                return '  ' * level
-
-            hcl_lines = []
-
-            for key, value in input_dict.items():
-                if isinstance(value, str) and (value.startswith('{') or value.startswith('[')):
-                    try:
-                        value = json.loads(value)
-                    except json.JSONDecodeError:
-                        pass
-
-                if isinstance(value, dict):
-                    if not root:
-                        hcl_lines.append(f"{indent_str(indent)}{key} = {{")
-                        hcl_lines.extend(dict_to_hcl(
-                            value, indent=indent+1, root=False))
-                        hcl_lines.append(f"{indent_str(indent)}}}")
-                    else:
-                        hcl_lines.append(f"{indent_str(indent)}{key} = ")
-                        hcl_lines.extend(dict_to_hcl(
-                            value, indent=indent+1, root=False))
-                elif isinstance(value, list):
-                    hcl_lines.append(f"{indent_str(indent)}{key} = [")
-                    for item in value:
-                        if isinstance(item, dict):
-                            hcl_lines.extend(dict_to_hcl(
-                                item, indent=indent+1, root=False))
-                            hcl_lines.append(",")
-                        else:
-                            hcl_lines.append(f"{indent_str(indent+1)}{item},")
-                    # Remove trailing comma from the last item
-                    hcl_lines[-1] = hcl_lines[-1][:-1]
-                    hcl_lines.append(f"{indent_str(indent)}]")
-                else:
-                    if isinstance(value, str):
-                        escaped_value = escape_special_characters(value)
-                        if escaped_value.lower() == "null":
-                            hcl_lines.append(
-                                f"{indent_str(indent)}{key} = null")
-                        else:
-                            hcl_lines.append(f"{indent_str(indent)}{key} = " + (escaped_value if escaped_value.startswith(
-                                "\"") and escaped_value.endswith("\"") else "\"" + escaped_value + "\""))
-                    elif isinstance(value, bool):
-                        hcl_lines.append(
-                            f'{indent_str(indent)}{key} = "{str(value).lower()}"')
-                    else:
-                        hcl_lines.append(
-                            f"{indent_str(indent)}{key} = {value}")
-
-            return hcl_lines
-
-        def value_to_hcl(value):
-            def escape_special_characters(input_str):
-                return input_str.replace("\\", "\\\\")
-
-            hcl_str = ""
-            if isinstance(value, str) and (value.startswith('{') or value.startswith('[')):
-                try:
-                    value = json.loads(value)
-                except json.JSONDecodeError:
-                    pass
-
-            if isinstance(value, dict):
-                hcl_str += "{\n"
-                for k, v in value.items():
-                    hcl_str += f"\"{k}\" = {value_to_hcl(v)}"
-                hcl_str += "}\n"
-            elif isinstance(value, list):
-                if not value:  # Special case for empty list
-                    hcl_str += "[]\n"
-                elif all(isinstance(item, dict) for item in value):
-                    hcl_str += "[\n"
-                    for i, item in enumerate(value):
-                        hcl_str += value_to_hcl(item)
-                        if i < len(value) - 1:
-                            hcl_str += ","
-                        hcl_str += "\n"
-                    hcl_str += "]\n"
-                else:
-                    hcl_str += "["
-                    hcl_str += ",".join([f"{item}" for item in value])
-                    hcl_str += "]\n"
-            elif isinstance(value, bool):
-                hcl_str += f"{str(value).lower()}\n"
-            else:
-                if isinstance(value, str):
-                    escaped_value = escape_special_characters(value)
-                    if escaped_value.lower() == "null":
-                        hcl_str += "null\n"
-                    # check for "true" or "false" strings
-                    elif escaped_value.lower() in ["true", "false"]:
-                        hcl_str += f"{escaped_value}\n"
-                    else:
-                        hcl_str += (escaped_value if escaped_value.startswith(
-                            "\"") and escaped_value.endswith("\"") else "\"" + escaped_value + "\"") + "\n"
-                elif isinstance(value, bool):
-                    hcl_str += f"{str(value).lower()}\n"
-                else:
-                    hcl_str += f"{value}\n"
-            return hcl_str
 
         attributes, deployed_resources = process_resource(
             resource, resources, config)
 
-        # JSON dump the root attributes
-        # remove duplicates by converting to a set
-        full_dump = {}
-        if config[resource['type']].get('dict_to_hcl', False):
-            for key, value in attributes.items():
-                if not str(value).startswith('<<EOF') and not str(value).startswith('jsonencode('):
-                    attributes[key] = value_to_hcl(value)
-
         if attributes or deployed_resources:
             name_field = config[resource['type']].get("name_field", "name")
+            joined_fields = config[resource['type']].get("joined_fields", {})
             add_id_hash_to_name = config[resource['type']].get("add_id_hash_to_name", False)
             id_hash = ""
             for deployed_resource in deployed_resources:
@@ -855,21 +723,138 @@ class HCL:
             if not resoource_name:
                 resoource_name = resource['name']
                 replace_name = False
+
+            module_instance_name = resoource_name.replace("\n", "").replace('"', '').replace(" ", "_").replace(".", "_").replace("/", "_").replace("(", "_").replace(")", "_").replace("*", "_").replace("@", "_").replace("#", "_").replace("{", "_").replace("}", "_")
+            module_instance_name = f'{resource["type"]}-{module_instance_name}'
+            if add_id_hash_to_name:
+                module_instance_name = f'{module_instance_name}_{id_hash}'
+
             return {
                 "type": resource['type'],
                 "name": resoource_name,
                 "replace_name": replace_name,
                 "name_field": name_field,
                 "attributes": attributes,
-                "full_dump": full_dump,
                 "deployed_resources": deployed_resources,
                 "add_id_hash_to_name": add_id_hash_to_name,
                 "id_hash": id_hash,
+                'module_instance_name': module_instance_name,
+                'id': resource['instances'][0]['attributes'].get('id', ''),
+                'arn': resource['instances'][0]['attributes'].get('arn', ''),
+                'joined_fields': joined_fields,
             }
         else:
             return []
 
-    def module_hcl_code(self, terraform_state_file, config_file, functions={}, aws_region="", aws_account_id="", to_remove = {}, additional_data={}):
+
+    def get_value_from_field_name(self, value, field_name):
+        # If field_name is empty or contains only whitespace, return the entire value
+        if not field_name.strip():
+            return json.loads(value)
+
+        # If value is a string, try to parse it as JSON
+        if isinstance(value, str):
+            try:
+                value = json.loads(value)
+            except json.JSONDecodeError:
+                return None  # or you can handle the error as you see fit
+
+        # If the value is not a map, return the value directly
+        if not isinstance(value, dict):
+            return value
+
+        # If the current level of the map contains the field_name, return its value
+        if field_name in value:
+            return value[field_name]
+
+        # Recursively search in sub-maps
+        for key, sub_value in value.items():
+            if isinstance(sub_value, dict):
+                result = self.get_value_from_field_name(sub_value, field_name)
+                if result is not None:
+                    return result
+
+        # Return None if the field_name is not found
+        return None
+    
+    def collect_json_values(self, value, parent_key=''):
+        collected_values = []
+
+        def collect_values(inner_value, current_key):
+            if isinstance(inner_value, str):
+                collected_values.append({current_key: inner_value})
+            elif isinstance(inner_value, dict):
+                for key, val in inner_value.items():
+                    collect_values(val, key)  # Overwrite parent_key with the current key
+            elif isinstance(inner_value, list):
+                if all(isinstance(item, str) for item in inner_value):
+                    for item in inner_value:
+                        collected_values.append({current_key: item})
+                else:
+                    for index, item in enumerate(inner_value):
+                        collect_values(item, current_key)  # Pass the same key for list items
+
+        collect_values(value, parent_key)
+        return collected_values
+    
+    def replace_hcl_values(self, instance, value, name_value, name_field, aws_account_id, aws_region):
+        try:
+            # Split the value into lines
+            lines = value.split('\n')
+
+            # Define the replace_value function
+            def replace_value(match):
+                prefix = match.group(1) or ''
+                suffix = match.group(2) if match.group(2) else ''
+                if prefix.endswith('$'):
+                    if re.search(r'"\w+":\s*"\$$', prefix):
+                        key = re.search(r'"\w+"', prefix).group()
+                        return f'    {key}: format("$%s{suffix}", local.{name_field})'
+                    else:
+                        return f'format("{prefix}%s{suffix}", local.{name_field})'
+                elif prefix:
+                    if '"' in prefix:
+                        return f'{prefix}${{local.{name_field}}}{suffix}"'
+                    else:
+                        return f'"{prefix}${{local.{name_field}}}{suffix}"'
+                else:
+                    return f'"${{local.{name_field}}}{suffix}"'
+
+            # Process each line individually
+            for i, line in enumerate(lines):
+                if 'module.' in line:
+                    # Skip replacement for lines containing 'module'
+                    continue
+
+                if instance["replace_name"] and "<<EOF" not in line:
+                    line = re.sub(r'\"' + re.escape(name_value) + r'\"', "local." + name_field, line)
+
+                if instance["replace_name"]:
+                    pattern = r'"?(.*\$?)' + re.escape(name_value) + r'([^"]*)"?'
+                    line = re.sub(pattern, replace_value, line)
+                    line = line.replace('#PUT_SCAPED_QUOTE_HERE#', '\"')
+
+                if aws_account_id:
+                    line = re.sub(r'\b' + aws_account_id + r'\b', "${local.aws_account_id}", line)
+                if aws_region:
+                    line = re.sub(r'\b(' + aws_region + r')(?=[a-z]?\b)', "${local.aws_region}", line)
+                    aws_partition = 'aws-us-gov' if 'gov' in aws_region else 'aws'
+                    line = re.sub(r'\barn:' + aws_partition + r':\b', "arn:${local.aws_partition}:", line)
+
+                # Update the processed line back in the list
+                lines[i] = line
+
+            # Join the processed lines back into a single string
+            value = '\n'.join(lines)
+
+        except Exception as e:
+            print(f"Error processing: {e}")
+            print(value)
+
+        return value
+
+
+    def module_hcl_code(self, terraform_state_file, config_file, functions={}, aws_region="", aws_account_id="", to_remove = {}, additional_data={}):            
         with open(config_file, 'r') as f:
             config = yaml.safe_load(f)
 
@@ -901,16 +886,23 @@ class HCL:
                 if instance:
                     instances.append(instance)
 
+        ids_name_map ={}
+        id_key_list = ["id", "arn"]
+        for instance in instances:
+            if instance["attributes"]:
+                module_instance_name = instance["module_instance_name"]
+                for id_key in id_key_list:
+                    if id_key in instance:
+                        id = instance[id_key]
+                        if id not in ids_name_map:
+                            ids_name_map[id] = {}
+                        ids_name_map[id]['module']= module_instance_name
+                        ids_name_map[id]['key']= id_key
+
         subfolders = {}
         for instance in instances:
             if instance["attributes"]:
-                instance["name"] = instance["name"].replace("\n", "")
-                module_instance_name = instance["name"].replace(
-                    '"', '').replace(" ", "_").replace(".", "_").replace("/", "_").replace("(", "_").replace(")", "_").replace("*", "_").replace("@", "_").replace("#", "_").replace("{", "_").replace("}", "_")
-                module_instance_name = f'{instance["type"]}-{module_instance_name}'
-                if instance["add_id_hash_to_name"]:
-                    module_instance_name = f'{module_instance_name}_{instance["id_hash"]}'
-
+                module_instance_name = instance["module_instance_name"]
                 name_value = ""
                 name_field = ""
 
@@ -958,64 +950,65 @@ class HCL:
                             f'module "{module_instance_name}" {{\n')
                         file.write(f'source  = "{instance["module"]}"\n')
                         # file.write(f'version = "{instance["version"]}"\n') # TO REMOVE COMMENT
-                        if instance["full_dump"]:
-                            file.write(instance["full_dump"]['attributes'])
-                        else:
-                            for index, value in instance["attributes"].items():
+                        for index, value in instance["attributes"].items():
+                            try:
+                                # if index in instance["joined_fields"]:
+                                #     # print("======")
+                                #     # print("index", index)
+                                #     # joined_path = instance["joined_fields"][index].get('path')
+                                #     joined_type = instance["joined_fields"][index].get('type')
+                                #     joined_output_field = instance["joined_fields"][index].get('output_field', "")
+                                #     joined_sub_fields = instance["joined_fields"][index].get('sub_fields', {"null":{}})
+                                #     for joined_sub_field, data in joined_sub_fields.items():                                        
+                                #         if joined_type == "string":
+                                #             joined_value = self.get_value_from_field_name(value, "")
+                                #             if joined_value in ids_name_map:
+                                #                 joined_module = "module."+ids_name_map[joined_value]+"."+joined_output_field
+                                #                 value = value.replace('"'+joined_value+'"', joined_module)
+                                #         elif joined_type == "map":
+                                #             if "output_field" in data:
+                                #                 joined_output_field = data["output_field"]
+                                #             joined_value = self.get_value_from_field_name(value, joined_sub_field)
+                                #             print("joined_value==================", joined_value)
+                                #             print("joined_sub_field: ", joined_sub_field)
+                                #             print("value: ", value)
+                                #             if joined_value in ids_name_map:
+                                #                 joined_module = "module."+ids_name_map[joined_value]+"."+joined_output_field
+                                #                 value = value.replace('"'+joined_value+'"', joined_module)
+                                #         elif joined_type == "list":
+                                #             if "output_field" in data:
+                                #                 joined_output_field = data["output_field"]                                            
+                                #             joined_values = self.get_value_from_field_name(value, joined_sub_field)
+                                #             for joined_value in joined_values:
+                                #                 if joined_value in ids_name_map:
+                                #                     joined_module = "module."+ids_name_map[joined_value]+"."+joined_output_field
+                                #                     value = value.replace('"'+joined_value+'"', joined_module)
+
                                 try:
-                                    if instance["replace_name"] and "<<EOF" not in value:
-                                        value = re.sub(
-                                            r'\"' + re.escape(name_value) + r'\"', "local." + name_field, value)
+                                    if index in instance["joined_fields"]:
+                                        joined_sub_fields = instance["joined_fields"][index].get('sub_fields', [])
+                                        # print('joined_sub_fields', joined_sub_fields)
+                                        value_json = json.loads(value)
+                                        value_items=self.collect_json_values(value_json, index)
+                                        # print('value_items', value_items)
+                                        for value_item_dict in value_items:
+                                            for index_item, value_item in value_item_dict.items():
+                                                if index_item in joined_sub_fields:
+                                                    if value_item in ids_name_map:
+                                                        if module_instance_name != ids_name_map[value_item]["module"]:
+                                                            value_module = "module."+ids_name_map[value_item]["module"]+"."+ids_name_map[value_item]["key"]
+                                                            value = value.replace('"'+value_item+'"', value_module)
+                                except json.JSONDecodeError:
+                                    pass
+                                
+                                value=self.replace_hcl_values(instance, value, name_value, name_field, aws_account_id, aws_region)
 
-                                    if instance["replace_name"]:
-                                        def replace_value(match):
-                                            prefix = match.group(1) or ''
-                                            suffix = match.group(
-                                                2) if match.group(2) else ''
-                                            if prefix.endswith('$'):
-                                                # Further check if it fits the pattern like '"key": "$'
-                                                if re.search(r'"\w+":\s*"\$$', prefix):
-                                                    # Extract 'key' from the prefix
-                                                    key = re.search(r'"\w+"', prefix).group()
-                                                    # Return the formatted string with the key and the suffix
-                                                    return f'    {key}: format("$%s{suffix}", local.{name_field})'
-                                                else:
-                                                    # If it doesn't fit the '"key": "$' pattern, return the original format
-                                                    return f'format("{prefix}%s{suffix}", local.{name_field})'
-                                            elif prefix:
-                                                if '"' in prefix:
-                                                    return f'{prefix}${{local.{name_field}}}{suffix}"'
-                                                else:
-                                                    return f'"{prefix}${{local.{name_field}}}{suffix}"'
-                                            else:
-                                                return f'"${{local.{name_field}}}{suffix}"'
+                            except Exception as e:
+                                print(f"Error processing index {index}: {e}")
+                                print(value)
 
-                                        pattern = r'"?(.*\$?)' + \
-                                            re.escape(name_value) + r'([^"]*)"?'
-                                        
-                                        value = re.sub(
-                                            pattern, replace_value, value)
-                                        
-                                        value = value.replace('#PUT_SCAPED_QUOTE_HERE#', '\"' )
-
-                                    if aws_account_id:
-                                        value = re.sub(r'\b' + aws_account_id +
-                                                    r'\b', "${local.aws_account_id}", value)
-                                    if aws_region:
-                                        value = re.sub(
-                                            r'\b(' + aws_region + r')(?=[a-z]?\b)', "${local.aws_region}", value)
-                                        aws_partition = 'aws-us-gov' if 'gov' in aws_region else 'aws'
-                                        value = re.sub(
-                                            r'\barn:' + aws_partition + r':\b', "arn:${local.aws_partition}:", value)
-
-                                except Exception as e:
-                                    print(f"Error processing index {index}: {e}")
-                                    print(value)
-
-
-                                file.write(f'{index} = {value}\n')
+                            file.write(f'{index} = {value}\n')
                         file.write('}\n')
-
         for key, values in subfolders.items():
             terragrunt_path = os.path.join(key, "terragrunt.hcl")
 
@@ -1035,11 +1028,7 @@ class HCL:
                         file.write('}\n')
 
         for instance in instances:
-            module_instance_name = instance["name"].replace(
-                '"', '').replace(" ", "_").replace(".", "_").replace("/", "_").replace("(", "_").replace(")", "_").replace("*", "_").replace("@", "_").replace("#", "_").replace("{", "_").replace("}", "_")
-            module_instance_name = f'{instance["type"]}-{module_instance_name}'
-            if instance["add_id_hash_to_name"]:
-                module_instance_name = f'{module_instance_name}_{instance["id_hash"]}'
+            module_instance_name = instance["module_instance_name"]
 
             for ftstack in instance.get("ftstack_list", [""]):
                 base_path = os.path.join(ftstack,

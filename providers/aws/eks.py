@@ -2,6 +2,7 @@ import os
 from utils.hcl import HCL
 from providers.aws.iam_role import IAM_ROLE
 from providers.aws.kms import KMS
+from providers.aws.security_group import SECURITY_GROUP
 
 class EKS:
     def __init__(self, eks_client, logs_client, ec2_client, iam_client, autoscaling_client, kms_client, script_dir, provider_name, schema_data, region, s3Bucket,
@@ -29,6 +30,7 @@ class EKS:
 
         self.iam_role_instance = IAM_ROLE(iam_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
         self.kms_instance = KMS(kms_client, iam_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
+        self.security_group_instance = SECURITY_GROUP(ec2_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
 
     def get_field_from_attrs(self, attributes, arg):
         keys = arg.split(".")
@@ -140,8 +142,39 @@ class EKS:
 
         result = {self.node_group_name: {}}
         result[self.node_group_name]['use_name_prefix'] = use_name_prefix
-        result[self.node_group_name]['subnet_ids'] = attributes.get(
+
+
+
+        subnet_ids = attributes.get(
             "subnet_ids")
+        
+        subnet_names = []
+        for subnet_id in subnet_ids:
+            response = self.ec2_client.describe_subnets(SubnetIds=[subnet_id])
+
+            # Check if 'Subnets' key exists and it's not empty
+            if not response or 'Subnets' not in response or not response['Subnets']:
+                print(
+                    f"No subnet information found for Subnet ID: {subnet_id}")
+                continue
+
+            # Extract the 'Tags' key safely using get
+            subnet_tags = response['Subnets'][0].get('Tags', [])
+
+            # Extract the subnet name from the tags
+            subnet_name = next(
+                (tag['Value'] for tag in subnet_tags if tag['Key'] == 'Name'), None)
+
+            if subnet_name:
+                subnet_names.append(subnet_name)
+            else:
+                print(f"No 'Name' tag found for Subnet ID: {subnet_id}")
+
+        if subnet_names:
+            result[self.node_group_name]['subnet_names'] = subnet_names
+        else:
+            result[self.node_group_name]['subnet_ids'] = subnet_ids
+        
         scaling_config = attributes.get("scaling_config")
         if scaling_config:
             result[self.node_group_name]['min_size'] = scaling_config[0].get("min_size")
@@ -375,6 +408,68 @@ class EKS:
 
     def get_node_group_name(self, attributes):
         return self.node_group_name
+    
+    def get_subnet_names(self, attributes, arg):
+        subnet_ids = self.get_field_from_attrs(
+            attributes, 'vpc_config.subnet_ids')
+        subnet_names = []
+        for subnet_id in subnet_ids:
+            response = self.ec2_client.describe_subnets(SubnetIds=[subnet_id])
+
+            # Check if 'Subnets' key exists and it's not empty
+            if not response or 'Subnets' not in response or not response['Subnets']:
+                print(
+                    f"No subnet information found for Subnet ID: {subnet_id}")
+                continue
+
+            # Extract the 'Tags' key safely using get
+            subnet_tags = response['Subnets'][0].get('Tags', [])
+
+            # Extract the subnet name from the tags
+            subnet_name = next(
+                (tag['Value'] for tag in subnet_tags if tag['Key'] == 'Name'), None)
+
+            if subnet_name:
+                subnet_names.append(subnet_name)
+            else:
+                print(f"No 'Name' tag found for Subnet ID: {subnet_id}")
+
+        return subnet_names
+
+    def get_subnet_ids(self, attributes, arg):
+        subnet_names = self.get_subnet_names(attributes, arg)
+        if subnet_names:
+            return ""
+        else:
+            return self.get_field_from_attrs(attributes, 'vpc_config.subnet_ids')
+        
+    def get_vpc_name_eks(self, attributes):
+        vpc_id = self.get_field_from_attrs(
+            attributes, 'vpc_config.vpc_id')
+        response = self.ec2_client.describe_vpcs(VpcIds=[vpc_id])
+
+        if not response or 'Vpcs' not in response or not response['Vpcs']:
+            # Handle this case as required, for example:
+            print(f"No VPC information found for VPC ID: {vpc_id}")
+            return None
+
+        vpc_tags = response['Vpcs'][0].get('Tags', [])
+        vpc_name = next((tag['Value']
+                        for tag in vpc_tags if tag['Key'] == 'Name'), None)
+
+        if vpc_name is None:
+            print(f"No 'Name' tag found for VPC ID: {vpc_id}")
+
+        return vpc_name
+
+    def get_vpc_id_eks(self, attributes):
+        vpc_name = self.get_vpc_name_eks(attributes)
+        if vpc_name is None:
+            return  self.get_field_from_attrs(
+            attributes, 'vpc_config.vpc_id')
+        else:
+            return ""
+
 
     def eks(self):
         self.hcl.prepare_folder(os.path.join("generated"))
@@ -397,6 +492,10 @@ class EKS:
             'join_node_group_autoscaling_schedule': self.join_node_group_autoscaling_schedule,
             'build_node_group_autoscaling_schedules': self.build_node_group_autoscaling_schedules,
             'get_node_group_name': self.get_node_group_name,
+            'get_subnet_names': self.get_subnet_names,
+            'get_subnet_ids': self.get_subnet_ids,
+            'get_vpc_name_eks': self.get_vpc_name_eks,
+            'get_vpc_id_eks': self.get_vpc_id_eks,
         }
 
         self.hcl.refresh_state()
@@ -431,13 +530,22 @@ class EKS:
                 resource_name, cluster_name.replace("-", "_"), attributes)
             
             self.hcl.add_stack(resource_name, id, ftstack)
+
+            # Call aws_iam_role for the cluster's associated IAM role
+            role_name = cluster["roleArn"].split('/')[-1]
+            self.iam_role_instance.aws_iam_role(role_name, ftstack)
+
+            #security_groups
+            security_group_ids = cluster["resourcesVpcConfig"]["securityGroupIds"]
+            for security_group_id in security_group_ids:
+                self.security_group_instance.aws_security_group(security_group_id, ftstack)
             
             #kms key
             if 'encryptionConfig' in cluster:
                 self.kms_instance.aws_kms_key(cluster['encryptionConfig'][0]['provider']['keyArn'], ftstack)
 
             # Call aws_eks_addon for each cluster
-            self.aws_eks_addon(cluster_name)
+            self.aws_eks_addon(cluster_name, ftstack)
 
             # Call aws_eks_identity_provider_config for each cluster
             self.aws_eks_identity_provider_config(cluster_name)
@@ -459,7 +567,7 @@ class EKS:
             self.aws_eks_node_group(cluster_name, ftstack)
 
 
-    def aws_eks_addon(self, cluster_name):
+    def aws_eks_addon(self, cluster_name, ftstack=None):
         resource_name = 'aws_eks_addon'
         print(f"Processing EKS Add-ons for Cluster: {cluster_name}...")
 
@@ -481,6 +589,9 @@ class EKS:
             self.hcl.process_resource(
                 resource_name, f"{cluster_name}-{addon_name}".replace("-", "_"), attributes)
             
+            service_account_role_arn = addon.get("serviceAccountRoleArn", "")
+            if service_account_role_arn:
+                self.iam_role_instance.aws_iam_role(service_account_role_arn.split('/')[-1], ftstack)
 
     def aws_iam_openid_connect_provider(self, cluster_name):
         print(
@@ -672,7 +783,7 @@ class EKS:
 
             # If the node group has a launch template, process it
             if 'launchTemplate' in node_group and 'id' in node_group['launchTemplate']:
-                self.aws_launch_template(node_group['launchTemplate']['id'])
+                self.aws_launch_template(node_group['launchTemplate']['id'], ftstack)
 
             # Process IAM role associated with the EKS node group
             if 'nodeRole' in node_group:
@@ -683,32 +794,51 @@ class EKS:
             for asg in node_group.get('resources', {}).get('autoScalingGroups', []):
                 self.aws_autoscaling_schedule(asg['name'])
 
-    def aws_launch_template(self, launch_template_id):
+    def aws_launch_template(self, launch_template_id, ftstack):
         print("Processing AWS Launch Template...")
 
-        # Describe the launch template using the provided ID
-        response = self.ec2_client.describe_launch_templates(
-            LaunchTemplateIds=[launch_template_id])
+        # Describe the latest version of the launch template using the provided ID
+        response = self.ec2_client.describe_launch_template_versions(
+            LaunchTemplateId=launch_template_id,
+            Versions=['$Latest']
+        )
 
-        # Check if we have the launch template in the response
-        if 'LaunchTemplates' not in response or len(response['LaunchTemplates']) == 0:
+        # Check if we have the launch template versions in the response
+        if 'LaunchTemplateVersions' not in response or not response['LaunchTemplateVersions']:
             print(f"Launch template with ID '{launch_template_id}' not found!")
             return
 
-        launch_template = response['LaunchTemplates'][0]
+        latest_version = response['LaunchTemplateVersions'][0]
+        launch_template_data = latest_version['LaunchTemplateData']
 
-        print(
-            f"  Processing Launch Template: {launch_template['LaunchTemplateName']} with ID: {launch_template_id}")
+        print(f"  Processing Launch Template: {latest_version['LaunchTemplateName']} with ID: {launch_template_id}")
 
         attributes = {
             "id": launch_template_id,
-            "name": launch_template['LaunchTemplateName'],
-            "version": launch_template['DefaultVersionNumber'],
+            "name": latest_version['LaunchTemplateName'],
+            "version": latest_version['VersionNumber'],
             # You can add other attributes from the launch_template as needed
         }
 
         self.hcl.process_resource(
-            "aws_launch_template", f"{launch_template['LaunchTemplateName']}".replace("-", "_"), attributes)
+            "aws_launch_template", f"{latest_version['LaunchTemplateName']}".replace("-", "_"), attributes)
+        
+        #security_groups
+        security_group_ids = launch_template_data.get("SecurityGroupIds", [])
+        print(security_group_ids)
+        for security_group_id in security_group_ids:
+            self.security_group_instance.aws_security_group(security_group_id, ftstack)
+        
+        # Process KMS Key for EBS Volume
+        if 'BlockDeviceMappings' in launch_template_data:
+            for mapping in launch_template_data['BlockDeviceMappings']:
+                if 'Ebs' in mapping and 'KmsKeyId' in mapping['Ebs']:
+                    kms_key_id = mapping['Ebs']['KmsKeyId']
+                    print(f"Found KMS Key ID for EBS: {kms_key_id}")
+                    self.kms_instance.aws_kms_key(kms_key_id, ftstack)
+                    break  # Assuming we need the first KMS Key ID found
+        else:
+            print("No Block Device Mappings with EBS found in the Launch Template.")
 
     def aws_iam_role(self, role_arn):
         print(f"Processing IAM Role: {role_arn}...")
