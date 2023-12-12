@@ -24,7 +24,7 @@ class SECURITY_GROUP:
         else:
             self.hcl = hcl
 
-        self.additional_data = {}
+        # self.hcl.additional_data = {}
 
     def get_vpc_name(self, vpc_id):
         response = self.ec2_client.describe_vpcs(VpcIds=[vpc_id])
@@ -47,7 +47,7 @@ class SECURITY_GROUP:
         self.hcl.refresh_state()
         functions = {}
         self.hcl.module_hcl_code("terraform.tfstate", os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), "security_group.yaml"), functions, self.region, self.aws_account_id, {}, self.additional_data)
+            os.path.dirname(os.path.abspath(__file__)), "security_group.yaml"), functions, self.region, self.aws_account_id, {}, {})
 
         self.json_plan = self.hcl.json_plan
 
@@ -105,11 +105,13 @@ class SECURITY_GROUP:
             self.aws_vpc_security_group_egress_rule(security_group["GroupId"])
 
             vpc_name = self.get_vpc_name(vpc_id)
-            self.additional_data[vpc_id] = {
+            if 'vpc' not in self.hcl.additional_data:
+                self.hcl.additional_data['vpc'] = {}
+
+            self.hcl.additional_data['vpc'][vpc_id] = {
                 "name": vpc_name,
             }
 
-                
     def aws_vpc_security_group_ingress_rule(self, security_group_id):
         # Fetch security group rules
         response = self.ec2_client.describe_security_group_rules(

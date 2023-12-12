@@ -825,7 +825,6 @@ class EKS:
         
         #security_groups
         security_group_ids = launch_template_data.get("SecurityGroupIds", [])
-        print(security_group_ids)
         for security_group_id in security_group_ids:
             self.security_group_instance.aws_security_group(security_group_id, ftstack)
         

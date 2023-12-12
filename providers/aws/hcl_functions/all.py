@@ -59,15 +59,15 @@ def get_vpc_id(attributes, arg=None, additional_data=None):
     vpc_name = get_vpc_name(attributes, arg, additional_data)
     if vpc_name is None:
         return attributes.get(arg)
-    else:
-        return ""    
+    return ""
 
 def get_vpc_name(attributes, arg=None, additional_data=None):
     vpc_name = None
     vpc_id = attributes.get(arg)
-    vpc_data = additional_data.get(vpc_id)
-    if vpc_data:
-        vpc_name = vpc_data.get("name")
+    if 'vpc' in additional_data:
+        vpc_data = additional_data['vpc'].get(vpc_id)
+        if vpc_data:
+            vpc_name = vpc_data.get("name")
     return vpc_name
 
 #### SECURITY GROUP ####

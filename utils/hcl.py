@@ -36,6 +36,7 @@ class HCL:
         self.functions_module = importlib.import_module(functions_module_name)
 
         self.ftstacks = {}
+        self.additional_data = {}
 
 
     def search_state_file(self, resource_type, resource_name, resource_id):
@@ -297,7 +298,7 @@ class HCL:
 
         return None
 
-    def match_fields(self, parent_attributes, child_attributes, join_field, functions, additional_data):
+    def match_fields(self, parent_attributes, child_attributes, join_field, functions):
         # print('join_field', join_field)
         if isinstance(join_field, tuple):
             parent_field, value_dict = join_field
@@ -319,7 +320,7 @@ class HCL:
                     return True
             elif not func and func_name:
                 func = getattr(self.functions_module, func_name)
-                child_value = func(child_attributes, arg, additional_data)
+                child_value = func(child_attributes, arg, self.additional_data)
                 if self.get_value_from_tfstate(parent_attributes, parent_field) == child_value:
                     return True
 
@@ -422,7 +423,7 @@ class HCL:
                 #look in functions/all.py shared functions file
                 elif not func and func_name:
                     func = getattr(self.functions_module, func_name)
-                    skip_if = func(resource_attributes, arg, additional_data)
+                    skip_if = func(resource_attributes, arg, self.additional_data)
                     
             if skip_if:
                 print(
@@ -445,7 +446,7 @@ class HCL:
                         target_resource_name = func(resource_attributes)
                 elif not func and func_name:
                     func = getattr(self.functions_module, func_name)
-                    target_resource_name = func(resource_attributes, arg, additional_data)
+                    target_resource_name = func(resource_attributes, arg, self.additional_data)
 
             target_submodule = resource_config.get('target_submodule', "")
             root_attribute = resource_config.get('root_attribute', "")
@@ -501,7 +502,7 @@ class HCL:
 
                     elif not func and func_name:
                         func = getattr(self.functions_module, func_name)
-                        value = func(resource_attributes, arg, additional_data)
+                        value = func(resource_attributes, arg, self.additional_data)
 
                 elif state_field:
                     value = self.get_value_from_tfstate(
@@ -580,7 +581,7 @@ class HCL:
                                 first_index_value = func(resource_attributes)
                         elif not func and func_name:
                             func = getattr(self.functions_module, func_name)
-                            first_index_value = func(resource_attributes, arg, additional_data)
+                            first_index_value = func(resource_attributes, arg, self.additional_data)
 
                         else:
                             field_name = first_index.get('field')
@@ -607,7 +608,7 @@ class HCL:
                                 second_index_value = func(resource_attributes)
                         elif not func and func_name:
                             func = getattr(self.functions_module, func_name)
-                            second_index_value = func(resource_attributes, arg, additional_data)
+                            second_index_value = func(resource_attributes, arg, self.additional_data)
 
                         else:
                             field_name = second_index.get('field')
@@ -630,7 +631,7 @@ class HCL:
                             import_id_value = func(resource_attributes)
                     elif not func and func_name:
                         func = getattr(self.functions_module, func_name)
-                        import_id_value = func(resource_attributes, arg, additional_data)
+                        import_id_value = func(resource_attributes, arg, self.additional_data)
 
                     else:
                         field_name = import_id.get('field')
@@ -668,7 +669,7 @@ class HCL:
                     join_fields = [
                         item for item in child_config.get('join', {}).items()]
                     match = all(self.match_fields(
-                        resource_attributes, child_instance['instances'][0]['attributes'], join_field, functions, additional_data) for join_field in join_fields)
+                        resource_attributes, child_instance['instances'][0]['attributes'], join_field, functions) for join_field in join_fields)
                     if match:
                         child_attributes, child_resources = process_resource(
                             child_instance, resources, {child_type: child_config}, root_attribute_key_value)
@@ -869,7 +870,7 @@ class HCL:
             if resource['type'] in config:  # Check if resource is root in the config
                 resource_config = config[resource['type']]
                 instance = self.process_resource_module(
-                    resource, resources, config, functions, additional_data)
+                    resource, resources, config, functions, self.additional_data)
                 if not instance:
                     continue
                 instance['module'] = resource_config.get('terraform_module')
