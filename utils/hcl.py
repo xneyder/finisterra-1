@@ -870,9 +870,15 @@ class HCL:
         return value
 
 
-    def module_hcl_code(self, terraform_state_file, config_file, functions={}, aws_region="", aws_account_id="", to_remove = {}, additional_data={}):            
-        with open(config_file, 'r') as f:
-            config = yaml.safe_load(f)
+    def module_hcl_code(self, terraform_state_file, config_file_list, functions={}, aws_region="", aws_account_id="", to_remove = {}, additional_data={}):            
+        if not isinstance(config_file_list, list):
+            config_file_list = [config_file_list]
+
+        config = {}
+        for config_file in config_file_list:
+            with open(config_file, 'r') as f:
+                current_config = yaml.safe_load(f)
+                config.update(current_config)
 
         with open(terraform_state_file, 'r') as f:
             tfstate = json.load(f)

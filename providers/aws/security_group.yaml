@@ -7,6 +7,13 @@ aws_security_group:
   add_id_hash_to_name: true
   defaults:
     create_before_destroy: false
+  joined_fields:
+    ingress_rules:
+      sub_fields:
+        - referenced_security_group_id
+    egress_rules:
+      sub_fields:
+        - referenced_security_group_id
   fields:
     security_group_name:
       field: name

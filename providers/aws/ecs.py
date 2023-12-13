@@ -440,9 +440,10 @@ class ECS:
             'get_policy_attachment_index': self.get_policy_attachment_index,
             'get_network_field': self.get_network_field,
         }
-
-        self.hcl.module_hcl_code("terraform.tfstate", os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), "ecs.yaml"), functions, self.region, self.aws_account_id, {}, {})
+        config_file_list = ["ecs.yaml","iam_role.yaml"]
+        for index,config_file in enumerate(config_file_list):
+            config_file_list[index] = os.path.join(os.path.dirname(os.path.abspath(__file__)),config_file )
+        self.hcl.module_hcl_code("terraform.tfstate",config_file_list, functions, self.region, self.aws_account_id, {}, {})
 
         # self.hcl.generate_hcl_file()
         self.json_plan = self.hcl.json_plan

@@ -596,9 +596,10 @@ class VPC:
 
         }
         self.hcl.refresh_state()
-
-        self.hcl.module_hcl_code("terraform.tfstate", os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), "vpc.yaml"), functions, self.region, self.aws_account_id, {}, {})
+        config_file_list = ["vpc.yaml","iam_role.yaml"]
+        for index,config_file in enumerate(config_file_list):
+            config_file_list[index] = os.path.join(os.path.dirname(os.path.abspath(__file__)),config_file )
+        self.hcl.module_hcl_code("terraform.tfstate",config_file_list, functions, self.region, self.aws_account_id, {}, {})
 
         # exit()
 

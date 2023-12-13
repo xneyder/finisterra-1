@@ -499,8 +499,10 @@ class EKS:
         }
 
         self.hcl.refresh_state()
-        self.hcl.module_hcl_code("terraform.tfstate",
-                                 os.path.join(os.path.dirname(os.path.abspath(__file__)), "eks.yaml"), functions, self.region, self.aws_account_id, {}, {})
+        config_file_list = ["eks.yaml", "security_group.yaml", "iam_role.yaml", "kms.yaml"]
+        for index,config_file in enumerate(config_file_list):
+            config_file_list[index] = os.path.join(os.path.dirname(os.path.abspath(__file__)),config_file )
+        self.hcl.module_hcl_code("terraform.tfstate",config_file_list, functions, self.region, self.aws_account_id, {}, {})
         self.json_plan = self.hcl.json_plan
 
     def aws_eks_cluster(self):
