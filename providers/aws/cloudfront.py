@@ -332,7 +332,7 @@ class CloudFront:
                         cache_policy_id = cache_behavior.get('CachePolicyId')
                         if cache_policy_id:
                             self.aws_cloudfront_cache_policy(cache_policy_id)
-                            self.hcl.add_stack("aws_cloudfront_cache_policy", default_cache_policy_id, ftstack)
+                            self.hcl.add_stack("aws_cloudfront_cache_policy", cache_policy_id, ftstack)
 
                     # Process default cache behavior if it exists
                     default_cache_behavior = dist_config.get('DefaultCacheBehavior')

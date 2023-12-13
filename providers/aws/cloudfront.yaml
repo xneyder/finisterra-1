@@ -10,6 +10,11 @@ aws_cloudfront_distribution:
     origin:
       sub_fields:
         - origin_access_identity
+    default_cache_behavior:
+      sub_fields:
+        - cache_policy_id
+        - origin_request_policy_id
+        - response_headers_policy_id
   fields:
     enabled:
       field: enabled
@@ -119,10 +124,12 @@ aws_cloudfront_cache_policy:
       field: min_ttl
       type: number
     enable_accept_encoding_brotli:
-      field: enable_accept_encoding_brotli
+      function: get_field_from_attrs
+      arg: parameters_in_cache_key_and_forwarded_to_origin.enable_accept_encoding_brotli
       type: bool
     enable_accept_encoding_gzip:
-      field: enable_accept_encoding_gzip
+      function: get_field_from_attrs
+      arg: parameters_in_cache_key_and_forwarded_to_originenable_accept_encoding_gzip
       type: bool
     cookie_behavior:
       function: get_field_from_attrs
