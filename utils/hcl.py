@@ -798,6 +798,21 @@ class HCL:
         collect_values(value, parent_key)
         return collected_values
     
+    # def clean_json_values(self, value):
+    #     if isinstance(value, dict):
+    #         keys_to_delete = []
+    #         for key, val in value.items():
+    #             if val in ["", None, [], {}]:
+    #                 keys_to_delete.append(key)
+    #             else:
+    #                 value[key] = self.clean_json_values(val)  # Recurse into nested dictionaries or lists
+    #         for key in keys_to_delete:
+    #             del value[key]
+    #     elif isinstance(value, list):
+    #         value[:] = [self.clean_json_values(item) for item in value if item not in ["", None, [], {}]]
+    #         value[:] = [item for item in value if item not in ["", None, [], {}]]  # Remove unwanted items after recursion
+    #     return value
+
     def replace_hcl_values(self, instance, value, name_value, name_field, aws_account_id, aws_region):
         try:
             # Split the value into lines
@@ -952,46 +967,19 @@ class HCL:
                         file.write(f'source  = "{instance["module"]}"\n')
                         # file.write(f'version = "{instance["version"]}"\n') # TO REMOVE COMMENT
                         for index, value in instance["attributes"].items():
+                            # try:
+                            #     value_json = json.loads(value)
+                            #     cleeaned_value=self.clean_json_values(value_json)
+                            #     print('cleaned_value', cleeaned_value)
+                            #     value = json.dumps(cleeaned_value, indent=2)
+                            # except json.JSONDecodeError:
+                            #         pass
                             try:
-                                # if index in instance["joined_fields"]:
-                                #     # print("======")
-                                #     # print("index", index)
-                                #     # joined_path = instance["joined_fields"][index].get('path')
-                                #     joined_type = instance["joined_fields"][index].get('type')
-                                #     joined_output_field = instance["joined_fields"][index].get('output_field', "")
-                                #     joined_sub_fields = instance["joined_fields"][index].get('sub_fields', {"null":{}})
-                                #     for joined_sub_field, data in joined_sub_fields.items():                                        
-                                #         if joined_type == "string":
-                                #             joined_value = self.get_value_from_field_name(value, "")
-                                #             if joined_value in ids_name_map:
-                                #                 joined_module = "module."+ids_name_map[joined_value]+"."+joined_output_field
-                                #                 value = value.replace('"'+joined_value+'"', joined_module)
-                                #         elif joined_type == "map":
-                                #             if "output_field" in data:
-                                #                 joined_output_field = data["output_field"]
-                                #             joined_value = self.get_value_from_field_name(value, joined_sub_field)
-                                #             print("joined_value==================", joined_value)
-                                #             print("joined_sub_field: ", joined_sub_field)
-                                #             print("value: ", value)
-                                #             if joined_value in ids_name_map:
-                                #                 joined_module = "module."+ids_name_map[joined_value]+"."+joined_output_field
-                                #                 value = value.replace('"'+joined_value+'"', joined_module)
-                                #         elif joined_type == "list":
-                                #             if "output_field" in data:
-                                #                 joined_output_field = data["output_field"]                                            
-                                #             joined_values = self.get_value_from_field_name(value, joined_sub_field)
-                                #             for joined_value in joined_values:
-                                #                 if joined_value in ids_name_map:
-                                #                     joined_module = "module."+ids_name_map[joined_value]+"."+joined_output_field
-                                #                     value = value.replace('"'+joined_value+'"', joined_module)
-
                                 try:
                                     if index in instance["joined_fields"]:
                                         joined_sub_fields = instance["joined_fields"][index].get('sub_fields', [])
-                                        # print('joined_sub_fields', joined_sub_fields)
                                         value_json = json.loads(value)
                                         value_items=self.collect_json_values(value_json, index)
-                                        # print('value_items', value_items)
                                         for value_item_dict in value_items:
                                             for index_item, value_item in value_item_dict.items():
                                                 if index_item in joined_sub_fields:
@@ -1001,7 +989,8 @@ class HCL:
                                                             value = value.replace('"'+value_item+'"', value_module)
                                 except json.JSONDecodeError:
                                     pass
-                                
+
+
                                 value=self.replace_hcl_values(instance, value, name_value, name_field, aws_account_id, aws_region)
 
                             except Exception as e:
@@ -1010,6 +999,7 @@ class HCL:
 
                             file.write(f'{index} = {value}\n')
                         file.write('}\n')
+
         for key, values in subfolders.items():
             terragrunt_path = os.path.join(key, "terragrunt.hcl")
 
