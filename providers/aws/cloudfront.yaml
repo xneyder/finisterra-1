@@ -6,6 +6,10 @@ aws_cloudfront_distribution:
   # path: "cloudfront_distribution"
   # dependencies:
   #   - "../origin_access_identity"
+  joined_fields:
+    origin:
+      sub_fields:
+        - origin_access_identity
   fields:
     enabled:
       field: enabled
@@ -87,8 +91,60 @@ aws_cloudfront_origin_access_identity:
   terraform_module_version: "6.1.0"
   target_resource_name: this
   # path: "origin_access_identity"
-  second_index:
-    field: id
+  # second_index:
+  #   field: id
   fields:
-    origin_access_identities:
-      function: build_origin_access_identities
+    comment:
+      field: comment
+      type: string
+
+aws_cloudfront_cache_policy:
+  terraform_module: "github.com/finisterra-io/terraform-aws-cloudfront//modules/cache_policy?ref=main"
+  terraform_module_version: "6.1.0"
+  target_resource_name: this
+  fields:
+    name:
+      field: name
+      type: string
+    comment:
+      field: comment
+      type: string
+    default_ttl:
+      field: default_ttl
+      type: number
+    max_ttl:
+      field: max_ttl
+      type: number
+    min_ttl:
+      field: min_ttl
+      type: number
+    enable_accept_encoding_brotli:
+      field: enable_accept_encoding_brotli
+      type: bool
+    enable_accept_encoding_gzip:
+      field: enable_accept_encoding_gzip
+      type: bool
+    cookie_behavior:
+      function: get_field_from_attrs
+      arg: parameters_in_cache_key_and_forwarded_to_origin.cookies_config.cookie_behavior
+      type: string
+    cookies:
+      function: get_field_from_attrs
+      arg: parameters_in_cache_key_and_forwarded_to_origin.cookies_config.cookies.items
+      type: list
+    header_behavior:
+      function: get_field_from_attrs
+      arg: parameters_in_cache_key_and_forwarded_to_origin.headers_config.header_behavior
+      type: string
+    headers:
+      function: get_field_from_attrs
+      arg: parameters_in_cache_key_and_forwarded_to_origin.headers_config.headers.items
+      type: list
+    query_string_behavior:
+      function: get_field_from_attrs
+      arg: parameters_in_cache_key_and_forwarded_to_origin.query_strings_config.query_string_behavior
+      type: string
+    query_strings:
+      function: get_field_from_attrs
+      arg: parameters_in_cache_key_and_forwarded_to_origin.query_strings_config.query_strings.items
+      type: list

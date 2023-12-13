@@ -40,6 +40,8 @@ class HCL:
 
         self.functions = {}
 
+        self.id_key_list = ["id", "arn"]
+
 
     def search_state_file(self, resource_type, resource_name, resource_id):
         # Load the state file
@@ -732,7 +734,7 @@ class HCL:
             if add_id_hash_to_name:
                 module_instance_name = f'{module_instance_name}_{id_hash}'
 
-            return {
+            result = {
                 "type": resource['type'],
                 "name": resoource_name,
                 "replace_name": replace_name,
@@ -742,10 +744,14 @@ class HCL:
                 "add_id_hash_to_name": add_id_hash_to_name,
                 "id_hash": id_hash,
                 'module_instance_name': module_instance_name,
-                'id': resource['instances'][0]['attributes'].get('id', ''),
-                'arn': resource['instances'][0]['attributes'].get('arn', ''),
                 'joined_fields': joined_fields,
             }
+
+            for id_key in self.id_key_list:
+                if id_key in resource['instances'][0]['attributes']:
+                    result[id_key] = resource['instances'][0]['attributes'][id_key]
+
+            return result
         else:
             return []
 
@@ -912,18 +918,16 @@ class HCL:
                     instances.append(instance)
 
         ids_name_map ={}
-        id_key_list = ["id", "arn"]
         for instance in instances:
             if instance["attributes"]:
                 module_instance_name = instance["module_instance_name"]
-                for id_key in id_key_list:
+                for id_key in self.id_key_list:
                     if id_key in instance:
                         id = instance[id_key]
                         if id not in ids_name_map:
                             ids_name_map[id] = {}
                         ids_name_map[id]['module']= module_instance_name
                         ids_name_map[id]['key']= id_key
-
 
         subfolders = {}
         for instance in instances:

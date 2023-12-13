@@ -30,6 +30,8 @@ class CloudFront:
         self.modules = modules
         self.hcl = HCL(self.schema_data, self.provider_name,
                        self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules)
+        
+        
         self.resource_list = {}
         self.aws_account_id = aws_account_id
         self.origin = {}
@@ -75,27 +77,27 @@ class CloudFront:
                     else:
                         transformed_origin[k] = v
 
-            if 's3_origin_config' in transformed_origin:
-                if 'origin_access_identity' in transformed_origin['s3_origin_config']:
-                    oai_path = transformed_origin['s3_origin_config']['origin_access_identity']
-                    if oai_path != '':
-                        # Extract the OAI ID
-                        oai_id = oai_path.split('/')[-1]
+            # if 's3_origin_config' in transformed_origin:
+            #     if 'origin_access_identity' in transformed_origin['s3_origin_config']:
+            #         oai_path = transformed_origin['s3_origin_config']['origin_access_identity']
+            #         if oai_path != '':
+            #             # Extract the OAI ID
+            #             oai_id = oai_path.split('/')[-1]
 
-                        # Get the OAI's comment using boto3
-                        oai_comment = None
-                        try:
-                            # print(f"Fetching OAI Comment for {oai_id}")
-                            response = self.cloudfront_client.get_cloud_front_origin_access_identity(Id=oai_id)
-                            oai_comment = response['CloudFrontOriginAccessIdentity']['CloudFrontOriginAccessIdentityConfig']['Comment']
-                        except Exception as e:
-                            print(f"Error fetching OAI Comment: {e}")
+            #             # Get the OAI's comment using boto3
+            #             oai_comment = None
+            #             try:
+            #                 # print(f"Fetching OAI Comment for {oai_id}")
+            #                 response = self.cloudfront_client.get_cloud_front_origin_access_identity(Id=oai_id)
+            #                 oai_comment = response['CloudFrontOriginAccessIdentity']['CloudFrontOriginAccessIdentityConfig']['Comment']
+            #             except Exception as e:
+            #                 print(f"Error fetching OAI Comment: {e}")
 
-                        # Set the new field with the OAI comment
-                        if oai_comment:
-                            transformed_origin['s3_origin_config']['cloudfront_access_identity'] = oai_comment
+            #             # Set the new field with the OAI comment
+            #             if oai_comment:
+            #                 transformed_origin['s3_origin_config']['cloudfront_access_identity'] = oai_comment
 
-                        del transformed_origin['s3_origin_config']['origin_access_identity']
+            #             del transformed_origin['s3_origin_config']['origin_access_identity']
 
             result[origin_key] = transformed_origin
 
@@ -263,29 +265,13 @@ class CloudFront:
         }
 
         self.hcl.refresh_state()
+        self.hcl.id_key_list.append("cloudfront_access_identity_path")
         self.hcl.module_hcl_code("terraform.tfstate",
                                  os.path.join(os.path.dirname(os.path.abspath(__file__)), "cloudfront.yaml"), functions, self.region, self.aws_account_id, {}, {})
 
         self.json_plan = self.hcl.json_plan
 
-    def aws_cloudfront_cache_policy(self):
-        print("Processing CloudFront Cache Policies...")
 
-        response = self.cloudfront_client.list_cache_policies(Type="custom")
-        if "CachePolicyList" in response and "Items" in response["CachePolicyList"]:
-            for cache_policy_summary in response["CachePolicyList"]["Items"]:
-                cache_policy = cache_policy_summary["CachePolicy"]
-                cache_policy_id = cache_policy["Id"]
-                print(
-                    f"  Processing CloudFront Cache Policy: {cache_policy_id}")
-
-                attributes = {
-                    "id": cache_policy_id,
-                    "name": cache_policy["CachePolicyConfig"]["Name"],
-                }
-
-                self.hcl.process_resource(
-                    "aws_cloudfront_cache_policy", cache_policy_id.replace("-", "_"), attributes)
 
     def aws_cloudfront_distribution(self):
         resource_type = "aws_cloudfront_distribution"
@@ -322,6 +308,42 @@ class CloudFront:
                             break
                 except Exception as e:
                     print("Error occurred: ", e)
+                            
+                id = distribution_id
+
+                attributes = {
+                    "id": id,
+                    "arn": distribution_summary["ARN"],
+                    "domain_name": distribution_summary["DomainName"],
+                }
+
+                self.hcl.process_resource(
+                    resource_type, distribution_id.replace("-", "_"), attributes)
+                
+                self.hcl.add_stack(resource_type, id, ftstack)
+
+                # Fetch distribution configuration
+                try:
+                    dist_config_response = self.cloudfront_client.get_distribution_config(Id=distribution_id)
+                    dist_config = dist_config_response.get('DistributionConfig', {})
+
+                    # Process cache behaviors
+                    for cache_behavior in dist_config.get('CacheBehaviors', {}).get('Items', []):
+                        cache_policy_id = cache_behavior.get('CachePolicyId')
+                        if cache_policy_id:
+                            self.aws_cloudfront_cache_policy(cache_policy_id)
+                            self.hcl.add_stack("aws_cloudfront_cache_policy", default_cache_policy_id, ftstack)
+
+                    # Process default cache behavior if it exists
+                    default_cache_behavior = dist_config.get('DefaultCacheBehavior')
+                    if default_cache_behavior and 'CachePolicyId' in default_cache_behavior:
+                        default_cache_policy_id = default_cache_behavior['CachePolicyId']
+                        self.aws_cloudfront_cache_policy(default_cache_policy_id)
+                        self.hcl.add_stack("aws_cloudfront_cache_policy", default_cache_policy_id, ftstack)
+
+                except Exception as e:
+                    print(f"Error occurred while processing distribution {distribution_id}: {e}")
+                    continue
 
                 # Retrieve identity_id
                 origins = distribution_summary.get("Origins", {}).get("Items", [])
@@ -334,21 +356,32 @@ class CloudFront:
                             identity_id = identity_id.split("/")[-1]
                             self.aws_cloudfront_origin_access_identity(identity_id)
                             self.hcl.add_stack("aws_cloudfront_origin_access_identity", identity_id, ftstack)
-                            
-                id = distribution_id
+
+                self.aws_cloudfront_monitoring_subscription(distribution_id)
+
+    def aws_cloudfront_cache_policy(self, specific_cache_policy_id):
+        print("Processing CloudFront Cache Policies...")
+
+        response = self.cloudfront_client.list_cache_policies(Type="custom")
+        if "CachePolicyList" in response and "Items" in response["CachePolicyList"]:
+            for cache_policy_summary in response["CachePolicyList"]["Items"]:
+                cache_policy = cache_policy_summary["CachePolicy"]
+                cache_policy_id = cache_policy["Id"]
+
+                # Process only the specified cache policy
+                if cache_policy_id != specific_cache_policy_id:
+                    continue
+
+                print(f"  Processing CloudFront Cache Policy: {cache_policy_id}")
 
                 attributes = {
-                    "id": id,
-                    "arn": distribution_summary["ARN"],
-                    "domain_name": distribution_summary["DomainName"],
+                    "id": cache_policy_id,
+                    "name": cache_policy["CachePolicyConfig"]["Name"],
                 }
 
                 self.hcl.process_resource(
-                    resource_type, distribution_id.replace("-", "_"), attributes)
+                    "aws_cloudfront_cache_policy", cache_policy_id.replace("-", "_"), attributes)
 
-                self.aws_cloudfront_monitoring_subscription(distribution_id)
-                self.hcl.add_stack(resource_type, id, ftstack)
-                
 
     def aws_cloudfront_field_level_encryption_config(self):
         print("Processing CloudFront Field-Level Encryption Configs...")

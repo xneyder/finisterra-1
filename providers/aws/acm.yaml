@@ -6,11 +6,6 @@ aws_acm_certificate:
   name_field: domain_name
   add_id_hash_to_name: true
   # path: "acm"
-  defaults:
-    create_certificate: true
-    validate_certificate: false
-    wait_for_validation: false
-    create_route53_records: false
   fields:
     domain_name:
       field: domain_name
