@@ -3,9 +3,11 @@ from utils.hcl import HCL
 from utils.filesystem import create_backend_file
 import json
 from providers.aws.iam_role import IAM_ROLE
+from providers.aws.s3 import S3
+from providers.aws.logs import Logs
 
 class VPC:
-    def __init__(self, ec2_client, iam_client, logs_client, script_dir, provider_name, schema_data, region, s3Bucket,
+    def __init__(self, ec2_client, iam_client, logs_client, s3_client, script_dir, provider_name, schema_data, region, s3Bucket,
                  dynamoDBTable, state_key, workspace_id, modules, aws_account_id, hcl=None):
         self.ec2_client = ec2_client
         self.iam_client = iam_client
@@ -41,6 +43,56 @@ class VPC:
         self.default_routes={}
 
         self.iam_role_instance = IAM_ROLE(iam_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
+        self.s3_instance = S3(s3_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
+        self.logs_instance = Logs(logs_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
+
+        functions = {
+            'get_field_from_attrs': self.get_field_from_attrs,
+            'is_subnet_public': self.is_subnet_public,
+            'is_subnet_private': self.is_subnet_private,
+            'to_array': self.to_array,
+            'bigger_than_zero': self.bigger_than_zero,
+            'format_ingress_rules': self.format_ingress_rules,
+            'format_egress_rules': self.format_egress_rules,
+            'format_network_acl_rules': self.format_network_acl_rules,
+            'init_fields': self.init_fields,
+            'is_network_acl_rule_egress': self.is_network_acl_rule_egress,
+            'is_network_acl_rule_ingress': self.is_network_acl_rule_ingress,
+            'build_aws_network_acls': self.build_aws_network_acls,
+            'build_aws_network_acl_rules': self.build_aws_network_acl_rules,
+            'build_aws_flow_logs': self.build_aws_flow_logs,
+            'join_aws_flow_log_iam_role_name': self.join_aws_flow_log_iam_role_name,
+            'add_public_subnet': self.add_public_subnet,
+            'add_nat_gateway': self.add_nat_gateway,
+            'add_eip': self.add_eip,
+            'add_public_route_table_association': self.add_public_route_table_association,
+            'add_public_route_table': self.add_public_route_table,
+            'get_public_route_table_association_index': self.get_public_route_table_association_index,
+            'get_public_route_table_id': self.get_public_route_table_id,
+            'add_private_subnet': self.add_private_subnet,
+            'add_private_route_table_association': self.add_private_route_table_association,
+            'add_private_route_table': self.add_private_route_table,
+            'get_private_route_table_association_index': self.get_private_route_table_association_index,
+            'get_private_route_table_id': self.get_private_route_table_id,
+            'get_nat_gateway_index': self.get_nat_gateway_index,
+            'get_eip_index': self.get_eip_index,
+            'add_nat_gateway_private_route': self.add_nat_gateway_private_route,
+            'get_nat_gateway_private_route_id': self.get_nat_gateway_private_route_id,
+            'add_network_acl': self.add_network_acl,
+            'add_network_acl_ingress_rule': self.add_network_acl_ingress_rule,
+            'add_network_acl_egress_rule': self.add_network_acl_egress_rule,
+            'get_network_acl_id': self.get_network_acl_id,
+            'get_network_acl_rule_id': self.get_network_acl_rule_id,
+            'get_dhcp_options_domain_name': self.get_dhcp_options_domain_name,
+            'default_route_table_routes': self.default_route_table_routes,
+            'get_private_route_table_association_import_id': self.get_private_route_table_association_import_id,
+            'get_aws_route_import_id': self.get_aws_route_import_id,
+            'aws_network_acl_rule_import_id': self.aws_network_acl_rule_import_id,
+            'aws_iam_role_policy_attachment_import_id': self.aws_iam_role_policy_attachment_import_id,
+            'join_igw_route_table_id': self.join_igw_route_table_id,
+
+        }
+        self.hcl.functions.update(functions)        
 
     def get_field_from_attrs(self, attributes, arg):
         keys = arg.split(".")
@@ -447,7 +499,7 @@ class VPC:
         result = {key: {}}
         for k in ['log_destination', 'log_destination_type', 'log_format',
                   'iam_role_arn', 'traffic_type', 'max_aggregation_interval',
-                  'destination_options',  'tags']:
+                  'destination_options',  'log_group_name', 'tags']:
             val = attributes.get(k)
             # if k == "log_destination" and "s3" in val:
             #     val = val.split(":")[-1]
@@ -549,57 +601,11 @@ class VPC:
 
         self.aws_vpc()
 
-        functions = {
-            'get_field_from_attrs': self.get_field_from_attrs,
-            'is_subnet_public': self.is_subnet_public,
-            'is_subnet_private': self.is_subnet_private,
-            'to_array': self.to_array,
-            'bigger_than_zero': self.bigger_than_zero,
-            'format_ingress_rules': self.format_ingress_rules,
-            'format_egress_rules': self.format_egress_rules,
-            'format_network_acl_rules': self.format_network_acl_rules,
-            'init_fields': self.init_fields,
-            'is_network_acl_rule_egress': self.is_network_acl_rule_egress,
-            'is_network_acl_rule_ingress': self.is_network_acl_rule_ingress,
-            'build_aws_network_acls': self.build_aws_network_acls,
-            'build_aws_network_acl_rules': self.build_aws_network_acl_rules,
-            'build_aws_flow_logs': self.build_aws_flow_logs,
-            'join_aws_flow_log_iam_role_name': self.join_aws_flow_log_iam_role_name,
-            'add_public_subnet': self.add_public_subnet,
-            'add_nat_gateway': self.add_nat_gateway,
-            'add_eip': self.add_eip,
-            'add_public_route_table_association': self.add_public_route_table_association,
-            'add_public_route_table': self.add_public_route_table,
-            'get_public_route_table_association_index': self.get_public_route_table_association_index,
-            'get_public_route_table_id': self.get_public_route_table_id,
-            'add_private_subnet': self.add_private_subnet,
-            'add_private_route_table_association': self.add_private_route_table_association,
-            'add_private_route_table': self.add_private_route_table,
-            'get_private_route_table_association_index': self.get_private_route_table_association_index,
-            'get_private_route_table_id': self.get_private_route_table_id,
-            'get_nat_gateway_index': self.get_nat_gateway_index,
-            'get_eip_index': self.get_eip_index,
-            'add_nat_gateway_private_route': self.add_nat_gateway_private_route,
-            'get_nat_gateway_private_route_id': self.get_nat_gateway_private_route_id,
-            'add_network_acl': self.add_network_acl,
-            'add_network_acl_ingress_rule': self.add_network_acl_ingress_rule,
-            'add_network_acl_egress_rule': self.add_network_acl_egress_rule,
-            'get_network_acl_id': self.get_network_acl_id,
-            'get_network_acl_rule_id': self.get_network_acl_rule_id,
-            'get_dhcp_options_domain_name': self.get_dhcp_options_domain_name,
-            'default_route_table_routes': self.default_route_table_routes,
-            'get_private_route_table_association_import_id': self.get_private_route_table_association_import_id,
-            'get_aws_route_import_id': self.get_aws_route_import_id,
-            'aws_network_acl_rule_import_id': self.aws_network_acl_rule_import_id,
-            'aws_iam_role_policy_attachment_import_id': self.aws_iam_role_policy_attachment_import_id,
-            'join_igw_route_table_id': self.join_igw_route_table_id,
-
-        }
         self.hcl.refresh_state()
-        config_file_list = ["vpc.yaml","iam_role.yaml"]
+        config_file_list = ["vpc.yaml","iam_role.yaml", "s3.yaml", "logs.yaml"]
         for index,config_file in enumerate(config_file_list):
             config_file_list[index] = os.path.join(os.path.dirname(os.path.abspath(__file__)),config_file )
-        self.hcl.module_hcl_code("terraform.tfstate",config_file_list, functions, self.region, self.aws_account_id, {}, {})
+        self.hcl.module_hcl_code("terraform.tfstate",config_file_list, {}, self.region, self.aws_account_id, {}, {})
 
         # exit()
 
@@ -1131,7 +1137,8 @@ class VPC:
                 # Check if the log destination type is 'cloudwatch-logs'
                 if attributes["log_destination_type"] == "cloud-watch-logs":
                     # If so, process a CloudWatch Log Group
-                    self.aws_cloudwatch_log_group(attributes["log_group_name"])
+                    self.logs_instance.aws_cloudwatch_log_group(attributes["log_group_name"], ftstack)
+                    # self.aws_cloudwatch_log_group(attributes["log_group_name"])
 
                 # If IAM role ARN is provided, process the IAM role
                 if attributes["iam_role_arn"]:
@@ -1139,6 +1146,11 @@ class VPC:
                     role_name = attributes["iam_role_arn"].split('/')[-1]
                     self.iam_role_instance.aws_iam_role(role_name, ftstack)
                     # self.aws_iam_role(role_name)
+
+                if attributes["log_destination_type"] == "s3":
+                    # If so, process a S3 bucket
+                    bucket_name = attributes["log_destination"].split(':')[-1]
+                    self.s3_instance.aws_s3_bucket(bucket_name, ftstack)
 
     # def aws_iam_role(self, role_arn):
     #     # the role name is the last part of the ARN

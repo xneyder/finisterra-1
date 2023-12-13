@@ -38,6 +38,8 @@ class HCL:
         self.ftstacks = {}
         self.additional_data = {}
 
+        self.functions = {}
+
 
     def search_state_file(self, resource_type, resource_name, resource_id):
         # Load the state file
@@ -305,9 +307,9 @@ class HCL:
             parent_field = parent_field.split('.')
             # get function name from the value_dict
             join_function = value_dict.get('join_function')
-            join_func = functions.get(join_function)
+            join_func = self.functions.get(join_function)
             func_name = value_dict.get('function')
-            func = functions.get(func_name)
+            func = self.functions.get(func_name)
             arg = value_dict.get('arg')
 
             if func is not None:
@@ -411,7 +413,7 @@ class HCL:
             # Check if skip_if is a dictionary and has a key called 'function'
             if isinstance(skip_if, dict) and 'function' in skip_if:
                 func_name = skip_if.get('function')
-                func = functions.get(func_name)
+                func = self.functions.get(func_name)
                 arg = skip_if.get('arg', None)
 
                 if func is not None:
@@ -437,7 +439,7 @@ class HCL:
             # Check if target_resource_name is a dictionary and has a key called 'function'
             if isinstance(target_resource_name, dict) and 'function' in target_resource_name:
                 func_name = target_resource_name.get('function')
-                func = functions.get(func_name)
+                func = self.functions.get(func_name)
                 arg = target_resource_name.get('arg')
                 if func is not None:
                     if arg:
@@ -491,7 +493,7 @@ class HCL:
                 field_type = field_info.get('type', None)
                 state_field = field_info.get('field', '').split('.')
                 if func_name:
-                    func = functions.get(func_name)
+                    func = self.functions.get(func_name)
                     arg = field_info.get('arg', '')
                     value = None
                     if func is not None:
@@ -571,7 +573,7 @@ class HCL:
                         first_index_value = "disabled"
                     else:
                         func_name = first_index.get('function')
-                        func = functions.get(func_name)
+                        func = self.functions.get(func_name)
                         arg = first_index.get('arg')
                         if func is not None:
                             if arg:
@@ -597,7 +599,7 @@ class HCL:
                         second_index_value = "disabled"
                     else:
                         func_name = second_index.get('function')
-                        func = functions.get(func_name)
+                        func = self.functions.get(func_name)
                         arg = second_index.get('arg')
 
                         if func is not None:
@@ -620,7 +622,7 @@ class HCL:
                 import_id_value = resource_attributes.get('id', '')
                 if import_id:
                     func_name = import_id.get('function')
-                    func = functions.get(func_name)
+                    func = self.functions.get(func_name)
                     arg = import_id.get('arg')
 
                     if func is not None:
@@ -669,7 +671,7 @@ class HCL:
                     join_fields = [
                         item for item in child_config.get('join', {}).items()]
                     match = all(self.match_fields(
-                        resource_attributes, child_instance['instances'][0]['attributes'], join_field, functions) for join_field in join_fields)
+                        resource_attributes, child_instance['instances'][0]['attributes'], join_field, self.functions) for join_field in join_fields)
                     if match:
                         child_attributes, child_resources = process_resource(
                             child_instance, resources, {child_type: child_config}, root_attribute_key_value)
@@ -870,7 +872,8 @@ class HCL:
         return value
 
 
-    def module_hcl_code(self, terraform_state_file, config_file_list, functions={}, aws_region="", aws_account_id="", to_remove = {}, additional_data={}):            
+    def module_hcl_code(self, terraform_state_file, config_file_list, functions={}, aws_region="", aws_account_id="", to_remove = {}, additional_data={}):
+        self.functions.update(functions)
         if not isinstance(config_file_list, list):
             config_file_list = [config_file_list]
 
@@ -891,7 +894,7 @@ class HCL:
             if resource['type'] in config:  # Check if resource is root in the config
                 resource_config = config[resource['type']]
                 instance = self.process_resource_module(
-                    resource, resources, config, functions, self.additional_data)
+                    resource, resources, config, self.functions, self.additional_data)
                 if not instance:
                     continue
                 instance['module'] = resource_config.get('terraform_module')
@@ -920,6 +923,7 @@ class HCL:
                             ids_name_map[id] = {}
                         ids_name_map[id]['module']= module_instance_name
                         ids_name_map[id]['key']= id_key
+
 
         subfolders = {}
         for instance in instances:

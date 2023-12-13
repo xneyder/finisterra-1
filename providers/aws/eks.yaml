@@ -8,9 +8,6 @@ aws_eks_cluster:
   # dependencies:
   #   - "../iam_role"
   #   - "../kms"
-  defaults:
-    create_cluster_security_group: false
-    create_node_security_group: false
   joined_fields:
     iam_role_arn:
       sub_fields:
@@ -96,8 +93,6 @@ aws_eks_cluster:
         name:
           function: cloudwatch_log_group_name
       target_resource_name: this
-      defaults:
-        create_cloudwatch_log_group: true
       fields:
         cloudwatch_log_group_retention_in_days:
           field: retention_in_days

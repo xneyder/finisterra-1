@@ -10,7 +10,7 @@ from botocore.exceptions import ClientError
 
 class S3:
     def __init__(self, s3_session, script_dir, provider_name, schema_data, region, s3Bucket,
-                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id):
+                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id, hcl=None):
         self.s3_session = s3_session
         self.transform_rules = {}
         self.provider_name = provider_name
@@ -21,10 +21,32 @@ class S3:
 
         self.workspace_id = workspace_id
         self.modules = modules
-        self.hcl = HCL(self.schema_data, self.provider_name,
+        if not hcl:
+            self.hcl = HCL(self.schema_data, self.provider_name,
                        self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules)
+        else:
+            self.hcl = hcl
 
         self.resource_list = {}
+
+        functions = {
+            'aws_s3_bucket_acl_owner': self.aws_s3_bucket_acl_owner,
+            'aws_s3_bucket_acl_grant': self.aws_s3_bucket_acl_grant,
+            'aws_s3_bucket_website_configuration_website': self.aws_s3_bucket_website_configuration_website,
+            'aws_s3_bucket_ownership_controls_object_ownership': self.aws_s3_bucket_ownership_controls_object_ownership,
+            'aws_s3_filter_empty_fields': self.aws_s3_filter_empty_fields,
+            'aws_s3_bucket_lifecycle_configuration_lifecycle_rule': self.aws_s3_bucket_lifecycle_configuration_lifecycle_rule,
+            'aws_s3_bucket_versioning_versioning': self.aws_s3_bucket_versioning_versioning,
+            'aws_s3_convert_dict_structure': self.aws_s3_convert_dict_structure,
+            'aws_s3_server_side_encryption_configuration': self.aws_s3_server_side_encryption_configuration,
+            'aws_s3_bucket_policy_policy': self.aws_s3_bucket_policy_policy,
+            'aws_s3_build_logging': self.aws_s3_build_logging,
+            'aws_s3_get_object_lock_configuration_rule': self.aws_s3_get_object_lock_configuration_rule,
+            'aws_s3_build_replication_configuration': self.aws_s3_build_replication_configuration,
+            'aws_s3_get_inventory_configuration': self.aws_s3_get_inventory_configuration,
+            'aws_s3_get_analytics_configuration': self.aws_s3_get_analytics_configuration,
+        }
+        self.hcl.functions.update(functions)
 
     def s3(self):
         self.hcl.prepare_folder(os.path.join("generated"))
@@ -33,33 +55,15 @@ class S3:
 
         self.hcl.refresh_state()
 
-        functions = {
-            'aws_s3_bucket_acl_owner': self.aws_s3_bucket_acl_owner,
-            'aws_s3_bucket_acl_grant': self.aws_s3_bucket_acl_grant,
-            'aws_s3_bucket_website_configuration_website': self.aws_s3_bucket_website_configuration_website,
-            'aws_s3_bucket_ownership_controls_object_ownership': self.aws_s3_bucket_ownership_controls_object_ownership,
-            'filter_empty_fields': self.filter_empty_fields,
-            'aws_s3_bucket_lifecycle_configuration_lifecycle_rule': self.aws_s3_bucket_lifecycle_configuration_lifecycle_rule,
-            'aws_s3_bucket_versioning_versioning': self.aws_s3_bucket_versioning_versioning,
-            'convert_dict_structure': self.convert_dict_structure,
-            'server_side_encryption_configuration': self.server_side_encryption_configuration,
-            'aws_s3_bucket_policy_policy': self.aws_s3_bucket_policy_policy,
-            'build_logging': self.build_logging,
-            'get_object_lock_configuration_rule': self.get_object_lock_configuration_rule,
-            'build_replication_configuration': self.build_replication_configuration,
-            'get_inventory_configuration': self.get_inventory_configuration,
-            'get_analytics_configuration': self.get_analytics_configuration,
-        }
-
         self.hcl.module_hcl_code("terraform.tfstate",
-                                 os.path.join(os.path.dirname(os.path.abspath(__file__)), "s3.yaml"), functions, self.region, self.aws_account_id, {}, {})
+                                 os.path.join(os.path.dirname(os.path.abspath(__file__)), "s3.yaml"), {}, self.region, self.aws_account_id, {}, {})
 
         # load_yaml_and_tfstate("terraform-aws-modules/s3-bucket/aws", "3.14.0", "terraform.tfstate",
         #                       os.path.join(os.path.dirname(os.path.abspath(__file__)), "aws_s3_bucket.yaml"))
         # self.hcl.generate_hcl_file()
         self.json_plan = self.hcl.json_plan
 
-    def build_logging(self, state):
+    def aws_s3_build_logging(self, state):
         result = {}
 
         tmp = state.get('target_bucket', '')
@@ -72,7 +76,7 @@ class S3:
 
         return result
     
-    def get_inventory_configuration(self, state, arg):
+    def aws_s3_get_inventory_configuration(self, state, arg):
         name = state.get("name", "")
         result = {}
         result[name] = {}
@@ -98,7 +102,7 @@ class S3:
         result[name]["filter"] = state.get("filter", [])
         return result
     
-    def get_analytics_configuration(self, state, arg):
+    def aws_s3_get_analytics_configuration(self, state, arg):
         name = state.get("name", "")
         result = {}
         result[name] = {}
@@ -121,7 +125,7 @@ class S3:
         return result
 
 
-    def build_replication_configuration(self, state, arg):
+    def aws_s3_build_replication_configuration(self, state, arg):
         result = {}
         result["role"] = state.get("role", "")
 
@@ -241,7 +245,7 @@ class S3:
                 
         return result
     
-    def get_object_lock_configuration_rule(self, state):
+    def aws_s3_get_object_lock_configuration_rule(self, state):
         rule = state.get('rule', [])
         if rule:
             default_retention=rule[0].get('default_retention', [])
@@ -308,17 +312,17 @@ class S3:
     def aws_s3_bucket_ownership_controls_object_ownership(self, state):
         return state.get('rule', [{}])[0].get('object_ownership', '')
 
-    def filter_empty_fields(self, input_data):
+    def aws_s3_filter_empty_fields(self, input_data):
         if isinstance(input_data, dict):
-            # Create a new dictionary by recursively calling filter_empty_fields and excluding 
+            # Create a new dictionary by recursively calling aws_s3_filter_empty_fields and excluding 
             # keys with values that are None, empty strings, empty lists, or empty dicts
-            filtered_dict = {k: self.filter_empty_fields(v) for k, v in input_data.items() if v not in [None, '', [], {}]}
+            filtered_dict = {k: self.aws_s3_filter_empty_fields(v) for k, v in input_data.items() if v not in [None, '', [], {}]}
             # Further filter out any keys that have None as their values after recursive filtering
             filtered_dict = {k: v for k, v in filtered_dict.items() if v is not None}
             return filtered_dict if filtered_dict else None
         elif isinstance(input_data, list):
             # Filter each element, excluding None, empty strings, empty lists, and empty dicts
-            filtered_list = [self.filter_empty_fields(elem) for elem in input_data if elem not in [None, '', [], {}]]
+            filtered_list = [self.aws_s3_filter_empty_fields(elem) for elem in input_data if elem not in [None, '', [], {}]]
             # Remove any None values that might have been introduced by filtering nested structures
             filtered_list = [elem for elem in filtered_list if elem is not None]
             return filtered_list if filtered_list else None
@@ -332,7 +336,7 @@ class S3:
         result = []
         # i = 0
         for rule in rules:
-            transformed_rule = self.filter_empty_fields(rule)
+            transformed_rule = self.aws_s3_filter_empty_fields(rule)
             for filter in transformed_rule.get('filter', []):
                 if 'and' in filter:
                     object_size_less_than = filter['and'][0].get('object_size_less_than', 0)
@@ -366,22 +370,22 @@ class S3:
 
         return result
 
-    def convert_dict_structure(self, input_dict):
+    def aws_s3_convert_dict_structure(self, input_dict):
         if isinstance(input_dict, dict):
             for key, value in input_dict.items():
                 if isinstance(value, list) and len(value) > 0 and isinstance(value[0], dict):
                     input_dict[key] = value[0]
-                    self.convert_dict_structure(input_dict[key])
+                    self.aws_s3_convert_dict_structure(input_dict[key])
         return input_dict
 
-    def server_side_encryption_configuration(self, state):
+    def aws_s3_server_side_encryption_configuration(self, state):
         result = {}
 
         tmp = state.get('rule', '')
         if tmp:
             result['rule'] = tmp
 
-        return self.convert_dict_structure(result)
+        return self.aws_s3_convert_dict_structure(result)
 
     def aws_s3_bucket_policy_policy(self, state, arg):
         # convert the string to a dict
@@ -399,7 +403,7 @@ class S3:
 
         return result
 
-    def aws_s3_bucket(self):
+    def aws_s3_bucket(self, selected_s3_bucket=None, ftstack=None):
         resource_name = "aws_s3_bucket"
         print("Processing S3 Buckets...")
 
@@ -433,6 +437,8 @@ class S3:
         # buckets = [buckets[0], buckets[1]]
 
         for bucket in buckets:
+            if selected_s3_bucket and bucket["Name"] != selected_s3_bucket:
+                continue
             bucket_name = bucket["Name"]
 
             # Retrieve the region of the bucket
@@ -449,20 +455,21 @@ class S3:
                 print(f"  Processing S3 Bucket: {bucket_name}")
 
                 # describe the bucket and get the tags
-                ftstack = "s3"
-                try:
-                    response = self.s3_session.get_bucket_tagging(Bucket=bucket_name)
-                    tags = response.get('TagSet', {})
-                    for tag in tags:
-                        if tag['Key'] == 'ftstack':
-                            if tag['Value'] != 's3':
-                                ftstack = "stack_"+tag['Value']
-                            break
-                except ClientError as e:
-                    if e.response['Error']['Code'] == 'NoSuchTagSet':
-                        pass
-                    else:
-                        raise e
+                if not ftstack:
+                    ftstack = "s3"
+                    try:
+                        response = self.s3_session.get_bucket_tagging(Bucket=bucket_name)
+                        tags = response.get('TagSet', {})
+                        for tag in tags:
+                            if tag['Key'] == 'ftstack':
+                                if tag['Value'] != 's3':
+                                    ftstack = "stack_"+tag['Value']
+                                break
+                    except ClientError as e:
+                        if e.response['Error']['Code'] == 'NoSuchTagSet':
+                            pass
+                        else:
+                            raise e
 
                 id = bucket_name
 

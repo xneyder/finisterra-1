@@ -4,8 +4,6 @@ aws_cloudwatch_log_group:
   terraform_module_version: "6.1.0"
   target_resource_name: this
   name_field: name
-  defaults:
-    create: true
   fields:
     name:
       field: name

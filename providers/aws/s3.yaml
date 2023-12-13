@@ -31,7 +31,7 @@ aws_s3_bucket:
           field: bucket
       fields:
         logging:
-          function: build_logging
+          function: aws_s3_build_logging
           type: map
 
     aws_s3_bucket_acl:
@@ -78,7 +78,7 @@ aws_s3_bucket:
       target_resource_name: this
       fields:
         server_side_encryption_configuration:
-          function: server_side_encryption_configuration
+          function: aws_s3_server_side_encryption_configuration
         expected_bucket_owner:
           field: expected_bucket_owner
 
@@ -144,7 +144,7 @@ aws_s3_bucket:
           field: expected_bucket_owner
           type: string
         object_lock_configuration_rule:
-          function: get_object_lock_configuration_rule
+          function: aws_s3_get_object_lock_configuration_rule
           type: list
 
     aws_s3_bucket_replication_configuration:
@@ -154,7 +154,7 @@ aws_s3_bucket:
       target_resource_name: this
       fields:
         replication_configuration:
-          function: build_replication_configuration
+          function: aws_s3_build_replication_configuration
           arg: id
 
     aws_s3_bucket_policy:
@@ -228,7 +228,7 @@ aws_s3_bucket:
         field: name
       fields:
         inventory_configuration:
-          function: get_inventory_configuration
+          function: aws_s3_get_inventory_configuration
           arg: id
           type: list
 
@@ -241,6 +241,6 @@ aws_s3_bucket:
       target_resource_name: this
       fields:
         analytics_configuration:
-          function: get_analytics_configuration
+          function: aws_s3_get_analytics_configuration
           arg: id
           type: list
