@@ -358,6 +358,13 @@ aws_security_group:
   target_resource_name: default
   name_field: security_group_name
   add_id_hash_to_name: true
+  joined_fields:
+    ingress_rules:
+      sub_fields:
+        - referenced_security_group_id
+    egress_rules:
+      sub_fields:
+        - referenced_security_group_id
   # path: "security_group"
   defaults:
     create_before_destroy: false

@@ -24,6 +24,8 @@ class SECURITY_GROUP:
         else:
             self.hcl = hcl
 
+        self.processed_security_groups = {}
+
         # self.hcl.additional_data = {}
 
     def get_vpc_name(self, vpc_id):
@@ -53,6 +55,8 @@ class SECURITY_GROUP:
 
     def aws_security_group(self, security_group_id=None, ftstack=None):
         resource_type = "aws_security_group"
+        if security_group_id in self.processed_security_groups:
+            return
         print("Processing Security Groups...")
 
         # Create a response dictionary to collect responses for all security groups
@@ -97,12 +101,14 @@ class SECURITY_GROUP:
 
             self.hcl.process_resource(
                 resource_type, security_group["GroupId"].replace("-", "_"), attributes)
+            
+            self.processed_security_groups[id] = True
             if not ftstack:
                 ftstack = "security_group"
             self.hcl.add_stack(resource_type, id, ftstack)
             
-            self.aws_vpc_security_group_ingress_rule(security_group["GroupId"])
-            self.aws_vpc_security_group_egress_rule(security_group["GroupId"])
+            self.aws_vpc_security_group_ingress_rule(security_group["GroupId"], ftstack)
+            self.aws_vpc_security_group_egress_rule(security_group["GroupId"], ftstack)
 
             vpc_name = self.get_vpc_name(vpc_id)
             if 'vpc' not in self.hcl.additional_data:
@@ -112,7 +118,7 @@ class SECURITY_GROUP:
                 "name": vpc_name,
             }
 
-    def aws_vpc_security_group_ingress_rule(self, security_group_id):
+    def aws_vpc_security_group_ingress_rule(self, security_group_id, ftstack=None):
         # Fetch security group rules
         response = self.ec2_client.describe_security_group_rules(
             Filters=[{'Name': 'group-id', 'Values': [security_group_id]}]
@@ -131,9 +137,13 @@ class SECURITY_GROUP:
 
                 # Process the rule as needed, e.g., storing attributes or creating resources
                 self.hcl.process_resource(
-                    "aws_vpc_security_group_ingress_rule", rule_id, attributes)        
+                    "aws_vpc_security_group_ingress_rule", rule_id, attributes)
+                
+                if 'ReferencedGroupInfo' in rule:
+                    referenced_security_group_id = rule['ReferencedGroupInfo']['GroupId']
+                    self.aws_security_group(referenced_security_group_id, ftstack)
 
-    def aws_vpc_security_group_egress_rule(self, security_group_id):
+    def aws_vpc_security_group_egress_rule(self, security_group_id, ftstack=None):
         # Fetch security group rules
         response = self.ec2_client.describe_security_group_rules(
             Filters=[{'Name': 'group-id', 'Values': [security_group_id]}]
@@ -152,4 +162,8 @@ class SECURITY_GROUP:
 
                 # Process the rule as needed, e.g., storing attributes or creating resources
                 self.hcl.process_resource(
-                    "aws_vpc_security_group_egress_rule", rule_id, attributes)   
+                    "aws_vpc_security_group_egress_rule", rule_id, attributes)
+                
+                if 'ReferencedGroupInfo' in rule:
+                    referenced_security_group_id = rule['ReferencedGroupInfo']['GroupId']
+                    self.aws_security_group(referenced_security_group_id, ftstack)
