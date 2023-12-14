@@ -327,19 +327,26 @@ class CloudFront:
                     dist_config_response = self.cloudfront_client.get_distribution_config(Id=distribution_id)
                     dist_config = dist_config_response.get('DistributionConfig', {})
 
-                    # Process cache behaviors
-                    for cache_behavior in dist_config.get('CacheBehaviors', {}).get('Items', []):
-                        cache_policy_id = cache_behavior.get('CachePolicyId')
-                        if cache_policy_id:
-                            self.aws_cloudfront_cache_policy(cache_policy_id)
-                            self.hcl.add_stack("aws_cloudfront_cache_policy", cache_policy_id, ftstack)
+                    # Process cache behaviors and associated policies
+                    all_behaviors = dist_config.get('CacheBehaviors', {}).get('Items', [])
+                    all_behaviors.append(dist_config.get('DefaultCacheBehavior'))  # Include default cache behavior
 
-                    # Process default cache behavior if it exists
-                    default_cache_behavior = dist_config.get('DefaultCacheBehavior')
-                    if default_cache_behavior and 'CachePolicyId' in default_cache_behavior:
-                        default_cache_policy_id = default_cache_behavior['CachePolicyId']
-                        self.aws_cloudfront_cache_policy(default_cache_policy_id)
-                        self.hcl.add_stack("aws_cloudfront_cache_policy", default_cache_policy_id, ftstack)
+                    for behavior in all_behaviors:
+                        if behavior:
+                            cache_policy_id = behavior.get('CachePolicyId')
+                            if cache_policy_id:
+                                self.aws_cloudfront_cache_policy(cache_policy_id)
+                                self.hcl.add_stack("aws_cloudfront_cache_policy", cache_policy_id, ftstack)
+
+                            response_headers_policy_id = behavior.get('ResponseHeadersPolicyId')
+                            if response_headers_policy_id:
+                                self.aws_cloudfront_response_headers_policy(response_headers_policy_id)
+                                self.hcl.add_stack("aws_cloudfront_response_headers_policy", response_headers_policy_id, ftstack)
+
+                            origin_request_policy_id = behavior.get('OriginRequestPolicyId')
+                            if origin_request_policy_id:
+                                self.aws_cloudfront_origin_request_policy(origin_request_policy_id)
+                                self.hcl.add_stack("aws_cloudfront_origin_request_policy", origin_request_policy_id, ftstack)
 
                 except Exception as e:
                     print(f"Error occurred while processing distribution {distribution_id}: {e}")
@@ -535,26 +542,38 @@ class CloudFront:
                 self.hcl.process_resource(
                     "aws_cloudfront_origin_access_control", oai_id.replace("-", "_"), attributes)
 
-    def aws_cloudfront_origin_request_policy(self):
+    def aws_cloudfront_origin_request_policy(self, specific_policy_id):
         print("Processing CloudFront Origin Request Policies...")
 
-        response = self.cloudfront_client.list_origin_request_policies()
+        # Fetch custom origin request policy IDs
+        custom_policy_ids = []
+        response = self.cloudfront_client.list_origin_request_policies(Type="custom")
+        if "OriginRequestPolicyList" in response and "Items" in response["OriginRequestPolicyList"]:
+            for policy in response["OriginRequestPolicyList"]["Items"]:
+                custom_policy_ids.append(policy["OriginRequestPolicy"]["Id"])
 
-        for policy_summary in response["OriginRequestPolicyList"]["Items"]:
-            policy_id = policy_summary["OriginRequestPolicy"]["Id"]
-            print(
-                f"  Processing CloudFront Origin Request Policy: {policy_id}")
+        # Check if the specific_policy_id is custom
+        if specific_policy_id not in custom_policy_ids:
+            print(f"Skipping non-custom origin request policy: {specific_policy_id}")
+            return
 
-            # policy = self.cloudfront_client.get_origin_request_policy(
-            #     Id=policy_id)["OriginRequestPolicy"]
+        try:
+            policy_response = self.cloudfront_client.get_origin_request_policy(Id=specific_policy_id)
+            policy = policy_response["OriginRequestPolicy"]
+
+            print(f"  Processing CloudFront Origin Request Policy: {specific_policy_id}")
+
             attributes = {
-                "id": policy_id,
-                # "name": policy["OriginRequestPolicyConfig"]["Name"],
-                # "comment": policy["OriginRequestPolicyConfig"].get("Comment", ""),
+                "id": specific_policy_id,
+                "name": policy["OriginRequestPolicyConfig"]["Name"],
+                "comment": policy["OriginRequestPolicyConfig"].get("Comment", "")
                 # Add other required attributes as needed
             }
             self.hcl.process_resource(
-                "aws_cloudfront_origin_request_policy", policy_id.replace("-", "_"), attributes)
+                "aws_cloudfront_origin_request_policy", specific_policy_id.replace("-", "_"), attributes)
+
+        except Exception as e:
+            print(f"Error occurred while processing origin request policy {specific_policy_id}: {e}")
 
     def aws_cloudfront_public_key(self):
         print("Processing CloudFront Public Keys...")
@@ -615,22 +634,36 @@ class CloudFront:
                 self.hcl.process_resource(
                     "aws_cloudfront_realtime_log_config", log_config_id.replace("-", "_"), attributes)
 
-    def aws_cloudfront_response_headers_policy(self):
+    def aws_cloudfront_response_headers_policy(self, specific_policy_id):
         print("Processing CloudFront Response Headers Policies...")
 
-        response = self.cloudfront_client.list_response_headers_policies()
+        # Fetch custom response headers policy IDs
+        custom_policy_ids = []
+        response = self.cloudfront_client.list_response_headers_policies(Type="custom")
+        if "ResponseHeadersPolicyList" in response and "Items" in response["ResponseHeadersPolicyList"]:
+            for policy in response["ResponseHeadersPolicyList"]["Items"]:
+                custom_policy_ids.append(policy["ResponseHeadersPolicy"]["Id"])
 
-        for headers_policy in response["ResponseHeadersPolicyList"]["Items"]:
-            policy_id = headers_policy["ResponseHeadersPolicy"]["Id"]
-            print(
-                f"  Processing CloudFront Response Headers Policy: {policy_id}")
+        # Check if the specific_policy_id is custom
+        if specific_policy_id not in custom_policy_ids:
+            print(f"Skipping non-custom response headers policy: {specific_policy_id}")
+            return
+
+        try:
+            policy_response = self.cloudfront_client.get_response_headers_policy(Id=specific_policy_id)
+            policy = policy_response["ResponseHeadersPolicy"]
+
+            print(f"  Processing CloudFront Response Headers Policy: {specific_policy_id}")
 
             attributes = {
-                "id": policy_id,
-                # "name": policy["ResponseHeadersPolicyConfig"]["Name"],
-                # "comment": policy["ResponseHeadersPolicyConfig"].get("Comment", ""),
+                "id": specific_policy_id,
+                "name": policy["ResponseHeadersPolicyConfig"]["Name"],
+                "comment": policy["ResponseHeadersPolicyConfig"].get("Comment", "")
                 # Add other required attributes, like "cors_config", "security_headers_config", etc.
-                # You may need to process the configuration dictionaries and extract the necessary information
             }
             self.hcl.process_resource(
-                "aws_cloudfront_response_headers_policy", policy_id.replace("-", "_"), attributes)
+                "aws_cloudfront_response_headers_policy", specific_policy_id.replace("-", "_"), attributes)
+
+        except Exception as e:
+            print(f"Error occurred while processing response headers policy {specific_policy_id}: {e}")
+

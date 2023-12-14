@@ -155,3 +155,66 @@ aws_cloudfront_cache_policy:
       function: get_field_from_attrs
       arg: parameters_in_cache_key_and_forwarded_to_origin.query_strings_config.query_strings.items
       type: list
+
+aws_cloudfront_response_headers_policy:
+  terraform_module: "github.com/finisterra-io/terraform-aws-cloudfront//modules/response_headers_policy?ref=main"
+  terraform_module_version: "6.1.0"
+  target_resource_name: this
+  fields:
+    name:
+      field: name
+      type: string
+    comment:
+      field: comment
+      type: string
+    cors_config:
+      field: cors_config
+      type: list
+    custom_headers_config:
+      field: custom_headers_config
+      type: list
+    remove_headers_config:
+      field: remove_headers_config
+      type: list
+    security_headers_config:
+      field: security_headers_config
+      type: list
+    server_timing_headers_config:
+      field: server_timing_headers_config
+      type: list
+
+aws_cloudfront_origin_request_policy:
+  terraform_module: "github.com/finisterra-io/terraform-aws-cloudfront//modules/origin_request_policy?ref=main"
+  terraform_module_version: "6.1.0"
+  target_resource_name: this
+  fields:
+    name:
+      field: name
+      type: string
+    comment:
+      field: comment
+      type: string
+    cookie_behavior:
+      function: get_field_from_attrs
+      arg: cookies_config.cookie_behavior
+      type: string
+    cookies:
+      function: get_field_from_attrs
+      arg: cookies_config.cookies.items
+      type: list
+    header_behavior:
+      function: get_field_from_attrs
+      arg: headers_config.header_behavior
+      type: string
+    headers:
+      function: get_field_from_attrs
+      arg: headers_config.headers.items
+      type: list
+    query_string_behavior:
+      function: get_field_from_attrs
+      arg: query_strings_config.query_string_behavior
+      type: string
+    query_strings:
+      function: get_field_from_attrs
+      arg: query_strings_config.query_strings.items
+      type: list
