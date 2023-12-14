@@ -23,6 +23,9 @@ aws_cloudfront_distribution:
     viewer_certificate:
       sub_fields:
         - acm_certificate_arn
+    logging_config:
+      sub_fields:
+        - bucket
   fields:
     enabled:
       field: enabled

@@ -3,13 +3,13 @@ import os
 from utils.hcl import HCL
 import copy
 from providers.aws.acm import ACM
-
+from providers.aws.s3 import S3
 
 def cors_config_transform(value):
     return "{items="+str(value)+"}\n"
 
 class CloudFront:
-    def __init__(self, cloudfront_client, acm_client, script_dir, provider_name, schema_data, region, s3Bucket,
+    def __init__(self, cloudfront_client, acm_client, s3_client, script_dir, provider_name, schema_data, region, s3Bucket,
                  dynamoDBTable, state_key, workspace_id, modules, aws_account_id):
         self.cloudfront_client = cloudfront_client
         self.transform_rules = {
@@ -51,6 +51,7 @@ class CloudFront:
         self.hcl.functions.update(functions)
 
         self.acm_instance = ACM(acm_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
+        self.s3_instance = S3(s3_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
 
     def get_field_from_attrs(self, attributes, arg):
         try:
@@ -92,28 +93,6 @@ class CloudFront:
                         transformed_origin[k] = v[0]
                     else:
                         transformed_origin[k] = v
-
-            # if 's3_origin_config' in transformed_origin:
-            #     if 'origin_access_identity' in transformed_origin['s3_origin_config']:
-            #         oai_path = transformed_origin['s3_origin_config']['origin_access_identity']
-            #         if oai_path != '':
-            #             # Extract the OAI ID
-            #             oai_id = oai_path.split('/')[-1]
-
-            #             # Get the OAI's comment using boto3
-            #             oai_comment = None
-            #             try:
-            #                 # print(f"Fetching OAI Comment for {oai_id}")
-            #                 response = self.cloudfront_client.get_cloud_front_origin_access_identity(Id=oai_id)
-            #                 oai_comment = response['CloudFrontOriginAccessIdentity']['CloudFrontOriginAccessIdentityConfig']['Comment']
-            #             except Exception as e:
-            #                 print(f"Error fetching OAI Comment: {e}")
-
-            #             # Set the new field with the OAI comment
-            #             if oai_comment:
-            #                 transformed_origin['s3_origin_config']['cloudfront_access_identity'] = oai_comment
-
-            #             del transformed_origin['s3_origin_config']['origin_access_identity']
 
             result[origin_key] = transformed_origin
 
@@ -271,7 +250,8 @@ class CloudFront:
 
         self.hcl.refresh_state()
         self.hcl.id_key_list.append("cloudfront_access_identity_path")
-        config_file_list = ["cloudfront.yaml","acm.yaml"]
+        self.hcl.id_key_list.append("bucket_domain_name")
+        config_file_list = ["cloudfront.yaml","acm.yaml", "s3.yaml"]
         for index,config_file in enumerate(config_file_list):
             config_file_list[index] = os.path.join(os.path.dirname(os.path.abspath(__file__)),config_file )
         self.hcl.module_hcl_code("terraform.tfstate",config_file_list, {}, self.region, self.aws_account_id, {}, {})
@@ -339,6 +319,14 @@ class CloudFront:
                         ACMCertificateArn = viewer_certificate.get('ACMCertificateArn')
                         if ACMCertificateArn:
                             self.acm_instance.aws_acm_certificate(ACMCertificateArn,ftstack)
+
+                    logger_config = dist_config.get('Logging', {})
+                    if logger_config:
+                        bucket = logger_config.get('Bucket')
+                        if bucket:
+                            #get the bucket name from the bucket domain
+                            bucket = bucket.split('.')[0]
+                            self.s3_instance.aws_s3_bucket(bucket,ftstack)
 
                     # Process cache behaviors and associated policies
                     all_behaviors = dist_config.get('CacheBehaviors', {}).get('Items', [])
