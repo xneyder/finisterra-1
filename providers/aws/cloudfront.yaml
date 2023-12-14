@@ -15,6 +15,14 @@ aws_cloudfront_distribution:
         - cache_policy_id
         - origin_request_policy_id
         - response_headers_policy_id
+    ordered_cache_behavior:
+      sub_fields:
+        - cache_policy_id
+        - origin_request_policy_id
+        - response_headers_policy_id
+    viewer_certificate:
+      sub_fields:
+        - acm_certificate_arn
   fields:
     enabled:
       field: enabled

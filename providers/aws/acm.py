@@ -5,13 +5,9 @@ import datetime
 
 class ACM:
     def __init__(self, acm_client, script_dir, provider_name, schema_data, region, s3Bucket,
-                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id):
+                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id, hcl = None):
         self.acm_client = acm_client
-        self.transform_rules = {
-            "aws_acm_certificate": {
-                "hcl_keep_fields": {"domain_name": True},
-            },
-        }
+        self.transform_rules = {}
         self.provider_name = provider_name
         self.script_dir = script_dir
         self.schema_data = schema_data
@@ -20,9 +16,19 @@ class ACM:
 
         self.workspace_id = workspace_id
         self.modules = modules
-        self.hcl = HCL(self.schema_data, self.provider_name,
+        if not hcl:
+            self.hcl = HCL(self.schema_data, self.provider_name,
                        self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules)
+        else:
+            self.hcl = hcl
         self.resource_list = {}
+
+        functions = {
+            'get_field_from_attrs': self.get_field_from_attrs,
+            'get_validation_method': self.get_validation_method,
+        }
+
+        self.hcl.functions.update(functions)
 
     def get_field_from_attrs(self, attributes, arg):
         keys = arg.split(".")
@@ -55,20 +61,17 @@ class ACM:
 
         self.aws_acm_certificate()
 
-        functions = {
-            'get_field_from_attrs': self.get_field_from_attrs,
-            'get_validation_method': self.get_validation_method,
-        }
+
 
         self.hcl.refresh_state()
 
         self.hcl.module_hcl_code("terraform.tfstate", os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), "acm.yaml"), functions, self.region, self.aws_account_id, {}, {})
+            os.path.dirname(os.path.abspath(__file__)), "acm.yaml"), {}, self.region, self.aws_account_id, {}, {})
 
         self.json_plan = self.hcl.json_plan
 
-    def aws_acm_certificate(self):
-        resource_name="aws_acm_certificate"
+    def aws_acm_certificate(self, acm_arn=None, ftstack=None):
+        resource_name = "aws_acm_certificate"
         print("Processing ACM Certificates...")
 
         paginator = self.acm_client.get_paginator("list_certificates")
@@ -77,16 +80,20 @@ class ACM:
                 cert_arn = cert_summary["CertificateArn"]
                 cert_domain = cert_summary["DomainName"]
 
+                # Skip processing if a specific ACM ARN is provided and it doesn't match
+                if acm_arn and cert_arn != acm_arn:
+                    continue
+
                 # Get certificate details to check for expiration and type
                 cert_details = self.acm_client.describe_certificate(
                     CertificateArn=cert_arn)["Certificate"]
                 certificate_type = cert_details["Type"]
 
-                #skip imported certificates
+                # Skip imported certificates
                 if certificate_type == "IMPORTED":
                     continue
 
-                #skip not issued certificates
+                # Skip not issued certificates
                 status = cert_details["Status"]
                 if status != "ISSUED":
                     continue
@@ -99,14 +106,15 @@ class ACM:
 
                 print(f"  Processing ACM Certificate: {cert_arn}")
 
-                ftstack = "acm"
+                if not ftstack:
+                    ftstack = "acm"
                 try:
                     response = self.acm_client.list_tags_for_certificate(CertificateArn=cert_arn)
                     tags = response.get('Tags', {})
                     for tag in tags:
                         if tag['Key'] == 'ftstack':
                             if tag['Value'] != 'acm':
-                                ftstack = "stack_"+tag['Value']
+                                ftstack = "stack_" + tag['Value']
                             break
                 except Exception as e:
                     print("Error occurred: ", e)

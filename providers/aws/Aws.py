@@ -414,7 +414,9 @@ class Aws:
     def cloudfront(self):
         cloudfront_client = self.session.client(
             "cloudfront", region_name=self.aws_region)
-        instance = CloudFront(cloudfront_client, self.script_dir, self.provider_name,
+        acm_client = self.session.client(
+            "acm", region_name=self.aws_region)
+        instance = CloudFront(cloudfront_client, acm_client, self.script_dir, self.provider_name,
                               self.schema_data, self.aws_region, self.s3Bucket,
                               self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.cloudfront()

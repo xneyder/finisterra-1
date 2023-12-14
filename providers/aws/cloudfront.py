@@ -2,13 +2,14 @@ import botocore
 import os
 from utils.hcl import HCL
 import copy
+from providers.aws.acm import ACM
 
 
 def cors_config_transform(value):
     return "{items="+str(value)+"}\n"
 
 class CloudFront:
-    def __init__(self, cloudfront_client, script_dir, provider_name, schema_data, region, s3Bucket,
+    def __init__(self, cloudfront_client, acm_client, script_dir, provider_name, schema_data, region, s3Bucket,
                  dynamoDBTable, state_key, workspace_id, modules, aws_account_id):
         self.cloudfront_client = cloudfront_client
         self.transform_rules = {
@@ -35,6 +36,21 @@ class CloudFront:
         self.resource_list = {}
         self.aws_account_id = aws_account_id
         self.origin = {}
+
+        functions = {
+            'get_field_from_attrs': self.get_field_from_attrs,
+            'build_origin': self.build_origin,
+            'join_origin_access_identity': self.join_origin_access_identity,
+            'build_origin_access_identities': self.build_origin_access_identities,
+            'build_default_cache_behavior': self.build_default_cache_behavior,
+            'build_viewer_certificate': self.build_viewer_certificate,
+            'build_ordered_cache_behavior': self.build_ordered_cache_behavior,
+            'build_geo_restriction': self.build_geo_restriction,
+        }
+
+        self.hcl.functions.update(functions)
+
+        self.acm_instance = ACM(acm_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
 
     def get_field_from_attrs(self, attributes, arg):
         try:
@@ -253,25 +269,14 @@ class CloudFront:
         if "gov" not in self.region:
             self.aws_cloudfront_distribution()
 
-        functions = {
-            'get_field_from_attrs': self.get_field_from_attrs,
-            'build_origin': self.build_origin,
-            'join_origin_access_identity': self.join_origin_access_identity,
-            'build_origin_access_identities': self.build_origin_access_identities,
-            'build_default_cache_behavior': self.build_default_cache_behavior,
-            'build_viewer_certificate': self.build_viewer_certificate,
-            'build_ordered_cache_behavior': self.build_ordered_cache_behavior,
-            'build_geo_restriction': self.build_geo_restriction,
-        }
-
         self.hcl.refresh_state()
         self.hcl.id_key_list.append("cloudfront_access_identity_path")
-        self.hcl.module_hcl_code("terraform.tfstate",
-                                 os.path.join(os.path.dirname(os.path.abspath(__file__)), "cloudfront.yaml"), functions, self.region, self.aws_account_id, {}, {})
+        config_file_list = ["cloudfront.yaml","acm.yaml"]
+        for index,config_file in enumerate(config_file_list):
+            config_file_list[index] = os.path.join(os.path.dirname(os.path.abspath(__file__)),config_file )
+        self.hcl.module_hcl_code("terraform.tfstate",config_file_list, {}, self.region, self.aws_account_id, {}, {})
 
         self.json_plan = self.hcl.json_plan
-
-
 
     def aws_cloudfront_distribution(self):
         resource_type = "aws_cloudfront_distribution"
@@ -325,7 +330,15 @@ class CloudFront:
                 # Fetch distribution configuration
                 try:
                     dist_config_response = self.cloudfront_client.get_distribution_config(Id=distribution_id)
+                     
                     dist_config = dist_config_response.get('DistributionConfig', {})
+
+                    viewer_certificate = dist_config.get('ViewerCertificate', {})
+
+                    if viewer_certificate:
+                        ACMCertificateArn = viewer_certificate.get('ACMCertificateArn')
+                        if ACMCertificateArn:
+                            self.acm_instance.aws_acm_certificate(ACMCertificateArn,ftstack)
 
                     # Process cache behaviors and associated policies
                     all_behaviors = dist_config.get('CacheBehaviors', {}).get('Items', [])
