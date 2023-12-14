@@ -129,7 +129,7 @@ aws_cloudfront_cache_policy:
       type: bool
     enable_accept_encoding_gzip:
       function: get_field_from_attrs
-      arg: parameters_in_cache_key_and_forwarded_to_originenable_accept_encoding_gzip
+      arg: parameters_in_cache_key_and_forwarded_to_origin.enable_accept_encoding_gzip
       type: bool
     cookie_behavior:
       function: get_field_from_attrs
