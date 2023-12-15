@@ -92,7 +92,7 @@ class VPC:
             'join_igw_route_table_id': self.join_igw_route_table_id,
 
         }
-        self.hcl.functions.update(functions)        
+        self.hcl.functions.update(functions)
 
     def get_field_from_attrs(self, attributes, arg):
         keys = arg.split(".")

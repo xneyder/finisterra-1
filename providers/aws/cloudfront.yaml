@@ -15,11 +15,15 @@ aws_cloudfront_distribution:
         - cache_policy_id
         - origin_request_policy_id
         - response_headers_policy_id
+        - function_arn
+        - lambda_arn
     ordered_cache_behavior:
       sub_fields:
         - cache_policy_id
         - origin_request_policy_id
         - response_headers_policy_id
+        - function_arn
+        - lambda_arn
     viewer_certificate:
       sub_fields:
         - acm_certificate_arn
@@ -229,3 +233,26 @@ aws_cloudfront_origin_request_policy:
       function: get_field_from_attrs
       arg: query_strings_config.query_strings.items
       type: list
+
+aws_cloudfront_function:
+  terraform_module: "github.com/finisterra-io/terraform-aws-cloudfront//modules/function?ref=main"
+  terraform_module_version: "6.1.0"
+  target_resource_name: this
+  fields:
+    name:
+      field: name
+      type: string
+    comment:
+      field: comment
+      type: string
+    runtime:
+      field: runtime
+      type: string
+    publish:
+      field: publish
+      type: bool
+    code:
+      field: code
+      type: string
+      multiline: true
+      jsonfield: false

@@ -108,16 +108,16 @@ class ACM:
 
                 if not ftstack:
                     ftstack = "acm"
-                try:
-                    response = self.acm_client.list_tags_for_certificate(CertificateArn=cert_arn)
-                    tags = response.get('Tags', {})
-                    for tag in tags:
-                        if tag['Key'] == 'ftstack':
-                            if tag['Value'] != 'acm':
-                                ftstack = "stack_" + tag['Value']
-                            break
-                except Exception as e:
-                    print("Error occurred: ", e)
+                    try:
+                        response = self.acm_client.list_tags_for_certificate(CertificateArn=cert_arn)
+                        tags = response.get('Tags', {})
+                        for tag in tags:
+                            if tag['Key'] == 'ftstack':
+                                if tag['Value'] != 'acm':
+                                    ftstack = "stack_" + tag['Value']
+                                break
+                    except Exception as e:
+                        print("Error occurred: ", e)
 
                 id = cert_arn
 

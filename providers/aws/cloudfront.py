@@ -4,12 +4,14 @@ from utils.hcl import HCL
 import copy
 from providers.aws.acm import ACM
 from providers.aws.s3 import S3
+from providers.aws.aws_lambda import AwsLambda
+
 
 def cors_config_transform(value):
     return "{items="+str(value)+"}\n"
 
 class CloudFront:
-    def __init__(self, cloudfront_client, acm_client, s3_client, script_dir, provider_name, schema_data, region, s3Bucket,
+    def __init__(self, cloudfront_client, acm_client, s3_client, lambda_client, iam_client, logs_client, script_dir, provider_name, schema_data, region, s3Bucket,
                  dynamoDBTable, state_key, workspace_id, modules, aws_account_id):
         self.cloudfront_client = cloudfront_client
         self.transform_rules = {
@@ -52,6 +54,7 @@ class CloudFront:
 
         self.acm_instance = ACM(acm_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
         self.s3_instance = S3(s3_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
+        self.aws_lambda_instance = AwsLambda(lambda_client, iam_client, logs_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
 
     def get_field_from_attrs(self, attributes, arg):
         try:
@@ -251,7 +254,8 @@ class CloudFront:
         self.hcl.refresh_state()
         self.hcl.id_key_list.append("cloudfront_access_identity_path")
         self.hcl.id_key_list.append("bucket_domain_name")
-        config_file_list = ["cloudfront.yaml","acm.yaml", "s3.yaml"]
+        self.hcl.id_key_list.append("qualified_arn")
+        config_file_list = ["cloudfront.yaml", "acm.yaml", "s3.yaml", "aws_lambda.yaml", "iam_role.yaml"]
         for index,config_file in enumerate(config_file_list):
             config_file_list[index] = os.path.join(os.path.dirname(os.path.abspath(__file__)),config_file )
         self.hcl.module_hcl_code("terraform.tfstate",config_file_list, {}, self.region, self.aws_account_id, {}, {})
@@ -277,7 +281,7 @@ class CloudFront:
             for distribution_summary in items:
                 distribution_id = distribution_summary["Id"]
 
-                # if distribution_id != "EXMU07B7F4KIS":
+                # if distribution_id != "EJ45WJKH08SI4":
                 #     continue
 
                 print(f"  Processing CloudFront Distribution: {distribution_id}")
@@ -349,6 +353,22 @@ class CloudFront:
                                 self.aws_cloudfront_origin_request_policy(origin_request_policy_id)
                                 self.hcl.add_stack("aws_cloudfront_origin_request_policy", origin_request_policy_id, ftstack)
 
+                            
+                            lambda_function_associations = behavior.get('LambdaFunctionAssociations', {})
+                            if lambda_function_associations:
+                                for lambda_function_association in lambda_function_associations.get('Items', []):
+                                    lambda_arn = lambda_function_association.get('LambdaFunctionARN')
+                                    if lambda_arn:
+                                        lambda_name = lambda_arn.split(":function:")[1].split(":")[0]
+                                        self.aws_lambda_instance.aws_lambda_function(lambda_name,ftstack)
+
+                            function_association = behavior.get('FunctionAssociations', {})
+                            if function_association:
+                                for function_association in function_association.get('Items', []):
+                                    function_arn = function_association.get('FunctionARN')
+                                    if function_arn:
+                                        self.aws_cloudfront_function(function_arn, ftstack)
+                                        
                 except Exception as e:
                     print(f"Error occurred while processing distribution {distribution_id}: {e}")
                     continue
@@ -425,24 +445,34 @@ class CloudFront:
                 self.hcl.process_resource(
                     "aws_cloudfront_field_level_encryption_profile", profile_id.replace("-", "_"), attributes)
 
-    def aws_cloudfront_function(self):
+    def aws_cloudfront_function(self, function_arn, ftstack):
+        resource_type = "aws_cloudfront_function"
         print("Processing CloudFront Functions...")
 
+        # List all functions and find the one that matches the provided ARN
         response = self.cloudfront_client.list_functions()
-        if "FunctionSummaryList" in response:
-            for function_summary in response["FunctionSummaryList"]:
-                function_arn = function_summary["FunctionMetadata"]["FunctionARN"]
-                function_name = function_summary["FunctionConfig"]["Name"]
+        if "FunctionList" in response:
+            for function_summary in response["FunctionList"]["Items"]:
+                current_function_arn = function_summary["FunctionMetadata"]["FunctionARN"]
+                if current_function_arn == function_arn:
+                    function_name = function_summary["Name"]
 
-                print(f"  Processing CloudFront Function: {function_name}")
+                    # Fetch the function's code or details using its name
+                    print(f"  Processing CloudFront Function: {function_name}")
+                    id = function_name
 
-                attributes = {
-                    "id": function_arn,
-                    "name": function_name,
-                }
+                    attributes = {
+                        "id": id,
+                        # Add other attributes as needed
+                    }
 
-                self.hcl.process_resource(
-                    "aws_cloudfront_function", function_name.replace("-", "_"), attributes)
+                    self.hcl.process_resource(
+                        resource_type, id, attributes)
+                    self.hcl.add_stack(resource_type, id, ftstack)
+                    return  # Exit after processing the specific function
+
+        print(f"No function found with ARN: {function_arn}")
+
 
     def aws_cloudfront_key_group(self):
         print("Processing CloudFront Key Groups...")
