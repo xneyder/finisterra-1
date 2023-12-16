@@ -474,24 +474,20 @@ class CloudFront:
         print(f"No function found with ARN: {function_arn}")
 
 
-    def aws_cloudfront_key_group(self):
-        print("Processing CloudFront Key Groups...")
+    def aws_cloudfront_key_group(self, key_group_id):
+        print(f"Processing CloudFront Key Group: {key_group_id}")
 
-        response = self.cloudfront_client.list_key_groups()
-        if "KeyGroupList" in response and "Items" in response["KeyGroupList"]:
-            for key_group in response["KeyGroupList"]["Items"]:
-                key_group_id = key_group["KeyGroup"]["Id"]
-                key_group_name = key_group["KeyGroup"]["KeyGroupName"]
+        response = self.cloudfront_client.get_key_group(Id=key_group_id)
+        if "KeyGroup" in response:
+            key_group_name = response["KeyGroup"]["KeyGroupName"]
 
-                print(f"  Processing CloudFront Key Group: {key_group_name}")
+            attributes = {
+                "id": key_group_id,
+                "name": key_group_name,
+            }
 
-                attributes = {
-                    "id": key_group_id,
-                    "name": key_group_name,
-                }
-
-                self.hcl.process_resource(
-                    "aws_cloudfront_key_group", key_group_id.replace("-", "_"), attributes)
+            self.hcl.process_resource(
+                "aws_cloudfront_key_group", key_group_id.replace("-", "_"), attributes)
 
     def aws_cloudfront_monitoring_subscription(self, target_distribution_id):
         print("Processing CloudFront Monitoring Subscriptions...")
