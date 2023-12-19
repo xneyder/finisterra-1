@@ -1,6 +1,5 @@
 aws_rds_cluster:
-  # terraform_module: "../../../terraform-aws-modules/terraform-aws-rds-aurora"
-  terraform_module: "github.com/finisterra-io/terraform-aws-rds-aurora.git?ref=main"
+  terraform_module: "github.com/finisterra-io/terraform-aws-modules.git//aurora?ref=main"
   terraform_module_version: "6.1.0"
   target_resource_name: this
   name_field: cluster_identifier

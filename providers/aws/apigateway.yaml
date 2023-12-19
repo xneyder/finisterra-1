@@ -1,6 +1,5 @@
 aws_api_gateway_rest_api:
-  # terraform_module: "../../../terraform-aws-modules/terraform-aws-api-gateway"
-  terraform_module: "github.com/finisterra-io/terraform-aws-api-gateway.git?ref=main"
+  terraform_module: "github.com/finisterra-io/terraform-aws-modules.git//api-gateway?ref=main"
   terraform_module_version: "0.20.0"
   target_resource_name: this
   defaults:

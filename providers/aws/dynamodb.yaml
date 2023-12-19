@@ -1,7 +1,7 @@
 aws_dynamodb_table:
   # terraform_module: "terraform-aws-modules/dynamodb-table/aws"
   # terraform_module: "../../../terraform-aws-modules/terraform-aws-dynamodb-table"
-  terraform_module: "github.com/finisterra-io/terraform-aws-dynamodb-table.git?ref=main"
+  terraform_module: "github.com/finisterra-io/terraform-aws-modules.git//dynamodb?ref=main"
   terraform_module_version: "3.3.0"
   keys:
     - name

@@ -1,6 +1,5 @@
 aws_elastic_beanstalk_application:
-  # terraform_module: "../../../terraform-aws-modules/terraform-aws-elastic-beanstalk-application"
-  terraform_module: "github.com/finisterra-io/terraform-aws-elastic-beanstalk-application.git?ref=main"
+  terraform_module: "github.com/finisterra-io/terraform-aws-modules.git//beanstalk/application?ref=main"
   terraform_module_version: "0.20.0"
   target_resource_name: default
   # path: "beanstalk"
@@ -30,8 +29,7 @@ aws_elastic_beanstalk_application:
       type: bool
 
 aws_elastic_beanstalk_environment:
-  # terraform_module: "../../../terraform-aws-modules/terraform-aws-elastic-beanstalk-environment"
-  terraform_module: "github.com/finisterra-io/terraform-aws-elastic-beanstalk-environment.git?ref=main"
+  terraform_module: "github.com/finisterra-io/terraform-aws-modules.git//beanstalk/environment?ref=main"
   terraform_module_version: "0.20.0"
   target_resource_name: default
   # path: "beanstalk"

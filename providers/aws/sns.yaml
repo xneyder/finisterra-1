@@ -1,7 +1,5 @@
 aws_sns_topic:
-  # terraform_module: "terraform-aws-modules/aws/sns"
-  # terraform_module: "../../../terraform-aws-modules/terraform-aws-sns"
-  terraform_module: "github.com/finisterra-io/terraform-aws-sns.git?ref=main"
+  terraform_module: "github.com/finisterra-io/terraform-aws-modules.git//sns?ref=main"
   terraform_module_version: "5.3.0"
   target_resource_name: this
   defaults:

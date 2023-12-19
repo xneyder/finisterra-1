@@ -26,8 +26,48 @@ class Wafv2:
         self.s3_instance = S3(s3_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
         self.logs_instance = Logs(logs_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
 
-        functions = {}
+        functions = {
+            "wafv2_get_default_action": self.wafv2_get_default_action,
+            "wafv2_get_default_block_response": self.wafv2_get_default_block_response,
+            "wafv2_get_rules": self.wafv2_get_rules,
+
+        }
         self.hcl.functions.update(functions)
+
+    def wafv2_get_default_action(self, attributes, arg):
+        default_action = attributes.get("default_action", [])
+        if default_action:
+            allow = default_action[0].get("allow", [])
+            if allow:
+                return "allow"
+            block = default_action[0].get("block", [])
+            if block:
+                return "block"
+        
+    def wafv2_get_default_block_response(self, attributes, arg):
+        default_action = attributes.get("default_action", [])
+        if default_action:
+            block = default_action[0].get("block", [])
+            if block:
+                return block[0].get("custom_response", [])
+        return []
+    
+    def wafv2_get_rules(self, attributes, arg):
+        rules = attributes.get("rules", [])
+        for idx, rule in enumerate(rules):
+            override_action = rule.get("override_action", [])
+            if override_action:
+                allow = override_action[0].get("allow", [])
+                if allow:
+                    rules[idx]["action"] = "allow"
+                block = override_action[0].get("block", [])
+                if block:
+                    rules[idx]["action"] = "block"
+                count = override_action[0].get("count", [])
+                if count:
+                    rules[idx]["action"] = "count"
+
+        return rules
 
     def wafv2(self):
         self.hcl.prepare_folder(os.path.join("generated"))

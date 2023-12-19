@@ -1,6 +1,5 @@
 aws_cloudwatch_log_group:
-  # terraform_module: "../../../terraform-aws-cloudwatch-logs//modules/log-group?ref=main"
-  terraform_module: "github.com/finisterra-io/terraform-aws-cloudwatch-logs//modules/log-group?ref=main"
+  terraform_module: "github.com/finisterra-io/terraform-aws-modules.git//cloudwatch-logs/modules/log-group?ref=main"
   terraform_module_version: "6.1.0"
   target_resource_name: this
   name_field: name

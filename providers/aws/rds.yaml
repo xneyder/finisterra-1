@@ -1,6 +1,6 @@
 aws_db_instance:
-  # terraform_module: "../../../terraform-aws-modules/terraform-aws-rds"
-  terraform_module: "github.com/finisterra-io/terraform-aws-rds.git?ref=main"
+  # terraform_module: "../../../terraform-aws-modules/rds"
+  terraform_module: "github.com/finisterra-io/terraform-aws-modules.git//rds?ref=main"
   terraform_module_version: "6.1.0"
   keys:
     - identifier
@@ -240,8 +240,7 @@ aws_db_instance:
           type: map
 
 aws_db_instance_automated_backups_replication:
-  # terraform_module: "../../../terraform-aws-modules/terraform-aws-rds//modules/db_instance_automated_backups_replication"
-  terraform_module: "github.com/finisterra-io/terraform-aws-rds//modules/db_instance_automated_backups_replication?ref=main"
+  terraform_module: "github.com/finisterra-io/terraform-aws-modules.git//rds/modules/db_instance_automated_backups_replication?ref=main"
   terraform_module_version: "5.2.0"
   target_resource_name: this
   # path: "automated_backups_replication"

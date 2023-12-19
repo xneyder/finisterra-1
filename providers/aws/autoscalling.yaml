@@ -1,6 +1,5 @@
 aws_autoscaling_group:
-  # terraform_module: "../../../terraform-aws-modules/terraform-aws-ec2-autoscale-group"
-  terraform_module: "github.com/finisterra-io/terraform-aws-ec2-autoscale-group.git?ref=main"
+  terraform_module: "github.com/finisterra-io/terraform-aws-modules.git//autoscale-group?ref=main"
   terraform_module_version: "6.1.0"
   target_resource_name: default
   name_field: asg_name

@@ -1,6 +1,5 @@
 aws_lambda_function:
-  # terraform_module: "../../../terraform-aws-modules/terraform-aws-lambda-function"
-  terraform_module: "github.com/finisterra-io/terraform-aws-lambda-function.git?ref=main"
+  terraform_module: "github.com/finisterra-io/terraform-aws-modules.git//lambda?ref=main"
   terraform_module_version: "0.20.0"
   target_resource_name: this
   defaults:

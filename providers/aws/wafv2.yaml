@@ -1,6 +1,5 @@
 aws_wafv2_web_acl:
-  # terraform_module: "../../../terraform-aws-modules/terraform-aws-waf"
-  terraform_module: "github.com/finisterra-io/terraform-aws-waf.git?ref=main"
+  terraform_module: "github.com/finisterra-io/terraform-aws-modules.git//wafv2?ref=main"
   terraform_module_version: "0.20.0"
   target_resource_name: default
   fields:
@@ -10,3 +9,30 @@ aws_wafv2_web_acl:
     description:
       field: description
       type: string
+    scope:
+      field: scope
+      type: string
+    token_domains:
+      field: token_domains
+      type: list
+    tags:
+      field: tags
+      type: map
+    default_action:
+      function: wafv2_get_default_action
+      arg: id
+      type: string
+    default_block_response:
+      function: wafv2_get_default_block_response
+      arg: id
+      type: string
+    visibility_config:
+      field: visibility_config
+      type: list
+    custom_response_body:
+      field: custom_response_body
+      type: list
+    rules:
+      function: wafv2_get_rules
+      arg: id
+      type: list

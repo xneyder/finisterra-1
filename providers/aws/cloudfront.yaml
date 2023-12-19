@@ -1,6 +1,6 @@
 aws_cloudfront_distribution:
-  # terraform_module: "../../../terraform-aws-modules/terraform-aws-cloudfront"
-  terraform_module: "github.com/finisterra-io/terraform-aws-cloudfront.git?ref=main"
+  # terraform_module: "../../../terraform-aws-modules/cloudfront"
+  terraform_module: "github.com/finisterra-io/terraform-aws-modules.git//cloudfront?ref=main"
   terraform_module_version: "6.1.0"
   target_resource_name: this
   # path: "cloudfront_distribution"
@@ -107,7 +107,7 @@ aws_cloudfront_distribution:
           module_default: "Enabled"
 
 aws_cloudfront_origin_access_identity:
-  terraform_module: "github.com/finisterra-io/terraform-aws-cloudfront//modules/origin_access_identity?ref=main"
+  terraform_module: "github.com/finisterra-io/terraform-aws-modules.git//cloudfront/modules/origin_access_identity?ref=main"
   terraform_module_version: "6.1.0"
   target_resource_name: this
   # path: "origin_access_identity"
@@ -119,7 +119,7 @@ aws_cloudfront_origin_access_identity:
       type: string
 
 aws_cloudfront_cache_policy:
-  terraform_module: "github.com/finisterra-io/terraform-aws-cloudfront//modules/cache_policy?ref=main"
+  terraform_module: "github.com/finisterra-io/terraform-aws-modules.git//cloudfront/modules/cache_policy?ref=main"
   terraform_module_version: "6.1.0"
   target_resource_name: this
   fields:
@@ -172,7 +172,7 @@ aws_cloudfront_cache_policy:
       type: list
 
 aws_cloudfront_response_headers_policy:
-  terraform_module: "github.com/finisterra-io/terraform-aws-cloudfront//modules/response_headers_policy?ref=main"
+  terraform_module: "github.com/finisterra-io/terraform-aws-modules.git//cloudfront/modules/response_headers_policy?ref=main"
   terraform_module_version: "6.1.0"
   target_resource_name: this
   fields:
@@ -199,7 +199,7 @@ aws_cloudfront_response_headers_policy:
       type: list
 
 aws_cloudfront_origin_request_policy:
-  terraform_module: "github.com/finisterra-io/terraform-aws-cloudfront//modules/origin_request_policy?ref=main"
+  terraform_module: "github.com/finisterra-io/terraform-aws-modules.git//cloudfront/modules/origin_request_policy?ref=main"
   terraform_module_version: "6.1.0"
   target_resource_name: this
   fields:
@@ -235,7 +235,7 @@ aws_cloudfront_origin_request_policy:
       type: list
 
 aws_cloudfront_function:
-  terraform_module: "github.com/finisterra-io/terraform-aws-cloudfront//modules/function?ref=main"
+  terraform_module: "github.com/finisterra-io/terraform-aws-modules.git//cloudfront/modules/function?ref=main"
   terraform_module_version: "6.1.0"
   target_resource_name: this
   fields:

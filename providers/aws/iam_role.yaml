@@ -1,6 +1,5 @@
 aws_iam_role:
-  # terraform_module: "../../../terraform-aws-modules/terraform-aws-iam//modules/iam_role"
-  terraform_module: "github.com/finisterra-io/terraform-aws-iam//modules/iam_role?ref=main"
+  terraform_module: "github.com/finisterra-io/terraform-aws-modules.git//iam/modules/iam_role?ref=main"
   terraform_module_version: "5.2.0"
   target_resource_name: default
   name_field: role_name
@@ -61,8 +60,7 @@ aws_iam_role:
           type: list
 
 aws_iam_policy:
-  # terraform_module: "../../../terraform-aws-modules/terraform-aws-iam//modules/iam_policy"
-  terraform_module: "github.com/finisterra-io/terraform-aws-iam//modules/iam_policy?ref=main"
+  terraform_module: "github.com/finisterra-io/terraform-aws-modules.git//iam/modules/iam_policy?ref=main"
   terraform_module_version: "5.2.0"
   target_resource_name: default
   name_field: policy_name

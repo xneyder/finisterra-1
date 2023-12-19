@@ -1,6 +1,5 @@
 aws_lb:
-  # terraform_module: "../../../terraform-aws-modules/terraform-aws-alb"
-  terraform_module: "github.com/finisterra-io/terraform-aws-alb.git?ref=main"
+  terraform_module: "github.com/finisterra-io/terraform-aws-modules.git//alb?ref=main"
   terraform_module_version: "0.20.0"
   target_resource_name: default
   name_field: load_balancer_name
@@ -112,8 +111,7 @@ aws_lb:
               type: map
 
 aws_security_group:
-  # terraform_module: "../../../terraform-aws-modules/terraform-aws-security-group"
-  terraform_module: "github.com/finisterra-io/terraform-aws-security-group?ref=main"
+  terraform_module: "github.com/finisterra-io/terraform-aws-modules.git//security-group?ref=main"
   terraform_module_version: "5.2.0"
   target_resource_name: default
   name_field: security_group_name

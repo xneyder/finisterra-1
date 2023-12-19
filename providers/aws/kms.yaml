@@ -1,6 +1,5 @@
 aws_kms_key:
-  # terraform_module: "../../../terraform-aws-modules/terraform-aws-kms"
-  terraform_module: "github.com/finisterra-io/terraform-aws-kms?ref=main"
+  terraform_module: "github.com/finisterra-io/terraform-aws-modules.git//kms?ref=main"
   terraform_module_version: "5.2.0"
   target_resource_name: this
   defaults:
@@ -80,8 +79,7 @@ aws_kms_key:
           type: map
 
 aws_kms_external_key:
-  # terraform_module: "../../../terraform-aws-modules/terraform-aws-kms"
-  terraform_module: "github.com/finisterra-io/terraform-aws-kms?ref=main"
+  terraform_module: "github.com/finisterra-io/terraform-aws-modules.git//kms?ref=main"
   terraform_module_version: "5.2.0"
   target_resource_name: this
   defaults:
