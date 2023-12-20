@@ -29,7 +29,7 @@ class Logs:
         self.resource_list = {}
 
     def logs(self):
-        self.hcl.prepare_folder(os.path.join("generated", "logs"))
+        self.hcl.prepare_folder(os.path.join("generated"))
 
         # self.aws_cloudwatch_log_destination()
         # self.aws_cloudwatch_log_destination_policy()

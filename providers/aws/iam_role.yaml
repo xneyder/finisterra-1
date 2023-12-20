@@ -9,7 +9,7 @@ aws_iam_role:
   joined_fields:
     managed_policy_arns:
       sub_fields:
-        - managed_policy_arns
+        - ALL
   fields:
     role_name:
       field: name
@@ -37,8 +37,9 @@ aws_iam_role:
       field: tags
       type: map
     managed_policy_arns:
-      field: managed_policy_arns
-      type: list
+      function: iam_get_managed_policy_arns
+      arg: id
+      type: map
   childs:
     aws_iam_role_policy_attachment:
       join:

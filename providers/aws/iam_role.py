@@ -26,7 +26,7 @@ class IAM_ROLE:
             self.hcl = hcl
 
     def iam(self):        
-        self.hcl.prepare_folder(os.path.join("generated", "iam"))
+        self.hcl.prepare_folder(os.path.join("generated"))
 
         self.aws_iam_role()
         self.hcl.refresh_state()
@@ -58,8 +58,8 @@ class IAM_ROLE:
                 if role_name and current_role_name != role_name:
                     continue
 
-                # if current_role_name != 'ae-dev-aws-load-balancer-controller@kube-system-use1':
-                #     continue
+                if current_role_name != 'test-spa-deep-linking':
+                    continue
 
                 print(f"  Processing IAM Role: {current_role_name}")
                 id = current_role_name

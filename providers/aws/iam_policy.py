@@ -37,7 +37,7 @@ class IAM_POLICY:
         return result
 
     def iam(self):
-        self.hcl.prepare_folder(os.path.join("generated", "iam_policy"))
+        self.hcl.prepare_folder(os.path.join("generated"))
 
         self.aws_iam_policy()
         self.hcl.refresh_state()

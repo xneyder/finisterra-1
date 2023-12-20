@@ -41,6 +41,14 @@ def get_policy_documents(attributes, arg=None, additional_data=None):
 
 #### IAM ####
 
+def iam_get_managed_policy_arns(attributes, arg=None, additional_data=None):
+    policy_arns = attributes.get("managed_policy_arns")
+    result= {}
+    for policy_arn in policy_arns:
+        policy_name = policy_arn.split('/')[-1]
+        result[policy_name] = policy_arn
+    return result
+
 #### SECURITY GROUP ####
 
 def get_security_group_rules(attributes, arg=None, additional_data=None):

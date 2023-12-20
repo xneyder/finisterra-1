@@ -42,7 +42,7 @@ class SECURITY_GROUP:
         return vpc_name
 
     def security_group(self):
-        self.hcl.prepare_folder(os.path.join("generated", "security_group"))
+        self.hcl.prepare_folder(os.path.join("generated"))
 
         self.aws_security_group()
 

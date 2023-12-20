@@ -994,9 +994,10 @@ class HCL:
                                         joined_sub_fields = instance["joined_fields"][index].get('sub_fields', [])
                                         value_json = json.loads(value)
                                         value_items=self.collect_json_values(value_json, index)
+                                        # value_items [{'test-spa-deep-linking-logs': 'arn:aws:iam::070252509141:policy/test-spa-deep-linking-logs'}]
                                         for value_item_dict in value_items:
                                             for index_item, value_item in value_item_dict.items():
-                                                if index_item in joined_sub_fields:
+                                                if index_item in joined_sub_fields or "ALL" in joined_sub_fields:
                                                     if value_item in ids_name_map:
                                                         if module_instance_name != ids_name_map[value_item]["module"]:
                                                             value_module = "module."+ids_name_map[value_item]["module"]+"."+ids_name_map[value_item]["key"]

@@ -103,6 +103,18 @@ class CloudFront:
 
         self.origin = result
         return result
+    
+    def get_managed_cache_policy_name(self, cache_policy_id):
+        managed_cache_policies = self.cloudfront_client.list_cache_policies(
+            Type="managed",
+            MaxItems="100"
+        ).get("CachePolicyList", [])
+
+        for policy in managed_cache_policies:
+            if policy.get("CachePolicyId") == cache_policy_id:
+                return policy.get("CachePolicyName")
+
+        return None
 
     def build_default_cache_behavior(self, attributes):
         default_cache_behavior = attributes.get("default_cache_behavior", [])
