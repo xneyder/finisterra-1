@@ -5,13 +5,14 @@ import copy
 from providers.aws.acm import ACM
 from providers.aws.s3 import S3
 from providers.aws.aws_lambda import AwsLambda
+from providers.aws.wafv2 import Wafv2
 
 
 def cors_config_transform(value):
     return "{items="+str(value)+"}\n"
 
 class CloudFront:
-    def __init__(self, cloudfront_client, acm_client, s3_client, lambda_client, iam_client, logs_client, script_dir, provider_name, schema_data, region, s3Bucket,
+    def __init__(self, cloudfront_client, acm_client, s3_client, lambda_client, iam_client, logs_client, wafv2_client, elbv2_client, script_dir, provider_name, schema_data, region, s3Bucket,
                  dynamoDBTable, state_key, workspace_id, modules, aws_account_id):
         self.cloudfront_client = cloudfront_client
         self.transform_rules = {
@@ -55,6 +56,7 @@ class CloudFront:
         self.acm_instance = ACM(acm_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
         self.s3_instance = S3(s3_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
         self.aws_lambda_instance = AwsLambda(lambda_client, iam_client, logs_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
+        self.wafv2_instance = Wafv2(wafv2_client, elbv2_client, s3_client, logs_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
 
     def get_field_from_attrs(self, attributes, arg):
         try:
@@ -255,7 +257,7 @@ class CloudFront:
         self.hcl.id_key_list.append("cloudfront_access_identity_path")
         self.hcl.id_key_list.append("bucket_domain_name")
         self.hcl.id_key_list.append("qualified_arn")
-        config_file_list = ["cloudfront.yaml", "acm.yaml", "s3.yaml", "aws_lambda.yaml", "iam_role.yaml"]
+        config_file_list = ["cloudfront.yaml", "acm.yaml", "s3.yaml", "aws_lambda.yaml", "iam_role.yaml", "wafv2.yaml"]
         for index,config_file in enumerate(config_file_list):
             config_file_list[index] = os.path.join(os.path.dirname(os.path.abspath(__file__)),config_file )
         self.hcl.module_hcl_code("terraform.tfstate",config_file_list, {}, self.region, self.aws_account_id, {}, {})
@@ -281,7 +283,7 @@ class CloudFront:
             for distribution_summary in items:
                 distribution_id = distribution_summary["Id"]
 
-                # if distribution_id != "EJ45WJKH08SI4":
+                # if distribution_id != "E248XZF2PQKMWP":
                 #     continue
 
                 print(f"  Processing CloudFront Distribution: {distribution_id}")
@@ -322,15 +324,15 @@ class CloudFront:
                     if viewer_certificate:
                         ACMCertificateArn = viewer_certificate.get('ACMCertificateArn')
                         if ACMCertificateArn:
-                            self.acm_instance.aws_acm_certificate(ACMCertificateArn,ftstack)
+                            self.acm_instance.aws_acm_certificate(ACMCertificateArn, ftstack)
 
                     logger_config = dist_config.get('Logging', {})
                     if logger_config:
                         bucket = logger_config.get('Bucket')
                         if bucket:
-                            #get the bucket name from the bucket domain
+                            # get the bucket name from the bucket domain
                             bucket = bucket.split('.')[0]
-                            self.s3_instance.aws_s3_bucket(bucket,ftstack)
+                            self.s3_instance.aws_s3_bucket(bucket, ftstack)
 
                     # Process cache behaviors and associated policies
                     all_behaviors = dist_config.get('CacheBehaviors', {}).get('Items', [])
@@ -353,14 +355,13 @@ class CloudFront:
                                 self.aws_cloudfront_origin_request_policy(origin_request_policy_id)
                                 self.hcl.add_stack("aws_cloudfront_origin_request_policy", origin_request_policy_id, ftstack)
 
-                            
                             lambda_function_associations = behavior.get('LambdaFunctionAssociations', {})
                             if lambda_function_associations:
                                 for lambda_function_association in lambda_function_associations.get('Items', []):
                                     lambda_arn = lambda_function_association.get('LambdaFunctionARN')
                                     if lambda_arn:
                                         lambda_name = lambda_arn.split(":function:")[1].split(":")[0]
-                                        self.aws_lambda_instance.aws_lambda_function(lambda_name,ftstack)
+                                        self.aws_lambda_instance.aws_lambda_function(lambda_name, ftstack)
 
                             function_association = behavior.get('FunctionAssociations', {})
                             if function_association:
@@ -368,6 +369,13 @@ class CloudFront:
                                     function_arn = function_association.get('FunctionARN')
                                     if function_arn:
                                         self.aws_cloudfront_function(function_arn, ftstack)
+
+                  # Check if ACL ID is associated with the CloudFront distribution
+                    acl_arn = dist_config.get('WebACLId')
+                    if acl_arn:
+                        acl_id = acl_arn.split("/")[-1]
+                        print(acl_id)
+                        self.wafv2_instance.aws_wafv2_web_acl(acl_id, ftstack)
                                         
                 except Exception as e:
                     print(f"Error occurred while processing distribution {distribution_id}: {e}")

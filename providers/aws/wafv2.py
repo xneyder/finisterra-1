@@ -4,7 +4,7 @@ from providers.aws.s3 import S3
 from providers.aws.logs import Logs
 
 class Wafv2:
-    def __init__(self, wafv2_client, elbv2_client, iam_client, s3_client, logs_client, script_dir, provider_name, schema_data, region, s3Bucket,
+    def __init__(self, wafv2_client, elbv2_client, s3_client, logs_client, script_dir, provider_name, schema_data, region, s3Bucket,
                  dynamoDBTable, state_key, workspace_id, modules, aws_account_id, hcl=None):
         self.wafv2_client = wafv2_client
         self.elbv2_client = elbv2_client
@@ -27,30 +27,10 @@ class Wafv2:
         self.logs_instance = Logs(logs_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
 
         functions = {
-            # "wafv2_get_default_action": self.wafv2_get_default_action,
-            # "wafv2_get_default_block_response": self.wafv2_get_default_block_response,
             "wafv2_get_rules": self.wafv2_get_rules,
             "wafv2_web_acl_import_id": self.wafv2_web_acl_import_id,
         }
         self.hcl.functions.update(functions)
-
-    # def wafv2_get_default_action(self, attributes, arg):
-    #     default_action = attributes.get("default_action", [])
-    #     if default_action:
-    #         allow = default_action[0].get("allow", [])
-    #         if allow:
-    #             return "allow"
-    #         block = default_action[0].get("block", [])
-    #         if block:
-    #             return "block"
-        
-    # def wafv2_get_default_block_response(self, attributes, arg):
-    #     default_action = attributes.get("default_action", [])
-    #     if default_action:
-    #         block = default_action[0].get("block", [])
-    #         if block:
-    #             return block[0].get("custom_response", [])
-    #     return []
     
     # def remove_empty_keys(self, data):
         # if isinstance(data, dict):
@@ -62,38 +42,6 @@ class Wafv2:
     
     def wafv2_get_rules(self, attributes, arg):
         rules = attributes.get("rule", [])
-        # for idx, rule in enumerate(rules):
-        #     # action
-        #     action = rule.get("action", [])
-        #     if action:
-        #         allow = action[0].get("allow", [])
-        #         if allow:
-        #             rules[idx]["action"] = "allow"
-        #         block = action[0].get("block", [])
-        #         if block:
-        #             rules[idx]["action"] = "block"
-        #         count = action[0].get("count", [])
-        #         if count:
-        #             rules[idx]["action"] = "count"
-        #         captcha = action[0].get("captcha", [])
-        #         if captcha:
-        #             rules[idx]["action"] = "captcha"
-        #             # custom_request_handling = captcha[0].get("custom_request_handling", [])
-        #             # if custom_request_handling:
-        #             #     rules[idx]["custom_request_handling"] = custom_request_handling
-        #     del rules[idx]["action"]
-
-        #     #override_action
-        #     override_action = rule.get("override_action", [])
-        #     if override_action:
-        #         none = override_action[0].get("none", [])
-        #         if none:
-        #             rules[idx]["override_action"] = "none"
-        #         count = override_action[0].get("count", [])
-        #         if count:
-        #             rules[idx]["override_action"] = "count"
-        #     del rules[idx]["override_action"]
-
         # rules = self.remove_empty_keys(rules)
         return rules
 
@@ -178,7 +126,7 @@ class Wafv2:
     #         self.hcl.process_resource(
     #             "aws_wafv2_rule_group", rule_group_id.replace("-", "_"), attributes)
 
-    def aws_wafv2_web_acl(self, ftstack=None):
+    def aws_wafv2_web_acl(self, web_acl_id=None, ftstack=None):
         resource_type = "aws_wafv2_web_acl"
         print("Processing WAFv2 Web ACLs...")
 
@@ -187,6 +135,9 @@ class Wafv2:
             web_acls = self.wafv2_client.list_web_acls(Scope=scope)["WebACLs"]
 
             for web_acl in web_acls:
+                if web_acl_id and web_acl["Id"] != web_acl_id:
+                    continue
+
                 web_acl_id = web_acl["Id"]
                 web_acl_name = web_acl["Name"]
 
@@ -202,7 +153,7 @@ class Wafv2:
                     ftstack = "wafv2"
                     # Find tags for the ACL
                     tags_response = self.wafv2_client.list_tags_for_resource(
-                        ResourceARN=web_acl_info["ARN"])                    
+                        ResourceARN=web_acl_info["ARN"])
                     if "TagInfoForResource" in tags_response:
                         for tag in tags_response["TagInfoForResource"].get("TagList", []):
                             if tag["Key"] == "ftstack":

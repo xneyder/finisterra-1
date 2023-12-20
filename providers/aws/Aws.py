@@ -426,7 +426,12 @@ class Aws:
         logs_client = self.session.client(
             "logs", region_name=self.aws_region)
         
-        instance = CloudFront(cloudfront_client, acm_client, s3_client, lambda_client, iam_client, logs_client, self.script_dir, self.provider_name,
+        wafv2_client = self.session.client(
+            "wafv2", region_name=self.aws_region)
+        elbv2_client = self.session.client(
+            "elbv2", region_name=self.aws_region)
+        
+        instance = CloudFront(cloudfront_client, acm_client, s3_client, lambda_client, iam_client, logs_client, wafv2_client, elbv2_client, self.script_dir, self.provider_name,
                               self.schema_data, self.aws_region, self.s3Bucket,
                               self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.cloudfront()
@@ -760,15 +765,13 @@ class Aws:
         elbv2_client = self.session.client(
             "elbv2", region_name=self.aws_region)
         
-        iam_client = self.session.client(
-            "iam", region_name=self.aws_region)
         s3_client = self.session.client(
             "s3", region_name=self.aws_region)
         logs_client = self.session.client(
             "logs", region_name=self.aws_region)
 
 
-        instance = Wafv2(wafv2_client, elbv2_client, iam_client, s3_client, logs_client, self.script_dir, self.provider_name,
+        instance = Wafv2(wafv2_client, elbv2_client, s3_client, logs_client, self.script_dir, self.provider_name,
                          self.schema_data, self.aws_region, self.s3Bucket,
                          self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.wafv2()

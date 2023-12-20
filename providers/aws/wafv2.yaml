@@ -4,6 +4,10 @@ aws_wafv2_web_acl:
   target_resource_name: default
   import_id:
     function: wafv2_web_acl_import_id
+  joined_fields:
+    log_destination_configs:
+      sub_fields:
+        - log_destination_configs
   fields:
     name:
       field: name
@@ -23,10 +27,6 @@ aws_wafv2_web_acl:
     default_action:
       field: default_action
       type: list
-    # default_block_response:
-    #   function: wafv2_get_default_block_response
-    #   arg: id
-    #   type: string
     visibility_config:
       field: visibility_config
       type: list

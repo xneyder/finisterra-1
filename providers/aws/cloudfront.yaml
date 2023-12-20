@@ -30,6 +30,9 @@ aws_cloudfront_distribution:
     logging_config:
       sub_fields:
         - bucket
+    web_acl_id:
+      sub_fields:
+        - web_acl_id
   fields:
     enabled:
       field: enabled
