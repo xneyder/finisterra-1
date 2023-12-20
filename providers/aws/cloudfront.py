@@ -110,10 +110,11 @@ class CloudFront:
             MaxItems="100"
         ).get("CachePolicyList", [])
 
-        for policy in managed_cache_policies:
-            if policy.get("CachePolicyId") == cache_policy_id:
-                return policy.get("CachePolicyName")
-
+        for policy in managed_cache_policies['Items']:
+            if policy['Type'] != 'managed':
+                continue
+            if policy["CachePolicy"]["Id"] == cache_policy_id:
+                return policy["CachePolicy"]["CachePolicyConfig"]["Name"]
         return None
 
     def build_default_cache_behavior(self, attributes):
@@ -123,6 +124,13 @@ class CloudFront:
             return result
         for k, v in default_cache_behavior[0].items():
             if v:  # check if the value is not empty
+                if k == "cache_policy_id":
+                    cache_policy_name = self.get_managed_cache_policy_name(v)
+                    if cache_policy_name:
+                        result["cache_policy_name"] = cache_policy_name
+                    else:
+                        result[k] = v
+                    continue
                 if k == "lambda_function_association":
                     assoc_result = {}
                     for association in v:
@@ -171,6 +179,13 @@ class CloudFront:
             record = {}
             for k, v in cache_behavior.items():
                 if v:
+                    if k == "cache_policy_id":
+                        cache_policy_name = self.get_managed_cache_policy_name(v)
+                        if cache_policy_name:
+                            record["cache_policy_name"] = cache_policy_name
+                        else:
+                            record[k] = v
+                        continue
                     if k == "lambda_function_association":
                         assoc_result = {}
                         for association in v:
@@ -295,7 +310,7 @@ class CloudFront:
             for distribution_summary in items:
                 distribution_id = distribution_summary["Id"]
 
-                # if distribution_id != "E248XZF2PQKMWP":
+                # if distribution_id != "E31WQ2W96RYYTV":
                 #     continue
 
                 print(f"  Processing CloudFront Distribution: {distribution_id}")

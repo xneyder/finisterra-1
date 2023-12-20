@@ -58,8 +58,8 @@ class IAM_ROLE:
                 if role_name and current_role_name != role_name:
                     continue
 
-                if current_role_name != 'test-spa-deep-linking':
-                    continue
+                # if current_role_name != 'test-spa-deep-linking':
+                #     continue
 
                 print(f"  Processing IAM Role: {current_role_name}")
                 id = current_role_name
