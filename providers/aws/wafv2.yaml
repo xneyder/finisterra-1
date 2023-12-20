@@ -21,13 +21,12 @@ aws_wafv2_web_acl:
       field: tags
       type: map
     default_action:
-      function: wafv2_get_default_action
-      arg: id
-      type: string
-    default_block_response:
-      function: wafv2_get_default_block_response
-      arg: id
-      type: string
+      field: default_action
+      type: list
+    # default_block_response:
+    #   function: wafv2_get_default_block_response
+    #   arg: id
+    #   type: string
     visibility_config:
       field: visibility_config
       type: list
@@ -38,3 +37,19 @@ aws_wafv2_web_acl:
       function: wafv2_get_rules
       arg: id
       type: list
+  childs:
+    aws_wafv2_web_acl_logging_configuration:
+      join:
+        arn:
+          field: resource_arn
+      target_resource_name: default
+      fields:
+        log_destination_configs:
+          field: log_destination_configs
+          type: list
+        redacted_fields:
+          field: redacted_fields
+          type: list
+        logging_filter:
+          field: logging_filter
+          type: list

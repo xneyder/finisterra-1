@@ -27,72 +27,72 @@ class Wafv2:
         self.logs_instance = Logs(logs_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
 
         functions = {
-            "wafv2_get_default_action": self.wafv2_get_default_action,
-            "wafv2_get_default_block_response": self.wafv2_get_default_block_response,
+            # "wafv2_get_default_action": self.wafv2_get_default_action,
+            # "wafv2_get_default_block_response": self.wafv2_get_default_block_response,
             "wafv2_get_rules": self.wafv2_get_rules,
             "wafv2_web_acl_import_id": self.wafv2_web_acl_import_id,
         }
         self.hcl.functions.update(functions)
 
-    def wafv2_get_default_action(self, attributes, arg):
-        default_action = attributes.get("default_action", [])
-        if default_action:
-            allow = default_action[0].get("allow", [])
-            if allow:
-                return "allow"
-            block = default_action[0].get("block", [])
-            if block:
-                return "block"
+    # def wafv2_get_default_action(self, attributes, arg):
+    #     default_action = attributes.get("default_action", [])
+    #     if default_action:
+    #         allow = default_action[0].get("allow", [])
+    #         if allow:
+    #             return "allow"
+    #         block = default_action[0].get("block", [])
+    #         if block:
+    #             return "block"
         
-    def wafv2_get_default_block_response(self, attributes, arg):
-        default_action = attributes.get("default_action", [])
-        if default_action:
-            block = default_action[0].get("block", [])
-            if block:
-                return block[0].get("custom_response", [])
-        return []
+    # def wafv2_get_default_block_response(self, attributes, arg):
+    #     default_action = attributes.get("default_action", [])
+    #     if default_action:
+    #         block = default_action[0].get("block", [])
+    #         if block:
+    #             return block[0].get("custom_response", [])
+    #     return []
     
     # def remove_empty_keys(self, data):
-        if isinstance(data, dict):
-            return {k: self.remove_empty_keys(v) for k, v in data.items() if v != "" and v != {} and v != []}
-        elif isinstance(data, list):
-            return [self.remove_empty_keys(item) if isinstance(item, dict) else item for item in data if item != "" and item != {} and item != []]
-        else:
-            return data
+        # if isinstance(data, dict):
+        #     return {k: self.remove_empty_keys(v) for k, v in data.items() if v != "" and v != {} and v != []}
+        # elif isinstance(data, list):
+        #     return [self.remove_empty_keys(item) if isinstance(item, dict) else item for item in data if item != "" and item != {} and item != []]
+        # else:
+        #     return data
     
     def wafv2_get_rules(self, attributes, arg):
         rules = attributes.get("rule", [])
-        for idx, rule in enumerate(rules):
-            # action
-            action = rule.get("action", [])
-            if action:
-                allow = action[0].get("allow", [])
-                if allow:
-                    rules[idx]["action"] = "allow"
-                block = action[0].get("block", [])
-                if block:
-                    rules[idx]["action"] = "block"
-                count = action[0].get("count", [])
-                if count:
-                    rules[idx]["action"] = "count"
-                captcha = action[0].get("captcha", [])
-                if captcha:
-                    rules[idx]["action"] = "captcha"
-                    # custom_request_handling = captcha[0].get("custom_request_handling", [])
-                    # if custom_request_handling:
-                    #     rules[idx]["custom_request_handling"] = custom_request_handling
-            del rules[idx]["action"]
+        # for idx, rule in enumerate(rules):
+        #     # action
+        #     action = rule.get("action", [])
+        #     if action:
+        #         allow = action[0].get("allow", [])
+        #         if allow:
+        #             rules[idx]["action"] = "allow"
+        #         block = action[0].get("block", [])
+        #         if block:
+        #             rules[idx]["action"] = "block"
+        #         count = action[0].get("count", [])
+        #         if count:
+        #             rules[idx]["action"] = "count"
+        #         captcha = action[0].get("captcha", [])
+        #         if captcha:
+        #             rules[idx]["action"] = "captcha"
+        #             # custom_request_handling = captcha[0].get("custom_request_handling", [])
+        #             # if custom_request_handling:
+        #             #     rules[idx]["custom_request_handling"] = custom_request_handling
+        #     del rules[idx]["action"]
 
-            #override_action
-            override_action = rule.get("override_action", [])
-            if override_action:
-                none = override_action[0].get("none", [])
-                if none:
-                    rules[idx]["override_action"] = "none"
-                count = override_action[0].get("count", [])
-                if count:
-                    rules[idx]["override_action"] = "count"
-            del rules[idx]["override_action"]
+        #     #override_action
+        #     override_action = rule.get("override_action", [])
+        #     if override_action:
+        #         none = override_action[0].get("none", [])
+        #         if none:
+        #             rules[idx]["override_action"] = "none"
+        #         count = override_action[0].get("count", [])
+        #         if count:
+        #             rules[idx]["override_action"] = "count"
+        #     del rules[idx]["override_action"]
 
         # rules = self.remove_empty_keys(rules)
         return rules
@@ -190,9 +190,9 @@ class Wafv2:
                 web_acl_id = web_acl["Id"]
                 web_acl_name = web_acl["Name"]
 
-                if web_acl_name != "aws-managed-waf-sandbox":
-                    continue
-                
+                # if web_acl_name != "aws-managed-waf-sandbox":
+                #     continue
+
                 print(f"  Processing WAFv2 Web ACL: {web_acl_id}")
 
                 web_acl_info = self.wafv2_client.get_web_acl(
