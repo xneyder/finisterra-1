@@ -2,6 +2,8 @@ aws_wafv2_web_acl:
   terraform_module: "github.com/finisterra-io/terraform-aws-modules.git//wafv2?ref=main"
   terraform_module_version: "0.20.0"
   target_resource_name: default
+  import_id:
+    function: wafv2_web_acl_import_id
   fields:
     name:
       field: name

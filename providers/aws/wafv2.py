@@ -30,7 +30,7 @@ class Wafv2:
             "wafv2_get_default_action": self.wafv2_get_default_action,
             "wafv2_get_default_block_response": self.wafv2_get_default_block_response,
             "wafv2_get_rules": self.wafv2_get_rules,
-
+            "wafv2_web_acl_import_id": self.wafv2_web_acl_import_id,
         }
         self.hcl.functions.update(functions)
 
@@ -52,22 +52,56 @@ class Wafv2:
                 return block[0].get("custom_response", [])
         return []
     
+    # def remove_empty_keys(self, data):
+        if isinstance(data, dict):
+            return {k: self.remove_empty_keys(v) for k, v in data.items() if v != "" and v != {} and v != []}
+        elif isinstance(data, list):
+            return [self.remove_empty_keys(item) if isinstance(item, dict) else item for item in data if item != "" and item != {} and item != []]
+        else:
+            return data
+    
     def wafv2_get_rules(self, attributes, arg):
-        rules = attributes.get("rules", [])
+        rules = attributes.get("rule", [])
         for idx, rule in enumerate(rules):
-            override_action = rule.get("override_action", [])
-            if override_action:
-                allow = override_action[0].get("allow", [])
+            # action
+            action = rule.get("action", [])
+            if action:
+                allow = action[0].get("allow", [])
                 if allow:
                     rules[idx]["action"] = "allow"
-                block = override_action[0].get("block", [])
+                block = action[0].get("block", [])
                 if block:
                     rules[idx]["action"] = "block"
-                count = override_action[0].get("count", [])
+                count = action[0].get("count", [])
                 if count:
                     rules[idx]["action"] = "count"
+                captcha = action[0].get("captcha", [])
+                if captcha:
+                    rules[idx]["action"] = "captcha"
+                    # custom_request_handling = captcha[0].get("custom_request_handling", [])
+                    # if custom_request_handling:
+                    #     rules[idx]["custom_request_handling"] = custom_request_handling
+            del rules[idx]["action"]
 
+            #override_action
+            override_action = rule.get("override_action", [])
+            if override_action:
+                none = override_action[0].get("none", [])
+                if none:
+                    rules[idx]["override_action"] = "none"
+                count = override_action[0].get("count", [])
+                if count:
+                    rules[idx]["override_action"] = "count"
+            del rules[idx]["override_action"]
+
+        # rules = self.remove_empty_keys(rules)
         return rules
+
+    def wafv2_web_acl_import_id(self, attributes):
+        id = attributes.get('id')
+        name = attributes.get('name')
+        scope = attributes.get('scope')
+        return f"{id}/{name}/{scope}"
 
     def wafv2(self):
         self.hcl.prepare_folder(os.path.join("generated"))
@@ -82,7 +116,7 @@ class Wafv2:
 
         self.hcl.module_hcl_code("terraform.tfstate",config_file_list, {}, self.region, self.aws_account_id, {}, {})
 
-        # self.json_plan = self.hcl.json_plan
+        self.json_plan = self.hcl.json_plan
 
     def aws_wafv2_ip_set(self, ip_set_id):
         print(f"Processing WAFv2 IP Set: {ip_set_id}")
@@ -155,6 +189,10 @@ class Wafv2:
             for web_acl in web_acls:
                 web_acl_id = web_acl["Id"]
                 web_acl_name = web_acl["Name"]
+
+                if web_acl_name != "aws-managed-waf-sandbox":
+                    continue
+                
                 print(f"  Processing WAFv2 Web ACL: {web_acl_id}")
 
                 web_acl_info = self.wafv2_client.get_web_acl(
