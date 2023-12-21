@@ -61,15 +61,80 @@ class Apigateway:
         path = attributes.get('path')
         path_part= attributes.get('path_part')
         parent_path_part = path.replace(path_part, '')
-        
+
+        if parent_path_part != '/':
+            parent_path_part = parent_path_part.rstrip('/')
+
         result[path] = {}
         result[path]['path_part'] = path_part
         result[path]['parent_path_part'] = parent_path_part
 
+        #calculate the depth by looking at the number of slashes in the path
+        if path == '/':
+            depth = 0
+        else:
+            depth = path.count('/')
+        result[path]['depth'] = depth
+
         return result
+    
+    def apigateway_build_methods(self, attributes, arg):
+        result = {}
+        rest_api_id = attributes.get('rest_api_id')
+        resource_id = attributes.get('resource_id')
+        http_method = attributes.get('http_method')
+        #Using boto3 get the path of the resource
+        path = self.apigateway_client.get_resource(restApiId=rest_api_id, resourceId=resource_id)['path']
+        result[path] = {'methods':{}}
+        result[path]['methods'][http_method] = {}
+        result[path]['methods'][http_method]['authorization'] = attributes.get('authorization')
+        result[path]['methods'][http_method]['authorizer_id'] = attributes.get('authorizer_id')
+        result[path]['methods'][http_method]['authorization_scopes'] = attributes.get('authorization_scopes')
+        result[path]['methods'][http_method]['api_key_required'] = attributes.get('api_key_required')
+        result[path]['methods'][http_method]['operation_name'] = attributes.get('operation_name')
+        result[path]['methods'][http_method]['request_models'] = attributes.get('request_models')
+        result[path]['methods'][http_method]['request_validator_id'] = attributes.get('request_validator_id')
+        result[path]['methods'][http_method]['request_parameters'] = attributes.get('request_parameters')
+
+        return result
+    
+    def apigateway_target_resource_name(self, attributes, arg):
+        path = attributes.get('path')
+        if path == '/':
+            depth = 0
+        else:
+            depth = path.count('/')
+        
+        return "depth_"+str(depth)
+    
+    def apigateway_target_method_name(self, attributes, arg):
+        rest_api_id = attributes.get('rest_api_id')
+        resource_id = attributes.get('resource_id')
+        #get path for resource
+        path = self.apigateway_client.get_resource(restApiId=rest_api_id, resourceId=resource_id)['path']
+        if path == '/':
+            depth = 0
+        else:
+            depth = path.count('/')
+        
+        return "depth_"+str(depth)
+    
+    def apigateway_method_index(self, attributes):
+        rest_api_id = attributes.get('rest_api_id')
+        resource_id = attributes.get('resource_id')
+        #Get the resource path
+        path = self.apigateway_client.get_resource(restApiId=rest_api_id, resourceId=resource_id)['path']
+        http_method = attributes.get('http_method')
+        return f"{path}/{http_method}"
 
     def aws_api_gateway_deployment_import_id(self, attributes):
         return f"{attributes['rest_api_id']}/{attributes['id']}"
+    
+    def apigateway_resource_import_id(self, attributes):
+        return f"{attributes['rest_api_id']}/{attributes['id']}"
+    
+    def apigateway_method_import_id(self, attributes):
+        return f"{attributes['rest_api_id']}/{attributes['resource_id']}/{attributes['http_method']}"
     
     def get_gateway_method_settings(self, attributes):
         stage_name = attributes['stage_name']
@@ -98,6 +163,8 @@ class Apigateway:
             result[key]['unauthorized_cache_control_header_strategy'] = settings[0].get('unauthorized_cache_control_header_strategy')
 
         return result
+    
+
     
     def get_stage_name(self,attributes):
         restApiId=attributes['rest_api_id']
@@ -201,6 +268,12 @@ class Apigateway:
             'get_gateway_method_settings': self.get_gateway_method_settings,
             'build_api_gateway_method_settings': self.build_api_gateway_method_settings,
             "apigateway_build_resources": self.apigateway_build_resources,
+            "apigateway_target_resource_name": self.apigateway_target_resource_name,
+            "apigateway_resource_import_id": self.apigateway_resource_import_id,
+            "apigateway_build_methods": self.apigateway_build_methods,
+            "apigateway_method_index": self.apigateway_method_index,
+            "apigateway_target_method_name": self.apigateway_target_method_name,
+            "apigateway_method_import_id": self.apigateway_method_import_id,
         }
 
         self.hcl.refresh_state()
@@ -242,8 +315,8 @@ class Apigateway:
 
         for rest_api in rest_apis:
 
-            if rest_api["name"] != "dev-private-servicing-api":
-                continue
+            # if rest_api["id"] != "xi7d2kjr61":
+            #     continue
 
             print(f"  Processing API Gateway REST API: {rest_api['name']}")
             api_id = rest_api["id"]
@@ -275,8 +348,8 @@ class Apigateway:
 
             self.aws_api_gateway_method_settings(rest_api["id"])
             self.aws_api_gateway_rest_api_policy(rest_api["id"])
-            # self.aws_api_gateway_deployment(rest_api["id"])
-            self.aws_api_gateway_stage(rest_api["id"])
+            self.aws_api_gateway_resource(rest_api["id"])
+            self.aws_api_gateway_stage(rest_api["id"], ftstack)
 
     def aws_api_gateway_deployment(self, rest_api_id, deployment_id):
         print(f"Processing API Gateway Deployment: {deployment_id}")
@@ -295,7 +368,7 @@ class Apigateway:
         self.hcl.process_resource(
             "aws_api_gateway_deployment", deployment_id, attributes)
 
-    def aws_api_gateway_stage(self, rest_api_id):
+    def aws_api_gateway_stage(self, rest_api_id, ftstack):
         print("Processing API Gateway Stages...")
 
         stages = self.apigateway_client.get_stages(
@@ -304,11 +377,6 @@ class Apigateway:
 
         for stage in stages:
             print(f"  Processing API Gateway Stage: {stage['stageName']}")
-
-            # stage_detail = self.apigateway_client.get_stage(
-            #     restApiId=rest_api_id,
-            #     stageName=stage["stageName"]
-            # )
 
             attributes = {
                 "id": rest_api_id + "/" + stage["stageName"],
@@ -324,51 +392,46 @@ class Apigateway:
             
             self.aws_api_gateway_deployment(rest_api_id, stage["deploymentId"])
 
-            response = self.apigateway_client.get_export(
-                restApiId=rest_api_id,
-                stageName=stage["stageName"],
-                exportType='oas30',
-                parameters={'extensions': 'integrations'},
-                accepts='application/yaml'
-            )
+            # response = self.apigateway_client.get_export(
+            #     restApiId=rest_api_id,
+            #     stageName="dummy",
+            #     exportType='oas30',
+            #     parameters={'extensions': 'integrations'},
+            #     accepts='application/yaml'
+            # )
+            # open_api_definition = response['body'].read()
+            # # Save the YAML to a file or process it as needed
+            # folder = os.path.join(ftstack)
+            # os.makedirs(folder, exist_ok=True)
+            # api_file_name = os.path.join(folder, f"{rest_api_id}-{stage['stageName']}-api_definition.yaml")
+            # with open(api_file_name, 'wb') as file:
+            #     file.write(open_api_definition)
+            # print("Exported API definition to api_definition.yaml")
 
-            # The binary blob of the exported file is in the body of the response
-            open_api_definition = response['body'].read()
+    def aws_api_gateway_method(self, rest_api_id, resource_id):
+        try:
+            print(f"Processing API Gateway Methods for resource: {resource_id}...")
 
-            # Save the YAML to a file or process it as needed
-            api_file_name = f"{rest_api_id}-{stage['stageName']}-api_definition.yaml"
-            with open(api_file_name, 'wb') as file:
-                file.write(open_api_definition)
+            # Attempt to retrieve the resource methods, default to an empty dict if not found
+            response = self.apigateway_client.get_resource(restApiId=rest_api_id, resourceId=resource_id)
+            methods = response.get("resourceMethods", {})
 
-            print("Exported API definition to api_definition.yaml")
+            for method, details in methods.items():
+                print(f"  Processing API Gateway Method: {resource_id} {method}")
 
-    def aws_api_gateway_method(self, rest_api_id):
-        print("Processing API Gateway Methods...")
+                attributes = {
+                    "id": rest_api_id + "/" + resource_id + "/" + method,
+                    "rest_api_id": rest_api_id,
+                    "resource_id": resource_id,
+                    "http_method": method,
+                }
 
-        resources = self.apigateway_client.get_resources(
-            restApiId=rest_api_id)["items"]
+                resource_name = f"{rest_api_id}-{resource_id}-{method}"
+                self.hcl.process_resource("aws_api_gateway_method", resource_name, attributes)
 
-        for resource in resources:
-            if "resourceMethods" in resource:
-                for method in resource["resourceMethods"]:
-                    method_details = self.apigateway_client.get_method(
-                        restApiId=rest_api_id, resourceId=resource["id"], httpMethod=method)
-
-                    print(
-                        f"  Processing API Gateway Method: {resource['path']} {method}")
-
-                    attributes = {
-                        "id": rest_api_id + "/" + resource["id"] + "/" + method,
-                        "rest_api_id": rest_api_id,
-                        "resource_id": resource["id"],
-                        "http_method": method,
-                        "authorization": method_details["authorizationType"],
-                        "api_key_required": method_details.get("apiKeyRequired", False),
-                    }
-
-                    resource_name = f"{rest_api_id}-{resource['id']}-{method}"
-                    self.hcl.process_resource(
-                        "aws_api_gateway_method", resource_name, attributes)
+        except Exception as e:
+            print(f"An error occurred: {e}")
+            # Handle the exception or re-raise it depending on your needs
 
     def aws_api_gateway_method_settings(self, rest_api_id):
         print("Processing API Gateway Method Settings...")
@@ -775,25 +838,29 @@ class Apigateway:
     #             self.hcl.process_resource(
     #                 "aws_api_gateway_request_validator", resource_name, attributes)
 
-    # def aws_api_gateway_resource(self, api_id):
-    #     print(f"Processing API Gateway Resources for API: {api_id}")
+    def aws_api_gateway_resource(self, api_id):
+        print(f"Processing API Gateway Resources for API: {api_id}")
 
-    #     resources = self.apigateway_client.get_resources(
-    #         restApiId=api_id)["items"]
+        paginator = self.apigateway_client.get_paginator("get_resources")
+        page_iterator = paginator.paginate(restApiId=api_id)
 
-    #     for resource in resources:
-    #         print(f"  Processing API Gateway Resource: {resource['path']}")
+        for page in page_iterator:
+            resources = page["items"]
 
-    #         attributes = {
-    #             "id": resource["id"],
-    #             "rest_api_id": api_id,
-    #             "parent_id": resource.get("parentId"),
-    #             "path_part": resource.get("pathPart"),
-    #         }
+            for resource in resources:
+                print(f"  Processing API Gateway Resource: {resource['path']}")
 
-    #         resource_name = f"{api_id}-{resource['path'].replace('/', '-')}"
-    #         self.hcl.process_resource(
-    #             "aws_api_gateway_resource", resource_name, attributes)
+                attributes = {
+                    "id": resource["id"],
+                    "rest_api_id": api_id,
+                    "parent_id": resource.get("parentId"),
+                    "path_part": resource.get("pathPart"),
+                }
+
+                resource_name = f"{api_id}-{resource['path'].replace('/', '-')}"
+                self.hcl.process_resource(
+                    "aws_api_gateway_resource", resource_name, attributes)
+                self.aws_api_gateway_method(api_id, resource["id"])
 
     # def aws_api_gateway_usage_plan_key(self):
     #     print("Processing API Gateway Usage Plans and Usage Plan Keys...")

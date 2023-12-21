@@ -68,18 +68,39 @@ aws_api_gateway_rest_api:
           function: build_api_gateway_method_settings
           type: map
           arg: id
-    # aws_api_gateway_resource:
-    #   join:
-    #     id:
-    #       field: rest_api_id
-    #   target_resource_name: this
-    #   second_index:
-    #     field: path
-    #   fields:
-    #     resources:
-    #       function: apigateway_build_resources
-    #       type: map
-    #       arg: id
+    aws_api_gateway_resource:
+      join:
+        id:
+          field: rest_api_id
+      target_resource_name:
+        function: apigateway_target_resource_name
+        arg: id
+      second_index:
+        field: path
+      import_id:
+        function: apigateway_resource_import_id
+      fields:
+        resources:
+          function: apigateway_build_resources
+          type: map
+          arg: id
+      childs:
+        aws_api_gateway_method:
+          join:
+            id:
+              field: resource_id
+          target_resource_name:
+            function: apigateway_target_method_name
+            arg: id
+          second_index:
+            function: apigateway_method_index
+          import_id:
+            function: apigateway_method_import_id
+          fields:
+            resources:
+              function: apigateway_build_methods
+              type: map
+              arg: id
 
 aws_api_gateway_vpc_link:
   terraform_module: "github.com/finisterra-io/terraform-aws-modules.git//api-gateway/modules/vpc-link?ref=main"
