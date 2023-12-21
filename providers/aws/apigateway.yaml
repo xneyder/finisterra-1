@@ -68,21 +68,33 @@ aws_api_gateway_rest_api:
           function: build_api_gateway_method_settings
           type: map
           arg: id
+    # aws_api_gateway_resource:
+    #   join:
+    #     id:
+    #       field: rest_api_id
+    #   target_resource_name: this
+    #   second_index:
+    #     field: path
+    #   fields:
+    #     resources:
+    #       function: apigateway_build_resources
+    #       type: map
+    #       arg: id
 
-    aws_api_gateway_vpc_link:
-      join:
-        id:
-          field: rest_api_id
-      target_resource_name: this
-      defaults:
-        vpc_link_enabled: true
-      fields:
-        vpc_link_name:
-          field: name
-          type: string
-        vpc_link_description:
-          field: description
-          type: string
-        private_link_target_arns:
-          field: target_arns
-          type: list
+aws_api_gateway_vpc_link:
+  terraform_module: "github.com/finisterra-io/terraform-aws-modules.git//api-gateway/modules/vpc-link?ref=main"
+  terraform_module_version: "0.20.0"
+  target_resource_name: this
+  fields:
+    name:
+      field: name
+      type: string
+    description:
+      field: description
+      type: string
+    target_arns:
+      field: target_arns
+      type: list
+    tags:
+      field: tags
+      type: map

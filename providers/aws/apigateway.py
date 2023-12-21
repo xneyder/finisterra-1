@@ -55,6 +55,18 @@ class Apigateway:
             if result is None:
                 return None
         return result
+    
+    def apigateway_build_resources(self, attributes, arg):
+        result = {}
+        path = attributes.get('path')
+        path_part= attributes.get('path_part')
+        parent_path_part = path.replace(path_part, '')
+        
+        result[path] = {}
+        result[path]['path_part'] = path_part
+        result[path]['parent_path_part'] = parent_path_part
+
+        return result
 
     def aws_api_gateway_deployment_import_id(self, attributes):
         return f"{attributes['rest_api_id']}/{attributes['id']}"
@@ -77,7 +89,7 @@ class Apigateway:
             result[key]['cache_data_encrypted'] = settings[0].get('cache_data_encrypted')
             result[key]['cache_ttl_in_seconds'] = settings[0].get('cache_ttl_in_seconds')
             result[key]['caching_enabled'] = settings[0].get('caching_enabled')
-            result[key]['data_trace_enabled'] = settings[0].get('caching_enabled')
+            result[key]['data_trace_enabled'] = settings[0].get('data_trace_enabled')
             result[key]['logging_level'] = settings[0].get('logging_level')
             result[key]['metrics_enabled'] = settings[0].get('metrics_enabled')
             result[key]['require_authorization_for_cache_control'] = settings[0].get('require_authorization_for_cache_control')
@@ -155,7 +167,7 @@ class Apigateway:
 
         # self.aws_api_gateway_account()
         self.aws_api_gateway_rest_api()
-        self.aws_api_gateway_vpc_link()
+        # self.aws_api_gateway_vpc_link()
         # self.aws_api_gateway_api_key()
         # self.aws_api_gateway_authorizer()
         # self.aws_api_gateway_base_path_mapping()
@@ -188,6 +200,7 @@ class Apigateway:
             'get_stage_name_index': self.get_stage_name_index,
             'get_gateway_method_settings': self.get_gateway_method_settings,
             'build_api_gateway_method_settings': self.build_api_gateway_method_settings,
+            "apigateway_build_resources": self.apigateway_build_resources,
         }
 
         self.hcl.refresh_state()
@@ -229,8 +242,8 @@ class Apigateway:
 
         for rest_api in rest_apis:
 
-            # if rest_api["name"] != "noovie-short-links-stage":
-            #     continue
+            if rest_api["name"] != "dev-private-servicing-api":
+                continue
 
             print(f"  Processing API Gateway REST API: {rest_api['name']}")
             api_id = rest_api["id"]
@@ -257,81 +270,45 @@ class Apigateway:
             resource_name = f"{api_id}"
             self.hcl.process_resource(
                 resource_type, resource_name, attributes)
-            
+
             self.hcl.add_stack(resource_type, api_id, ftstack)
 
-
-            # self.aws_api_gateway_method(rest_api["id"])
             self.aws_api_gateway_method_settings(rest_api["id"])
             self.aws_api_gateway_rest_api_policy(rest_api["id"])
-            self.aws_api_gateway_deployment(rest_api["id"])
-            # self.aws_api_gateway_stage(rest_api["id"])
+            # self.aws_api_gateway_deployment(rest_api["id"])
+            self.aws_api_gateway_stage(rest_api["id"])
 
-    def aws_api_gateway_deployment(self, rest_api_id):
-        print("Processing API Gateway Deployment...")
+    def aws_api_gateway_deployment(self, rest_api_id, deployment_id):
+        print(f"Processing API Gateway Deployment: {deployment_id}")
+        attributes = {
+            "id": deployment_id,
+            "rest_api_id": rest_api_id
+        }
+        # deployment = self.apigateway_client.get_deployment(
+        #     restApiId=rest_api_id,
+        #     deploymentId=deployment_id
+        # )
 
-        # Get deployments for the specified API
-        deployments = self.apigateway_client.get_deployments(restApiId=rest_api_id)["items"]
+        # if "description" in deployment:
+        #     attributes["description"] = deployment["description"]
 
-        for deployment in deployments:
-            print(f"  Processing Deployment: {deployment['id']}")
+        self.hcl.process_resource(
+            "aws_api_gateway_deployment", deployment_id, attributes)
 
-            # Process each deployment
-            attributes = {
-                "id": deployment["id"],
-                "rest_api_id": rest_api_id
-            }
-
-            if "description" in deployment:
-                attributes["description"] = deployment["description"]
-
-            self.hcl.process_resource(
-                "aws_api_gateway_deployment", deployment["id"], attributes)
-
-            print(f"Processed API Gateway Deployment: {deployment['id']}")
-
-            self.aws_api_gateway_stage(rest_api_id, deployment['id'])
-
-    # def aws_api_gateway_stage(self, rest_api_id, deployment_id):
-    #     print("Processing API Gateway Stages...")
-
-    #     # Filter stages by deployment ID
-    #     stages = self.apigateway_client.get_stages(restApiId=rest_api_id)["item"]
-    #     filtered_stages = [stage for stage in stages if stage["deploymentId"] == deployment_id]
-
-    #     for stage in filtered_stages:
-    #         print(f"  Processing API Gateway Stage: {stage['stageName']} for Deployment ID: {deployment_id}")
-
-    #         stage_detail = self.apigateway_client.get_stage(
-    #             restApiId=rest_api_id,
-    #             stageName=stage["stageName"]
-    #         )
-
-    #         attributes = {
-    #             "id": rest_api_id + "/" + stage["stageName"],
-    #             "stage_name": stage["stageName"],
-    #             "deployment_id": stage["deploymentId"],
-    #             "description": stage.get("description", "")
-    #         }
-
-    #         resource_name = f"{rest_api_id}-{stage['stageName']}"
-    #         self.hcl.process_resource(
-    #             "aws_api_gateway_stage", resource_name, attributes)
-            
-    def aws_api_gateway_stage(self, rest_api_id, deployment_id):
+    def aws_api_gateway_stage(self, rest_api_id):
         print("Processing API Gateway Stages...")
 
         stages = self.apigateway_client.get_stages(
             restApiId=rest_api_id)["item"]
-        filtered_stages = [stage for stage in stages if stage["deploymentId"] == deployment_id]
+        # filtered_stages = [stage for stage in stages if stage["deploymentId"] == deployment_id]
 
-        for stage in filtered_stages:
+        for stage in stages:
             print(f"  Processing API Gateway Stage: {stage['stageName']}")
 
-            stage_detail = self.apigateway_client.get_stage(
-                restApiId=rest_api_id,
-                stageName=stage["stageName"]
-            )
+            # stage_detail = self.apigateway_client.get_stage(
+            #     restApiId=rest_api_id,
+            #     stageName=stage["stageName"]
+            # )
 
             attributes = {
                 "id": rest_api_id + "/" + stage["stageName"],
@@ -343,8 +320,27 @@ class Apigateway:
 
             resource_name = f"{rest_api_id}-{stage['stageName']}"
             self.hcl.process_resource(
-                "aws_api_gateway_stage", resource_name, attributes)            
+                "aws_api_gateway_stage", resource_name, attributes)
+            
+            self.aws_api_gateway_deployment(rest_api_id, stage["deploymentId"])
 
+            response = self.apigateway_client.get_export(
+                restApiId=rest_api_id,
+                stageName=stage["stageName"],
+                exportType='oas30',
+                parameters={'extensions': 'integrations'},
+                accepts='application/yaml'
+            )
+
+            # The binary blob of the exported file is in the body of the response
+            open_api_definition = response['body'].read()
+
+            # Save the YAML to a file or process it as needed
+            api_file_name = f"{rest_api_id}-{stage['stageName']}-api_definition.yaml"
+            with open(api_file_name, 'wb') as file:
+                file.write(open_api_definition)
+
+            print("Exported API definition to api_definition.yaml")
 
     def aws_api_gateway_method(self, rest_api_id):
         print("Processing API Gateway Methods...")
@@ -421,25 +417,22 @@ class Apigateway:
                 "aws_api_gateway_rest_api_policy", resource_name, attributes)
 
 
-    def aws_api_gateway_vpc_link(self):
-        print("Processing API Gateway VPC Links...")
+    def aws_api_gateway_vpc_link(self, vpc_link_id, ftstack):
+        resource_type = "aws_api_gateway_vpc_link"
+        print(f"Processing API Gateway VPC Link: {vpc_link_id}")
 
-        paginator = self.apigateway_client.get_paginator("get_vpc_links")
-        page_iterator = paginator.paginate()
+        vpc_link = self.apigateway_client.get_vpc_link(
+            vpcLinkId=vpc_link_id
+        )
 
-        for page in page_iterator:
-            for vpc_link in page["items"]:
-                vpc_link_id = vpc_link["id"]
-                print(f"  Processing API Gateway VPC Link: {vpc_link_id}")
-
-                attributes = {
-                    "id": vpc_link_id,
-                    "name": vpc_link["name"],
-                    "description": vpc_link.get("description", ""),
-                    "target_arns": vpc_link["targetArns"],
-                }
-                self.hcl.process_resource(
-                    "aws_api_gateway_vpc_link", vpc_link_id, attributes)
+        attributes = {
+            "id": vpc_link_id,
+            "name": vpc_link["name"],
+            "description": vpc_link.get("description", ""),
+            "target_arns": vpc_link["targetArns"],
+        }
+        self.hcl.process_resource(resource_type, vpc_link_id, attributes)
+        self.hcl.add_stack(resource_type, vpc_link_id, ftstack)
 
     # def aws_api_gateway_api_key(self):
     #     print("Processing API Gateway API Keys...")
@@ -782,32 +775,25 @@ class Apigateway:
     #             self.hcl.process_resource(
     #                 "aws_api_gateway_request_validator", resource_name, attributes)
 
-    # def aws_api_gateway_resource(self):
-    #     print("Processing API Gateway Resources...")
+    # def aws_api_gateway_resource(self, api_id):
+    #     print(f"Processing API Gateway Resources for API: {api_id}")
 
-    #     rest_apis = self.apigateway_client.get_rest_apis()["items"]
+    #     resources = self.apigateway_client.get_resources(
+    #         restApiId=api_id)["items"]
 
-    #     for rest_api in rest_apis:
-    #         resources = self.apigateway_client.get_resources(
-    #             restApiId=rest_api["id"])["items"]
+    #     for resource in resources:
+    #         print(f"  Processing API Gateway Resource: {resource['path']}")
 
-    #         for resource in resources:
-    #             # Skip the root resource
-    #             if "parentId" not in resource:
-    #                 continue
+    #         attributes = {
+    #             "id": resource["id"],
+    #             "rest_api_id": api_id,
+    #             "parent_id": resource.get("parentId"),
+    #             "path_part": resource.get("pathPart"),
+    #         }
 
-    #             print(f"  Processing API Gateway Resource: {resource['path']}")
-
-    #             attributes = {
-    #                 "id": resource["id"],
-    #                 "rest_api_id": rest_api["id"],
-    #                 "parent_id": resource.get("parentId"),
-    #                 "path_part": resource.get("pathPart"),
-    #             }
-
-    #             resource_name = f"{rest_api['id']}-{resource['path'].replace('/', '-')}"
-    #             self.hcl.process_resource(
-    #                 "aws_api_gateway_resource", resource_name, attributes)
+    #         resource_name = f"{api_id}-{resource['path'].replace('/', '-')}"
+    #         self.hcl.process_resource(
+    #             "aws_api_gateway_resource", resource_name, attributes)
 
     # def aws_api_gateway_usage_plan_key(self):
     #     print("Processing API Gateway Usage Plans and Usage Plan Keys...")
