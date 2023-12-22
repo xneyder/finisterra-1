@@ -3,15 +3,12 @@ aws_lb:
   terraform_module_version: "0.20.0"
   target_resource_name: default
   name_field: load_balancer_name
-  defaults:
-    enabled: true
-    create_security_group: false
   # path: "alb"
   # dependencies:
   #   - "../security_group"
   fields:
     init:
-      function: init_fields
+      function: init_fields_elbv2
       type: string
     load_balancer_name:
       field: name
@@ -27,7 +24,7 @@ aws_lb:
       type: bool
       module_default: false
     security_group_names:
-      function: get_security_group_names
+      function: get_security_group_names_elbv2
       arg: security_groups
       type: list
     cross_zone_load_balancing_enabled:
@@ -74,11 +71,11 @@ aws_lb:
       type: string
       arg: vpc_id
     subnet_names:
-      function: get_subnet_names
+      function: get_subnet_names_elbv2
       arg: subnets
       type: list
     subnet_ids:
-      function: get_subnet_ids
+      function: get_subnet_ids_elbv2
       arg: subnets
       type: list
     enable_xff_client_port:
@@ -92,10 +89,10 @@ aws_lb:
           field: load_balancer_arn
       target_resource_name: this
       second_index:
-        function: get_port
+        function: get_port_elbv2
       fields:
         aws_lb_listeners:
-          function: get_listeners
+          function: get_listeners_elbv2
           type: map
       childs:
         aws_lb_listener_certificate:
@@ -104,63 +101,8 @@ aws_lb:
               field: listener_arn
           target_resource_name: https_sni
           second_index:
-            function: get_port_domain_name
+            function: get_port_domain_name_elbv2
           fields:
             aws_lb_listeners:
-              function: get_listener_certificate
+              function: get_listener_certificate_elbv2
               type: map
-
-aws_security_group:
-  terraform_module: "github.com/finisterra-io/terraform-aws-modules.git//security-group?ref=main"
-  terraform_module_version: "5.2.0"
-  target_resource_name: default
-  name_field: security_group_name
-  add_id_hash_to_name: true
-  # path: "security_group"
-  defaults:
-    create_before_destroy: false
-  fields:
-    security_group_name:
-      field: name
-      type: string
-    vpc_name:
-      function: get_vpc_name
-      arg: vpc_id
-      type: string
-    vpc_id:
-      function: get_vpc_id
-      type: string
-      arg: vpc_id
-    security_group_description:
-      field: description
-      type: string
-    tags:
-      field: tags
-      type: map
-  childs:
-    aws_vpc_security_group_ingress_rule:
-      join:
-        id:
-          field: security_group_id
-      import_id:
-        field: security_group_rule_id
-      target_resource_name: dbc
-      second_index:
-        field: id
-      fields:
-        ingress_rules:
-          function: get_security_group_rules
-          type: map
-    aws_vpc_security_group_egress_rule:
-      join:
-        id:
-          field: security_group_id
-      import_id:
-        field: security_group_rule_id
-      target_resource_name: dbc
-      second_index:
-        field: id
-      fields:
-        egress_rules:
-          function: get_security_group_rules
-          type: map

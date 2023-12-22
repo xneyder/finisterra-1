@@ -154,6 +154,10 @@ aws_api_gateway_vpc_link:
   terraform_module: "github.com/finisterra-io/terraform-aws-modules.git//api-gateway/modules/vpc-link?ref=main"
   terraform_module_version: "0.20.0"
   target_resource_name: this
+  joined_fields:
+    target_arns:
+      sub_fields:
+        - target_arns
   fields:
     name:
       field: name

@@ -1,9 +1,10 @@
 import os
 from utils.hcl import HCL
 from providers.aws.vpc_endpoint import VPCEndPoint
+from providers.aws.elbv2 import ELBV2
 
 class Apigateway:
-    def __init__(self, apigateway_client, ec2_client, script_dir, provider_name, schema_data, region, s3Bucket,
+    def __init__(self, apigateway_client, ec2_client, elbv2_client, acm_client, script_dir, provider_name, schema_data, region, s3Bucket,
                  dynamoDBTable, state_key, workspace_id, modules, aws_account_id, hcl=None):
         self.apigateway_client = apigateway_client
         self.transform_rules = {}
@@ -51,6 +52,7 @@ class Apigateway:
         self.hcl.functions.update(functions)
 
         self.vpc_endpoint_instance = VPCEndPoint(ec2_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
+        self.elbv2_instance = ELBV2(elbv2_client, ec2_client, acm_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
 
     def get_field_from_attrs(self, attributes, arg):
         keys = arg.split(".")
@@ -320,7 +322,7 @@ class Apigateway:
 
         self.hcl.refresh_state()
 
-        config_file_list = ["apigateway.yaml","vpc_endpoint.yaml", "security_group.yaml"]
+        config_file_list = ["apigateway.yaml","vpc_endpoint.yaml", "security_group.yaml", "elbv2.yaml"]
         for index,config_file in enumerate(config_file_list):
             config_file_list[index] = os.path.join(os.path.dirname(os.path.abspath(__file__)),config_file )
         self.hcl.module_hcl_code("terraform.tfstate",config_file_list, {}, self.region, self.aws_account_id, {}, {})
@@ -359,8 +361,8 @@ class Apigateway:
 
         for rest_api in rest_apis:
 
-            # if rest_api["id"] != "0smbgr3ze7":
-            #     continue
+            if rest_api["id"] != "xi7d2kjr61":
+                continue
 
             # 3o496qxe8d
             # 6dhl0er3l8
@@ -558,6 +560,11 @@ class Apigateway:
         }
         self.hcl.process_resource(resource_type, vpc_link_id, attributes)
         self.hcl.add_stack(resource_type, vpc_link_id, ftstack)
+
+        #find any elb and call self.elbv2_instance
+        for target_arn in vpc_link["targetArns"]:
+            if target_arn.startswith("arn:aws:elasticloadbalancing:"):
+                self.elbv2_instance.aws_lb(target_arn, ftstack)
 
     # def aws_api_gateway_api_key(self):
     #     print("Processing API Gateway API Keys...")

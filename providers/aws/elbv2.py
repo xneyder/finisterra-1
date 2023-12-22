@@ -10,20 +10,7 @@ class ELBV2:
         self.ec2_client = ec2_client
         self.acm_client = acm_client
         self.aws_account_id = aws_account_id
-        self.transform_rules = {
-            "aws_lb_target_group": {
-                "hcl_drop_blocks": {"target_failover": {"on_deregistration": None}},
-            },
-            "aws_lb": {
-                "hcl_drop_blocks": {"access_logs": {"enabled": False}},
-            },
-            "aws_lb_listener_rule": {
-                "hcl_drop_fields": {"action.order": 0},
-            },
-            "aws_lb_listener": {
-                "hcl_drop_fields": {"default_action.order": 0},
-            },
-        }
+        self.transform_rules = {}
         self.provider_name = provider_name
         self.script_dir = script_dir
         self.schema_data = schema_data
@@ -41,57 +28,31 @@ class ELBV2:
             self.hcl = hcl
         self.resource_list = {}
         self.listeners = {}
+
+        functions = {
+            'get_vpc_name_elbv2': self.get_vpc_name_elbv2,
+            'get_security_group_names_elbv2': self.get_security_group_names_elbv2,
+            'get_subnet_names_elbv2': self.get_subnet_names_elbv2,
+            'get_listeners_elbv2': self.get_listeners_elbv2,
+            'get_listener_certificate_elbv2': self.get_listener_certificate_elbv2,
+            'get_port_domain_name_elbv2': self.get_port_domain_name_elbv2,
+            'get_port_elbv2': self.get_port_elbv2,
+            'get_vpc_id_elbv2': self.get_vpc_id_elbv2,
+            'get_subnet_ids_elbv2': self.get_subnet_ids_elbv2,
+            'init_fields_elbv2': self.init_fields_elbv2,
+        }
+
+        self.hcl.functions.update(functions)
+
         self.security_group_instance = SECURITY_GROUP(ec2_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
 
-    def init_fields(self, attributes):
+    def init_fields_elbv2(self, attributes):
         self.listeners = {}
 
         return None
 
-    def match_security_group(self, parent_attributes, child_attributes):
-        child_security_group_id = child_attributes.get("id", None)
-        for security_group in parent_attributes.get("security_groups", []):
-            if security_group == child_security_group_id:
-                return True
-        return False
 
-    # def get_subnet_names(self, attributes, arg):
-    #     subnet_id = attributes.get(arg)
-    #     response = self.ec2_client.describe_subnets(SubnetIds=[subnet_id])
-    #     subnet_info = response['Subnets'][0]
-    #     subnet_tags = subnet_info.get('Tags', [])
-    #     subnet_name = next((tag['Value'] for tag in subnet_tags if tag['Key'] == 'Name'), None)
-    #     subnet_cidr = subnet_info.get('CidrBlock', None)
-
-    #     return [{'name': subnet_name, 'cidr_block': subnet_cidr}]
-
-
-    # def get_security_group_rules(self, attributes, arg):
-    #     key = attributes[arg]
-    #     result = {key: {}}
-    #     for k in ['type', 'description', 'from_port', 'to_port', 'protocol', 'cidr_blocks']:
-    #         val = attributes.get(k)
-    #         if isinstance(val, str):
-    #             val = val.replace('${', '$${')
-    #         result[key][k] = val
-        return result
-
-    def get_field_from_attrs(self, attributes, arg):
-        keys = arg.split(".")
-        result = attributes
-        for key in keys:
-            if isinstance(result, list):
-                result = [sub_result.get(key, None) if isinstance(
-                    sub_result, dict) else None for sub_result in result]
-                if len(result) == 1:
-                    result = result[0]
-            else:
-                result = result.get(key, None)
-            if result is None:
-                return None
-        return result
-
-    def get_security_group_names(self, attributes, arg):
+    def get_security_group_names_elbv2(self, attributes, arg):
         security_group_ids = attributes.get(arg)
         security_group_names = []
 
@@ -133,7 +94,7 @@ class ELBV2:
 
         return []  # default to an empty dictionary if conditions are not met
 
-    def get_listeners(self, attributes):
+    def get_listeners_elbv2(self, attributes):
         listener = {
             'port': attributes.get('port'),
             'protocol': attributes.get('protocol'),
@@ -152,33 +113,10 @@ class ELBV2:
 
         return self.listeners
 
-    def get_port(self, attributes):
+    def get_port_elbv2(self, attributes):
         return str(attributes.get('port'))
 
-    # def get_listener_certificate(self, attributes):
-    #     listener_arn = attributes.get('listener_arn')
-
-    #     # Get the port of the listener
-    #     response_listener = self.elbv2_client.describe_listeners(
-    #         ListenerArns=[listener_arn]
-    #     )
-    #     listener_port = response_listener['Listeners'][0]['Port']
-
-    #     domain_name = ""
-    #     if attributes.get('certificate_arn'):
-    #         # Use the ACM client
-    #         response = self.acm_client.describe_certificate(
-    #             CertificateArn=attributes.get('certificate_arn')
-    #         )
-    #         domain_name = response['Certificate']['DomainName']
-
-    #         if listener_port in self.listeners:
-    #             self.listeners[listener_port]['all_acm_domains'].append(
-    #                 domain_name)
-
-    #     return self.listeners
-
-    def get_listener_certificate(self, attributes):
+    def get_listener_certificate_elbv2(self, attributes):
         listener_arn = attributes.get('listener_arn')
         # Get the port of the listener
         response_listener = self.elbv2_client.describe_listeners(
@@ -187,9 +125,6 @@ class ELBV2:
         listener_port = response_listener['Listeners'][0]['Port']
 
         certificate_arn = attributes.get('certificate_arn')
-        # print("========================")
-        # print(listener_arn)
-        # print(certificate_arn)
         if certificate_arn:
             # Get the domain name for the certificate
             response = self.acm_client.describe_certificate(
@@ -203,7 +138,7 @@ class ELBV2:
 
         return self.listeners
 
-    def get_port_domain_name(self, attributes):
+    def get_port_domain_name_elbv2(self, attributes):
         listener_arn = attributes.get('listener_arn')
 
         # Get the port of the listener
@@ -223,7 +158,7 @@ class ELBV2:
         # Return in the format 'port-domain_name'
         return f"{listener_port}-{domain_name}"
 
-    def get_subnet_names(self, attributes, arg):
+    def get_subnet_names_elbv2(self, attributes, arg):
         subnet_ids = attributes.get(arg)
         subnets_info = []
         for subnet_id in subnet_ids:
@@ -252,8 +187,8 @@ class ELBV2:
         return subnets_info
 
 
-    def get_subnet_ids(self, attributes, arg):
-        subnet_names = self.get_subnet_names(attributes, arg)
+    def get_subnet_ids_elbv2(self, attributes, arg):
+        subnet_names = self.get_subnet_names_elbv2(attributes, arg)
         if subnet_names:
             return ""
         else:
@@ -284,15 +219,6 @@ class ELBV2:
         else:
             return ""
 
-    def aws_security_group_rule_import_id(self, attributes):
-        security_group_id = attributes.get('security_group_id')
-        type = attributes.get('type')
-        protocol = attributes.get('protocol')
-        from_port = attributes.get('from_port')
-        to_port = attributes.get('to_port')
-        cidr_blocks = attributes.get('cidr_blocks')
-        source = "_".join(cidr_blocks)
-        return security_group_id+"_"+type+"_"+protocol+"_"+str(from_port)+"_"+str(to_port)+"_"+source
 
     def elbv2(self):
         self.hcl.prepare_folder(os.path.join("generated"))
@@ -304,31 +230,18 @@ class ELBV2:
         # self.aws_lb_target_group()
         # self.aws_lb_target_group_attachment()
 
-        functions = {
-            'match_security_group': self.match_security_group,
-            'get_vpc_name_elbv2': self.get_vpc_name_elbv2,
-            # 'get_security_group_rules': self.get_security_group_rules,
-            'get_field_from_attrs': self.get_field_from_attrs,
-            'get_security_group_names': self.get_security_group_names,
-            'get_subnet_names': self.get_subnet_names,
-            'get_listeners': self.get_listeners,
-            'get_listener_certificate': self.get_listener_certificate,
-            'get_port_domain_name': self.get_port_domain_name,
-            'get_port': self.get_port,
-            'get_vpc_id_elbv2': self.get_vpc_id_elbv2,
-            'get_subnet_ids': self.get_subnet_ids,
-            'aws_security_group_rule_import_id': self.aws_security_group_rule_import_id,
-            'init_fields': self.init_fields,
-        }
+
 
         self.hcl.refresh_state()
 
-        self.hcl.module_hcl_code("terraform.tfstate",
-                                 os.path.join(os.path.dirname(os.path.abspath(__file__)), "elbv2.yaml"), functions, self.region, self.aws_account_id, {}, {})\
+        config_file_list = ["elbv2.yaml", "security_group.yaml"]
+        for index,config_file in enumerate(config_file_list):
+            config_file_list[index] = os.path.join(os.path.dirname(os.path.abspath(__file__)),config_file )
+        self.hcl.module_hcl_code("terraform.tfstate",config_file_list, {}, self.region, self.aws_account_id, {}, {})
 
         self.json_plan = self.hcl.json_plan
 
-    def aws_lb(self):
+    def aws_lb(self, selected_lb_arn=None, ftstack=None):
         resource_type = "aws_lb"
         print("Processing Load Balancers...")
 
@@ -340,8 +253,8 @@ class ELBV2:
             lb_arn = lb["LoadBalancerArn"]
             lb_name = lb["LoadBalancerName"]
 
-            # if lb_name != "dev-vgs-alb":
-            #     continue
+            if selected_lb_arn and lb_arn != selected_lb_arn:
+                continue
 
             # Check tags of the load balancer
             tags_response = self.elbv2_client.describe_tags(
@@ -365,12 +278,13 @@ class ELBV2:
 
             print(f"  Processing Load Balancer: {lb_name}")
 
-            ftstack="elbv2"
-            for tag in tags:
-                if tag['Key'] == 'ftstack':
-                    if tag['Value'] != 'elbv2':
-                        ftstack = "stack_"+tag['Value']
-                    break
+            if not ftstack:
+                ftstack="elbv2"
+                for tag in tags:
+                    if tag['Key'] == 'ftstack':
+                        if tag['Value'] != 'elbv2':
+                            ftstack = "stack_"+tag['Value']
+                        break
 
             id = lb_arn
 
