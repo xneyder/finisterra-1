@@ -149,6 +149,22 @@ aws_api_gateway_rest_api:
               function: apigateway_build_integrations
               type: map
               arg: id
+        aws_api_gateway_method_response:
+          join:
+            id:
+              field: resource_id
+          target_resource_name:
+            function: apigateway_target_integration_name
+            arg: id
+          second_index:
+            function: apigateway_method_response_index
+          import_id:
+            function: apigateway_method_response_import_id
+          fields:
+            resources:
+              function: apigateway_build_method_responses
+              type: map
+              arg: id
 
 aws_api_gateway_vpc_link:
   terraform_module: "github.com/finisterra-io/terraform-aws-modules.git//api-gateway/modules/vpc-link?ref=main"

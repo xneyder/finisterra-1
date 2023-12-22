@@ -47,6 +47,9 @@ class Apigateway:
             "apigateway_target_integration_name": self.apigateway_target_integration_name,
             "apigateway_integration_import_id": self.apigateway_integration_import_id,
             "apigateway_build_integrations": self.apigateway_build_integrations,
+            "apigateway_build_method_responses": self.apigateway_build_method_responses,
+            "apigateway_method_response_import_id": self.apigateway_method_response_import_id,
+            "apigateway_method_response_index": self.apigateway_method_response_index,
         }
 
         self.hcl.functions.update(functions)
@@ -136,6 +139,21 @@ class Apigateway:
 
         return result
         
+
+    def apigateway_build_method_responses(self, attributes, arg):
+        result = {}
+        rest_api_id = attributes.get('rest_api_id')
+        resource_id = attributes.get('resource_id')
+        http_method = attributes.get('http_method')
+        path = self.api_gateway_resource_list[rest_api_id][resource_id]
+        result[path] = {'methods':{}}
+        result[path]['methods'][http_method] = {"method_responses":{}}
+        result[path]['methods'][http_method]['method_responses'][attributes.get('status_code')]={}
+        result[path]['methods'][http_method]['method_responses'][attributes.get('status_code')]['response_models'] = attributes.get('response_models')
+        result[path]['methods'][http_method]['method_responses'][attributes.get('status_code')]['response_parameters'] = attributes.get('response_parameters')
+
+        return result
+
     def apigateway_target_resource_name(self, attributes, arg):
         path = attributes.get('path')
         if path == '/':
@@ -170,20 +188,6 @@ class Apigateway:
             depth = path.count('/')
         
         return "depth_"+str(depth)
-        
-    
-    # def apigateway_match_integration(self, parent_attributes, child_attributes):
-    #     parent_rest_api_id = parent_attributes.get('rest_api_id')
-    #     parent_resource_id = parent_attributes.get('resource_id')
-    #     parent_http_method = parent_attributes.get('http_method')
-    #     child_rest_api_id = child_attributes.get('rest_api_id')
-    #     child_resource_id = child_attributes.get('resource_id')
-    #     child_http_method = child_attributes.get('http_method')
-
-    #     if parent_rest_api_id == child_rest_api_id and parent_resource_id == child_resource_id and parent_http_method == child_http_method:
-    #         return True
-
-    #     return False
     
     def apigateway_method_index(self, attributes):
         rest_api_id = attributes.get('rest_api_id')
@@ -202,6 +206,15 @@ class Apigateway:
         # path = self.apigateway_client.get_resource(restApiId=rest_api_id, resourceId=resource_id)['path']
         http_method = attributes.get('http_method')
         return f"{path}/{http_method}"
+    
+    def apigateway_method_response_index(self, attributes):
+        rest_api_id = attributes.get('rest_api_id')
+        resource_id = attributes.get('resource_id')
+        #Get the resource path
+        path = self.api_gateway_resource_list[rest_api_id][resource_id]
+        # path = self.apigateway_client.get_resource(restApiId=rest_api_id, resourceId=resource_id)['path']
+        http_method = attributes.get('http_method')
+        return f"{path}/{http_method}/{attributes.get('status_code')}"
 
     def aws_api_gateway_deployment_import_id(self, attributes):
         return f"{attributes['rest_api_id']}/{attributes['id']}"
@@ -214,6 +227,9 @@ class Apigateway:
 
     def apigateway_integration_import_id(self, attributes):
         return f"{attributes['rest_api_id']}/{attributes['resource_id']}/{attributes['http_method']}"
+
+    def apigateway_method_response_import_id(self, attributes):
+        return f"{attributes['rest_api_id']}/{attributes['resource_id']}/{attributes['http_method']}/{attributes['status_code']}"
 
     def get_gateway_method_settings(self, attributes):
         stage_name = attributes['stage_name']
@@ -364,18 +380,6 @@ class Apigateway:
             if rest_api["id"] != "xi7d2kjr61":
                 continue
 
-            # 3o496qxe8d
-            # 6dhl0er3l8
-            # 9bqq19vjb5
-            # ap1ek2alz5
-            # g3g23sblml
-            # gssaa14ui6
-            # h258wb4488
-            # mi0bau5iu9
-            # op2rxebd6h
-            # rbxx5bgcak
-            # ur84wbkagc
-
             print(f"  Processing API Gateway REST API: {rest_api['name']}")
             api_id = rest_api["id"]
 
@@ -492,6 +496,7 @@ class Apigateway:
                 resource_name = f"{rest_api_id}-{resource_id}-{method}"
                 self.hcl.process_resource("aws_api_gateway_method", resource_name, attributes)
                 self.aws_api_gateway_integration(rest_api_id, resource_id, method, ftstack)
+                self.aws_api_gateway_method_response(rest_api_id, resource_id, method)
 
         except Exception as e:
             print(f"An error occurred: {e}")
@@ -827,40 +832,27 @@ class Apigateway:
     #                         self.hcl.process_resource(
     #                             "aws_api_gateway_integration_response", resource_name, attributes)
 
-    # def aws_api_gateway_method_response(self):
-    #     print("Processing API Gateway Method Responses...")
+    def aws_api_gateway_method_response(self, rest_api_id, resource_id, method):
+        print("Processing API Gateway Method Responses...")
 
-    #     rest_apis = self.apigateway_client.get_rest_apis()["items"]
+        method_details = self.apigateway_client.get_method(
+            restApiId=rest_api_id, resourceId=resource_id, httpMethod=method)
+        
+        for status_code in method_details["methodResponses"].keys():
+            print(
+                f"  Processing API Gateway Method Response: {resource_id} {method} {status_code}")
 
-    #     for rest_api in rest_apis:
-    #         resources = self.apigateway_client.get_resources(
-    #             restApiId=rest_api["id"])["items"]
+            attributes = {
+                "id": rest_api_id + "/" + resource_id + "/" + method + "/" + status_code,
+                "rest_api_id": rest_api_id,
+                "resource_id": resource_id,
+                "http_method": method,
+                "status_code": status_code,
+            }
 
-    #         for resource in resources:
-    #             if "resourceMethods" in resource:
-    #                 for method in resource["resourceMethods"]:
-    #                     method_details = self.apigateway_client.get_method(
-    #                         restApiId=rest_api["id"], resourceId=resource["id"], httpMethod=method)
-
-    #                     for status_code in method_details["methodResponses"]:
-    #                         method_response = method_details["methodResponses"][status_code]
-
-    #                         print(
-    #                             f"  Processing API Gateway Method Response: {resource['path']} {method} {status_code}")
-
-    #                         attributes = {
-    #                             "id": rest_api["id"]+"/"+resource["id"]+"/"+method+"/"+status_code,
-    #                             "rest_api_id": rest_api["id"],
-    #                             "resource_id": resource["id"],
-    #                             "http_method": method,
-    #                             "status_code": status_code,
-    #                             "response_models": method_response.get("responseModels", {}),
-    #                             "response_parameters": method_response.get("responseParameters", {}),
-    #                         }
-
-    #                         resource_name = f"{rest_api['id']}-{resource['id']}-{method}-{status_code}"
-    #                         self.hcl.process_resource(
-    #                             "aws_api_gateway_method_response", resource_name, attributes)
+            resource_name = f"{rest_api_id}-{resource_id}-{method}-{status_code}"
+            self.hcl.process_resource(
+                "aws_api_gateway_method_response", resource_name, attributes)
 
     # def aws_api_gateway_model(self):
     #     print("Processing API Gateway Models...")
