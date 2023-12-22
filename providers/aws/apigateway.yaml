@@ -2,9 +2,11 @@ aws_api_gateway_rest_api:
   terraform_module: "github.com/finisterra-io/terraform-aws-modules.git//api-gateway?ref=main"
   terraform_module_version: "0.20.0"
   target_resource_name: this
-  defaults:
-    enabled: true
   add_id_hash_to_name: true
+  joined_fields:
+    resources:
+      sub_fields:
+        - ALL
   # path: "apigateway"
   fields:
     name:
@@ -17,9 +19,29 @@ aws_api_gateway_rest_api:
       field: body
       type: string
       multiline: true
-    endpoint_type:
-      function: get_field_from_attrs
-      arg: endpoint_configuration.types
+    endpoint_configuration:
+      field: endpoint_configuration
+      type: list
+    api_key_source:
+      field: api_key_source
+      type: string
+    binary_media_types:
+      field: binary_media_types
+      type: list
+    minimum_compression_size:
+      field: minimum_compression_size
+      type: number
+    disable_execute_api_endpoint:
+      field: disable_execute_api_endpoint
+      type: bool
+    fail_on_warnings:
+      field: fail_on_warnings
+      type: bool
+    parameters:
+      field: parameters
+      type: map
+    put_rest_api_mode:
+      field: put_rest_api_mode
       type: string
     tags:
       field: tags
@@ -41,6 +63,16 @@ aws_api_gateway_rest_api:
           function: build_deployments
           type: map
           arg: id
+    aws_api_gateway_rest_api_policy:
+      join:
+        id:
+          field: rest_api_id
+      target_resource_name: this
+      fields:
+        rest_api_policy:
+          field: policy
+          type: string
+          multiline: true
     aws_api_gateway_stage:
       join:
         id:
@@ -99,6 +131,22 @@ aws_api_gateway_rest_api:
           fields:
             resources:
               function: apigateway_build_methods
+              type: map
+              arg: id
+        aws_api_gateway_integration:
+          join:
+            id:
+              field: resource_id
+          target_resource_name:
+            function: apigateway_target_integration_name
+            arg: id
+          second_index:
+            function: apigateway_integration_index
+          import_id:
+            function: apigateway_integration_import_id
+          fields:
+            resources:
+              function: apigateway_build_integrations
               type: map
               arg: id
 

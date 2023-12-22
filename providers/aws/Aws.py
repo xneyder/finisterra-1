@@ -9,6 +9,7 @@ import json
 
 from utils.filesystem import create_version_file
 from providers.aws.vpc import VPC
+from providers.aws.vpc_endpoint import VPCEndPoint
 from providers.aws.route53 import Route53
 from providers.aws.acm import ACM
 from providers.aws.cloudfront import CloudFront
@@ -370,6 +371,15 @@ class Aws:
         #                                       'Credentials']['AccessKeyId'],
         #                                   region_name=self.aws_region
         #                                   )
+
+    def vpc_endpoint(self):
+        ec2_client = self.session.client("ec2", region_name=self.aws_region)
+        instance = VPCEndPoint(ec2_client, self.script_dir, self.provider_name,
+                       self.schema_data, self.aws_region, self.s3Bucket,
+                       self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
+        instance.vpc_endpoint()
+        self.json_plan = instance.json_plan
+        self.resource_list['vpc_endpoint'] = instance.resource_list
 
     def s3(self):
         s3_client = self.session.client(
@@ -739,8 +749,11 @@ class Aws:
     def apigateway(self):
         apigateway_client = self.session.client(
             "apigateway", region_name=self.aws_region)
+        
+        ec2_client = self.session.client(
+            "ec2", region_name=self.aws_region)
 
-        instance = Apigateway(apigateway_client, self.script_dir, self.provider_name,
+        instance = Apigateway(apigateway_client, ec2_client, self.script_dir, self.provider_name,
                               self.schema_data, self.aws_region, self.s3Bucket,
                               self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.apigateway()

@@ -1,32 +1,10 @@
 import os
 from utils.hcl import HCL
-
-
-def replace_backslashes(value):
-    return value.replace("\\", "\\\\") if isinstance(value, str) else value
-
-
-def escape_quotes(value):
-    return value.replace('"', '\\"') if isinstance(value, str) else value
-
-
-def drop_new_lines(value):
-    return value.replace("\n", "") if isinstance(value, str) else value
-
-
-def process_template(input_dict):
-    output = '{\n'
-    for key, value in input_dict.items():
-        value = value.replace('\n', '\n    ')
-        formatted_value = f'<<EOF\n{value}\nEOF'
-        output += f'  "{key}" : {formatted_value},\n'
-    output = output.rstrip(',\n') + '\n}'
-    return output
-
+from providers.aws.vpc_endpoint import VPCEndPoint
 
 class Apigateway:
-    def __init__(self, apigateway_client, script_dir, provider_name, schema_data, region, s3Bucket,
-                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id):
+    def __init__(self, apigateway_client, ec2_client, script_dir, provider_name, schema_data, region, s3Bucket,
+                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id, hcl=None):
         self.apigateway_client = apigateway_client
         self.transform_rules = {}
         self.provider_name = provider_name
@@ -37,9 +15,42 @@ class Apigateway:
 
         self.workspace_id = workspace_id
         self.modules = modules
-        self.hcl = HCL(self.schema_data, self.provider_name,
+        if not hcl:
+            self.hcl = HCL(self.schema_data, self.provider_name,
                        self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules)
+        else:
+            self.hcl = hcl
+        
         self.resource_list = {}
+        self.api_gateway_resource_list = {}
+
+        functions = {
+            'get_field_from_attrs': self.get_field_from_attrs,
+            'aws_api_gateway_deployment_import_id': self.aws_api_gateway_deployment_import_id,
+            'build_stages': self.build_stages,
+            # 'build_deployment': self.build_deployment,
+            'get_stage_name': self.get_stage_name,
+            'build_deployments': self.build_deployments,
+            'get_stage_name_index': self.get_stage_name_index,
+            'get_gateway_method_settings': self.get_gateway_method_settings,
+            'build_api_gateway_method_settings': self.build_api_gateway_method_settings,
+            "apigateway_build_resources": self.apigateway_build_resources,
+            "apigateway_target_resource_name": self.apigateway_target_resource_name,
+            "apigateway_resource_import_id": self.apigateway_resource_import_id,
+            "apigateway_build_methods": self.apigateway_build_methods,
+            "apigateway_method_index": self.apigateway_method_index,
+            "apigateway_target_method_name": self.apigateway_target_method_name,
+            "apigateway_method_import_id": self.apigateway_method_import_id,
+            # "apigateway_match_integration": self.apigateway_match_integration,
+            "apigateway_integration_index": self.apigateway_integration_index,
+            "apigateway_target_integration_name": self.apigateway_target_integration_name,
+            "apigateway_integration_import_id": self.apigateway_integration_import_id,
+            "apigateway_build_integrations": self.apigateway_build_integrations,
+        }
+
+        self.hcl.functions.update(functions)
+
+        self.vpc_endpoint_instance = VPCEndPoint(ec2_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
 
     def get_field_from_attrs(self, attributes, arg):
         keys = arg.split(".")
@@ -83,8 +94,8 @@ class Apigateway:
         rest_api_id = attributes.get('rest_api_id')
         resource_id = attributes.get('resource_id')
         http_method = attributes.get('http_method')
-        #Using boto3 get the path of the resource
-        path = self.apigateway_client.get_resource(restApiId=rest_api_id, resourceId=resource_id)['path']
+        path = self.api_gateway_resource_list[rest_api_id][resource_id]
+        # path = self.apigateway_client.get_resource(restApiId=rest_api_id, resourceId=resource_id)['path']
         result[path] = {'methods':{}}
         result[path]['methods'][http_method] = {}
         result[path]['methods'][http_method]['authorization'] = attributes.get('authorization')
@@ -98,6 +109,31 @@ class Apigateway:
 
         return result
     
+    def apigateway_build_integrations(self, attributes, arg):
+        result = {}
+        rest_api_id = attributes.get('rest_api_id')
+        resource_id = attributes.get('resource_id')
+        http_method = attributes.get('http_method')
+        path = self.api_gateway_resource_list[rest_api_id][resource_id]
+        result[path] = {'methods':{}}
+        result[path]['methods'][http_method] = {"integration":{}}
+        result[path]['methods'][http_method]['integration']['integration_http_method'] = attributes.get('integration_http_method')
+        result[path]['methods'][http_method]['integration']['type'] = attributes.get('type')
+        result[path]['methods'][http_method]['integration']['connection_type'] = attributes.get('connection_type')
+        result[path]['methods'][http_method]['integration']['connection_id'] = attributes.get('connection_id')
+        result[path]['methods'][http_method]['integration']['uri'] = attributes.get('uri')
+        result[path]['methods'][http_method]['integration']['credentials'] = attributes.get('credentials')
+        result[path]['methods'][http_method]['integration']['request_templates'] = attributes.get('request_templates')
+        result[path]['methods'][http_method]['integration']['request_parameters'] = attributes.get('request_parameters')
+        result[path]['methods'][http_method]['integration']['passthrough_behavior'] = attributes.get('passthrough_behavior')
+        result[path]['methods'][http_method]['integration']['cache_key_parameters'] = attributes.get('cache_key_parameters')
+        result[path]['methods'][http_method]['integration']['cache_namespace'] = attributes.get('cache_namespace')
+        result[path]['methods'][http_method]['integration']['content_handling'] = attributes.get('content_handling')
+        result[path]['methods'][http_method]['integration']['timeout_milliseconds'] = attributes.get('timeout_milliseconds')
+        result[path]['methods'][http_method]['integration']['tls_config'] = attributes.get('tls_config')
+
+        return result
+        
     def apigateway_target_resource_name(self, attributes, arg):
         path = attributes.get('path')
         if path == '/':
@@ -111,7 +147,8 @@ class Apigateway:
         rest_api_id = attributes.get('rest_api_id')
         resource_id = attributes.get('resource_id')
         #get path for resource
-        path = self.apigateway_client.get_resource(restApiId=rest_api_id, resourceId=resource_id)['path']
+        path = self.api_gateway_resource_list[rest_api_id][resource_id]
+        # path = self.apigateway_client.get_resource(restApiId=rest_api_id, resourceId=resource_id)['path']
         if path == '/':
             depth = 0
         else:
@@ -119,11 +156,48 @@ class Apigateway:
         
         return "depth_"+str(depth)
     
+    def apigateway_target_integration_name(self, attributes, arg):
+        rest_api_id = attributes.get('rest_api_id')
+        resource_id = attributes.get('resource_id')
+        #get path for resource
+        path = self.api_gateway_resource_list[rest_api_id][resource_id]
+        # path = self.apigateway_client.get_resource(restApiId=rest_api_id, resourceId=resource_id)['path']
+        if path == '/':
+            depth = 0
+        else:
+            depth = path.count('/')
+        
+        return "depth_"+str(depth)
+        
+    
+    # def apigateway_match_integration(self, parent_attributes, child_attributes):
+    #     parent_rest_api_id = parent_attributes.get('rest_api_id')
+    #     parent_resource_id = parent_attributes.get('resource_id')
+    #     parent_http_method = parent_attributes.get('http_method')
+    #     child_rest_api_id = child_attributes.get('rest_api_id')
+    #     child_resource_id = child_attributes.get('resource_id')
+    #     child_http_method = child_attributes.get('http_method')
+
+    #     if parent_rest_api_id == child_rest_api_id and parent_resource_id == child_resource_id and parent_http_method == child_http_method:
+    #         return True
+
+    #     return False
+    
     def apigateway_method_index(self, attributes):
         rest_api_id = attributes.get('rest_api_id')
         resource_id = attributes.get('resource_id')
         #Get the resource path
-        path = self.apigateway_client.get_resource(restApiId=rest_api_id, resourceId=resource_id)['path']
+        path = self.api_gateway_resource_list[rest_api_id][resource_id]
+        # path = self.apigateway_client.get_resource(restApiId=rest_api_id, resourceId=resource_id)['path']
+        http_method = attributes.get('http_method')
+        return f"{path}/{http_method}"
+    
+    def apigateway_integration_index(self, attributes):
+        rest_api_id = attributes.get('rest_api_id')
+        resource_id = attributes.get('resource_id')
+        #Get the resource path
+        path = self.api_gateway_resource_list[rest_api_id][resource_id]
+        # path = self.apigateway_client.get_resource(restApiId=rest_api_id, resourceId=resource_id)['path']
         http_method = attributes.get('http_method')
         return f"{path}/{http_method}"
 
@@ -135,7 +209,10 @@ class Apigateway:
     
     def apigateway_method_import_id(self, attributes):
         return f"{attributes['rest_api_id']}/{attributes['resource_id']}/{attributes['http_method']}"
-    
+
+    def apigateway_integration_import_id(self, attributes):
+        return f"{attributes['rest_api_id']}/{attributes['resource_id']}/{attributes['http_method']}"
+
     def get_gateway_method_settings(self, attributes):
         stage_name = attributes['stage_name']
         method_path = attributes['method_path']
@@ -224,30 +301,14 @@ class Apigateway:
     def apigateway(self):
         self.hcl.prepare_folder(os.path.join("generated"))
 
-        # aws_api_gateway_deployment.this
-        # aws_api_gateway_method_settings.all
-        # aws_api_gateway_rest_api.this
-        # aws_api_gateway_rest_api_policy.this
-        # aws_api_gateway_stage.this
-        # aws_api_gateway_vpc_link.this
-        # "aws_api_gateway_account" "this"
-
         # self.aws_api_gateway_account()
         self.aws_api_gateway_rest_api()
-        # self.aws_api_gateway_vpc_link()
         # self.aws_api_gateway_api_key()
         # self.aws_api_gateway_authorizer()
         # self.aws_api_gateway_base_path_mapping()
         # self.aws_api_gateway_client_certificate()
-        # self.aws_api_gateway_deployment()
-        # self.aws_api_gateway_documentation_part()
-        # self.aws_api_gateway_documentation_version()
         # self.aws_api_gateway_domain_name()
         # self.aws_api_gateway_gateway_response()
-        # self.aws_api_gateway_integration()
-        # self.aws_api_gateway_integration_response()
-        # self.aws_api_gateway_method()
-        # self.aws_api_gateway_method_response()
         # self.aws_api_gateway_method_settings()
         # self.aws_api_gateway_model()
         # self.aws_api_gateway_request_validator()
@@ -257,29 +318,12 @@ class Apigateway:
         # self.aws_api_gateway_usage_plan()
         # self.aws_api_gateway_usage_plan_key()
 
-        functions = {
-            'get_field_from_attrs': self.get_field_from_attrs,
-            'aws_api_gateway_deployment_import_id': self.aws_api_gateway_deployment_import_id,
-            'build_stages': self.build_stages,
-            # 'build_deployment': self.build_deployment,
-            'get_stage_name': self.get_stage_name,
-            'build_deployments': self.build_deployments,
-            'get_stage_name_index': self.get_stage_name_index,
-            'get_gateway_method_settings': self.get_gateway_method_settings,
-            'build_api_gateway_method_settings': self.build_api_gateway_method_settings,
-            "apigateway_build_resources": self.apigateway_build_resources,
-            "apigateway_target_resource_name": self.apigateway_target_resource_name,
-            "apigateway_resource_import_id": self.apigateway_resource_import_id,
-            "apigateway_build_methods": self.apigateway_build_methods,
-            "apigateway_method_index": self.apigateway_method_index,
-            "apigateway_target_method_name": self.apigateway_target_method_name,
-            "apigateway_method_import_id": self.apigateway_method_import_id,
-        }
-
         self.hcl.refresh_state()
 
-        self.hcl.module_hcl_code("terraform.tfstate", os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), "apigateway.yaml"), functions, self.region, self.aws_account_id, {}, {})
+        config_file_list = ["apigateway.yaml","vpc_endpoint.yaml", "security_group.yaml"]
+        for index,config_file in enumerate(config_file_list):
+            config_file_list[index] = os.path.join(os.path.dirname(os.path.abspath(__file__)),config_file )
+        self.hcl.module_hcl_code("terraform.tfstate",config_file_list, {}, self.region, self.aws_account_id, {}, {})
 
         self.json_plan = self.hcl.json_plan
 
@@ -315,8 +359,20 @@ class Apigateway:
 
         for rest_api in rest_apis:
 
-            # if rest_api["id"] != "xi7d2kjr61":
+            # if rest_api["id"] != "0smbgr3ze7":
             #     continue
+
+            # 3o496qxe8d
+            # 6dhl0er3l8
+            # 9bqq19vjb5
+            # ap1ek2alz5
+            # g3g23sblml
+            # gssaa14ui6
+            # h258wb4488
+            # mi0bau5iu9
+            # op2rxebd6h
+            # rbxx5bgcak
+            # ur84wbkagc
 
             print(f"  Processing API Gateway REST API: {rest_api['name']}")
             api_id = rest_api["id"]
@@ -344,11 +400,16 @@ class Apigateway:
             self.hcl.process_resource(
                 resource_type, resource_name, attributes)
 
+            endpoint_configuration = rest_api.get("endpointConfiguration", {})
+            if "vpcEndpointIds" in endpoint_configuration:
+                for vpc_link_id in endpoint_configuration["vpcEndpointIds"]:
+                    self.vpc_endpoint_instance.aws_vpc_endpoint(vpc_link_id, ftstack)
+
             self.hcl.add_stack(resource_type, api_id, ftstack)
 
             self.aws_api_gateway_method_settings(rest_api["id"])
             self.aws_api_gateway_rest_api_policy(rest_api["id"])
-            self.aws_api_gateway_resource(rest_api["id"])
+            self.aws_api_gateway_resource(rest_api["id"], ftstack)
             self.aws_api_gateway_stage(rest_api["id"], ftstack)
 
     def aws_api_gateway_deployment(self, rest_api_id, deployment_id):
@@ -408,7 +469,7 @@ class Apigateway:
             #     file.write(open_api_definition)
             # print("Exported API definition to api_definition.yaml")
 
-    def aws_api_gateway_method(self, rest_api_id, resource_id):
+    def aws_api_gateway_method(self, rest_api_id, resource_id, ftstack):
         try:
             print(f"Processing API Gateway Methods for resource: {resource_id}...")
 
@@ -428,6 +489,7 @@ class Apigateway:
 
                 resource_name = f"{rest_api_id}-{resource_id}-{method}"
                 self.hcl.process_resource("aws_api_gateway_method", resource_name, attributes)
+                self.aws_api_gateway_integration(rest_api_id, resource_id, method, ftstack)
 
         except Exception as e:
             print(f"An error occurred: {e}")
@@ -686,37 +748,42 @@ class Apigateway:
     #             self.hcl.process_resource(
     #                 "aws_api_gateway_gateway_response", resource_name, attributes)
 
-    # def aws_api_gateway_integration(self):
-    #     print("Processing API Gateway Integrations...")
+    def aws_api_gateway_integration(self, api_id, resource_id, method, ftstack):
+        print("Processing API Gateway Integrations...")
 
-    #     rest_apis = self.apigateway_client.get_rest_apis()["items"]
+        try:
 
-    #     for rest_api in rest_apis:
-    #         resources = self.apigateway_client.get_resources(
-    #             restApiId=rest_api["id"])["items"]
+            # Retrieve the integration for the specified method
+            integration = self.apigateway_client.get_integration(
+                restApiId=api_id, resourceId=resource_id, httpMethod=method)
+            
+            path = self.api_gateway_resource_list[api_id][resource_id]
 
-    #         for resource in resources:
-    #             if "resourceMethods" in resource:
-    #                 for method in resource["resourceMethods"]:
-    #                     integration = self.apigateway_client.get_integration(
-    #                         restApiId=rest_api["id"], resourceId=resource["id"], httpMethod=method)
+            print(f"  Processing API Gateway Integration: {path} {method}")
 
-    #                     print(
-    #                         f"  Processing API Gateway Integration: {resource['path']} {method}")
+            # Prepare the attributes for the integration
+            attributes = {
+                "id": f"{api_id}/{resource_id}/{method}",
+                "rest_api_id": api_id,
+                "resource_id": resource_id,
+                "http_method": method,
+            }
 
-    #                     attributes = {
-    #                         "id": rest_api["id"]+"/"+resource["id"]+"/"+method,
-    #                         "rest_api_id": rest_api["id"],
-    #                         "resource_id": resource["id"],
-    #                         "http_method": method,
-    #                         "type": integration["type"],
-    #                         "uri": integration.get("uri", ""),
-    #                         "integration_http_method": integration.get("httpMethod", ""),
-    #                     }
+            # Define a unique resource name for the integration
+            resource_name = f"{api_id}-{resource_id}-{method}"
 
-    #                     resource_name = f"{rest_api['id']}-{resource['id']}-{method}"
-    #                     self.hcl.process_resource(
-    #                         "aws_api_gateway_integration", resource_name, attributes)
+            # Process the integration with the attributes
+            self.hcl.process_resource("aws_api_gateway_integration", resource_name, attributes)
+
+            connection_type = integration.get("connectionType", None)
+            if connection_type == "VPC_LINK":
+                vpc_link_id = integration["connectionId"]
+                self.aws_api_gateway_vpc_link(vpc_link_id, ftstack)
+
+        except Exception as e:
+            print(f"An error occurred: {e}")
+            # Handle the exception or re-raise it depending on your needs
+            pass
 
     # def aws_api_gateway_integration_response(self):
     #     print("Processing API Gateway Integration Responses...")
@@ -838,7 +905,7 @@ class Apigateway:
     #             self.hcl.process_resource(
     #                 "aws_api_gateway_request_validator", resource_name, attributes)
 
-    def aws_api_gateway_resource(self, api_id):
+    def aws_api_gateway_resource(self, api_id, ftstack):
         print(f"Processing API Gateway Resources for API: {api_id}")
 
         paginator = self.apigateway_client.get_paginator("get_resources")
@@ -849,18 +916,24 @@ class Apigateway:
 
             for resource in resources:
                 print(f"  Processing API Gateway Resource: {resource['path']}")
-
+                resource_id = resource["id"]
                 attributes = {
-                    "id": resource["id"],
+                    "id": resource_id,
                     "rest_api_id": api_id,
                     "parent_id": resource.get("parentId"),
                     "path_part": resource.get("pathPart"),
                 }
 
+                if api_id not in self.api_gateway_resource_list:
+                    self.api_gateway_resource_list[api_id] = {}
+                
+                self.api_gateway_resource_list[api_id][resource_id] = resource.get("path")
+
                 resource_name = f"{api_id}-{resource['path'].replace('/', '-')}"
                 self.hcl.process_resource(
                     "aws_api_gateway_resource", resource_name, attributes)
-                self.aws_api_gateway_method(api_id, resource["id"])
+                self.aws_api_gateway_method(api_id, resource_id, ftstack)
+                
 
     # def aws_api_gateway_usage_plan_key(self):
     #     print("Processing API Gateway Usage Plans and Usage Plan Keys...")

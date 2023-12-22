@@ -470,7 +470,6 @@ class EKS:
         else:
             return ""
 
-
     def eks(self):
         self.hcl.prepare_folder(os.path.join("generated"))
 

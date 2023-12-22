@@ -121,6 +121,8 @@ def main(aws_account_id, aws_region, group_code):
         provider.aurora()
     elif group_code == 'security_group':
         provider.security_group()
+    elif group_code == 'vpc_endpoint':
+        provider.vpc_endpoint()
     else:
         print(f"Group code {group_code} not found.")
         exit()
