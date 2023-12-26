@@ -53,6 +53,10 @@ class Apigateway:
             "apigateway_integration_response_index": self.apigateway_integration_response_index,
             "apigateway_build_integration_responses": self.apigateway_build_integration_responses,
             "apigateway_integration_response_import_id": self.apigateway_integration_response_import_id,
+            "apigateway_build_gateway_responses": self.apigateway_build_gateway_responses,
+            "apigateway_gateway_response_import_id": self.apigateway_gateway_response_import_id,
+            "apigateway_model_import_id": self.apigateway_model_import_id,
+            "apigateway_build_models": self.apigateway_build_models,
         }
 
         self.hcl.functions.update(functions)
@@ -263,6 +267,35 @@ class Apigateway:
 
     def apigateway_integration_response_import_id(self, attributes):
         return f"{attributes['rest_api_id']}/{attributes['resource_id']}/{attributes['http_method']}/{attributes['status_code']}"
+    
+    def apigateway_gateway_response_import_id(self, attributes):
+        return f"{attributes['rest_api_id']}/{attributes['response_type']}"
+    
+    def apigateway_model_import_id(self, attributes):
+        return f"{attributes['rest_api_id']}/{attributes['name']}"
+    
+    def apigateway_build_models(self, attributes, arg):
+        result = {}
+        name = attributes.get('name')
+        result[name] = {}
+        result[name]['name'] = name
+        result[name]['content_type'] = attributes.get('content_type')
+        result[name]['description'] = attributes.get('description')
+        result[name]['schema'] = attributes.get('schema')
+
+        return result
+
+
+    def apigateway_build_gateway_responses(self, attributes, arg):
+        result = {}
+        response_type = attributes.get('response_type')
+        result[response_type] = {}
+        result[response_type]['status_code'] = attributes.get('status_code')
+        result[response_type]['response_templates'] = attributes.get('response_templates')
+        result[response_type]['response_parameters'] = attributes.get('response_parameters')
+
+        return result
+    
 
     def get_gateway_method_settings(self, attributes):
         stage_name = attributes['stage_name']
@@ -450,6 +483,8 @@ class Apigateway:
             self.aws_api_gateway_rest_api_policy(rest_api["id"])
             self.aws_api_gateway_resource(rest_api["id"], ftstack)
             self.aws_api_gateway_stage(rest_api["id"], ftstack)
+            self.aws_api_gateway_gateway_response(rest_api["id"])
+            self.aws_api_gateway_model(rest_api["id"])
 
     def aws_api_gateway_deployment(self, rest_api_id, deployment_id):
         print(f"Processing API Gateway Deployment: {deployment_id}")
@@ -767,31 +802,25 @@ class Apigateway:
     #         self.hcl.process_resource(
     #             "aws_api_gateway_domain_name", domain_name["domainName"], attributes)
 
-    # def aws_api_gateway_gateway_response(self):
-    #     print("Processing API Gateway Gateway Responses...")
+    def aws_api_gateway_gateway_response(self, rest_api_id):
+        print(f"Processing API Gateway Gateway Responses for Rest API: {rest_api_id}")
 
-    #     rest_apis = self.apigateway_client.get_rest_apis()["items"]
+        gateway_responses = self.apigateway_client.get_gateway_responses(
+            restApiId=rest_api_id)["items"]
 
-    #     for rest_api in rest_apis:
-    #         gateway_responses = self.apigateway_client.get_gateway_responses(
-    #             restApiId=rest_api["id"])["items"]
+        for gateway_response in gateway_responses:
+            print(
+                f"  Processing API Gateway Gateway Response: {gateway_response['responseType']}")
 
-    #         for gateway_response in gateway_responses:
-    #             print(
-    #                 f"  Processing API Gateway Gateway Response: {gateway_response['responseType']}")
+            attributes = {
+                "id": rest_api_id + "/" + gateway_response["responseType"],
+                "rest_api_id": rest_api_id,
+                "response_type": gateway_response["responseType"],
+            }
 
-    #             attributes = {
-    #                 "id": rest_api["id"]+"/" + gateway_response["responseType"],
-    #                 "rest_api_id": rest_api["id"],
-    #                 "response_type": gateway_response["responseType"],
-    #                 # "status_code": gateway_response.get("statusCode", ""),
-    #                 # "response_parameters": gateway_response.get("responseParameters", {}),
-    #                 # "response_templates": gateway_response.get("responseTemplates", {}),
-    #             }
-
-    #             resource_name = f"{rest_api['id']}-{gateway_response['responseType']}"
-    #             self.hcl.process_resource(
-    #                 "aws_api_gateway_gateway_response", resource_name, attributes)
+            resource_name = f"{rest_api_id}-{gateway_response['responseType']}"
+            self.hcl.process_resource(
+                "aws_api_gateway_gateway_response", resource_name, attributes)
 
     def aws_api_gateway_integration(self, api_id, resource_id, method, ftstack):
         print("Processing API Gateway Integrations...")
@@ -877,30 +906,22 @@ class Apigateway:
             self.hcl.process_resource(
                 "aws_api_gateway_method_response", resource_name, attributes)
 
-    # def aws_api_gateway_model(self):
-    #     print("Processing API Gateway Models...")
+    def aws_api_gateway_model(self, rest_api_id):
+        print(f"Processing API Gateway Models for Rest API: {rest_api_id}")
 
-    #     rest_apis = self.apigateway_client.get_rest_apis()["items"]
+        models = self.apigateway_client.get_models(restApiId=rest_api_id)["items"]
 
-    #     for rest_api in rest_apis:
-    #         models = self.apigateway_client.get_models(
-    #             restApiId=rest_api["id"])["items"]
+        for model in models:
+            print(f"  Processing API Gateway Model: {model['name']}")
 
-    #         for model in models:
-    #             print(f"  Processing API Gateway Model: {model['name']}")
+            attributes = {
+                "id": rest_api_id + "/" + model["name"],
+                "rest_api_id": rest_api_id,
+                "name": model["name"],
+            }
 
-    #             attributes = {
-    #                 "id": rest_api["id"]+"/"+model["name"],
-    #                 "rest_api_id": rest_api["id"],
-    #                 "name": model["name"],
-    #                 "content_type": model["contentType"],
-    #                 "description": model.get("description", ""),
-    #                 "schema": model.get("schema", ""),
-    #             }
-
-    #             resource_name = f"{rest_api['id']}-{model['name']}"
-    #             self.hcl.process_resource(
-    #                 "aws_api_gateway_model", resource_name, attributes)
+            resource_name = f"{rest_api_id}-{model['name']}"
+            self.hcl.process_resource("aws_api_gateway_model", resource_name, attributes)
 
     # def aws_api_gateway_request_validator(self):
     #     print("Processing API Gateway Request Validators...")

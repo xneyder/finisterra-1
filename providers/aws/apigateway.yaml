@@ -47,6 +47,34 @@ aws_api_gateway_rest_api:
       field: tags
       type: map
   childs:
+    aws_api_gateway_gateway_response:
+      join:
+        id:
+          field: rest_api_id
+      target_resource_name: this
+      second_index:
+        field: response_type
+      import_id:
+        function: apigateway_gateway_response_import_id
+      fields:
+        gateway_responses:
+          function: apigateway_build_gateway_responses
+          type: map
+          arg: id
+    aws_api_gateway_model:
+      join:
+        id:
+          field: rest_api_id
+      target_resource_name: this
+      second_index:
+        field: name
+      import_id:
+        function: apigateway_model_import_id
+      fields:
+        models:
+          function: apigateway_build_models
+          type: map
+          arg: id
     aws_api_gateway_deployment:
       join:
         id:
