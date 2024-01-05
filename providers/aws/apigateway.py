@@ -2,9 +2,10 @@ import os
 from utils.hcl import HCL
 from providers.aws.vpc_endpoint import VPCEndPoint
 from providers.aws.elbv2 import ELBV2
+from providers.aws.logs import Logs
 
 class Apigateway:
-    def __init__(self, apigateway_client, ec2_client, elbv2_client, acm_client, script_dir, provider_name, schema_data, region, s3Bucket,
+    def __init__(self, apigateway_client, ec2_client, elbv2_client, acm_client, logs_client, script_dir, provider_name, schema_data, region, s3Bucket,
                  dynamoDBTable, state_key, workspace_id, modules, aws_account_id, hcl=None):
         self.apigateway_client = apigateway_client
         self.transform_rules = {}
@@ -63,6 +64,7 @@ class Apigateway:
 
         self.vpc_endpoint_instance = VPCEndPoint(ec2_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
         self.elbv2_instance = ELBV2(elbv2_client, ec2_client, acm_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
+        self.logs_instance = Logs(logs_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
 
     def get_field_from_attrs(self, attributes, arg):
         keys = arg.split(".")
@@ -278,7 +280,6 @@ class Apigateway:
         result = {}
         name = attributes.get('name')
         result[name] = {}
-        result[name]['name'] = name
         result[name]['content_type'] = attributes.get('content_type')
         result[name]['description'] = attributes.get('description')
         result[name]['schema'] = attributes.get('schema')
@@ -398,13 +399,13 @@ class Apigateway:
         # self.aws_api_gateway_request_validator()
         # self.aws_api_gateway_resource()
         # self.aws_api_gateway_rest_api_policy()
-        # self.aws_api_gateway_stage()
+        # self.aws_api_gateway_stage()``
         # self.aws_api_gateway_usage_plan()
         # self.aws_api_gateway_usage_plan_key()
 
         self.hcl.refresh_state()
 
-        config_file_list = ["apigateway.yaml","vpc_endpoint.yaml", "security_group.yaml", "elbv2.yaml"]
+        config_file_list = ["apigateway.yaml", "vpc_endpoint.yaml", "security_group.yaml", "elbv2.yaml", "logs.yaml"]
         for index,config_file in enumerate(config_file_list):
             config_file_list[index] = os.path.join(os.path.dirname(os.path.abspath(__file__)),config_file )
         self.hcl.module_hcl_code("terraform.tfstate",config_file_list, {}, self.region, self.aws_account_id, {}, {})
@@ -443,8 +444,12 @@ class Apigateway:
 
         for rest_api in rest_apis:
 
-            # if rest_api["id"] != "xi7d2kjr61":
-            #     continue
+            if rest_api["id"] != "9bqq19vjb5":
+                continue
+
+            # xi7d2kjr61
+
+            
 
             print(f"  Processing API Gateway REST API: {rest_api['name']}")
             api_id = rest_api["id"]
@@ -486,12 +491,13 @@ class Apigateway:
             self.aws_api_gateway_gateway_response(rest_api["id"])
             self.aws_api_gateway_model(rest_api["id"])
 
-    def aws_api_gateway_deployment(self, rest_api_id, deployment_id):
+    def aws_api_gateway_deployment(self, rest_api_id, deployment_id, ftstack):
         print(f"Processing API Gateway Deployment: {deployment_id}")
         attributes = {
             "id": deployment_id,
             "rest_api_id": rest_api_id
         }
+        
         # deployment = self.apigateway_client.get_deployment(
         #     restApiId=rest_api_id,
         #     deploymentId=deployment_id
@@ -502,6 +508,7 @@ class Apigateway:
 
         self.hcl.process_resource(
             "aws_api_gateway_deployment", deployment_id, attributes)
+        
 
     def aws_api_gateway_stage(self, rest_api_id, ftstack):
         print("Processing API Gateway Stages...")
@@ -525,7 +532,11 @@ class Apigateway:
             self.hcl.process_resource(
                 "aws_api_gateway_stage", resource_name, attributes)
             
-            self.aws_api_gateway_deployment(rest_api_id, stage["deploymentId"])
+            log_group_name = stage["accessLogSettings"]["destinationArn"].split(":")[-1]
+            
+            self.logs_instance.aws_cloudwatch_log_group(log_group_name, ftstack)
+            
+            self.aws_api_gateway_deployment(rest_api_id, stage["deploymentId"], ftstack)
 
             # response = self.apigateway_client.get_export(
             #     restApiId=rest_api_id,
