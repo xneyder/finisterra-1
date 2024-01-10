@@ -177,6 +177,7 @@ class ECR:
 
     def aws_ecr_registry_policy(self):
         print("Processing ECR Registry Policies...")
+        resource_type = "aws_ecr_registry_policy"
 
         try:
             registry_policy = self.ecr_client.get_registry_policy()
@@ -187,15 +188,21 @@ class ECR:
             return
 
         print(f"  Processing ECR Registry Policy")
+        id = self.ecr_client.describe_registries()["registries"][0]["registryId"],
 
         attributes = {
             "policy": json.dumps(json.loads(registry_policy), indent=2),
         }
         self.hcl.process_resource(
-            "aws_ecr_registry_policy", "ecr_registry_policy", attributes)
+            resource_type, "ecr_registry_policy", attributes)
+
+        ftstack = "ecr"
+        self.hcl.add_stack(resource_type, id, ftstack)
+
 
     def aws_ecr_pull_through_cache_rule(self):
         print("Processing ECR Pull Through Cache Rules...")
+        resource_type = "aws_ecr_pull_through_cache_rule"
 
         repositories = self.ecr_client.describe_repositories()["repositories"]
         for repo in repositories:
@@ -213,13 +220,17 @@ class ECR:
                 if rule["repositoryName"] == repository_name:
                     print(
                         f"  Processing ECR Pull Through Cache Rule for repository: {repository_name}")
+                    id = repository_name
                     attributes = {
-                        "id": repository_name,
+                        "id": id,
                         "action": rule["action"],
                         "rule_priority": rule["rulePriority"],
                     }
                     self.hcl.process_resource(
-                        "aws_ecr_pull_through_cache_rule", repository_name.replace("-", "_"), attributes)
+                        resource_type, id, attributes)
+                    ftstack = "ecr"
+                    self.hcl.add_stack(resource_type, id, ftstack)
+
 
     def aws_ecr_registry_scanning_configuration(self, repo):
         repository_name = repo["repositoryName"]
@@ -237,6 +248,7 @@ class ECR:
 
     def aws_ecr_replication_configuration(self):
         print("Processing ECR Replication Configurations...")
+        resource_type = "aws_ecr_replication_configuration"
 
         try:
             registry = self.ecr_client.describe_registry()
@@ -268,4 +280,7 @@ class ECR:
             # "rule": formatted_rules,
         }
         self.hcl.process_resource(
-            "aws_ecr_replication_configuration", "ecr_replication_configuration", attributes)
+            resource_type, registryId, attributes)
+        
+        ftstack = "ecr"
+        self.hcl.add_stack(resource_type, registryId, ftstack)

@@ -677,8 +677,13 @@ class Aws:
     def logs(self):
         logs_client = self.session.client(
             "logs", region_name=self.aws_region)
+        
+        kms_client = self.session.client(
+            "kms", region_name=self.aws_region)
+        iam_client = self.session.client(
+            "iam", region_name=self.aws_region)
 
-        instance = Logs(logs_client, self.script_dir, self.provider_name,
+        instance = Logs(logs_client, kms_client, iam_client, self.script_dir, self.provider_name,
                         self.schema_data, self.aws_region, self.s3Bucket,
                         self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.logs()

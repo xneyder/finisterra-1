@@ -1,9 +1,9 @@
 import os
 from utils.hcl import HCL
-
+from providers.aws.kms import KMS
 
 class Logs:
-    def __init__(self, logs_client, script_dir, provider_name, schema_data, region, s3Bucket,
+    def __init__(self, logs_client, kms_client, iam_client, script_dir, provider_name, schema_data, region, s3Bucket,
                  dynamoDBTable, state_key, workspace_id, modules, aws_account_id, hcl=None):
         self.logs_client = logs_client
         self.transform_rules = {
@@ -27,6 +27,7 @@ class Logs:
         else:
             self.hcl = hcl
         self.resource_list = {}
+        self.kms_instance = KMS(kms_client, iam_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
 
     def logs(self):
         self.hcl.prepare_folder(os.path.join("generated"))
@@ -46,8 +47,10 @@ class Logs:
         functions = {}
 
         self.hcl.refresh_state()
-        self.hcl.module_hcl_code("terraform.tfstate",
-                                 os.path.join(os.path.dirname(os.path.abspath(__file__)), "logs.yaml"), functions, self.region, self.aws_account_id, {}, {})
+        config_file_list = ["logs.yaml", "kms.yaml"]
+        for index,config_file in enumerate(config_file_list):
+            config_file_list[index] = os.path.join(os.path.dirname(os.path.abspath(__file__)),config_file )
+        self.hcl.module_hcl_code("terraform.tfstate",config_file_list, functions, self.region, self.aws_account_id, {}, {})
         # self.hcl.generate_hcl_file()
         self.json_plan = self.hcl.json_plan
 
@@ -143,19 +146,14 @@ class Logs:
                     "name": log_group_name,
                 }
 
-                if "kmsKeyId" in log_group:
-                    attributes["kms_key_id"] = log_group["kmsKeyId"]
-
-                if "retentionInDays" in log_group:
-                    attributes["retention_in_days"] = log_group["retentionInDays"]
-
-                if "tags" in log_group:
-                    attributes["tags"] = log_group["tags"]
-
                 self.hcl.process_resource(
                     resource_type, id, attributes)
                 if not ftstack:
                     ftstack = "logs"
+
+                if "kmsKeyId" in log_group:
+                    self.kms_instance.aws_kms_key(log_group["kmsKeyId"], ftstack)
+
                 self.hcl.add_stack(resource_type, id, ftstack)
 
 

@@ -1,6 +1,5 @@
 aws_ecr_repository:
   # terraform_module: "terraform-aws-modules/aws/ecr"
-  # terraform_module: "../../../terraform-aws-modules/terraform-aws-ecr"
   terraform_module: "github.com/finisterra-io/terraform-aws-modules.git//ecr?ref=main"
   terraform_module_version: "1.6.0"
   name_field: repository_name
@@ -13,7 +12,7 @@ aws_ecr_repository:
     create_lifecycle_policy: false
     repository_type: private
     manage_registry_scanning_configuration: false
-    create_registry_replication_configuration: false
+    # create_registry_replication_configuration: false
   fields:
     repository_name:
       field: name
@@ -50,9 +49,9 @@ aws_ecr_repository:
         attach_repository_policy: true
         create_repository_policy: false
       fields:
-        repository_name:
-          field: name
-          type: string
+        # repository_name:
+        #   field: name
+        #   type: string
         repository_policy:
           field: policy
           type: string
@@ -65,9 +64,9 @@ aws_ecr_repository:
       defaults:
         create_lifecycle_policy: true
       fields:
-        repository_name:
-          field: name
-          type: string
+        # repository_name:
+        #   field: name
+        #   type: string
         repository_lifecycle_policy:
           field: policy
           type: string
@@ -91,13 +90,13 @@ aws_ecr_repository:
 
 aws_ecr_registry_policy:
   # terraform_module: "terraform-aws-modules/aws/ecr"
-  terraform_module: "../../../terraform-aws-modules/terraform-aws-ecr"
+  terraform_module: "github.com/finisterra-io/terraform-aws-modules.git//ecr/modules/registry_policy?ref=main"
   terraform_module_version: "1.6.0"
   target_resource_name: this
-  path: "ecr"
-  defaults:
-    create_registry_policy: true
-    create_repository: false
+  # path: "ecr"
+  # defaults:
+  #   create_registry_policy: true
+  #   create_repository: false
   fields:
     registry_policy:
       field: policy
@@ -106,12 +105,12 @@ aws_ecr_registry_policy:
 
 aws_ecr_pull_through_cache_rule:
   # terraform_module: "terraform-aws-modules/aws/ecr"
-  terraform_module: "../../../terraform-aws-modules/terraform-aws-ecr"
+  terraform_module: "github.com/finisterra-io/terraform-aws-modules.git//ecr/modules/pull_through_cache_rule?ref=main"
   terraform_module_version: "1.6.0"
   target_resource_name: this
-  path: "ecr"
-  defaults:
-    create_repository: false
+  # path: "ecr"
+  # defaults:
+  #   create_repository: false
   fields:
     registry_pull_through_cache_rules:
       field: rules
@@ -119,13 +118,13 @@ aws_ecr_pull_through_cache_rule:
 
 aws_ecr_replication_configuration:
   # terraform_module: "terraform-aws-modules/aws/ecr"
-  terraform_module: "../../../terraform-aws-modules/terraform-aws-ecr"
+  terraform_module: "github.com/finisterra-io/terraform-aws-modules.git//ecr/modules/replication_configuration?ref=main"
   terraform_module_version: "1.6.0"
   target_resource_name: this
-  path: "ecr"
-  defaults:
-    create_registry_replication_configuration: true
-    create_repository: false
+  # path: "ecr"
+  # defaults:
+  #   create_registry_replication_configuration: true
+  #   create_repository: false
   fields:
     registry_replication_rules:
       function: build_registry_replication_rules

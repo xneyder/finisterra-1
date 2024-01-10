@@ -6,6 +6,13 @@ aws_lb:
   # path: "alb"
   # dependencies:
   #   - "../security_group"
+  joined_fields:
+    security_groups:
+      sub_fields:
+        - security_groups
+    aws_lb_listeners:
+      sub_fields:
+        - certificate_arn
   fields:
     init:
       function: init_fields_elbv2
@@ -23,10 +30,13 @@ aws_lb:
       field: internal
       type: bool
       module_default: false
-    security_group_names:
-      function: get_security_group_names_elbv2
-      arg: security_groups
+    security_groups:
+      field: security_groups
       type: list
+    # security_group_names:
+    #   function: get_security_group_names_elbv2
+    #   arg: security_groups
+    #   type: list
     cross_zone_load_balancing_enabled:
       field: enable_cross_zone_load_balancing
       type: bool

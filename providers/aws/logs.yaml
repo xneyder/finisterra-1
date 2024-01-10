@@ -3,6 +3,10 @@ aws_cloudwatch_log_group:
   terraform_module_version: "6.1.0"
   target_resource_name: this
   name_field: name
+  joined_fields:
+    kms_key_id:
+      sub_fields:
+        - kms_key_id
   fields:
     name:
       field: name

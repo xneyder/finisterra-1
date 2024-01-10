@@ -1,6 +1,7 @@
 import os
 from utils.hcl import HCL
 from providers.aws.security_group import SECURITY_GROUP
+from providers.aws.acm import ACM
 
 
 class ELBV2:
@@ -45,12 +46,12 @@ class ELBV2:
         self.hcl.functions.update(functions)
 
         self.security_group_instance = SECURITY_GROUP(ec2_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
+        self.acm_instance = ACM(acm_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
 
     def init_fields_elbv2(self, attributes):
         self.listeners = {}
 
         return None
-
 
     def get_security_group_names_elbv2(self, attributes, arg):
         security_group_ids = attributes.get(arg)
@@ -234,7 +235,7 @@ class ELBV2:
 
         self.hcl.refresh_state()
 
-        config_file_list = ["elbv2.yaml", "security_group.yaml"]
+        config_file_list = ["elbv2.yaml", "security_group.yaml", "acm.yaml"]
         for index,config_file in enumerate(config_file_list):
             config_file_list[index] = os.path.join(os.path.dirname(os.path.abspath(__file__)),config_file )
         self.hcl.module_hcl_code("terraform.tfstate",config_file_list, {}, self.region, self.aws_account_id, {}, {})
@@ -311,10 +312,10 @@ class ELBV2:
                 # self.aws_security_group(security_group_ids)
 
         # Call the other functions for listeners and listener certificates
-        listener_arns = self.aws_lb_listener(load_balancer_arns)
-        self.aws_lb_listener_certificate(listener_arns)
+        listener_arns = self.aws_lb_listener(load_balancer_arns, ftstack)
+        self.aws_lb_listener_certificate(listener_arns, ftstack)
 
-    def aws_lb_listener(self, load_balancer_arns):
+    def aws_lb_listener(self, load_balancer_arns, ftstack=None):
         print("Processing Load Balancer Listeners...")
 
         listener_arns = []
@@ -333,7 +334,7 @@ class ELBV2:
                     if has_target_group:
                         continue
 
-                    listener_arn = listener["ListenerArn"]
+                    listener_arn = listener["ListenerArn"]                    
                     listener_arns.append(listener_arn)
 
                     print(f"  Processing Listener: {listener_arn}")
@@ -344,10 +345,13 @@ class ELBV2:
 
                     self.hcl.process_resource(
                         "aws_lb_listener", listener_arn.split("/")[-1], attributes)
+                    
+                    for certificate in listener.get('Certificates', []):
+                        self.acm_instance.aws_acm_certificate(certificate['CertificateArn'], ftstack)
 
         return listener_arns
 
-    def aws_lb_listener_certificate(self, listener_arns):
+    def aws_lb_listener_certificate(self, listener_arns, ftstack):
         print("Processing Load Balancer Listener Certificates...")
 
         for listener_arn in listener_arns:
@@ -375,6 +379,8 @@ class ELBV2:
 
                     self.hcl.process_resource(
                         "aws_lb_listener_certificate", id, attributes)
+                    
+                    self.acm_instance.aws_acm_certificate(cert_arn, ftstack)
             else:
                 print(
                     f"No certificates found for Listener ARN: {listener_arn}")
