@@ -88,13 +88,16 @@ aws_ecs_service:
     execution_role_arn:
       sub_fields:
         - execution_role_arn
+    network_configuration:
+      sub_fields:
+        - security_groups
 
   # target_submodule: module.service
   # root_attribute: services
   # root_attribute_key: name
   # path: "ecs"
-  dependencies:
-    - "../iam_role"
+  # dependencies:
+  #   - "../iam_role"
   defaults:
     create_task_definition: false
     create_target_group: false
@@ -145,8 +148,8 @@ aws_ecs_service:
       field: launch_type
       type: string
     load_balancer:
-      function: load_balancer
-      type: map
+      field: load_balancer
+      type: list
     ordered_placement_strategy:
       field: ordered_placement_strategy
       type: list
@@ -201,7 +204,8 @@ aws_ecs_service:
       field: iam_role
       type: string
     network_configuration:
-      field: network_configuration
+      function: ecs_get_network_configuration
+      arg: network_configuration
       type: list
 
   childs:
@@ -368,8 +372,10 @@ aws_ecs_service:
           field: tags
           type: map
         vpc_name:
-          function: get_vpc_name
-          arg: vpc_id
+          function: get_vpc_name_ecs
+          type: string
+        vpc_id:
+          function: get_vpc_id_ecs
           type: string
         target_type:
           field: target_type

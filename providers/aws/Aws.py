@@ -55,6 +55,7 @@ from providers.aws.elbv2 import ELBV2
 from providers.aws.stepfunction import StepFunction
 from providers.aws.msk import MSK
 from providers.aws.security_group import SECURITY_GROUP
+from providers.aws.target_group import TargetGroup
 # from utils.filesystem import create_tmp_terragrunt
 
 
@@ -1012,3 +1013,22 @@ class Aws:
                                   self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.security_group()
         self.json_plan = instance.json_plan
+
+
+    def target_group(self):
+        elbv2_client = self.session.client(
+            "elbv2", region_name=self.aws_region)
+
+        ec2_client = self.session.client(
+            "ec2", region_name=self.aws_region)
+
+        acm_client = self.session.client(
+            "acm", region_name=self.aws_region)
+        
+
+        instance = TargetGroup(elbv2_client, ec2_client, acm_client, self.script_dir, self.provider_name,
+                       self.schema_data, self.aws_region, self.s3Bucket,
+                       self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
+        instance.target_group()
+        self.json_plan = instance.json_plan
+        self.resource_list['target_group'] = instance.resource_list

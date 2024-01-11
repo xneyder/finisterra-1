@@ -268,13 +268,6 @@ class ECS:
 
         return False
 
-    def get_vpc_name(self, attributes, arg):
-        vpc_id = attributes.get(arg)
-        response = self.ec2_client.describe_vpcs(VpcIds=[vpc_id])
-        vpc_name = next(
-            (tag['Value'] for tag in response['Vpcs'][0]['Tags'] if tag['Key'] == 'Name'), None)
-        return vpc_name
-
     def join_aws_lb_target_group_to_aws_lb_listener_rule(self, parent_attributes, child_attributes):
         target_group_arn = parent_attributes.get('arn')
         for action in child_attributes.get('action', []):
@@ -407,6 +400,58 @@ class ECS:
         role = attributes.get('role')
         policy_name = attributes.get('policy_arn').split('/')[-1]
         return role+"_"+policy_name
+    
+    def ecs_get_network_configuration(self, attributes, arg):
+        network_configuration = attributes.get(arg, [])
+        if network_configuration:
+            subnets = network_configuration[0].get("subnets")
+            subnet_names = []
+            for subnet_id in subnets:
+                response = self.ec2_client.describe_subnets(SubnetIds=[subnet_id])
+
+                # Check if 'Subnets' key exists and it's not empty
+                if not response or 'Subnets' not in response or not response['Subnets']:
+                    print(
+                        f"No subnet information found for Subnet ID: {subnet_id}")
+                    continue
+
+                # Extract the 'Tags' key safely using get
+                subnet_tags = response['Subnets'][0].get('Tags', [])
+
+                # Extract the subnet name from the tags
+                subnet_name = next(
+                    (tag['Value'] for tag in subnet_tags if tag['Key'] == 'Name'), None)
+
+                if subnet_name:
+                    subnet_names.append(subnet_name)
+                else:
+                    print(f"No 'Name' tag found for Subnet ID: {subnet_id}")
+
+            if subnet_names:
+                network_configuration[0]['subnet_names'] = subnet_names
+                del network_configuration[0]['subnets']
+        return network_configuration
+
+    def get_vpc_name(self, attributes, arg):
+        vpc_id = attributes.get(arg)
+        response = self.ec2_client.describe_vpcs(VpcIds=[vpc_id])
+        vpc_name = next(
+            (tag['Value'] for tag in response['Vpcs'][0]['Tags'] if tag['Key'] == 'Name'), None)
+        return vpc_name
+
+    def get_vpc_name_ecs(self, attributes):
+        vpc_id = attributes.get("vpc_id")
+        response = self.ec2_client.describe_vpcs(VpcIds=[vpc_id])
+        vpc_name = next(
+            (tag['Value'] for tag in response['Vpcs'][0]['Tags'] if tag['Key'] == 'Name'), None)
+        return vpc_name
+
+    def get_vpc_id_ecs(self, attributes):
+        vpc_name = self.get_vpc_name_ecs(attributes)
+        if vpc_name is None:
+            return  attributes.get("vpc_id")
+        else:
+            return ""    
 
     def ecs(self):
         self.hcl.prepare_folder(os.path.join("generated"))
@@ -459,8 +504,11 @@ class ECS:
             'get_policy_attachment_index': self.get_policy_attachment_index,
             'get_network_field': self.get_network_field,
             'ecs_get_cluster_configuration': self.ecs_get_cluster_configuration,
+            'ecs_get_network_configuration': self.ecs_get_network_configuration,
+            'get_vpc_id_ecs': self.get_vpc_id_ecs,
+            'get_vpc_name_ecs': self.get_vpc_name_ecs
         }
-        config_file_list = ["ecs.yaml","iam_role.yaml", "logs.yaml", "kms.yaml"]
+        config_file_list = ["ecs.yaml","iam_role.yaml", "logs.yaml", "kms.yaml", "security_group.yaml"]
         for index,config_file in enumerate(config_file_list):
             config_file_list[index] = os.path.join(os.path.dirname(os.path.abspath(__file__)),config_file )
         self.hcl.module_hcl_code("terraform.tfstate",config_file_list, functions, self.region, self.aws_account_id, {}, {})
@@ -678,11 +726,20 @@ class ECS:
                                 service['taskDefinition'], ftstack)
 
                         # Process load balancer target groups if present
-                        for lb in service.get('loadBalancers', []):
-                            if lb.get('targetGroupArn'):
-                                self.aws_lb_target_group(lb['targetGroupArn'])
+                        # for lb in service.get('loadBalancers', []):
+                        #     if lb.get('targetGroupArn'):
+                        #         self.aws_lb_target_group(lb['targetGroupArn'])
 
-                        # self.security_group_instance.aws_security_group(sg, ftstack)
+                        network_configuration = service.get(
+                            'networkConfiguration', {})
+                        if network_configuration:
+                            aws_vpc_configuration = network_configuration.get(
+                                'awsvpcConfiguration', {})
+                            if aws_vpc_configuration:
+                                security_groups = aws_vpc_configuration.get(
+                                    'securityGroups', [])
+                                for sg in security_groups:
+                                    self.security_group_instance.aws_security_group(sg, ftstack)
 
             else:
                 print(f"Skipping aws_ecs_service: {cluster['clusterName']}")

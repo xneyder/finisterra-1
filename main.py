@@ -123,6 +123,8 @@ def main(aws_account_id, aws_region, group_code):
         provider.security_group()
     elif group_code == 'vpc_endpoint':
         provider.vpc_endpoint()
+    elif group_code == 'target_group':
+        provider.target_group()
     else:
         print(f"Group code {group_code} not found.")
         exit()
