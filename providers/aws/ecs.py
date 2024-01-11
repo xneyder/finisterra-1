@@ -5,7 +5,7 @@ import re
 from providers.aws.iam_role import IAM_ROLE
 from providers.aws.logs import Logs
 from providers.aws.kms import KMS
-
+from providers.aws.security_group import SECURITY_GROUP
 
 class ECS:
     def __init__(self, ecs_client, logs_client, appautoscaling_client, iam_client, cloudmap_client, elbv2_client, ec2_client, acm_client, kms_client, script_dir, provider_name, schema_data, region, s3Bucket,
@@ -38,6 +38,7 @@ class ECS:
         self.iam_role_instance = IAM_ROLE(iam_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)        
         self.logs_instance = Logs(logs_client, kms_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
         self.kms_instance = KMS(kms_client, iam_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
+        self.security_group_instance = SECURITY_GROUP(ec2_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
 
     def cloudwatch_log_group_name(self, attributes):
         # The name is expected to be in the format /aws/ecs/{cluster_name}
@@ -680,6 +681,8 @@ class ECS:
                         for lb in service.get('loadBalancers', []):
                             if lb.get('targetGroupArn'):
                                 self.aws_lb_target_group(lb['targetGroupArn'])
+
+                        # self.security_group_instance.aws_security_group(sg, ftstack)
 
             else:
                 print(f"Skipping aws_ecs_service: {cluster['clusterName']}")

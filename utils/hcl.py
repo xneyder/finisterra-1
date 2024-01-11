@@ -644,7 +644,7 @@ class HCL:
                                 resource_attributes, field_name.split('.'))
                 
                 output_fields = []
-                print(self.additional_output_fields)
+                # print(self.additional_output_fields)
                 # self.additional_output_fields = {"aws_kms_alias": [{"id_key": "id", "output": "aliases", "type": "map"}]}
                 if resource_type in self.additional_output_fields:
                     additional_output = self.additional_output_fields[resource_type]

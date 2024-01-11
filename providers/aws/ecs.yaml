@@ -79,6 +79,15 @@ aws_ecs_service:
     cluster_arn:
       sub_fields:
         - cluster_arn
+    iam_role:
+      sub_fields:
+        - iam_role
+    task_role_arn:
+      sub_fields:
+        - task_role_arn
+    execution_role_arn:
+      sub_fields:
+        - execution_role_arn
 
   # target_submodule: module.service
   # root_attribute: services
@@ -188,9 +197,8 @@ aws_ecs_service:
       type: list
     create_security_group:
       function: check_subnet_ids
-    iam_role_name:
-      function: get_iam_role
-      arg: iam_role
+    iam_role:
+      field: iam_role
       type: string
     network_configuration:
       field: network_configuration
@@ -272,13 +280,13 @@ aws_ecs_service:
         task_definition_placement_constraints:
           field: placement_constraints
           type: list
-        tasks_iam_role_name:
-          function: get_iam_role
-          arg: task_role_arn
+        task_role_arn:
+          # function: get_iam_role
+          field: task_role_arn
           type: string
-        task_exec_iam_role_name:
-          function: get_iam_role
-          arg: execution_role_arn
+        execution_role_arn:
+          # function: get_iam_role
+          field: execution_role_arn
           type: string
 
     aws_appautoscaling_target:
