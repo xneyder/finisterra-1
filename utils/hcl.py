@@ -642,7 +642,19 @@ class HCL:
                         if field_name:
                             import_id_value = self.get_value_from_tfstate(
                                 resource_attributes, field_name.split('.'))
-
+                
+                output_fields = []
+                print(self.additional_output_fields)
+                # self.additional_output_fields = {"aws_kms_alias": [{"id_key": "id", "output": "aliases", "type": "map"}]}
+                if resource_type in self.additional_output_fields:
+                    additional_output = self.additional_output_fields[resource_type]
+                    for item in additional_output:
+                        id_key = item["id_key"]
+                        if id_key in resource_attributes:
+                            output_fields.append({"id_key": id_key, 
+                                                  "output": item["output"], 
+                                                  "value": resource_attributes[id_key],
+                                                  "type": item["type"]})
                 deployed_resources.append({
                     'resource_type': resource_type,
                     'resource_name': resource_name,
@@ -653,6 +665,7 @@ class HCL:
                     'index': root_attribute_key_value if root_attribute_key_value else '',
                     'second_index_value': second_index_value if second_index_value else '',
                     'first_index_value': first_index_value if first_index_value else '',
+                    'output_fields': output_fields,
                 })
                 self.global_deployed_resources.append({
                     'resource_type': resource_type,
@@ -664,6 +677,7 @@ class HCL:
                     'index': root_attribute_key_value if root_attribute_key_value else '',
                     'second_index_value': second_index_value if second_index_value else '',
                     'first_index_value': first_index_value if first_index_value else '',
+                    'output_fields': output_fields,
                 })
 
             for child_type, child_config in resource_config.get('childs', {}).items():
@@ -899,6 +913,7 @@ class HCL:
         for resource in resources:
             if resource['type'] in config:  # Check if resource is root in the config
                 resource_config = config[resource['type']]
+                self.additional_output_fields = resource_config.get('additional_output_fields', {})
                 instance = self.process_resource_module(
                     resource, resources, config, self.functions, self.additional_data)
                 if not instance:
@@ -919,8 +934,9 @@ class HCL:
 
         ids_name_map ={}
         for instance in instances:
+            module_instance_name = instance["module_instance_name"]
+            # root resources
             if instance["attributes"]:
-                module_instance_name = instance["module_instance_name"]
                 for id_key in self.id_key_list:
                     if id_key in instance:
                         id = instance[id_key]
@@ -928,6 +944,20 @@ class HCL:
                             ids_name_map[id] = {}
                         ids_name_map[id]['module']= module_instance_name
                         ids_name_map[id]['key']= id_key
+            if instance["deployed_resources"]:
+                for deployed_resource in instance["deployed_resources"]:
+                    # print(deployed_resource['output_fields'])
+                    for output_field in deployed_resource['output_fields']:
+                        id_key = output_field["id_key"]
+                        id = output_field["value"]
+                        output = output_field["output"]
+                        output_type = output_field["type"]
+                        if id not in ids_name_map:
+                            ids_name_map[id] = {}
+                        ids_name_map[id]['module']= module_instance_name
+                        ids_name_map[id]['output']= output
+                        ids_name_map[id]['key']= id_key
+                        ids_name_map[id]['type']= output_type
 
         subfolders = {}
         for instance in instances:
@@ -999,7 +1029,11 @@ class HCL:
                                                 if index_item in joined_sub_fields or "ALL" in joined_sub_fields:
                                                     if value_item in ids_name_map:
                                                         if module_instance_name != ids_name_map[value_item]["module"]:
-                                                            value_module = "module."+ids_name_map[value_item]["module"]+"."+ids_name_map[value_item]["key"]
+                                                            output_type = ids_name_map[value_item].get("type", "")
+                                                            if output_type == "map":
+                                                                value_module = "module."+ids_name_map[value_item]["module"]+"."+ids_name_map[value_item]["output"]+"[\""+value_item+"\"]"+"."+ids_name_map[value_item]["key"]
+                                                            else:
+                                                                value_module = "module."+ids_name_map[value_item]["module"]+"."+ids_name_map[value_item]["key"]
                                                             value = value.replace('"'+value_item+'"', value_module)
                                 except json.JSONDecodeError:
                                     pass

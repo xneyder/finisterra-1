@@ -4,7 +4,7 @@ from providers.aws.s3 import S3
 from providers.aws.logs import Logs
 
 class Wafv2:
-    def __init__(self, wafv2_client, elbv2_client, s3_client, logs_client, script_dir, provider_name, schema_data, region, s3Bucket,
+    def __init__(self, wafv2_client, elbv2_client, s3_client, logs_client, kms_client, script_dir, provider_name, schema_data, region, s3Bucket,
                  dynamoDBTable, state_key, workspace_id, modules, aws_account_id, hcl=None):
         self.wafv2_client = wafv2_client
         self.elbv2_client = elbv2_client
@@ -24,7 +24,7 @@ class Wafv2:
             self.hcl = hcl
         self.resource_list = {}
         self.s3_instance = S3(s3_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
-        self.logs_instance = Logs(logs_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
+        self.logs_instance = Logs(logs_client, kms_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
 
         functions = {
             "wafv2_get_rules": self.wafv2_get_rules,

@@ -6,49 +6,54 @@ aws_ecs_cluster:
   #   - "../iam_role"
   keys:
     - name
+  joined_fields:
+    cluster_configuration:
+      sub_fields:
+        - cloud_watch_log_group_name
+        - kms_key_id
   target_resource_name: this
   name_field: cluster_name
   # target_submodule: module.cluster
-  defaults:
-    create_cloudwatch_log_group: false
+  # defaults:
+  #   create_cloudwatch_log_group: false
   fields:
     cluster_name:
       field: name
       type: string
     cluster_configuration:
-      function: to_map
-      arg: configuration
+      # function: ecs_get_cluster_configuration
+      field: configuration
       type: map
     cluster_service_connect_defaults:
-      function: to_map
-      arg: service_connect_defaults
+      # function: to_map
+      field: service_connect_defaults
       type: map
     cluster_settings:
-      function: to_map
-      arg: setting
+      # function: to_map
+      field: setting
       type: map
     tags:
       field: tags
       type: map
-  childs:
-    aws_cloudwatch_log_group: #Not tested
-      join:
-        name:
-          function: cloudwatch_log_group_name
-      target_resource_name: this
-      target_submodule: module.cluster
-      defaults:
-        create_cloudwatch_log_group: true
-      fields:
-        cloudwatch_log_group_retention_in_days:
-          field: retention_in_days
-          type: number
-        cloudwatch_log_group_kms_key_id:
-          field: kms_key_id
-          type: string
-        cloudwatch_log_group_tags:
-          field: tags
-          type: map
+  # childs:
+  #   aws_cloudwatch_log_group: #Not tested
+  #     join:
+  #       name:
+  #         function: cloudwatch_log_group_name
+  #     target_resource_name: this
+  #     target_submodule: module.cluster
+  #     defaults:
+  #       create_cloudwatch_log_group: true
+  #     fields:
+  #       cloudwatch_log_group_retention_in_days:
+  #         field: retention_in_days
+  #         type: number
+  #       cloudwatch_log_group_kms_key_id:
+  #         field: kms_key_id
+  #         type: string
+  #       cloudwatch_log_group_tags:
+  #         field: tags
+  #         type: map
 
   # aws_ecs_cluster_capacity_providers: #Not tested
   #   join:
@@ -66,10 +71,15 @@ aws_ecs_service:
   terraform_module: "github.com/finisterra-io/terraform-aws-modules.git//ecs/modules/service?ref=main"
   terraform_module_version: "5.2.0"
   # dict_to_hcl: true
-  join:
-    arn:
-      function: aws_ecs_service_cluster_arn
+  # join:
+  #   arn:
+  #     function: aws_ecs_service_cluster_arn
   target_resource_name: ignore_task_definition
+  joined_fields:
+    cluster_arn:
+      sub_fields:
+        - cluster_arn
+
   # target_submodule: module.service
   # root_attribute: services
   # root_attribute_key: name

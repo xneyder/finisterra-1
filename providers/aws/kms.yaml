@@ -6,6 +6,11 @@ aws_kms_key:
     create_external: false
     create_replica: false
     create_replica_external: false
+  additional_output_fields:
+    aws_kms_alias:
+      - id_key: id
+        output: aliases
+        type: map
   fields:
     bypass_policy_lockout_safety_check:
       field: bypass_policy_lockout_safety_check

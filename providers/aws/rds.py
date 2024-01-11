@@ -4,7 +4,7 @@ from providers.aws.iam_role import IAM_ROLE
 from providers.aws.logs import Logs
 
 class RDS:
-    def __init__(self, rds_client, logs_client, iam_client, script_dir, provider_name, schema_data, region, s3Bucket,
+    def __init__(self, rds_client, logs_client, iam_client, kms_client, script_dir, provider_name, schema_data, region, s3Bucket,
                  dynamoDBTable, state_key, workspace_id, modules, aws_account_id, hcl=None):
         self.rds_client = rds_client
         self.logs_client = logs_client
@@ -29,7 +29,7 @@ class RDS:
             self.hcl = hcl
         
         self.iam_role_instance = IAM_ROLE(iam_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
-        self.logs_instance = Logs(logs_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
+        self.logs_instance = Logs(logs_client, kms_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
 
         self.resource_list = {}
 

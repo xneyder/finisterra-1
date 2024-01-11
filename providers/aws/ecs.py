@@ -3,10 +3,12 @@ from utils.hcl import HCL
 import json
 import re
 from providers.aws.iam_role import IAM_ROLE
+from providers.aws.logs import Logs
+from providers.aws.kms import KMS
 
 
 class ECS:
-    def __init__(self, ecs_client, logs_client, appautoscaling_client, iam_client, cloudmap_client, elbv2_client, ec2_client, acm_client, script_dir, provider_name, schema_data, region, s3Bucket,
+    def __init__(self, ecs_client, logs_client, appautoscaling_client, iam_client, cloudmap_client, elbv2_client, ec2_client, acm_client, kms_client, script_dir, provider_name, schema_data, region, s3Bucket,
                  dynamoDBTable, state_key, workspace_id, modules, aws_account_id):
         self.ecs_client = ecs_client
         self.logs_client = logs_client
@@ -16,6 +18,7 @@ class ECS:
         self.elbv2_client = elbv2_client
         self.ec2_client = ec2_client
         self.acm_client = acm_client
+        self.kms_client = kms_client
         self.transform_rules = {
             "aws_ecs_task_definition": {
                 "hcl_json_multiline": {"container_definitions": True}
@@ -33,6 +36,8 @@ class ECS:
                        self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules)
         self.resource_list = {}
         self.iam_role_instance = IAM_ROLE(iam_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)        
+        self.logs_instance = Logs(logs_client, kms_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
+        self.kms_instance = KMS(kms_client, iam_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
 
     def cloudwatch_log_group_name(self, attributes):
         # The name is expected to be in the format /aws/ecs/{cluster_name}
@@ -296,6 +301,21 @@ class ECS:
             ListenerArns=[listener_arn])
         listener_port = response['Listeners'][0]['Port']
         return listener_port
+    
+    def ecs_get_cluster_configuration(self, attributes, arg):
+        configuration = attributes.get(arg, [])
+        if configuration:
+            execute_command_configuration = configuration[0].get('execute_command_configuration', [])
+            if execute_command_configuration:
+                kms_key_id = execute_command_configuration[0].get('kms_key_id')
+                if kms_key_id:
+                    #using boto3 get the kms arn
+                    response = self.kms_client.describe_key(KeyId=kms_key_id)
+                    kms_arn = response['KeyMetadata']['Arn']
+                    #in configuration set kms_key_id to the kms_arn
+                    configuration[0]['execute_command_configuration'][0]['kms_key_id'] = kms_arn
+                    print(configuration)
+        return configuration[0]
 
     # def get_listener_rule_lb_name(self, attributes, arg):
     #     listener_rule_arn = attributes.get(arg)
@@ -387,8 +407,6 @@ class ECS:
         policy_name = attributes.get('policy_arn').split('/')[-1]
         return role+"_"+policy_name
 
-
-
     def ecs(self):
         self.hcl.prepare_folder(os.path.join("generated"))
 
@@ -439,8 +457,9 @@ class ECS:
             'get_iam_policy_name': self.get_iam_policy_name,
             'get_policy_attachment_index': self.get_policy_attachment_index,
             'get_network_field': self.get_network_field,
+            'ecs_get_cluster_configuration': self.ecs_get_cluster_configuration,
         }
-        config_file_list = ["ecs.yaml","iam_role.yaml"]
+        config_file_list = ["ecs.yaml","iam_role.yaml", "logs.yaml", "kms.yaml"]
         for index,config_file in enumerate(config_file_list):
             config_file_list[index] = os.path.join(os.path.dirname(os.path.abspath(__file__)),config_file )
         self.hcl.module_hcl_code("terraform.tfstate",config_file_list, functions, self.region, self.aws_account_id, {}, {})
@@ -453,11 +472,15 @@ class ECS:
         print("Processing ECS Clusters...")
 
         clusters_arns = self.ecs_client.list_clusters()["clusterArns"]
-        clusters = self.ecs_client.describe_clusters(clusters=clusters_arns)["clusters"]
+        clusters = self.ecs_client.describe_clusters(clusters=clusters_arns, include=["CONFIGURATIONS"])["clusters"]
 
         for cluster in clusters:
             cluster_name = cluster["clusterName"]
             cluster_arn = cluster["clusterArn"]
+
+            if cluster_name != "dev-ecs-cluster":
+                continue
+
 
             print(f"  Processing ECS Cluster: {cluster_name}")
             id = cluster_name
@@ -483,11 +506,31 @@ class ECS:
             
             self.hcl.add_stack(resource_type, id, ftstack)
 
-            self.aws_cloudwatch_log_group(cluster_name)
+            # Extract CloudWatch log group name from cluster configuration
+            cloudwatch_log_group_name = None
+            kmsKeyId = None
+            configuration = cluster.get('configuration', {})
+            if configuration:
+                execute_command_configuration = configuration.get('executeCommandConfiguration', {})
+                if execute_command_configuration:
+                    log_configuration = execute_command_configuration.get('logConfiguration', {})
+                    if log_configuration:
+                        cloudwatch_log_group_name = log_configuration.get('cloudWatchLogGroupName')
+                        if cloudwatch_log_group_name:
+                            self.logs_instance.aws_cloudwatch_log_group(cloudwatch_log_group_name, ftstack)
+                    kmsKeyId = execute_command_configuration.get('kmsKeyId')
+                
+
+            if cloudwatch_log_group_name:
+                self.logs_instance.aws_cloudwatch_log_group(cloudwatch_log_group_name, ftstack)
+
+            if kmsKeyId:
+                self.kms_instance.aws_kms_key(kmsKeyId, ftstack)
+
+            # self.aws_cloudwatch_log_group(cluster_name)
             self.aws_ecs_cluster_capacity_providers(cluster_name)
             self.aws_ecs_capacity_provider(cluster_name)
-            # if cluster_name != "CloudStorageSecCluster-97tzz35":
-            #     continue
+
             self.aws_ecs_service(cluster_name, ftstack)
 
     def aws_cloudwatch_log_group(self, log_group_name):
@@ -601,8 +644,8 @@ class ECS:
                         service_name = service["serviceName"]
 
                         # if service_name != "eureka-discovery-service" and service_name != "spring-config-server":
-                        # if service_name != "spring-config-server":
-                        #     continue
+                        if service_name != "dev-admin-internal-service":
+                            continue
 
                         service_arn = service["serviceArn"]
                         id = cluster_arn.split("/")[1] + "/" + service_name
