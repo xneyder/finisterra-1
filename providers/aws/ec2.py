@@ -1,11 +1,12 @@
 import os
 from utils.hcl import HCL
 import base64
-
+from providers.aws.security_group import SECURITY_GROUP
+from providers.aws.kms import KMS
 
 class EC2:
-    def __init__(self, ec2_client, autoscaling_client,  iam_client, script_dir, provider_name, schema_data, region, s3Bucket,
-                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id):
+    def __init__(self, ec2_client, autoscaling_client,  iam_client, kms_client, script_dir, provider_name, schema_data, region, s3Bucket,
+                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id, hcl = None):
         self.ec2_client = ec2_client
         self.iam_client = iam_client
         self.autoscaling_client = autoscaling_client
@@ -16,13 +17,34 @@ class EC2:
         self.region = region
         self.workspace_id = workspace_id
         self.modules = modules
-        self.hcl = HCL(self.schema_data, self.provider_name,
+        if not hcl:
+            self.hcl = HCL(self.schema_data, self.provider_name,
                        self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules)
+        else:
+            self.hcl = hcl
+
+        functions = {
+            'get_field_from_attrs': self.get_field_from_attrs,
+            'get_device_index': self.get_device_index,
+            'get_additional_ips_count': self.get_additional_ips_count,
+            'ec2_init_fields': self.ec2_init_fields,
+            'get_device_name': self.get_device_name,
+            'get_device_name_list': self.get_device_name_list,
+            'get_user_data': self.get_user_data,
+            'get_public_ip_addresses': self.get_public_ip_addresses,
+            "get_subnet_name_ec2": self.get_subnet_name_ec2,
+            "get_subnet_id_ec2": self.get_subnet_id_ec2,
+        }
+
+        self.hcl.functions.update(functions)
+
         self.resource_list = {}
         self.aws_account_id = aws_account_id
         self.additional_ips_count = 0
+        self.security_group_instance = SECURITY_GROUP(ec2_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
+        self.kms_instance = KMS(kms_client, iam_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
 
-    def init_fields(self, attributes):
+    def ec2_init_fields(self, attributes):
         self.additional_ips_count = 0
 
         return None
@@ -74,6 +96,33 @@ class EC2:
 
     def get_device_index(self, attributes):
         return attributes.get("device_index", 0)-1
+    
+    def get_subnet_name_ec2(self, attributes, arg):
+        subnet_id = attributes.get('subnet_id')
+        subnet_name = ""
+        response = self.ec2_client.describe_subnets(SubnetIds=[subnet_id])
+
+        # Check if 'Subnets' key exists and it's not empty
+        if not response or 'Subnets' not in response or not response['Subnets']:
+            print(
+                f"No subnet information found for Subnet ID: {subnet_id}")
+            return ""
+
+        # Extract the 'Tags' key safely using get
+        subnet_tags = response['Subnets'][0].get('Tags', [])
+
+        # Extract the subnet name from the tags
+        subnet_name = next(
+            (tag['Value'] for tag in subnet_tags if tag['Key'] == 'Name'), None)
+
+        return subnet_name
+
+    def get_subnet_id_ec2(self, attributes, arg):
+        subnet_name = self.get_subnet_name_ec2(attributes, arg)
+        if subnet_name:
+            return ""
+        else:
+            return attributes.get("subnet_id")  
 
     def get_additional_ips_count(self, attributes):
         self.additional_ips_count += 1
@@ -126,18 +175,10 @@ class EC2:
 
         self.hcl.refresh_state()
 
-        functions = {
-            'get_field_from_attrs': self.get_field_from_attrs,
-            'get_device_index': self.get_device_index,
-            'get_additional_ips_count': self.get_additional_ips_count,
-            'init_fields': self.init_fields,
-            'get_device_name': self.get_device_name,
-            'get_device_name_list': self.get_device_name_list,
-            'get_user_data': self.get_user_data,
-            'get_public_ip_addresses': self.get_public_ip_addresses
-        }
-        self.hcl.module_hcl_code("terraform.tfstate", os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), "ec2.yaml"), functions, self.region, self.aws_account_id, {}, {})
+        config_file_list = ["ec2.yaml", "security_group.yaml", "kms.yaml"]
+        for index,config_file in enumerate(config_file_list):
+            config_file_list[index] = os.path.join(os.path.dirname(os.path.abspath(__file__)),config_file )
+        self.hcl.module_hcl_code("terraform.tfstate",config_file_list, {}, self.region, self.aws_account_id, {}, {})
 
         self.json_plan = self.hcl.json_plan
 
@@ -352,8 +393,9 @@ class EC2:
                         f"  Skipping EC2 Instance (managed by EKS): {instance_id}")
                     continue
 
-                # if instance_id != "i-09138835ee735c5df":
-                #     continue
+                # if instance_id != "i-054c8a833bfb263b0" and instance_id != 'i-0beb80c7c8c16ca96':
+                if instance_id != "i-054c8a833bfb263b0":
+                    continue
 
                 print(f"  Processing EC2 Instance: {instance_id}")
                 id = instance_id
@@ -408,6 +450,22 @@ class EC2:
 
                     # Process the volume attachment for the EBS volume
                     self.aws_volume_attachment(instance_id, block_device)
+
+                    #Get the KMS key for the volume
+                    response = self.ec2_client.describe_volumes(VolumeIds=[block_device["Ebs"]["VolumeId"]])
+                    volume = response['Volumes'][0]
+                    print(response)
+                    exit()
+                    if 'KmsKeyId' in volume['Encrypted']:
+                        keyArn = volume['Encrypted']['KmsKeyId']
+                        print(keyArn)
+                        exit()
+                        self.kms_instance.aws_kms_key(keyArn, ftstack)
+
+                #find the securitu groups and call self.security_group_instance.aws_security_group(sg, ftstack)
+                # print(instance.get("SecurityGroups", []))
+                for sg in instance.get("SecurityGroups", []):
+                    self.security_group_instance.aws_security_group(sg["GroupId"], ftstack)
 
                 # disable for now until i know how to handle private and public ips
                 # for ni in instance.get("NetworkInterfaces", []):

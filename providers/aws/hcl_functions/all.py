@@ -60,6 +60,11 @@ def get_security_group_rules(attributes, arg=None, additional_data=None):
         val = attributes.get(k)
         if not val and val!=0:
             continue
+        if k == "referenced_security_group_id":
+            security_group_id = attributes.get("security_group_id")
+            if security_group_id == val:
+                result[key][k] = "self"
+                continue
         result[key][k] = val
     return result
 

@@ -924,6 +924,7 @@ class HCL:
                     'dependencies', [])
                 instance['version'] = resource_config.get(
                     'terraform_module_version')
+                # print(self.ftstacks)
                 if resource['type'] in self.ftstacks:
                     resource_id = resource["instances"][0]["attributes"]["id"]
                     if resource_id in self.ftstacks[resource['type']]:

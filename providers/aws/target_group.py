@@ -1,6 +1,7 @@
 import os
 from utils.hcl import HCL
 from providers.aws.acm import ACM
+from providers.aws.elbv2 import ELBV2
 
 class TargetGroup:
     def __init__(self, elbv2_client, ec2_client, acm_client,  script_dir, provider_name, schema_data, region, s3Bucket,
@@ -29,6 +30,7 @@ class TargetGroup:
         self.resource_list = {}
 
         self.acm_instance = ACM(acm_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
+        self.elbv2_instance = ELBV2(elbv2_client, ec2_client, acm_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
 
     def join_aws_lb_target_group_to_aws_lb_listener_rule(self, parent_attributes, child_attributes):
         target_group_arn = parent_attributes.get('arn')
@@ -96,7 +98,7 @@ class TargetGroup:
             'get_vpc_name_ecs': self.get_vpc_name_ecs,
             'get_id_from_arn': self.get_id_from_arn,
         }
-        config_file_list = ["target_group.yaml", "acm.yaml", "elbv2.yaml"]
+        config_file_list = ["target_group.yaml", "acm.yaml", "elbv2.yaml", "security_group.yaml"]
         for index,config_file in enumerate(config_file_list):
             config_file_list[index] = os.path.join(os.path.dirname(os.path.abspath(__file__)),config_file )
         self.hcl.module_hcl_code("terraform.tfstate",config_file_list, functions, self.region, self.aws_account_id, {}, {})
@@ -202,3 +204,8 @@ class TargetGroup:
             certificates = listener['Listeners'][0]['Certificates']
             for certificate in certificates:
                 self.acm_instance.aws_acm_certificate(certificate['CertificateArn'], ftstack)
+
+            # call self.elbv2_instance.aws_lb(target_arn, ftstack) for the load balancer arn
+            load_balancer_arn = listener['Listeners'][0]['LoadBalancerArn']
+            if load_balancer_arn:
+                self.elbv2_instance.aws_lb(load_balancer_arn, ftstack)

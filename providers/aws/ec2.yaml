@@ -4,9 +4,16 @@ aws_instance:
   terraform_module_version: "5.3.0"
   target_resource_name: default
   # path: "ec2"
+  joined_fields:
+    security_groups:
+      sub_fields:
+        - security_groups
+    device_name_list:
+      sub_fields:
+        - kms_key_id
   fields:
-    init_fields:
-      function: init_fields
+    ec2_init_fields:
+      function: ec2_init_fields
     ami:
       field: ami
       type: string
@@ -46,8 +53,13 @@ aws_instance:
     ssh_key_pair:
       field: key_name
       type: string
-    subnet:
-      field: subnet_id
+    subnet_name:
+      function: get_subnet_name_ec2
+      arg: id
+      type: string
+    subnet_id:
+      function: get_subnet_id_ec2
+      arg: id
       type: string
     monitoring:
       field: monitoring

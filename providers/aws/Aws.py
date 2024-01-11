@@ -457,7 +457,9 @@ class Aws:
             "autoscaling", region_name=self.aws_region)
         iam_client = self.session.client(
             "iam", region_name=self.aws_region)
-        instance = EC2(ec2_client, autoscaling_client, iam_client,  self.script_dir, self.provider_name,
+        kms_client = self.session.client(
+            "kms", region_name=self.aws_region)
+        instance = EC2(ec2_client, autoscaling_client, iam_client, kms_client, self.script_dir, self.provider_name,
                        self.schema_data, self.aws_region, self.s3Bucket,
                        self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.ec2()

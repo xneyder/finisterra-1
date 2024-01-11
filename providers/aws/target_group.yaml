@@ -5,6 +5,9 @@ aws_lb_target_group:
     load_balancer_arn:
       sub_fields:
         - load_balancer_arn
+    listener_certificate_arn:
+      sub_fields:
+        - listener_certificate_arn
   target_resource_name: this
   name_field: name
   fields:
