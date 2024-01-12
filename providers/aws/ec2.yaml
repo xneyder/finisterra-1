@@ -11,6 +11,9 @@ aws_instance:
     device_name_list:
       sub_fields:
         - kms_key_id
+    instance_profile:
+      sub_fields:
+        - instance_profile
   fields:
     ec2_init_fields:
       function: ec2_init_fields
@@ -122,7 +125,11 @@ aws_instance:
       type: bool
       module_default: true
     root_block_device_kms_key_id:
-      function: get_field_from_attrs
+      function: get_kms_key_id_ec2
+      arg: root_block_device.kms_key_id
+      type: string
+    root_block_device_kms_key_alias:
+      function: get_kms_key_alias_ec2
       arg: root_block_device.kms_key_id
       type: string
     root_block_device_tags:

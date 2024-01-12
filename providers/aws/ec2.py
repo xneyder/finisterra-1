@@ -3,6 +3,7 @@ from utils.hcl import HCL
 import base64
 from providers.aws.security_group import SECURITY_GROUP
 from providers.aws.kms import KMS
+from providers.aws.iam_role import IAM_ROLE
 
 class EC2:
     def __init__(self, ec2_client, autoscaling_client,  iam_client, kms_client, script_dir, provider_name, schema_data, region, s3Bucket,
@@ -17,6 +18,7 @@ class EC2:
         self.region = region
         self.workspace_id = workspace_id
         self.modules = modules
+        self.kms_client = kms_client
         if not hcl:
             self.hcl = HCL(self.schema_data, self.provider_name,
                        self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules)
@@ -34,6 +36,8 @@ class EC2:
             'get_public_ip_addresses': self.get_public_ip_addresses,
             "get_subnet_name_ec2": self.get_subnet_name_ec2,
             "get_subnet_id_ec2": self.get_subnet_id_ec2,
+            "get_kms_key_id_ec2": self.get_kms_key_id_ec2,
+            "get_kms_key_alias_ec2": self.get_kms_key_alias_ec2,
         }
 
         self.hcl.functions.update(functions)
@@ -43,6 +47,7 @@ class EC2:
         self.additional_ips_count = 0
         self.security_group_instance = SECURITY_GROUP(ec2_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
         self.kms_instance = KMS(kms_client, iam_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
+        self.iam_role_instance = IAM_ROLE(iam_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)        
 
     def ec2_init_fields(self, attributes):
         self.additional_ips_count = 0
@@ -163,10 +168,46 @@ class EC2:
         # Add other fields conditionally if they are not empty or have a non-zero value
         for key in ["size", "tags", "encrypted", "kms_key_id", "type"]:
             value = attributes.get(key)
+            if key == "kms_key_id":
+                # Get the key alias if it exists using boto3
+                if value:
+                    kms_alias = self.get_kms_alias(value)
+                    if kms_alias:
+                        value = kms_alias
+                        key = "kms_key_alias"
             if value:
                 result[device_name][key] = value
 
         return result
+    
+    def get_kms_alias(self, kms_key_id):
+        value = ""
+        response = self.kms_client.list_aliases()
+        if 'Aliases' in response and response['Aliases']:
+            for alias in response['Aliases']:
+                if 'TargetKeyId' in alias:
+                    if alias['TargetKeyId'] == kms_key_id.split('/')[-1]:
+                        value = alias['AliasName']
+                        break
+        return value
+    
+    def get_kms_key_id_ec2(self, attributes, arg):
+        root_block_device = attributes.get("root_block_device")
+        if root_block_device:
+            kms_key_id = root_block_device[0].get("kms_key_id")
+            kms_key_alias =  self.get_kms_alias(kms_key_id)
+            if not kms_key_alias:
+                return kms_key_id
+        return None
+    
+    def get_kms_key_alias_ec2(self, attributes, arg):
+        kms_key_alias = None
+        root_block_device = attributes.get("root_block_device")
+        if root_block_device:
+            kms_key_id = root_block_device[0].get("kms_key_id")
+            if kms_key_id:
+                kms_key_alias =  self.get_kms_alias(kms_key_id)
+        return kms_key_alias
 
     def ec2(self):
         self.hcl.prepare_folder(os.path.join("generated"))
@@ -175,7 +216,7 @@ class EC2:
 
         self.hcl.refresh_state()
 
-        config_file_list = ["ec2.yaml", "security_group.yaml", "kms.yaml"]
+        config_file_list = ["ec2.yaml", "security_group.yaml", "kms.yaml", "iam_role.yaml"]
         for index,config_file in enumerate(config_file_list):
             config_file_list[index] = os.path.join(os.path.dirname(os.path.abspath(__file__)),config_file )
         self.hcl.module_hcl_code("terraform.tfstate",config_file_list, {}, self.region, self.aws_account_id, {}, {})
@@ -424,11 +465,26 @@ class EC2:
                     # "vpc_security_group_ids": [sg["GroupId"] for sg in instance.get("SecurityGroups", [])],
                 }
 
+                # Call root_block_device.kms_key_id
+                if "RootDeviceName" in instance:
+                    print("RootDeviceName: ", instance["RootDeviceName"])
+                    
+                    # Get the KMS key for the root device
+                    response = self.ec2_client.describe_volumes(Filters=[{
+                        'Name': 'attachment.instance-id',
+                        'Values': [instance_id]
+                    }])
+                    for volume in response['Volumes']:
+                        if volume['Attachments'][0]['Device'] == instance["RootDeviceName"]:
+                            if 'KmsKeyId' in volume:
+                                keyArn = volume['KmsKeyId']
+                                self.kms_instance.aws_kms_key(keyArn, ftstack)
+
                 if "IamInstanceProfile" in instance:
                     attributes["iam_instance_profile"] = instance["IamInstanceProfile"]["Arn"]
                     iam_instance_profile_id = instance["IamInstanceProfile"]["Arn"].split(
                         "/")[-1]  # Updated this line
-                    self.aws_iam_instance_profile(iam_instance_profile_id)
+                    self.aws_iam_instance_profile(iam_instance_profile_id, ftstack)
 
 
                 self.hcl.process_resource(
@@ -453,14 +509,10 @@ class EC2:
 
                     #Get the KMS key for the volume
                     response = self.ec2_client.describe_volumes(VolumeIds=[block_device["Ebs"]["VolumeId"]])
-                    volume = response['Volumes'][0]
-                    print(response)
-                    exit()
-                    if 'KmsKeyId' in volume['Encrypted']:
-                        keyArn = volume['Encrypted']['KmsKeyId']
-                        print(keyArn)
-                        exit()
-                        self.kms_instance.aws_kms_key(keyArn, ftstack)
+                    for volume in response['Volumes']:
+                        if 'KmsKeyId' in volume:
+                            keyArn = volume['KmsKeyId']
+                            self.kms_instance.aws_kms_key(keyArn, ftstack)
 
                 #find the securitu groups and call self.security_group_instance.aws_security_group(sg, ftstack)
                 # print(instance.get("SecurityGroups", []))
@@ -474,7 +526,8 @@ class EC2:
                 #     # Process the attachment details for the additional network interface
                 #     self.aws_network_interface_attachment(instance_id, ni)
 
-    def aws_iam_instance_profile(self, iam_instance_profile_id):
+    def aws_iam_instance_profile(self, iam_instance_profile_id, ftstack=None):
+        resource_type = "aws_iam_instance_profile"
         print(f"Processing IAM Instance Profile: {iam_instance_profile_id}")
 
         # Fetch the details of IAM Instance Profile using the IAM client
@@ -482,21 +535,36 @@ class EC2:
             InstanceProfileName=iam_instance_profile_id)
 
         profile = response["InstanceProfile"]
-        attributes = {
-            "id": profile["InstanceProfileName"],
-            "arn": profile["Arn"],
-            "name": profile["InstanceProfileName"],
-            "path": profile["Path"],
-            "create_date": profile["CreateDate"].strftime('%Y-%m-%d %H:%M:%S'),
-            "roles": [role["RoleName"] for role in profile["Roles"]]
-        }
+        # id = profile["InstanceProfileName"]        
+        # attributes = {
+        #     "id": id,
+        # }
 
-        self.hcl.process_resource(
-            "aws_iam_instance_profile", iam_instance_profile_id.replace("-", "_"), attributes)
+        # self.hcl.process_resource(
+        #     resource_type, iam_instance_profile_id.replace("-", "_"), attributes)
+        
+        # if not ftstack:
+        #     ftstack = "ec2"
+        #     try:
+        #         tags = profile.get('Tags', [])
+        #         for tag in tags:
+        #             if tag['Key'] == 'ftstack':
+        #                 ftstack = "stack_"+tag['Value']
+        #                 break
+        #     except Exception as e:
+        #         print("Error occurred: ", e)
+        
+        # self.hcl.add_stack(resource_type, id, ftstack)
 
         # Process only the first associated role
-        if profile["Roles"]:
-            self.aws_iam_role(profile["Roles"][0]["Arn"])
+        for role in profile["Roles"]:
+            role_name=role["RoleName"]
+            self.iam_role_instance.aws_iam_role(role_name, ftstack)
+
+
+
+        # if profile["Roles"]:
+        #     self.aws_iam_role(profile["Roles"][0]["Arn"])
 
     def aws_iam_role(self, role_arn):
         # the role name is the last part of the ARN

@@ -10,6 +10,11 @@ aws_iam_role:
     managed_policy_arns:
       sub_fields:
         - ALL
+  additional_output_fields:
+    aws_iam_instance_profile:
+      - id_key: id
+        output: profiles
+        type: map
   fields:
     role_name:
       field: name
