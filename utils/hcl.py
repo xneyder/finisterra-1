@@ -43,6 +43,7 @@ class HCL:
         self.id_key_list = ["id", "arn"]
 
 
+
     def search_state_file(self, resource_type, resource_name, resource_id):
         # Load the state file
         try:
@@ -1148,3 +1149,15 @@ class HCL:
             if "ftstack_list" not in self.ftstacks[resource_name][id]:
                 self.ftstacks[resource_name][id]["ftstack_list"] = set()
             self.ftstacks[resource_name][id]["ftstack_list"].add(ftstack)
+                
+    def id_resource_processed(self, resource_name, id, ftstack):
+        if ftstack:
+            if resource_name not in self.ftstacks:
+                return False
+            if id not in self.ftstacks[resource_name]:
+                return False
+            if "ftstack_list" not in self.ftstacks[resource_name][id]:
+                return False
+            if ftstack not in self.ftstacks[resource_name][id]["ftstack_list"]:
+                return False
+            return True

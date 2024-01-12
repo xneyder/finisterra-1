@@ -248,6 +248,10 @@ class ELBV2:
     def aws_lb(self, selected_lb_arn=None, ftstack=None):
         resource_type = "aws_lb"
         print("Processing Load Balancers...")
+        if selected_lb_arn and ftstack:
+            if self.hcl.id_resource_processed(resource_type, selected_lb_arn, ftstack):
+                print(f"  Skipping Elbv2: {selected_lb_arn} already processed")
+                return        
 
         load_balancers = self.elbv2_client.describe_load_balancers()[
             "LoadBalancers"]

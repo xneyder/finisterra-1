@@ -32,6 +32,8 @@ class TargetGroup:
         self.acm_instance = ACM(acm_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
         self.elbv2_instance = ELBV2(elbv2_client, ec2_client, acm_client, s3_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
 
+        self.load_balancers = None
+
     def join_aws_lb_target_group_to_aws_lb_listener_rule(self, parent_attributes, child_attributes):
         target_group_arn = parent_attributes.get('arn')
         for action in child_attributes.get('action', []):
@@ -117,8 +119,8 @@ class TargetGroup:
             for target_group in response["TargetGroups"]:
                 tg_arn = target_group["TargetGroupArn"]
                 tg_name = target_group["TargetGroupName"]
-                if tg_name !="dev-648-qualifications-tg":
-                    continue
+                # if tg_name !="dev-redshift-tg":
+                #     continue
                 print(f"  Processing Load Balancer Target Group: {tg_name}")
 
                 id = tg_arn
@@ -144,13 +146,33 @@ class TargetGroup:
                 # Call the aws_lb_listener_rule function with the target_group_arn
                 self.aws_lb_listener_rule(tg_arn, ftstack)
 
+                #Check if the target group is used in any loadbalancer default actions
+                if not self.load_balancers:     
+                    self.load_balancers = self.elbv2_client.describe_load_balancers()[
+                    "LoadBalancers"]
+                for lb in self.load_balancers:
+                    lb_arn = lb["LoadBalancerArn"]
+                    # print(f"Processing Load Balancer: {lb_arn}")
+
+                    listeners = self.elbv2_client.describe_listeners(
+                        LoadBalancerArn=lb_arn)["Listeners"]
+
+                    for listener in listeners:
+                        default_actions = listener.get('DefaultActions', [])
+                        for default_action in default_actions:
+                            if default_action.get('TargetGroupArn') == tg_arn:
+                                self.elbv2_instance.aws_lb(lb_arn, ftstack)
+                                break
+
+
     def aws_lb_listener_rule(self, target_group_arn, ftstack):
         print("Processing Load Balancer Listener Rules")
 
-        load_balancers = self.elbv2_client.describe_load_balancers()[
-            "LoadBalancers"]
+        if not self.load_balancers:     
+            self.load_balancers = self.elbv2_client.describe_load_balancers()[
+                "LoadBalancers"]
 
-        for lb in load_balancers:
+        for lb in self.load_balancers:
             lb_arn = lb["LoadBalancerArn"]
             # print(f"Processing Load Balancer: {lb_arn}")
 
@@ -190,7 +212,6 @@ class TargetGroup:
                         self.elbv2_instance.aws_lb(load_balancer_arn, ftstack)
                     
                     # self.aws_lb_listener(listener_arn, ftstack)
-
 
     def aws_lb_listener(self, listener_arn, ftstack):
         print(f"Processing Load Balancer Listener: {listener_arn}")

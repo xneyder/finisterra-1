@@ -73,6 +73,10 @@ class ACM:
     def aws_acm_certificate(self, acm_arn=None, ftstack=None):
         resource_name = "aws_acm_certificate"
         print("Processing ACM Certificates...")
+        if acm_arn and ftstack:
+            if self.hcl.id_resource_processed(resource_name, acm_arn, ftstack):
+                print(f"  Skipping ACM Certificate: {acm_arn} already processed")
+                return
 
         paginator = self.acm_client.get_paginator("list_certificates")
         for page in paginator.paginate():

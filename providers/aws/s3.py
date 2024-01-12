@@ -47,6 +47,7 @@ class S3:
             'aws_s3_get_analytics_configuration': self.aws_s3_get_analytics_configuration,
         }
         self.hcl.functions.update(functions)
+        self.processed_resources = {}
 
     def s3(self):
         self.hcl.prepare_folder(os.path.join("generated"))
@@ -404,8 +405,12 @@ class S3:
         return result
 
     def aws_s3_bucket(self, selected_s3_bucket=None, ftstack=None):
-        resource_name = "aws_s3_bucket"
         print("Processing S3 Buckets...")
+        resource_name = "aws_s3_bucket"
+        if selected_s3_bucket and ftstack:
+            if self.hcl.id_resource_processed(resource_name, selected_s3_bucket, ftstack):
+                print(f"  Skipping S3 Bucket: {selected_s3_bucket} - already processed")
+                return
 
         response = self.s3_session.list_buckets()
         all_buckets = response["Buckets"]
@@ -482,6 +487,7 @@ class S3:
                     resource_name, bucket_name, attributes)
                 
                 self.hcl.add_stack(resource_name, id, ftstack)
+                
             else:
                 print(
                     f"  Skipping S3 Bucket (different region): {bucket_name}")
