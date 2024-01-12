@@ -11,9 +11,6 @@ aws_ecs_cluster:
       sub_fields:
         - cloud_watch_log_group_name
         - kms_key_id
-    load_balancer:
-      sub_fields:
-        - target_group_arn
   target_resource_name: this
   name_field: cluster_name
   # target_submodule: module.cluster
@@ -94,6 +91,10 @@ aws_ecs_service:
     network_configuration:
       sub_fields:
         - security_groups
+    load_balancer:
+      sub_fields:
+        - target_group_arn
+        - elb_name
 
   # target_submodule: module.service
   # root_attribute: services
@@ -201,8 +202,11 @@ aws_ecs_service:
       function: get_network_field
       arg: subnet_ids
       type: list
-    create_security_group:
-      function: check_subnet_ids
+    vpc_name:
+      function: get_vpc_name_ecs
+      type: string
+    # create_security_group:
+    #   function: check_subnet_ids
     iam_role:
       field: iam_role
       type: string
@@ -223,9 +227,9 @@ aws_ecs_service:
       # target_submodule: module.service
       defaults:
         create_task_definition: true
-        create_tasks_iam_role: false
-        create_task_exec_policy: false
-        create_task_exec_iam_role: false
+        # create_tasks_iam_role: false
+        # create_task_exec_policy: false
+        # create_task_exec_iam_role: false
       import_id:
         function: aws_ecs_task_definition_import_id
       fields:

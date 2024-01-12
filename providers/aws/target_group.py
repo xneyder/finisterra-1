@@ -119,8 +119,13 @@ class TargetGroup:
             for target_group in response["TargetGroups"]:
                 tg_arn = target_group["TargetGroupArn"]
                 tg_name = target_group["TargetGroupName"]
-                # if tg_name !="dev-redshift-tg":
+                
+                if target_group_arn and tg_arn != target_group_arn:
+                    continue
+
+                # if tg_name != "default":
                 #     continue
+                
                 print(f"  Processing Load Balancer Target Group: {tg_name}")
 
                 id = tg_arn

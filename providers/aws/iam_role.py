@@ -41,6 +41,11 @@ class IAM_ROLE:
     def aws_iam_role(self, role_name=None, ftstack=None):
         resource_type = "aws_iam_role"
         print("Processing IAM Roles...")
+        if role_name and ftstack:
+            if self.hcl.id_resource_processed(resource_type, role_name, ftstack):
+                print(f"  Skipping Iam Role: {role_name} - already processed")
+                return
+            
         paginator = self.iam_client.get_paginator("list_roles")
 
         for page in paginator.paginate():

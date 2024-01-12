@@ -6,9 +6,10 @@ from providers.aws.iam_role import IAM_ROLE
 from providers.aws.logs import Logs
 from providers.aws.kms import KMS
 from providers.aws.security_group import SECURITY_GROUP
+from providers.aws.target_group import TargetGroup
 
 class ECS:
-    def __init__(self, ecs_client, logs_client, appautoscaling_client, iam_client, cloudmap_client, elbv2_client, ec2_client, acm_client, kms_client, script_dir, provider_name, schema_data, region, s3Bucket,
+    def __init__(self, ecs_client, logs_client, appautoscaling_client, iam_client, cloudmap_client, elbv2_client, ec2_client, acm_client, kms_client, s3_client, script_dir, provider_name, schema_data, region, s3Bucket,
                  dynamoDBTable, state_key, workspace_id, modules, aws_account_id):
         self.ecs_client = ecs_client
         self.logs_client = logs_client
@@ -39,6 +40,7 @@ class ECS:
         self.logs_instance = Logs(logs_client, kms_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
         self.kms_instance = KMS(kms_client, iam_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
         self.security_group_instance = SECURITY_GROUP(ec2_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
+        self.target_group_instance = TargetGroup(elbv2_client, ec2_client, acm_client, s3_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
 
     def cloudwatch_log_group_name(self, attributes):
         # The name is expected to be in the format /aws/ecs/{cluster_name}
@@ -440,11 +442,21 @@ class ECS:
         return vpc_name
 
     def get_vpc_name_ecs(self, attributes):
-        vpc_id = attributes.get("vpc_id")
-        response = self.ec2_client.describe_vpcs(VpcIds=[vpc_id])
-        vpc_name = next(
-            (tag['Value'] for tag in response['Vpcs'][0]['Tags'] if tag['Key'] == 'Name'), None)
-        return vpc_name
+        vpc_name = None
+        vpc_id = None
+        network_configuration = attributes.get('network_configuration', [])
+        if network_configuration:
+            subnets = network_configuration[0].get("subnets")
+            if subnets:
+                #get the vpc id for the first subnet
+                subnet_id = subnets[0]
+                response = self.ec2_client.describe_subnets(SubnetIds=[subnet_id])
+                vpc_id = response['Subnets'][0]['VpcId']
+        if vpc_id:
+            response = self.ec2_client.describe_vpcs(VpcIds=[vpc_id])
+            vpc_name = next(
+                (tag['Value'] for tag in response['Vpcs'][0]['Tags'] if tag['Key'] == 'Name'), None)
+            return vpc_name
 
     def get_vpc_id_ecs(self, attributes):
         vpc_name = self.get_vpc_name_ecs(attributes)
@@ -508,7 +520,7 @@ class ECS:
             'get_vpc_id_ecs': self.get_vpc_id_ecs,
             'get_vpc_name_ecs': self.get_vpc_name_ecs
         }
-        config_file_list = ["ecs.yaml","iam_role.yaml", "logs.yaml", "kms.yaml", "security_group.yaml"]
+        config_file_list = ["ecs.yaml","iam_role.yaml", "logs.yaml", "kms.yaml", "security_group.yaml", "target_group.yaml", "acm.yaml", "elbv2.yaml", "s3.yaml"]
         for index,config_file in enumerate(config_file_list):
             config_file_list[index] = os.path.join(os.path.dirname(os.path.abspath(__file__)),config_file )
         self.hcl.module_hcl_code("terraform.tfstate",config_file_list, functions, self.region, self.aws_account_id, {}, {})
@@ -527,7 +539,7 @@ class ECS:
             cluster_name = cluster["clusterName"]
             cluster_arn = cluster["clusterArn"]
 
-            if cluster_name != "dev-ecs-cluster":
+            if cluster_name == "dev-ecs-cluster":
                 continue
 
 
@@ -693,8 +705,8 @@ class ECS:
                         service_name = service["serviceName"]
 
                         # if service_name != "eureka-discovery-service" and service_name != "spring-config-server":
-                        if service_name != "dev-admin-internal-service":
-                            continue
+                        # if service_name != "dev-admin-internal-service":
+                        #     continue
 
                         service_arn = service["serviceArn"]
                         id = cluster_arn.split("/")[1] + "/" + service_name
@@ -740,6 +752,15 @@ class ECS:
                                     'securityGroups', [])
                                 for sg in security_groups:
                                     self.security_group_instance.aws_security_group(sg, ftstack)
+
+                        # Get the load balancer and the the target group arn
+                        load_balancers = service.get('loadBalancers', [])
+                        for lb in load_balancers:
+                            # lb_name = lb.get('loadBalancerName')
+                            target_group_arn = lb.get('targetGroupArn')
+                            if target_group_arn:
+                                print(f"Processing Target Group: {target_group_arn}...")
+                                self.target_group_instance.aws_lb_target_group(target_group_arn, ftstack)
 
             else:
                 print(f"Skipping aws_ecs_service: {cluster['clusterName']}")

@@ -55,9 +55,14 @@ class SECURITY_GROUP:
 
     def aws_security_group(self, security_group_id=None, ftstack=None):
         resource_type = "aws_security_group"
-        if security_group_id in self.processed_security_groups:
-            if ftstack in self.processed_security_groups[security_group_id]:
+        if security_group_id and ftstack:
+            if self.hcl.id_resource_processed(resource_type, security_group_id, ftstack):
+                print(f"  Skipping Security Group: {security_group_id} - already processed")
                 return
+                    
+        # if security_group_id in self.processed_security_groups:
+        #     if ftstack in self.processed_security_groups[security_group_id]:
+        #         return
         print("Processing Security Groups...")
 
         # Create a response dictionary to collect responses for all security groups
@@ -108,9 +113,9 @@ class SECURITY_GROUP:
             self.hcl.add_stack(resource_type, id, ftstack)
             # print("==========================", ftstack)
 
-            if id not in self.processed_security_groups:
-                self.processed_security_groups[id] = {}
-            self.processed_security_groups[id][ftstack] = True
+            # if id not in self.processed_security_groups:
+            #     self.processed_security_groups[id] = {}
+            # self.processed_security_groups[id][ftstack] = True
 
             self.aws_vpc_security_group_ingress_rule(security_group["GroupId"], ftstack)
             self.aws_vpc_security_group_egress_rule(security_group["GroupId"], ftstack)

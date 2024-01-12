@@ -969,6 +969,9 @@ class HCL:
                         ids_name_map[id]['key']= id_key
                         ids_name_map[id]['key_in_key']= key_in_key
                         ids_name_map[id]['type']= output_type
+
+        # print('ids_name_map', ids_name_map)
+        # exit()
         
         subfolders = {}
         for instance in instances:
@@ -1022,13 +1025,6 @@ class HCL:
                         file.write(f'source  = "{instance["module"]}"\n')
                         # file.write(f'version = "{instance["version"]}"\n') # TO REMOVE COMMENT
                         for index, value in instance["attributes"].items():
-                            # try:
-                            #     value_json = json.loads(value)
-                            #     cleeaned_value=self.clean_json_values(value_json)
-                            #     print('cleaned_value', cleeaned_value)
-                            #     value = json.dumps(cleeaned_value, indent=2)
-                            # except json.JSONDecodeError:
-                            #         pass
                             try:
                                 try:
                                     if index in instance["joined_fields"]:
