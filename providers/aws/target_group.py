@@ -4,7 +4,7 @@ from providers.aws.acm import ACM
 from providers.aws.elbv2 import ELBV2
 
 class TargetGroup:
-    def __init__(self, elbv2_client, ec2_client, acm_client,  script_dir, provider_name, schema_data, region, s3Bucket,
+    def __init__(self, elbv2_client, ec2_client, acm_client, s3_client, script_dir, provider_name, schema_data, region, s3Bucket,
                  dynamoDBTable, state_key, workspace_id, modules, aws_account_id, hcl = None):
         self.elbv2_client = elbv2_client
         self.ec2_client = ec2_client
@@ -30,7 +30,7 @@ class TargetGroup:
         self.resource_list = {}
 
         self.acm_instance = ACM(acm_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
-        self.elbv2_instance = ELBV2(elbv2_client, ec2_client, acm_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
+        self.elbv2_instance = ELBV2(elbv2_client, ec2_client, acm_client, s3_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
 
     def join_aws_lb_target_group_to_aws_lb_listener_rule(self, parent_attributes, child_attributes):
         target_group_arn = parent_attributes.get('arn')
@@ -98,7 +98,7 @@ class TargetGroup:
             'get_vpc_name_ecs': self.get_vpc_name_ecs,
             'get_id_from_arn': self.get_id_from_arn,
         }
-        config_file_list = ["target_group.yaml", "acm.yaml", "elbv2.yaml", "security_group.yaml"]
+        config_file_list = ["target_group.yaml", "elbv2.yaml", "security_group.yaml", "acm.yaml", "s3.yaml"]
         for index,config_file in enumerate(config_file_list):
             config_file_list[index] = os.path.join(os.path.dirname(os.path.abspath(__file__)),config_file )
         self.hcl.module_hcl_code("terraform.tfstate",config_file_list, functions, self.region, self.aws_account_id, {}, {})
@@ -117,7 +117,7 @@ class TargetGroup:
             for target_group in response["TargetGroups"]:
                 tg_arn = target_group["TargetGroupArn"]
                 tg_name = target_group["TargetGroupName"]
-                if tg_name !="public-api-dev-tg":
+                if tg_name !="dev-648-qualifications-tg":
                     continue
                 print(f"  Processing Load Balancer Target Group: {tg_name}")
 
@@ -184,7 +184,12 @@ class TargetGroup:
                     self.hcl.process_resource(
                         "aws_lb_listener_rule", rule_id, attributes)
                     
-                    self.aws_lb_listener(listener_arn, ftstack)
+                    # get the load balancer arn from the listener arn
+                    load_balancer_arn = listener['LoadBalancerArn']
+                    if load_balancer_arn:
+                        self.elbv2_instance.aws_lb(load_balancer_arn, ftstack)
+                    
+                    # self.aws_lb_listener(listener_arn, ftstack)
 
 
     def aws_lb_listener(self, listener_arn, ftstack):

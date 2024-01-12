@@ -775,8 +775,12 @@ class Aws:
         
         kms_client = self.session.client(
             "kms", region_name=self.aws_region)
+        
+        s3_client = self.session.client(
+            "s3", region_name=self.aws_region)
 
-        instance = Apigateway(apigateway_client, ec2_client, elbv2_client, acm_client, logs_client, kms_client, self.script_dir, self.provider_name,
+
+        instance = Apigateway(apigateway_client, ec2_client, elbv2_client, acm_client, logs_client, kms_client, s3_client, self.script_dir, self.provider_name,
                               self.schema_data, self.aws_region, self.s3Bucket,
                               self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.apigateway()
@@ -964,8 +968,11 @@ class Aws:
 
         acm_client = self.session.client(
             "acm", region_name=self.aws_region)
+        
+        s3_client = self.session.client(
+            "s3", region_name=self.aws_region)
 
-        instance = ELBV2(elbv2_client, ec2_client, acm_client, self.script_dir, self.provider_name,
+        instance = ELBV2(elbv2_client, ec2_client, acm_client, s3_client, self.script_dir, self.provider_name,
                          self.schema_data, self.aws_region, self.s3Bucket,
                          self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.elbv2()
@@ -1027,8 +1034,10 @@ class Aws:
         acm_client = self.session.client(
             "acm", region_name=self.aws_region)
         
+        s3_client = self.session.client(
+            "s3", region_name=self.aws_region)
 
-        instance = TargetGroup(elbv2_client, ec2_client, acm_client, self.script_dir, self.provider_name,
+        instance = TargetGroup(elbv2_client, ec2_client, acm_client, s3_client, self.script_dir, self.provider_name,
                        self.schema_data, self.aws_region, self.s3Bucket,
                        self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.target_group()

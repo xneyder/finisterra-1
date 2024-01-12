@@ -650,10 +650,17 @@ class HCL:
                     additional_output = self.additional_output_fields[resource_type]
                     for item in additional_output:
                         id_key = item["id_key"]
+                        key_in_key_val = None
                         if id_key in resource_attributes:
+                            if "key_in_key" in item:
+                                key_in_key = item["key_in_key"]
+                                key_in_key_val = str(resource_attributes[key_in_key])
+                            else:
+                                value = resource_attributes[id_key]
                             output_fields.append({"id_key": id_key, 
                                                   "output": item["output"], 
-                                                  "value": resource_attributes[id_key],
+                                                  "value": str(resource_attributes[id_key]),
+                                                  "key_in_key": key_in_key_val,
                                                   "type": item["type"]})
                 deployed_resources.append({
                     'resource_type': resource_type,
@@ -950,6 +957,7 @@ class HCL:
                     # print(deployed_resource['output_fields'])
                     for output_field in deployed_resource['output_fields']:
                         id_key = output_field["id_key"]
+                        key_in_key = output_field["key_in_key"]
                         id = output_field["value"]
                         output = output_field["output"]
                         output_type = output_field["type"]
@@ -958,8 +966,9 @@ class HCL:
                         ids_name_map[id]['module']= module_instance_name
                         ids_name_map[id]['output']= output
                         ids_name_map[id]['key']= id_key
+                        ids_name_map[id]['key_in_key']= key_in_key
                         ids_name_map[id]['type']= output_type
-
+        
         subfolders = {}
         for instance in instances:
             if instance["attributes"]:
@@ -1032,7 +1041,10 @@ class HCL:
                                                         if module_instance_name != ids_name_map[value_item]["module"]:
                                                             output_type = ids_name_map[value_item].get("type", "")
                                                             if output_type == "map":
-                                                                value_module = "module."+ids_name_map[value_item]["module"]+"."+ids_name_map[value_item]["output"]+"[\""+value_item+"\"]"+"."+ids_name_map[value_item]["key"]
+                                                                if ids_name_map[value_item]["key_in_key"]:
+                                                                    value_module = "module."+ids_name_map[value_item]["module"]+"."+ids_name_map[value_item]["output"]+"[\""+ids_name_map[value_item]["key_in_key"]+"\"]"+"."+ids_name_map[value_item]["key"]
+                                                                else:
+                                                                    value_module = "module."+ids_name_map[value_item]["module"]+"."+ids_name_map[value_item]["output"]+"[\""+value_item+"\"]"+"."+ids_name_map[value_item]["key"]
                                                             else:
                                                                 value_module = "module."+ids_name_map[value_item]["module"]+"."+ids_name_map[value_item]["key"]
                                                             value = value.replace('"'+value_item+'"', value_module)

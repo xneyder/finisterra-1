@@ -2,31 +2,28 @@ aws_lb_target_group:
   terraform_module: "github.com/finisterra-io/terraform-aws-modules.git//alb/modules/target_group?ref=main"
   terraform_module_version: "5.2.0"
   joined_fields:
-    load_balancer_arn:
+    listener_arn:
       sub_fields:
-        - load_balancer_arn
-    listener_certificate_arn:
-      sub_fields:
-        - listener_certificate_arn
+        - listener_arn
   target_resource_name: this
   name_field: name
   fields:
-    target_group_name:
+    name:
       field: name
       type: string
-    target_group_port:
+    port:
       field: port
       type: number
-    target_group_protocol:
+    protocol:
       field: protocol
       type: string
-    target_group_health_check:
+    health_check:
       field: health_check
       type: map
-    target_group_stickiness:
+    stickiness:
       field: stickiness
       type: map
-    target_group_tags:
+    tags:
       field: tags
       type: map
     vpc_name:
@@ -51,31 +48,9 @@ aws_lb_target_group:
         function: get_id_from_arn
         arg: arn
       fields:
+        listener_arn:
+          field: listener_arn
+          type: string
         listener_rules:
           function: get_listener_rules
           type: map
-      childs:
-        aws_lb_listener:
-          join:
-            listener_arn:
-              field: arn
-          target_resource_name: this
-          fields:
-            listener_port:
-              field: port
-              type: number
-            listener_protocol:
-              field: protocol
-              type: string
-            listener_default_action:
-              field: default_action
-              type: map
-            listener_certificate_arn:
-              field: certificate_arn
-              type: string
-            load_balancer_arn:
-              field: load_balancer_arn
-              type: string
-            listener_tags:
-              field: tags
-              type: map

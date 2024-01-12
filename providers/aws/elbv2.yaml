@@ -13,6 +13,15 @@ aws_lb:
     aws_lb_listeners:
       sub_fields:
         - certificate_arn
+    access_logs:
+      sub_fields:
+        - bucket
+  additional_output_fields:
+    aws_lb_listener:
+      - id_key: arn
+        output: listeners
+        type: map
+        key_in_key: port
   fields:
     init:
       function: init_fields_elbv2

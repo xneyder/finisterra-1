@@ -5,7 +5,7 @@ from providers.aws.elbv2 import ELBV2
 from providers.aws.logs import Logs
 
 class Apigateway:
-    def __init__(self, apigateway_client, ec2_client, elbv2_client, acm_client, logs_client, kms_client, script_dir, provider_name, schema_data, region, s3Bucket,
+    def __init__(self, apigateway_client, ec2_client, elbv2_client, acm_client, logs_client, kms_client, s3_client, script_dir, provider_name, schema_data, region, s3Bucket,
                  dynamoDBTable, state_key, workspace_id, modules, aws_account_id, hcl=None):
         self.apigateway_client = apigateway_client
         self.transform_rules = {}
@@ -63,7 +63,7 @@ class Apigateway:
         self.hcl.functions.update(functions)
 
         self.vpc_endpoint_instance = VPCEndPoint(ec2_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
-        self.elbv2_instance = ELBV2(elbv2_client, ec2_client, acm_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
+        self.elbv2_instance = ELBV2(elbv2_client, ec2_client, acm_client, s3_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
         self.logs_instance = Logs(logs_client, kms_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
 
     def get_field_from_attrs(self, attributes, arg):

@@ -2,10 +2,12 @@ import os
 from utils.hcl import HCL
 from providers.aws.security_group import SECURITY_GROUP
 from providers.aws.acm import ACM
+from providers.aws.s3 import S3
+
 
 
 class ELBV2:
-    def __init__(self, elbv2_client, ec2_client, acm_client, script_dir, provider_name, schema_data, region, s3Bucket,
+    def __init__(self, elbv2_client, ec2_client, acm_client, s3_client, script_dir, provider_name, schema_data, region, s3Bucket,
                  dynamoDBTable, state_key, workspace_id, modules, aws_account_id, hcl=None):
         self.elbv2_client = elbv2_client
         self.ec2_client = ec2_client
@@ -47,6 +49,7 @@ class ELBV2:
 
         self.security_group_instance = SECURITY_GROUP(ec2_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
         self.acm_instance = ACM(acm_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
+        self.s3_instance = S3(s3_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
 
     def init_fields_elbv2(self, attributes):
         self.listeners = {}
@@ -235,7 +238,7 @@ class ELBV2:
 
         self.hcl.refresh_state()
 
-        config_file_list = ["elbv2.yaml", "security_group.yaml", "acm.yaml"]
+        config_file_list = ["elbv2.yaml", "security_group.yaml", "acm.yaml", "s3.yaml"]
         for index,config_file in enumerate(config_file_list):
             config_file_list[index] = os.path.join(os.path.dirname(os.path.abspath(__file__)),config_file )
         self.hcl.module_hcl_code("terraform.tfstate",config_file_list, {}, self.region, self.aws_account_id, {}, {})
@@ -291,9 +294,9 @@ class ELBV2:
 
             attributes = {
                 "id": id,
-                "name": lb_name,
-                "type": lb["Type"],
-                "arn": lb_arn,
+                # "name": lb_name,
+                # "type": lb["Type"],
+                # "arn": lb_arn,
             }
 
             self.hcl.process_resource(resource_type, lb_name, attributes)
@@ -310,6 +313,20 @@ class ELBV2:
             for sg in security_group_ids:
                 self.security_group_instance.aws_security_group(sg, ftstack)
                 # self.aws_security_group(security_group_ids)
+
+            access_logs = self.elbv2_client.describe_load_balancer_attributes(
+                LoadBalancerArn=lb_arn
+            )['Attributes']
+
+            s3_access_logs_enabled = False
+            s3_access_lobs_bucket = ""
+            for attribute in access_logs:
+                if attribute['Key'] == 'access_logs.s3.enabled' and attribute['Value'] == 'true':
+                    s3_access_logs_enabled = True
+                if attribute['Key'] == 'access_logs.s3.bucket':
+                    s3_access_lobs_bucket = attribute['Value']
+            if s3_access_logs_enabled and s3_access_lobs_bucket:
+                self.s3_instance.aws_s3_bucket(s3_access_lobs_bucket, ftstack)
 
         # Call the other functions for listeners and listener certificates
         listener_arns = self.aws_lb_listener(load_balancer_arns, ftstack)
