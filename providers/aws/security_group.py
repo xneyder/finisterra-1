@@ -26,6 +26,9 @@ class SECURITY_GROUP:
 
         self.processed_security_groups = {}
 
+        functions = {}
+        self.hcl.functions.update(functions)
+
         # self.hcl.additional_data = {}
 
     def get_vpc_name(self, vpc_id):
@@ -47,9 +50,9 @@ class SECURITY_GROUP:
         self.aws_security_group()
 
         self.hcl.refresh_state()
-        functions = {}
+        
         self.hcl.module_hcl_code("terraform.tfstate", os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), "security_group.yaml"), functions, self.region, self.aws_account_id, {}, {})
+            os.path.dirname(os.path.abspath(__file__)), "security_group.yaml"), {}, self.region, self.aws_account_id, {}, {})
 
         self.json_plan = self.hcl.json_plan
 

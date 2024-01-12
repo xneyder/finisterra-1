@@ -1028,9 +1028,11 @@ class HCL:
                             try:
                                 try:
                                     if index in instance["joined_fields"]:
+                                        # print("===========", index)
                                         joined_sub_fields = instance["joined_fields"][index].get('sub_fields', [])
                                         value_json = json.loads(value)
                                         value_items=self.collect_json_values(value_json, index)
+                                        # print(value_items)
                                         for value_item_dict in value_items:
                                             for index_item, value_item in value_item_dict.items():
                                                 if index_item in joined_sub_fields or "ALL" in joined_sub_fields:

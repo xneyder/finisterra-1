@@ -42,6 +42,44 @@ class ECS:
         self.security_group_instance = SECURITY_GROUP(ec2_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
         self.target_group_instance = TargetGroup(elbv2_client, ec2_client, acm_client, s3_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
 
+        functions = {
+            'cloudwatch_log_group_name': self.cloudwatch_log_group_name,
+            'to_map': self.to_map,
+            'aws_ecs_service_cluster_arn': self.aws_ecs_service_cluster_arn,
+            'check_subnet_ids': self.check_subnet_ids,
+            'task_definition_id': self.task_definition_id,
+            'container_definitions': self.container_definitions,
+            'task_definition_volume': self.task_definition_volume,
+            'get_arn': self.get_arn,
+            'get_field_from_attrs': self.get_field_from_attrs,
+            'tasks_iam_role_policies': self.tasks_iam_role_policies,
+            'get_name_from_arn': self.get_name_from_arn,
+            'autoscaling_policies': self.autoscaling_policies,
+            'autoscaling_scheduled_actions': self.autoscaling_scheduled_actions,
+            'load_balancer': self.load_balancer,
+            'join_path_role_name': self.join_path_role_name,
+            'get_iam_role': self.get_iam_role,
+            'build_service_registries': self.build_service_registries,
+            'join_ecs_service_to_aws_lb_target_group': self.join_ecs_service_to_aws_lb_target_group,
+            'get_vpc_name': self.get_vpc_name,
+            'get_lb_name': self.get_lb_name,
+            'get_id_from_arn': self.get_id_from_arn,
+            'get_listener_rule_lb_name': self.get_listener_rule_lb_name,
+            'aws_ecs_service_import_id': self.aws_ecs_service_import_id,
+            'aws_ecs_task_definition_import_id': self.aws_ecs_task_definition_import_id,
+            'aws_appautoscaling_policy_import_id': self.aws_appautoscaling_policy_import_id,
+            'aws_appautoscaling_target_import_id': self.aws_appautoscaling_target_import_id,
+            'get_iam_policy_name': self.get_iam_policy_name,
+            'get_policy_attachment_index': self.get_policy_attachment_index,
+            'get_network_field': self.get_network_field,
+            'ecs_get_cluster_configuration': self.ecs_get_cluster_configuration,
+            'ecs_get_network_configuration': self.ecs_get_network_configuration,
+            'get_vpc_id_ecs': self.get_vpc_id_ecs,
+            'get_vpc_name_ecs': self.get_vpc_name_ecs
+        }
+
+        self.hcl.functions.update(functions)
+
     def cloudwatch_log_group_name(self, attributes):
         # The name is expected to be in the format /aws/ecs/{cluster_name}
         name = attributes.get('name')
@@ -481,49 +519,11 @@ class ECS:
 
         self.hcl.refresh_state()
 
-        functions = {
-            'cloudwatch_log_group_name': self.cloudwatch_log_group_name,
-            'to_map': self.to_map,
-            'aws_ecs_service_cluster_arn': self.aws_ecs_service_cluster_arn,
-            'check_subnet_ids': self.check_subnet_ids,
-            'task_definition_id': self.task_definition_id,
-            'container_definitions': self.container_definitions,
-            'task_definition_volume': self.task_definition_volume,
-            'get_arn': self.get_arn,
-            'get_field_from_attrs': self.get_field_from_attrs,
-            'tasks_iam_role_policies': self.tasks_iam_role_policies,
-            'get_name_from_arn': self.get_name_from_arn,
-            'autoscaling_policies': self.autoscaling_policies,
-            'autoscaling_scheduled_actions': self.autoscaling_scheduled_actions,
-            'load_balancer': self.load_balancer,
-            'join_path_role_name': self.join_path_role_name,
-            'get_iam_role': self.get_iam_role,
-            'build_service_registries': self.build_service_registries,
-            'join_ecs_service_to_aws_lb_target_group': self.join_ecs_service_to_aws_lb_target_group,
-            'get_vpc_name': self.get_vpc_name,
-            'join_aws_lb_target_group_to_aws_lb_listener_rule': self.join_aws_lb_target_group_to_aws_lb_listener_rule,
-            'join_aws_lb_target_group_to_aws_lb_listener': self.join_aws_lb_target_group_to_aws_lb_listener,
-            'get_lb_name': self.get_lb_name,
-            'get_listeners': self.get_listeners,
-            'get_listener_rules': self.get_listener_rules,
-            'get_id_from_arn': self.get_id_from_arn,
-            'get_listener_rule_lb_name': self.get_listener_rule_lb_name,
-            'aws_ecs_service_import_id': self.aws_ecs_service_import_id,
-            'aws_ecs_task_definition_import_id': self.aws_ecs_task_definition_import_id,
-            'aws_appautoscaling_policy_import_id': self.aws_appautoscaling_policy_import_id,
-            'aws_appautoscaling_target_import_id': self.aws_appautoscaling_target_import_id,
-            'get_iam_policy_name': self.get_iam_policy_name,
-            'get_policy_attachment_index': self.get_policy_attachment_index,
-            'get_network_field': self.get_network_field,
-            'ecs_get_cluster_configuration': self.ecs_get_cluster_configuration,
-            'ecs_get_network_configuration': self.ecs_get_network_configuration,
-            'get_vpc_id_ecs': self.get_vpc_id_ecs,
-            'get_vpc_name_ecs': self.get_vpc_name_ecs
-        }
+
         config_file_list = ["ecs.yaml","iam_role.yaml", "logs.yaml", "kms.yaml", "security_group.yaml", "target_group.yaml", "acm.yaml", "elbv2.yaml", "s3.yaml"]
         for index,config_file in enumerate(config_file_list):
             config_file_list[index] = os.path.join(os.path.dirname(os.path.abspath(__file__)),config_file )
-        self.hcl.module_hcl_code("terraform.tfstate",config_file_list, functions, self.region, self.aws_account_id, {}, {})
+        self.hcl.module_hcl_code("terraform.tfstate",config_file_list, {}, self.region, self.aws_account_id, {}, {})
 
         # self.hcl.generate_hcl_file()
         self.json_plan = self.hcl.json_plan
@@ -539,9 +539,8 @@ class ECS:
             cluster_name = cluster["clusterName"]
             cluster_arn = cluster["clusterArn"]
 
-            if cluster_name == "dev-ecs-cluster":
-                continue
-
+            # if cluster_name == "dev-ecs-cluster":
+            #     continue
 
             print(f"  Processing ECS Cluster: {cluster_name}")
             id = cluster_name
@@ -762,8 +761,8 @@ class ECS:
                                 print(f"Processing Target Group: {target_group_arn}...")
                                 self.target_group_instance.aws_lb_target_group(target_group_arn, ftstack)
 
-            else:
-                print(f"Skipping aws_ecs_service: {cluster['clusterName']}")
+            # else:
+            #     print(f"Skipping aws_ecs_service: {cluster['clusterName']}")
 
     def aws_ecs_task_definition(self, task_definition_arn, ftstack):
         print(f"Processing ECS Task Definition: {task_definition_arn}...")

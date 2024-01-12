@@ -13,6 +13,7 @@ aws_lb:
     aws_lb_listeners:
       sub_fields:
         - certificate_arn
+        - target_group_arn
     access_logs:
       sub_fields:
         - bucket

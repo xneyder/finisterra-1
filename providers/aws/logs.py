@@ -29,6 +29,9 @@ class Logs:
         self.resource_list = {}
         self.kms_instance = KMS(kms_client, iam_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
 
+        functions = {}
+        self.hcl.functions.update(functions)
+
     def logs(self):
         self.hcl.prepare_folder(os.path.join("generated"))
 
@@ -44,13 +47,13 @@ class Logs:
         # self.aws_cloudwatch_log_subscription_filter()
         # self.aws_cloudwatch_query_definition()
 
-        functions = {}
+        
 
         self.hcl.refresh_state()
         config_file_list = ["logs.yaml", "kms.yaml"]
         for index,config_file in enumerate(config_file_list):
             config_file_list[index] = os.path.join(os.path.dirname(os.path.abspath(__file__)),config_file )
-        self.hcl.module_hcl_code("terraform.tfstate",config_file_list, functions, self.region, self.aws_account_id, {}, {})
+        self.hcl.module_hcl_code("terraform.tfstate",config_file_list, {}, self.region, self.aws_account_id, {}, {})
         # self.hcl.generate_hcl_file()
         self.json_plan = self.hcl.json_plan
 

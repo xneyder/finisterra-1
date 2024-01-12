@@ -105,10 +105,11 @@ class ELBV2:
             'ssl_policy': attributes.get('ssl_policy'),
             'certificate_arn': attributes.get('certificate_arn'),
             # 'acm_domain_name': domain_name,
-            'additional_certificates': [],
-            'listener_fixed_response': self.get_fixed_response(attributes),
-            'listener_redirect': self.get_redirect(attributes),
-            'listener_additional_tags': attributes.get('tags'),
+            # 'additional_certificates': [],
+            # 'listener_fixed_response': self.get_fixed_response(attributes),
+            # 'listener_redirect': self.get_redirect(attributes),
+            'default_action': attributes.get('default_action'),
+            'tags': attributes.get('tags'),
         }
 
         # Filter out keys with undesirable values
@@ -345,15 +346,15 @@ class ELBV2:
             paginator = self.elbv2_client.get_paginator("describe_listeners")
             for page in paginator.paginate(LoadBalancerArn=lb_arn):
                 for listener in page["Listeners"]:
-                    has_target_group = False
-                    for action in listener.get('DefaultActions', []):
-                        if action['Type'] == 'forward' and 'TargetGroupArn' in action:
-                            has_target_group = True
-                            break
+                    # has_target_group = False
+                    # for action in listener.get('DefaultActions', []):
+                    #     if action['Type'] == 'forward' and 'TargetGroupArn' in action:
+                    #         has_target_group = True
+                    #         break
 
                     # If the listener has a target group attached, ignore and continue
-                    if has_target_group:
-                        continue
+                    # if has_target_group:
+                    #     continue
 
                     listener_arn = listener["ListenerArn"]                    
                     listener_arns.append(listener_arn)

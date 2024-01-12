@@ -36,6 +36,9 @@ class KMS:
         self.resource_list = {}
         self.additional_data = {}
 
+        functions = {}
+        self.hcl.functions.update(functions)
+
     def kms(self):
         self.hcl.prepare_folder(os.path.join("generated"))
         self.aws_kms_key()
@@ -45,9 +48,9 @@ class KMS:
 
         self.hcl.refresh_state()
 
-        functions = {}
+        
         self.hcl.module_hcl_code("terraform.tfstate", os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), "kms.yaml"), functions, self.region, self.aws_account_id, self.additional_data, {}, {})
+            os.path.dirname(os.path.abspath(__file__)), "kms.yaml"), {}, self.region, self.aws_account_id, self.additional_data, {}, {})
 
         self.json_plan = self.hcl.json_plan
 

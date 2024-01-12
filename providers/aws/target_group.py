@@ -34,6 +34,17 @@ class TargetGroup:
 
         self.load_balancers = None
 
+        functions = {
+            'join_aws_lb_target_group_to_aws_lb_listener_rule': self.join_aws_lb_target_group_to_aws_lb_listener_rule,
+            'join_aws_lb_target_group_to_aws_lb_listener': self.join_aws_lb_target_group_to_aws_lb_listener,
+            'get_listener_rules': self.get_listener_rules,
+            'get_vpc_id_tg': self.get_vpc_id_tg,
+            'get_vpc_name_tg': self.get_vpc_name_tg,
+            'get_id_from_arn': self.get_id_from_arn,
+        }        
+
+        self.hcl.functions.update(functions)
+
     def join_aws_lb_target_group_to_aws_lb_listener_rule(self, parent_attributes, child_attributes):
         target_group_arn = parent_attributes.get('arn')
         for action in child_attributes.get('action', []):
@@ -71,15 +82,15 @@ class TargetGroup:
             attributes, 'listener_arn')
         return result
 
-    def get_vpc_name_ecs(self, attributes):
+    def get_vpc_name_tg(self, attributes):
         vpc_id = attributes.get("vpc_id")
         response = self.ec2_client.describe_vpcs(VpcIds=[vpc_id])
         vpc_name = next(
             (tag['Value'] for tag in response['Vpcs'][0]['Tags'] if tag['Key'] == 'Name'), None)
         return vpc_name
 
-    def get_vpc_id_ecs(self, attributes):
-        vpc_name = self.get_vpc_name_ecs(attributes)
+    def get_vpc_id_tg(self, attributes):
+        vpc_name = self.get_vpc_name_tg(attributes)
         if vpc_name is None:
             return  attributes.get("vpc_id")
         else:
@@ -92,18 +103,11 @@ class TargetGroup:
 
         self.hcl.refresh_state()
 
-        functions = {
-            'join_aws_lb_target_group_to_aws_lb_listener_rule': self.join_aws_lb_target_group_to_aws_lb_listener_rule,
-            'join_aws_lb_target_group_to_aws_lb_listener': self.join_aws_lb_target_group_to_aws_lb_listener,
-            'get_listener_rules': self.get_listener_rules,
-            'get_vpc_id_ecs': self.get_vpc_id_ecs,
-            'get_vpc_name_ecs': self.get_vpc_name_ecs,
-            'get_id_from_arn': self.get_id_from_arn,
-        }
+
         config_file_list = ["target_group.yaml", "elbv2.yaml", "security_group.yaml", "acm.yaml", "s3.yaml"]
         for index,config_file in enumerate(config_file_list):
             config_file_list[index] = os.path.join(os.path.dirname(os.path.abspath(__file__)),config_file )
-        self.hcl.module_hcl_code("terraform.tfstate",config_file_list, functions, self.region, self.aws_account_id, {}, {})
+        self.hcl.module_hcl_code("terraform.tfstate",config_file_list, {}, self.region, self.aws_account_id, {}, {})
 
         self.json_plan = self.hcl.json_plan
 
