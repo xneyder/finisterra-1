@@ -136,10 +136,10 @@ class ELBV2:
                 CertificateArn=certificate_arn)
             domain_name = response['Certificate']['DomainName']
 
-            if listener_port in self.listeners:
-                self.listeners[listener_port]['additional_certificates'].append(
-                    {'certificate_arn': certificate_arn, 'domain_name': domain_name}
-                )
+            # if listener_port in self.listeners:
+            #     self.listeners[listener_port]['additional_certificates'].append(
+            #         {'certificate_arn': certificate_arn, 'domain_name': domain_name}
+            #     )
 
         return self.listeners
 
@@ -335,7 +335,9 @@ class ELBV2:
 
         # Call the other functions for listeners and listener certificates
         listener_arns = self.aws_lb_listener(load_balancer_arns, ftstack)
-        self.aws_lb_listener_certificate(listener_arns, ftstack)
+        for listener_arn in listener_arns:
+            self.acm_instance.aws_acm_certificate(listener_arn, ftstack)
+        # self.aws_lb_listener_certificate(listener_arns, ftstack)
 
     def aws_lb_listener(self, load_balancer_arns, ftstack=None):
         print("Processing Load Balancer Listeners...")
