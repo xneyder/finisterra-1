@@ -1,11 +1,11 @@
 import os
 from utils.hcl import HCL
 import json
-
+from providers.aws.kms import KMS
 
 class ECR:
-    def __init__(self, ecr_client, script_dir, provider_name, schema_data, region, s3Bucket,
-                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id):
+    def __init__(self, ecr_client, kms_client, iam_client, script_dir, provider_name, schema_data, region, s3Bucket,
+                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id, hcl = None):
         self.ecr_client = ecr_client
         self.transform_rules = {}
         self.provider_name = provider_name
@@ -16,9 +16,13 @@ class ECR:
         
         self.workspace_id = workspace_id
         self.modules = modules
-        self.hcl = HCL(self.schema_data, self.provider_name,
+        if not hcl:
+            self.hcl = HCL(self.schema_data, self.provider_name,
                        self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules)
+        else:
+            self.hcl = hcl
         self.resource_list = {}
+        self.kms_instance = KMS(kms_client, iam_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
 
     def get_field_from_attrs(self, attributes, arg):
         keys = arg.split(".")
@@ -92,8 +96,10 @@ class ECR:
         }
 
         self.hcl.refresh_state()
-        self.hcl.module_hcl_code("terraform.tfstate", os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), "ecr.yaml"), functions, self.region, self.aws_account_id, {}, {})
+        config_file_list = ["kms.yaml","ecr.yaml", "iam.yaml"]
+        for index,config_file in enumerate(config_file_list):
+            config_file_list[index] = os.path.join(os.path.dirname(os.path.abspath(__file__)),config_file )
+        self.hcl.module_hcl_code("terraform.tfstate",config_file_list, {}, self.region, self.aws_account_id, {}, {})
 
         # self.hcl.generate_hcl_file()
         self.json_plan = self.hcl.json_plan
@@ -128,7 +134,13 @@ class ECR:
             }
             self.hcl.process_resource(
                 resource_type, repository_name.replace("-", "_"), attributes)
-            
+
+            repository_kms_key = repo.get("encryptionConfiguration", {})
+            if repository_kms_key:
+                encryptionKeyId = repository_kms_key.get("encryptionKeyId", None)
+                if encryptionKeyId:
+                    self.kms_instance.aws_kms_key(encryptionKeyId, ftstack)
+
             self.hcl.add_stack(resource_type, id, ftstack)
 
             self.aws_ecr_repository_policy(repository_name)

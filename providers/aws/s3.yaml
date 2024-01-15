@@ -3,9 +3,10 @@ aws_s3_bucket:
   terraform_module_version: "3.14.0"
   name_field: bucket
   add_id_hash_to_name: true
-  keys:
-    - bucket
-  # path: "s3"
+  joined_fields:
+    server_side_encryption_configuration:
+      sub_fields:
+        - kms_master_key_id
   target_resource_name: this
   fields:
     bucket:

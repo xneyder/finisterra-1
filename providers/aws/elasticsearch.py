@@ -232,8 +232,9 @@ class Elasticsearch:
             for key,data  in log_publishing_options.items():
                 cloudwatch_log_group_arn = data.get(
                     'CloudWatchLogsLogGroupArn', None)
-                log_group_name = cloudwatch_log_group_arn.split(':')[-1]
-                self.logs_instance.aws_cloudwatch_log_group(log_group_name, ftstack)
+                if cloudwatch_log_group_arn:
+                    log_group_name = cloudwatch_log_group_arn.split(':')[-1]
+                    self.logs_instance.aws_cloudwatch_log_group(log_group_name, ftstack)
 
             # self.aws_elasticsearch_domain_policy(domain_name)
 

@@ -3,7 +3,7 @@ from utils.hcl import HCL
 import json
 from botocore.exceptions import ClientError
 # from utils.module_hcl import load_yaml_and_tfstate
-
+from providers.aws.kms import KMS
 
 from botocore.exceptions import ClientError
 
@@ -48,6 +48,7 @@ class S3:
         }
         self.hcl.functions.update(functions)
         self.processed_resources = {}
+        # self.kms_instance = KMS(kms_client, iam_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
 
     def s3(self):
         self.hcl.prepare_folder(os.path.join("generated"))
