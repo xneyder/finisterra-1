@@ -1,4 +1,5 @@
 import os
+import botocore
 from utils.hcl import HCL
 from providers.aws.security_group import SECURITY_GROUP
 from providers.aws.kms import KMS
@@ -138,17 +139,23 @@ class Elasticsearch:
         return encrypt_at_rest
     
     def get_kms_alias(self, kms_key_id):
-        value = ""
-        response = self.kms_client.list_aliases()
-        aliases = response.get('Aliases', [])
-        while 'NextMarker' in response:
-            response = self.kms_client.list_aliases(Marker=response['NextMarker'])
-            aliases.extend(response.get('Aliases', []))
-        for alias in aliases:
-            if 'TargetKeyId' in alias and alias['TargetKeyId'] == kms_key_id.split('/')[-1]:
-                value = alias['AliasName']
-                break
-        return value
+        try:
+            value = ""
+            response = self.kms_client.list_aliases()
+            aliases = response.get('Aliases', [])
+            while 'NextMarker' in response:
+                response = self.kms_client.list_aliases(Marker=response['NextMarker'])
+                aliases.extend(response.get('Aliases', []))
+            for alias in aliases:
+                if 'TargetKeyId' in alias and alias['TargetKeyId'] == kms_key_id.split('/')[-1]:
+                    value = alias['AliasName']
+                    break
+            return value
+        except botocore.exceptions.ClientError as e:
+            if e.response['Error']['Code'] == 'AccessDeniedException':
+                return ""
+            else:
+                raise e
         
     def elasticsearch(self):
         self.hcl.prepare_folder(os.path.join("generated"))
@@ -218,9 +225,10 @@ class Elasticsearch:
             if domain_endpoint_options:
                 custom_endpoint_certificate_arn = domain_endpoint_options.get(
                     'CustomEndpointCertificateArn', None)
-                self.acm_instance.aws_acm_certificate(custom_endpoint_certificate_arn, ftstack)
+                if custom_endpoint_certificate_arn:
+                    self.acm_instance.aws_acm_certificate(custom_endpoint_certificate_arn, ftstack)
 
-            log_publishing_options = domain_info.get('LogPublishingOptions', [])
+            log_publishing_options = domain_info.get('LogPublishingOptions', {})
             for key,data  in log_publishing_options.items():
                 cloudwatch_log_group_arn = data.get(
                     'CloudWatchLogsLogGroupArn', None)

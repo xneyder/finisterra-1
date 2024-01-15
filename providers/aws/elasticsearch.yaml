@@ -60,7 +60,7 @@ aws_elasticsearch_domain:
       type: map
     log_publishing_options:
       field: log_publishing_options
-      type: map
+      type: list
     access_policies:
       field: access_policies
       type: string
