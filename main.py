@@ -125,6 +125,8 @@ def main(aws_account_id, aws_region, group_code):
         provider.vpc_endpoint()
     elif group_code == 'target_group':
         provider.target_group()
+    elif group_code == 'elasticsearch':
+        provider.elasticsearch()
     else:
         print(f"Group code {group_code} not found.")
         exit()

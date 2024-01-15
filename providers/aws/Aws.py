@@ -27,7 +27,6 @@ from providers.aws.autoscaling import AutoScaling
 from providers.aws.vpn_client import VpnClient
 from providers.aws.docdb import DocDb
 from providers.aws.opensearch import Opensearch
-from providers.aws.es import ES
 from providers.aws.elasticache_redis import ElasticacheRedis
 from providers.aws.dynamodb import Dynamodb
 from providers.aws.cognito_identity import CognitoIdentity
@@ -57,6 +56,7 @@ from providers.aws.msk import MSK
 from providers.aws.security_group import SECURITY_GROUP
 from providers.aws.target_group import TargetGroup
 # from utils.filesystem import create_tmp_terragrunt
+from providers.aws.elasticsearch import Elasticsearch
 
 
 class Aws:
@@ -621,17 +621,6 @@ class Aws:
         self.json_plan = instance.json_plan
         self.resource_list['opensearch'] = instance.resource_list
 
-    def es(self):
-        es_client = self.session.client(
-            "es", region_name=self.aws_region)
-
-        instance = ES(es_client, self.script_dir, self.provider_name,
-                      self.schema_data, self.aws_region, self.s3Bucket,
-                      self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
-        instance.es()
-        self.json_plan = instance.json_plan
-        self.resource_list['es'] = instance.resource_list
-
     def elasticache_redis(self):
         elasticache_client = self.session.client(
             "elasticache", region_name=self.aws_region)
@@ -1046,3 +1035,23 @@ class Aws:
         instance.target_group()
         self.json_plan = instance.json_plan
         self.resource_list['target_group'] = instance.resource_list
+
+
+    def elasticsearch(self):
+        elasticsearch_client = self.session.client(
+            "es", region_name=self.aws_region)
+        
+        ec2_client = self.session.client(
+            "ec2", region_name=self.aws_region)
+        
+        kms_client = self.session.client(
+            "kms", region_name=self.aws_region)
+        iam_client = self.session.client(
+            "iam", region_name=self.aws_region)
+
+        instance = Elasticsearch(elasticsearch_client, ec2_client, kms_client, iam_client, self.script_dir, self.provider_name,
+                       self.schema_data, self.aws_region, self.s3Bucket,
+                       self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
+        instance.elasticsearch()
+        self.json_plan = instance.json_plan
+        self.resource_list['elasticsearch'] = instance.resource_list
