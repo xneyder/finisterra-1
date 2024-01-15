@@ -47,8 +47,6 @@ class Logs:
         # self.aws_cloudwatch_log_subscription_filter()
         # self.aws_cloudwatch_query_definition()
 
-        
-
         self.hcl.refresh_state()
         config_file_list = ["logs.yaml", "kms.yaml"]
         for index,config_file in enumerate(config_file_list):

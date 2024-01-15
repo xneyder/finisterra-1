@@ -180,16 +180,29 @@ class EC2:
 
         return result
     
+    # def get_kms_alias(self, kms_key_id):
+    #     value = ""
+    #     response = self.kms_client.list_aliases()
+    #     if 'Aliases' in response and response['Aliases']:
+    #         for alias in response['Aliases']:
+    #             if 'TargetKeyId' in alias:
+    #                 if alias['TargetKeyId'] == kms_key_id.split('/')[-1]:
+    #                     value = alias['AliasName']
+    #                     break
+    #     return value
+    
     def get_kms_alias(self, kms_key_id):
         value = ""
         response = self.kms_client.list_aliases()
-        if 'Aliases' in response and response['Aliases']:
-            for alias in response['Aliases']:
-                if 'TargetKeyId' in alias:
-                    if alias['TargetKeyId'] == kms_key_id.split('/')[-1]:
-                        value = alias['AliasName']
-                        break
-        return value
+        aliases = response.get('Aliases', [])
+        while 'NextMarker' in response:
+            response = self.kms_client.list_aliases(Marker=response['NextMarker'])
+            aliases.extend(response.get('Aliases', []))
+        for alias in aliases:
+            if 'TargetKeyId' in alias and alias['TargetKeyId'] == kms_key_id.split('/')[-1]:
+                value = alias['AliasName']
+                break
+        return value    
     
     def get_kms_key_id_ec2(self, attributes, arg):
         root_block_device = attributes.get("root_block_device")

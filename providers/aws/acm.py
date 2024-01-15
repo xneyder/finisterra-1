@@ -94,8 +94,8 @@ class ACM:
                 certificate_type = cert_details["Type"]
 
                 # Skip imported certificates
-                if certificate_type == "IMPORTED":
-                    continue
+                # if certificate_type == "IMPORTED":
+                #     continue
 
                 # Skip not issued certificates
                 status = cert_details["Status"]
@@ -135,7 +135,7 @@ class ACM:
                 
                 self.hcl.add_stack(resource_name, id, ftstack)
 
-                self.aws_acm_certificate_validation(cert_arn, cert_details)
+                # self.aws_acm_certificate_validation(cert_arn, cert_details)
 
     def aws_acm_certificate_validation(self, cert_arn, cert):
         print(f"  Processing ACM Certificate Validation: {cert_arn}")

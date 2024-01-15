@@ -2,12 +2,15 @@ import os
 from utils.hcl import HCL
 from providers.aws.security_group import SECURITY_GROUP
 from providers.aws.kms import KMS
+from providers.aws.acm import ACM
+from providers.aws.logs import Logs
 
 class Elasticsearch:
-    def __init__(self, elasticsearch_client, ec2_client, kms_client, iam_client, script_dir, provider_name, schema_data, region, s3Bucket,
+    def __init__(self, elasticsearch_client, ec2_client, kms_client, iam_client, acm_client, logs_client, script_dir, provider_name, schema_data, region, s3Bucket,
                  dynamoDBTable, state_key, workspace_id, modules, aws_account_id):
         self.elasticsearch_client = elasticsearch_client
         self.ec2_client = ec2_client
+        self.kms_client = kms_client
         self.transform_rules = {}
         self.provider_name = provider_name
         self.script_dir = script_dir
@@ -25,6 +28,7 @@ class Elasticsearch:
             'es_get_vpc_options': self.es_get_vpc_options,
             'es_get_tags': self.es_get_tags,
             'es_get_vpc_name': self.es_get_vpc_name,
+            'es_get_encrypt_at_rest': self.es_get_encrypt_at_rest,
             # 'es_get_subnet_names': self.es_get_subnet_names,
             # 'es_get_subnet_ids': self.es_get_subnet_ids,
         }
@@ -33,6 +37,8 @@ class Elasticsearch:
 
         self.security_group_instance = SECURITY_GROUP(ec2_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
         self.kms_instance = KMS(kms_client, iam_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
+        self.acm_instance = ACM(acm_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
+        self.logs_instance = Logs(logs_client, kms_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
 
     def get_field_from_attrs(self, attributes, arg):
         keys = arg.split(".")
@@ -120,14 +126,37 @@ class Elasticsearch:
                 print(f"No 'Name' tag found for Subnet ID: {subnet_id}")
 
         return subnet_names
-
+    
+    def es_get_encrypt_at_rest(self, attributes):
+        encrypt_at_rest = attributes.get("encrypt_at_rest", None)
+        if encrypt_at_rest:
+            kms_key_id = encrypt_at_rest[0].get("kms_key_id", None)
+            kms_key_alias =  self.get_kms_alias(kms_key_id)
+            if kms_key_alias:
+                encrypt_at_rest[0]['kms_key_alias'] = kms_key_alias
+                del encrypt_at_rest[0]['kms_key_id']
+        return encrypt_at_rest
+    
+    def get_kms_alias(self, kms_key_id):
+        value = ""
+        response = self.kms_client.list_aliases()
+        aliases = response.get('Aliases', [])
+        while 'NextMarker' in response:
+            response = self.kms_client.list_aliases(Marker=response['NextMarker'])
+            aliases.extend(response.get('Aliases', []))
+        for alias in aliases:
+            if 'TargetKeyId' in alias and alias['TargetKeyId'] == kms_key_id.split('/')[-1]:
+                value = alias['AliasName']
+                break
+        return value
+        
     def elasticsearch(self):
         self.hcl.prepare_folder(os.path.join("generated"))
 
         self.aws_elasticsearch_domain()
 
         self.hcl.refresh_state()
-        config_file_list = ["elasticsearch.yaml", "security_group.yaml"]
+        config_file_list = ["elasticsearch.yaml", "security_group.yaml", "kms.yaml", "logs.yaml", "acm.yaml"]
         for index,config_file in enumerate(config_file_list):
             config_file_list[index] = os.path.join(os.path.dirname(os.path.abspath(__file__)),config_file )
         self.hcl.module_hcl_code("terraform.tfstate",config_file_list, {}, self.region, self.aws_account_id, {}, {})
@@ -146,7 +175,7 @@ class Elasticsearch:
             arn = domain_info["ARN"]
             print(f"  Processing OpenSearch Domain: {domain_name}")
 
-            id = domain_name
+            id = arn
 
             attributes = {
                 "id": id,
@@ -168,10 +197,9 @@ class Elasticsearch:
 
             # Process the domain resource
             self.hcl.process_resource(
-                resource_type, domain_name, attributes)
+                resource_type, id, attributes)
 
             self.hcl.add_stack(resource_type, id, ftstack)
-
 
             vpc_options = domain_info.get('VPCOptions', {})
             if vpc_options:
@@ -184,8 +212,20 @@ class Elasticsearch:
             if encrypt_at_rest:
                 kmsKeyId = encrypt_at_rest.get('KmsKeyId', None)
                 if kmsKeyId:
-                    kmsKeyId = kmsKeyId.split('/')[-1]
-                    self.kms_instance.aws_kms_key(kmsKeyId, ftstack)        
+                    self.kms_instance.aws_kms_key(kmsKeyId, ftstack)       
+
+            domain_endpoint_options = domain_info.get('DomainEndpointOptions', {})
+            if domain_endpoint_options:
+                custom_endpoint_certificate_arn = domain_endpoint_options.get(
+                    'CustomEndpointCertificateArn', None)
+                self.acm_instance.aws_acm_certificate(custom_endpoint_certificate_arn, ftstack)
+
+            log_publishing_options = domain_info.get('LogPublishingOptions', [])
+            for key,data  in log_publishing_options.items():
+                cloudwatch_log_group_arn = data.get(
+                    'CloudWatchLogsLogGroupArn', None)
+                log_group_name = cloudwatch_log_group_arn.split(':')[-1]
+                self.logs_instance.aws_cloudwatch_log_group(log_group_name, ftstack)
 
             # self.aws_elasticsearch_domain_policy(domain_name)
 

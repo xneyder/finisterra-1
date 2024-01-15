@@ -1048,8 +1048,14 @@ class Aws:
             "kms", region_name=self.aws_region)
         iam_client = self.session.client(
             "iam", region_name=self.aws_region)
+        
+        acm_client = self.session.client(
+            "acm", region_name=self.aws_region)
+        
+        logs_client = self.session.client(
+            "logs", region_name=self.aws_region)
 
-        instance = Elasticsearch(elasticsearch_client, ec2_client, kms_client, iam_client, self.script_dir, self.provider_name,
+        instance = Elasticsearch(elasticsearch_client, ec2_client, kms_client, iam_client, acm_client, logs_client, self.script_dir, self.provider_name,
                        self.schema_data, self.aws_region, self.s3Bucket,
                        self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.elasticsearch()

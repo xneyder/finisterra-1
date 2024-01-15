@@ -2,7 +2,7 @@ aws_elasticsearch_domain:
   terraform_module: "github.com/finisterra-io/terraform-aws-modules.git//elasticsearch?ref=main"
   terraform_module_version: "6.1.0"
   target_resource_name: default
-  name_field: donain_name
+  name_field: domain_name
   joined_fields:
     vpc_options:
       sub_fields:
@@ -10,6 +10,14 @@ aws_elasticsearch_domain:
     encrypt_at_rest:
       sub_fields:
         - kms_key_id
+    domain_endpoint_options:
+      sub_fields:
+        - custom_endpoint_certificate_arn
+    log_publishing_options:
+      sub_fields:
+        - cloudwatch_log_group_arn
+  import_id:
+    field: domain_name
   fields:
     domain_name:
       field: domain_name
@@ -27,7 +35,7 @@ aws_elasticsearch_domain:
       field: ebs_options
       type: map
     encrypt_at_rest:
-      field: encrypt_at_rest
+      function: es_get_encrypt_at_rest
       type: map
     domain_endpoint_options:
       field: domain_endpoint_options
