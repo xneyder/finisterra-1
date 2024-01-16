@@ -3,16 +3,11 @@ from utils.hcl import HCL
 
 
 class EBS:
-    def __init__(self, ec2_client, kms_client, autoscaling_client, script_dir, provider_name, schema_data, region, s3Bucket,
-                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id):
-        self.ec2_client = ec2_client
-        self.kms_client = kms_client
-        self.autoscaling_client = autoscaling_client
+    def __init__(self, aws_clients, script_dir, provider_name, schema_data, region, s3Bucket,
+                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id,hcl = None):
+        self.aws_clients = aws_clients
         self.transform_rules = {
-            "aws_ebs_volume": {
-                "hcl_keep_fields": {"size": True},
-            },
-
+        
         }
         self.provider_name = provider_name
         self.script_dir = script_dir
@@ -42,11 +37,11 @@ class EBS:
     def aws_ebs_default_kms_key(self):
         print("Processing EBS Default KMS Key...")
 
-        default_kms_key_id = self.ec2_client.get_ebs_default_kms_key_id()[
+        default_kms_key_id = self.aws_clients.ec2_client.get_ebs_default_kms_key_id()[
             "KmsKeyId"]
 
         # List all aliases
-        aliases = self.kms_client.list_aliases()
+        aliases = self.aws_clients.kms_client.list_aliases()
 
         # Find the alias for the default key
         default_kms_key_alias = next((alias for alias in aliases['Aliases']
@@ -57,7 +52,7 @@ class EBS:
             return
 
         # Retrieve key metadata to get the ARN
-        key_metadata = self.kms_client.describe_key(KeyId=default_kms_key_id)
+        key_metadata = self.aws_clients.kms_client.describe_key(KeyId=default_kms_key_id)
         default_kms_key_arn = key_metadata['KeyMetadata']['Arn']
 
         print(f"  Processing EBS Default KMS Key: {default_kms_key_arn}")
@@ -72,7 +67,7 @@ class EBS:
     def aws_ebs_encryption_by_default(self):
         print("Processing EBS Encryption By Default...")
 
-        encryption_by_default = self.ec2_client.get_ebs_encryption_by_default()[
+        encryption_by_default = self.aws_clients.ec2_client.get_ebs_encryption_by_default()[
             "EbsEncryptionByDefault"]
 
         attributes = {
@@ -85,7 +80,7 @@ class EBS:
     def aws_ebs_snapshot(self):
         print("Processing EBS Snapshots...")
 
-        snapshots = self.ec2_client.describe_snapshots(OwnerIds=["self"])[
+        snapshots = self.aws_clients.ec2_client.describe_snapshots(OwnerIds=["self"])[
             "Snapshots"]
 
         for snapshot in snapshots:
@@ -101,14 +96,14 @@ class EBS:
                 "aws_ebs_snapshot", snapshot_id.replace("-", "_"), attributes)
 
     def is_managed_by_auto_scaling_group(self, instance_id):
-        response = self.autoscaling_client.describe_auto_scaling_instances(InstanceIds=[
+        response = self.aws_clients.autoscaling_client.describe_auto_scaling_instances(InstanceIds=[
                                                                            instance_id])
         return bool(response["AutoScalingInstances"])
 
     def aws_ebs_volume(self):
         print("Processing EBS Volumes...")
 
-        volumes = self.ec2_client.describe_volumes()["Volumes"]
+        volumes = self.aws_clients.ec2_client.describe_volumes()["Volumes"]
 
         for volume in volumes:
             volume_id = volume["VolumeId"]
@@ -137,12 +132,12 @@ class EBS:
     def aws_snapshot_create_volume_permission(self):
         print("Processing Snapshot Create Volume Permissions...")
 
-        snapshots = self.ec2_client.describe_snapshots(OwnerIds=["self"])[
+        snapshots = self.aws_clients.ec2_client.describe_snapshots(OwnerIds=["self"])[
             "Snapshots"]
 
         for snapshot in snapshots:
             snapshot_id = snapshot["SnapshotId"]
-            permissions = self.ec2_client.describe_snapshot_attribute(
+            permissions = self.aws_clients.ec2_client.describe_snapshot_attribute(
                 SnapshotId=snapshot_id, Attribute="createVolumePermission"
             )["CreateVolumePermissions"]
 
@@ -165,7 +160,7 @@ class EBS:
     def aws_volume_attachment(self):
         print("Processing Volume Attachments...")
 
-        volumes = self.ec2_client.describe_volumes()["Volumes"]
+        volumes = self.aws_clients.ec2_client.describe_volumes()["Volumes"]
 
         for volume in volumes:
             volume_id = volume["VolumeId"]

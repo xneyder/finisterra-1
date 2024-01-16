@@ -3,23 +3,10 @@ from utils.hcl import HCL
 
 
 class Dynamodb:
-    def __init__(self, dynamodb_client, appautoscaling_client, account_id, script_dir, provider_name, schema_data, region, s3Bucket,
-                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id):
-        self.dynamodb_client = dynamodb_client
-        self.appautoscaling_client = appautoscaling_client
-        self.account_id = account_id
-        self.transform_rules = {
-            "aws_dynamodb_table": {
-                "hcl_drop_blocks": {"ttl": {"enabled": False}},
-                "hcl_keep_fields": {"global_secondary_index.write_capacity": True,
-                                    "global_secondary_index.read_capacity": True,
-                                    "write_capacity": True,
-                                    "read_capacity": True,
-                                    "hash_key": True,
-                                    "global_secondary_index.hash_key": True
-                                    },
-            },
-        }
+    def __init__(self, aws_clients, script_dir, provider_name, schema_data, region, s3Bucket,
+                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id,hcl = None):
+        self.aws_clients = aws_clients
+        self.transform_rules = {        }
         self.provider_name = provider_name
         self.script_dir = script_dir
         self.schema_data = schema_data
@@ -126,7 +113,7 @@ class Dynamodb:
             f"Processing AppAutoScaling targets for DynamoDB Table: {table_name}")
 
         try:
-            response = self.appautoscaling_client.describe_scalable_targets(
+            response = self.aws_clients.appautoscaling_client.describe_scalable_targets(
                 ServiceNamespace=service_namespace,
                 ResourceIds=[resource_id]
             )
@@ -282,10 +269,10 @@ class Dynamodb:
         resource_type = "aws_dynamodb_table"
         print("Processing DynamoDB Tables...")
 
-        paginator = self.dynamodb_client.get_paginator("list_tables")
+        paginator = self.aws_clients.dynamodb_client.get_paginator("list_tables")
         for page in paginator.paginate():
             for table_name in page["TableNames"]:
-                table_description = self.dynamodb_client.describe_table(TableName=table_name)["Table"]
+                table_description = self.aws_clients.dynamodb_client.describe_table(TableName=table_name)["Table"]
 
                 # if table_name != "staging_WallFeedItem":
                 #     continue
@@ -295,7 +282,7 @@ class Dynamodb:
 
                 ftstack = "dynamodb"
                 try:
-                    response = self.dynamodb_client.list_tags_of_resource(ResourceArn=table_description["TableArn"])
+                    response = self.aws_clients.dynamodb_client.list_tags_of_resource(ResourceArn=table_description["TableArn"])
                     tags = response.get('Tags', [])
                     for tag in tags:
                         if tag['Key'] == 'ftstack':
@@ -331,7 +318,7 @@ class Dynamodb:
             f"Processing AppAutoScaling targets for DynamoDB Table: {table_name}")
 
         try:
-            response = self.appautoscaling_client.describe_scalable_targets(
+            response = self.aws_clients.appautoscaling_client.describe_scalable_targets(
                 ServiceNamespace=service_namespace,
                 ResourceIds=[resource_id]
             )
@@ -368,7 +355,7 @@ class Dynamodb:
             f"Processing AppAutoScaling policies for resource: {resource_id} with dimension: {scalable_dimension}...")
 
         try:
-            response = self.appautoscaling_client.describe_scaling_policies(
+            response = self.aws_clients.appautoscaling_client.describe_scaling_policies(
                 ServiceNamespace=service_namespace,
                 ResourceId=resource_id,
                 ScalableDimension=scalable_dimension
@@ -396,11 +383,11 @@ class Dynamodb:
     # def aws_dynamodb_contributor_insights(self):
     #     print("Processing DynamoDB Contributor Insights...")
 
-    #     paginator = self.dynamodb_client.get_paginator("list_tables")
+    #     paginator = self.aws_clients.dynamodb_client.get_paginator("list_tables")
     #     for page in paginator.paginate():
     #         for table_name in page["TableNames"]:
     #             try:
-    #                 contributor_insights = self.dynamodb_client.describe_contributor_insights(
+    #                 contributor_insights = self.aws_clients.dynamodb_client.describe_contributor_insights(
     #                     TableName=table_name)
     #                 status = contributor_insights["ContributorInsightsStatus"]
 
@@ -408,26 +395,25 @@ class Dynamodb:
     #                     f"  Processing DynamoDB Contributor Insights: {table_name}")
 
     #                 attributes = {
-    #                     "id": table_name+"/"+self.account_id,
     #                     "table_name": table_name,
     #                     "contributor_insights_status": status,
     #                 }
 
     #                 self.hcl.process_resource(
     #                     "aws_dynamodb_contributor_insights", table_name.replace("-", "_"), attributes)
-    #             except self.dynamodb_client.exceptions.ResourceNotFoundException:
+    #             except self.aws_clients.dynamodb_client.exceptions.ResourceNotFoundException:
     #                 print(
     #                     f"  No Contributor Insights found for DynamoDB Table: {table_name}")
 
     # def aws_dynamodb_global_table(self):
     #     print("Processing DynamoDB Global Tables...")
 
-    #     global_tables = self.dynamodb_client.list_global_tables()[
+    #     global_tables = self.aws_clients.dynamodb_client.list_global_tables()[
     #         "GlobalTables"]
     #     for global_table in global_tables:
     #         global_table_name = global_table["GlobalTableName"]
 
-    #         global_table_description = self.dynamodb_client.describe_global_table(
+    #         global_table_description = self.aws_clients.dynamodb_client.describe_global_table(
     #             GlobalTableName=global_table_name)["GlobalTableDescription"]
 
     #         print(
@@ -445,10 +431,10 @@ class Dynamodb:
     # def aws_dynamodb_kinesis_streaming_destination(self):
     #     print("Processing DynamoDB Kinesis Streaming Destinations...")
 
-    #     table_names = self.dynamodb_client.list_tables()["TableNames"]
+    #     table_names = self.aws_clients.dynamodb_client.list_tables()["TableNames"]
     #     for table_name in table_names:
     #         try:
-    #             streaming_destination = self.dynamodb_client.describe_kinesis_streaming_destination(
+    #             streaming_destination = self.aws_clients.dynamodb_client.describe_kinesis_streaming_destination(
     #                 TableName=table_name)
     #             destinations = streaming_destination["KinesisDataStreamDestinations"]
 
@@ -465,17 +451,17 @@ class Dynamodb:
 
     #                 self.hcl.process_resource(
     #                     "aws_dynamodb_kinesis_streaming_destination", table_name.replace("-", "_"), attributes)
-    #         except self.dynamodb_client.exceptions.ResourceNotFoundException:
+    #         except self.aws_clients.dynamodb_client.exceptions.ResourceNotFoundException:
     #             print(
     #                 f"  No Kinesis Streaming Destination found for DynamoDB Table: {table_name}")
 
     # def aws_dynamodb_table_replica(self):
     #     print("Processing DynamoDB Table Replicas...")
 
-    #     paginator = self.dynamodb_client.get_paginator("list_tables")
+    #     paginator = self.aws_clients.dynamodb_client.get_paginator("list_tables")
     #     for page in paginator.paginate():
     #         for table_name in page["TableNames"]:
-    #             table_description = self.dynamodb_client.describe_table(
+    #             table_description = self.aws_clients.dynamodb_client.describe_table(
     #                 TableName=table_name)["Table"]
 
     #             if "Replicas" in table_description:
@@ -495,11 +481,11 @@ class Dynamodb:
     # def aws_dynamodb_tag(self):
     #     print("Processing DynamoDB Tags...")
 
-    #     paginator = self.dynamodb_client.get_paginator("list_tables")
+    #     paginator = self.aws_clients.dynamodb_client.get_paginator("list_tables")
     #     for page in paginator.paginate():
     #         for table_name in page["TableNames"]:
-    #             tags = self.dynamodb_client.list_tags_of_resource(
-    #                 ResourceArn=self.dynamodb_client.describe_table(TableName=table_name)["Table"]["TableArn"])["Tags"]
+    #             tags = self.aws_clients.dynamodb_client.list_tags_of_resource(
+    #                 ResourceArn=self.aws_clients.dynamodb_client.describe_table(TableName=table_name)["Table"]["TableArn"])["Tags"]
 
     #             for tag in tags:
     #                 print(

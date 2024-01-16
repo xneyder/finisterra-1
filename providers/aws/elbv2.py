@@ -7,12 +7,9 @@ from providers.aws.s3 import S3
 
 
 class ELBV2:
-    def __init__(self, elbv2_client, ec2_client, acm_client, s3_client, script_dir, provider_name, schema_data, region, s3Bucket,
-                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id, hcl=None):
-        self.elbv2_client = elbv2_client
-        self.ec2_client = ec2_client
-        self.acm_client = acm_client
-        self.aws_account_id = aws_account_id
+    def __init__(self, aws_clients, script_dir, provider_name, schema_data, region, s3Bucket,
+                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id,hcl = None):
+        self.aws_clients = aws_clients
         self.transform_rules = {}
         self.provider_name = provider_name
         self.script_dir = script_dir
@@ -22,6 +19,7 @@ class ELBV2:
         self.s3Bucket = s3Bucket
         self.dynamoDBTable = dynamoDBTable
         self.state_key = state_key
+        self.aws_account_id = aws_account_id
 
         self.modules = modules
         if not hcl:
@@ -47,9 +45,9 @@ class ELBV2:
 
         self.hcl.functions.update(functions)
 
-        self.security_group_instance = SECURITY_GROUP(ec2_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
-        self.acm_instance = ACM(acm_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
-        self.s3_instance = S3(s3_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
+        self.security_group_instance = SECURITY_GROUP(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
+        self.acm_instance = ACM(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
+        self.s3_instance = S3(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
 
     def init_fields_elbv2(self, attributes):
         self.listeners = {}
@@ -61,7 +59,7 @@ class ELBV2:
         security_group_names = []
 
         for security_group_id in security_group_ids:
-            response = self.ec2_client.describe_security_groups(
+            response = self.aws_clients.ec2_client.describe_security_groups(
                 GroupIds=[security_group_id])
             security_group = response['SecurityGroups'][0]
 
@@ -124,7 +122,7 @@ class ELBV2:
     def get_listener_certificate_elbv2(self, attributes):
         listener_arn = attributes.get('listener_arn')
         # Get the port of the listener
-        response_listener = self.elbv2_client.describe_listeners(
+        response_listener = self.aws_clients.elbv2_client.describe_listeners(
             ListenerArns=[listener_arn]
         )
         listener_port = response_listener['Listeners'][0]['Port']
@@ -132,7 +130,7 @@ class ELBV2:
         certificate_arn = attributes.get('certificate_arn')
         if certificate_arn:
             # Get the domain name for the certificate
-            response = self.acm_client.describe_certificate(
+            response = self.aws_clients.acm_client.describe_certificate(
                 CertificateArn=certificate_arn)
             domain_name = response['Certificate']['DomainName']
 
@@ -147,7 +145,7 @@ class ELBV2:
         listener_arn = attributes.get('listener_arn')
 
         # Get the port of the listener
-        response_listener = self.elbv2_client.describe_listeners(
+        response_listener = self.aws_clients.elbv2_client.describe_listeners(
             ListenerArns=[listener_arn]
         )
         listener_port = response_listener['Listeners'][0]['Port']
@@ -155,7 +153,7 @@ class ELBV2:
         domain_name = ""
         if attributes.get('certificate_arn'):
             # Use the ACM client
-            response = self.acm_client.describe_certificate(
+            response = self.aws_clients.acm_client.describe_certificate(
                 CertificateArn=attributes.get('certificate_arn')
             )
             domain_name = response['Certificate']['DomainName']
@@ -167,7 +165,7 @@ class ELBV2:
         subnet_ids = attributes.get(arg)
         subnets_info = []
         for subnet_id in subnet_ids:
-            response = self.ec2_client.describe_subnets(SubnetIds=[subnet_id])
+            response = self.aws_clients.ec2_client.describe_subnets(SubnetIds=[subnet_id])
 
             # Check if 'Subnets' key exists and it's not empty
             if not response or 'Subnets' not in response or not response['Subnets']:
@@ -201,7 +199,7 @@ class ELBV2:
 
     def get_vpc_name_elbv2(self, attributes, arg):
         vpc_id = attributes.get(arg)
-        response = self.ec2_client.describe_vpcs(VpcIds=[vpc_id])
+        response = self.aws_clients.ec2_client.describe_vpcs(VpcIds=[vpc_id])
 
         if not response or 'Vpcs' not in response or not response['Vpcs']:
             # Handle this case as required, for example:
@@ -251,7 +249,7 @@ class ELBV2:
                 print(f"  Skipping Elbv2: {selected_lb_arn} already processed")
                 return        
 
-        load_balancers = self.elbv2_client.describe_load_balancers()[
+        load_balancers = self.aws_clients.elbv2_client.describe_load_balancers()[
             "LoadBalancers"]
 
         load_balancer_arns = []
@@ -263,7 +261,7 @@ class ELBV2:
                 continue
 
             # Check tags of the load balancer
-            tags_response = self.elbv2_client.describe_tags(
+            tags_response = self.aws_clients.elbv2_client.describe_tags(
                 ResourceArns=[lb_arn])
             tags = tags_response["TagDescriptions"][0]["Tags"]
 
@@ -316,7 +314,7 @@ class ELBV2:
                 self.security_group_instance.aws_security_group(sg, ftstack)
                 # self.aws_security_group(security_group_ids)
 
-            access_logs = self.elbv2_client.describe_load_balancer_attributes(
+            access_logs = self.aws_clients.elbv2_client.describe_load_balancer_attributes(
                 LoadBalancerArn=lb_arn
             )['Attributes']
 
@@ -342,7 +340,7 @@ class ELBV2:
         listener_arns = []
 
         for lb_arn in load_balancer_arns:
-            paginator = self.elbv2_client.get_paginator("describe_listeners")
+            paginator = self.aws_clients.elbv2_client.get_paginator("describe_listeners")
             for page in paginator.paginate(LoadBalancerArn=lb_arn):
                 for listener in page["Listeners"]:
                     # has_target_group = False
@@ -376,7 +374,7 @@ class ELBV2:
         print("Processing Load Balancer Listener Certificates...")
 
         for listener_arn in listener_arns:
-            listener_certificates = self.elbv2_client.describe_listener_certificates(
+            listener_certificates = self.aws_clients.elbv2_client.describe_listener_certificates(
                 ListenerArn=listener_arn)
 
             if "Certificates" in listener_certificates:
@@ -410,7 +408,7 @@ class ELBV2:
         print("Processing Security Groups...")
 
         # Create a response dictionary to collect responses for all security groups
-        response = self.ec2_client.describe_security_groups(
+        response = self.aws_clients.ec2_client.describe_security_groups(
             GroupIds=security_group_ids
         )
 
@@ -465,21 +463,21 @@ class ELBV2:
     def aws_lb_listener_rule(self):
         print("Processing Load Balancer Listener Rules...")
 
-        load_balancers = self.elbv2_client.describe_load_balancers()[
+        load_balancers = self.aws_clients.elbv2_client.describe_load_balancers()[
             "LoadBalancers"]
 
         for lb in load_balancers:
             lb_arn = lb["LoadBalancerArn"]
             print(f"Processing Load Balancer: {lb_arn}")
 
-            listeners = self.elbv2_client.describe_listeners(
+            listeners = self.aws_clients.elbv2_client.describe_listeners(
                 LoadBalancerArn=lb_arn)["Listeners"]
 
             for listener in listeners:
                 listener_arn = listener["ListenerArn"]
                 print(f"  Processing Load Balancer Listener: {listener_arn}")
 
-                rules = self.elbv2_client.describe_rules(
+                rules = self.aws_clients.elbv2_client.describe_rules(
                     ListenerArn=listener_arn)["Rules"]
 
                 for rule in rules:
@@ -501,7 +499,7 @@ class ELBV2:
     def aws_lb_target_group(self):
         print("Processing Load Balancer Target Groups...")
 
-        paginator = self.elbv2_client.get_paginator("describe_target_groups")
+        paginator = self.aws_clients.elbv2_client.get_paginator("describe_target_groups")
         page_iterator = paginator.paginate()
 
         for page in page_iterator:
@@ -522,7 +520,7 @@ class ELBV2:
     def aws_lb_target_group_attachment(self):
         print("Processing Load Balancer Target Group Attachments...")
 
-        target_groups = self.elbv2_client.describe_target_groups()[
+        target_groups = self.aws_clients.elbv2_client.describe_target_groups()[
             "TargetGroups"]
 
         for target_group in target_groups:
@@ -530,7 +528,7 @@ class ELBV2:
             print(
                 f"  Processing Load Balancer Target Group Attachments for Target Group ARN: {target_group_arn}")
 
-            health_descriptions = self.elbv2_client.describe_target_health(
+            health_descriptions = self.aws_clients.elbv2_client.describe_target_health(
                 TargetGroupArn=target_group_arn)["TargetHealthDescriptions"]
 
             for health_description in health_descriptions:

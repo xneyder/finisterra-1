@@ -6,11 +6,9 @@ from providers.aws.kms import KMS
 from providers.aws.iam_role import IAM_ROLE
 
 class EC2:
-    def __init__(self, ec2_client, autoscaling_client,  iam_client, kms_client, script_dir, provider_name, schema_data, region, s3Bucket,
-                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id, hcl = None):
-        self.ec2_client = ec2_client
-        self.iam_client = iam_client
-        self.autoscaling_client = autoscaling_client
+    def __init__(self, aws_clients, script_dir, provider_name, schema_data, region, s3Bucket,
+                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id,hcl = None):
+        self.aws_clients = aws_clients
         self.transform_rules = {}
         self.provider_name = provider_name
         self.script_dir = script_dir
@@ -18,7 +16,6 @@ class EC2:
         self.region = region
         self.workspace_id = workspace_id
         self.modules = modules
-        self.kms_client = kms_client
         if not hcl:
             self.hcl = HCL(self.schema_data, self.provider_name,
                        self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules)
@@ -45,9 +42,9 @@ class EC2:
         self.resource_list = {}
         self.aws_account_id = aws_account_id
         self.additional_ips_count = 0
-        self.security_group_instance = SECURITY_GROUP(ec2_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
-        self.kms_instance = KMS(kms_client, iam_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
-        self.iam_role_instance = IAM_ROLE(iam_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)        
+        self.security_group_instance = SECURITY_GROUP(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
+        self.kms_instance = KMS(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
+        self.iam_role_instance = IAM_ROLE(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)        
 
     def ec2_init_fields(self, attributes):
         self.additional_ips_count = 0
@@ -74,7 +71,7 @@ class EC2:
     
     def get_user_data(self, attributes, arg):
         instance_id = attributes.get(arg)
-        response = self.ec2_client.describe_instance_attribute(
+        response = self.aws_clients.ec2_client.describe_instance_attribute(
             InstanceId=instance_id, 
             Attribute='userData'
         )
@@ -105,7 +102,7 @@ class EC2:
     def get_subnet_name_ec2(self, attributes, arg):
         subnet_id = attributes.get('subnet_id')
         subnet_name = ""
-        response = self.ec2_client.describe_subnets(SubnetIds=[subnet_id])
+        response = self.aws_clients.ec2_client.describe_subnets(SubnetIds=[subnet_id])
 
         # Check if 'Subnets' key exists and it's not empty
         if not response or 'Subnets' not in response or not response['Subnets']:
@@ -138,7 +135,7 @@ class EC2:
         if not volume_id:
             return None
 
-        response = self.ec2_client.describe_volumes(VolumeIds=[volume_id])
+        response = self.aws_clients.ec2_client.describe_volumes(VolumeIds=[volume_id])
 
         # Check if the volume exists and has attachments
         if response["Volumes"] and response["Volumes"][0]["Attachments"]:
@@ -182,7 +179,7 @@ class EC2:
     
     # def get_kms_alias(self, kms_key_id):
     #     value = ""
-    #     response = self.kms_client.list_aliases()
+    #     response = self.aws_clients.kms_client.list_aliases()
     #     if 'Aliases' in response and response['Aliases']:
     #         for alias in response['Aliases']:
     #             if 'TargetKeyId' in alias:
@@ -193,10 +190,10 @@ class EC2:
     
     def get_kms_alias(self, kms_key_id):
         value = ""
-        response = self.kms_client.list_aliases()
+        response = self.aws_clients.kms_client.list_aliases()
         aliases = response.get('Aliases', [])
         while 'NextMarker' in response:
-            response = self.kms_client.list_aliases(Marker=response['NextMarker'])
+            response = self.aws_clients.kms_client.list_aliases(Marker=response['NextMarker'])
             aliases.extend(response.get('Aliases', []))
         for alias in aliases:
             if 'TargetKeyId' in alias and alias['TargetKeyId'] == kms_key_id.split('/')[-1]:
@@ -236,7 +233,7 @@ class EC2:
     def aws_ami(self):
         print("Processing AMIs...")
 
-        images = self.ec2_client.describe_images(Owners=["self"])["Images"]
+        images = self.aws_clients.ec2_client.describe_images(Owners=["self"])["Images"]
 
         for image in images:
             image_id = image["ImageId"]
@@ -256,12 +253,12 @@ class EC2:
     def aws_ami_launch_permission(self):
         print("Processing AMI Launch Permissions...")
 
-        images = self.ec2_client.describe_images(Owners=["self"])["Images"]
+        images = self.aws_clients.ec2_client.describe_images(Owners=["self"])["Images"]
 
         for image in images:
             image_id = image["ImageId"]
 
-            launch_permissions = self.ec2_client.describe_image_attribute(
+            launch_permissions = self.aws_clients.ec2_client.describe_image_attribute(
                 ImageId=image_id, Attribute="launchPermission")["LaunchPermissions"]
 
             for permission in launch_permissions:
@@ -282,7 +279,7 @@ class EC2:
     def aws_ec2_capacity_reservation(self):
         print("Processing EC2 Capacity Reservations...")
 
-        capacity_reservations = self.ec2_client.describe_capacity_reservations()[
+        capacity_reservations = self.aws_clients.ec2_client.describe_capacity_reservations()[
             "CapacityReservations"]
 
         for reservation in capacity_reservations:
@@ -307,7 +304,7 @@ class EC2:
     def aws_ec2_host(self):
         print("Processing EC2 Dedicated Hosts...")
 
-        hosts = self.ec2_client.describe_hosts()["Hosts"]
+        hosts = self.aws_clients.ec2_client.describe_hosts()["Hosts"]
 
         for host in hosts:
             host_id = host["HostId"]
@@ -330,7 +327,7 @@ class EC2:
     # def aws_ec2_serial_console_access(self):
     #     print("Processing EC2 Serial Console Access...")
 
-    #     serial_console_access = self.ec2_client.describe_serial_console_access()
+    #     serial_console_access = self.aws_clients.ec2_client.describe_serial_console_access()
     #     status = serial_console_access["SerialConsoleAccess"]["Status"]
 
     #     attributes = {
@@ -344,7 +341,7 @@ class EC2:
     def aws_ec2_tag(self):
         print("Processing EC2 Tags...")
 
-        resources = self.ec2_client.describe_tags()
+        resources = self.aws_clients.ec2_client.describe_tags()
         for resource in resources["Tags"]:
             resource_id = resource["ResourceId"]
             resource_type = resource["ResourceType"]
@@ -366,7 +363,7 @@ class EC2:
     def aws_eip(self, allocation_id):
         print(f"Processing Elastic IP: {allocation_id}")
 
-        eips = self.ec2_client.describe_addresses(
+        eips = self.aws_clients.ec2_client.describe_addresses(
             AllocationIds=[allocation_id])
         if not eips["Addresses"]:
             print(f"  No Elastic IP found for Allocation ID: {allocation_id}")
@@ -394,7 +391,7 @@ class EC2:
     def aws_eip_association(self):
         print("Processing Elastic IP Associations...")
 
-        eips = self.ec2_client.describe_addresses()
+        eips = self.aws_clients.ec2_client.describe_addresses()
         for eip in eips["Addresses"]:
             if "AssociationId" in eip:
                 association_id = eip["AssociationId"]
@@ -418,7 +415,7 @@ class EC2:
                     "aws_eip_association", association_id.replace("-", "_"), attributes)
 
     def is_managed_by_auto_scaling_group(self, instance_id):
-        response = self.autoscaling_client.describe_auto_scaling_instances(InstanceIds=[
+        response = self.aws_clients.autoscaling_client.describe_auto_scaling_instances(InstanceIds=[
                                                                            instance_id])
         return bool(response["AutoScalingInstances"])
 
@@ -426,7 +423,7 @@ class EC2:
         resource_type = "aws_instance"
         print("Processing EC2 Instances...")
 
-        instances = self.ec2_client.describe_instances()
+        instances = self.aws_clients.ec2_client.describe_instances()
         for reservation in instances["Reservations"]:
             for instance in reservation["Instances"]:
                 instance_id = instance["InstanceId"]
@@ -453,7 +450,7 @@ class EC2:
 
                 ftstack = "ec2"
                 try:
-                    tags_response = self.ec2_client.describe_tags(
+                    tags_response = self.aws_clients.ec2_client.describe_tags(
                         Filters=[{'Name': 'resource-id', 'Values': [instance_id]}]
                     )
                     tags = tags_response.get('Tags', [])
@@ -480,7 +477,7 @@ class EC2:
                     print("RootDeviceName: ", instance["RootDeviceName"])
                     
                     # Get the KMS key for the root device
-                    response = self.ec2_client.describe_volumes(Filters=[{
+                    response = self.aws_clients.ec2_client.describe_volumes(Filters=[{
                         'Name': 'attachment.instance-id',
                         'Values': [instance_id]
                     }])
@@ -502,7 +499,7 @@ class EC2:
                 self.hcl.add_stack(resource_type, id, ftstack)
 
                 # Process all EIPs associated with the instance
-                eips_associated = self.ec2_client.describe_addresses(Filters=[{
+                eips_associated = self.aws_clients.ec2_client.describe_addresses(Filters=[{
                     'Name': 'instance-id',
                     'Values': [instance_id]
                 }])
@@ -518,7 +515,7 @@ class EC2:
                     self.aws_volume_attachment(instance_id, block_device)
 
                     #Get the KMS key for the volume
-                    response = self.ec2_client.describe_volumes(VolumeIds=[block_device["Ebs"]["VolumeId"]])
+                    response = self.aws_clients.ec2_client.describe_volumes(VolumeIds=[block_device["Ebs"]["VolumeId"]])
                     for volume in response['Volumes']:
                         if 'KmsKeyId' in volume:
                             keyArn = volume['KmsKeyId']
@@ -541,7 +538,7 @@ class EC2:
         print(f"Processing IAM Instance Profile: {iam_instance_profile_id}")
 
         # Fetch the details of IAM Instance Profile using the IAM client
-        response = self.iam_client.get_instance_profile(
+        response = self.aws_clients.iam_client.get_instance_profile(
             InstanceProfileName=iam_instance_profile_id)
 
         profile = response["InstanceProfile"]
@@ -580,7 +577,7 @@ class EC2:
         # the role name is the last part of the ARN
         role_name = role_arn.split('/')[-1]
 
-        role = self.iam_client.get_role(RoleName=role_name)
+        role = self.aws_clients.iam_client.get_role(RoleName=role_name)
         print(f"Processing IAM Role: {role_name}")
 
         attributes = {
@@ -592,7 +589,7 @@ class EC2:
     def aws_ebs_volume(self, volume_id):
         print(f"Processing EBS Volume: {volume_id}")
 
-        volume = self.ec2_client.describe_volumes(VolumeIds=[volume_id])
+        volume = self.aws_clients.ec2_client.describe_volumes(VolumeIds=[volume_id])
 
         if not volume["Volumes"]:
             print(f"  No EBS Volume found for Volume ID: {volume_id}")
@@ -636,7 +633,7 @@ class EC2:
     def aws_network_interface(self, network_interface_id):
         print(f"Processing Network Interface: {network_interface_id}")
 
-        network_interface = self.ec2_client.describe_network_interfaces(
+        network_interface = self.aws_clients.ec2_client.describe_network_interfaces(
             NetworkInterfaceIds=[network_interface_id])
 
         if not network_interface["NetworkInterfaces"]:
@@ -692,7 +689,7 @@ class EC2:
     def aws_key_pair(self):
         print("Processing EC2 Key Pairs...")
 
-        key_pairs = self.ec2_client.describe_key_pairs(
+        key_pairs = self.aws_clients.ec2_client.describe_key_pairs(
             IncludePublicKey=True)["KeyPairs"]
         for key_pair in key_pairs:
             key_pair_name = key_pair["KeyName"]
@@ -710,7 +707,7 @@ class EC2:
     def aws_launch_template(self):
         print("Processing EC2 Launch Templates...")
 
-        launch_templates = self.ec2_client.describe_launch_templates()[
+        launch_templates = self.aws_clients.ec2_client.describe_launch_templates()[
             "LaunchTemplates"]
         for launch_template in launch_templates:
             launch_template_id = launch_template["LaunchTemplateId"]
@@ -729,7 +726,7 @@ class EC2:
     def aws_placement_group(self):
         print("Processing EC2 Placement Groups...")
 
-        placement_groups = self.ec2_client.describe_placement_groups()[
+        placement_groups = self.aws_clients.ec2_client.describe_placement_groups()[
             "PlacementGroups"]
         for placement_group in placement_groups:
             placement_group_name = placement_group["GroupName"]
@@ -747,7 +744,7 @@ class EC2:
         print("Processing EC2 Spot Datafeed Subscriptions...")
 
         try:
-            spot_datafeed_subscription = self.ec2_client.describe_spot_datafeed_subscription()
+            spot_datafeed_subscription = self.aws_clients.ec2_client.describe_spot_datafeed_subscription()
             subscription = spot_datafeed_subscription["SpotDatafeedSubscription"]
 
             bucket_id = subscription["Bucket"]
@@ -760,7 +757,7 @@ class EC2:
             }
             self.hcl.process_resource(
                 "aws_spot_datafeed_subscription", bucket_id.replace("-", "_"), attributes)
-        except self.ec2_client.exceptions.ClientError as e:
+        except self.aws_clients.ec2_client.exceptions.ClientError as e:
             if e.response["Error"]["Code"] == "InvalidSpotDatafeed.NotFound":
                 print("  No Spot Datafeed Subscriptions found")
             else:
@@ -769,7 +766,7 @@ class EC2:
     def aws_spot_fleet_request(self):
         print("Processing EC2 Spot Fleet Requests...")
 
-        spot_fleet_requests = self.ec2_client.describe_spot_fleet_requests()[
+        spot_fleet_requests = self.aws_clients.ec2_client.describe_spot_fleet_requests()[
             "SpotFleetRequestConfigs"]
         for spot_fleet_request in spot_fleet_requests:
             request_id = spot_fleet_request["SpotFleetRequestId"]
@@ -787,7 +784,7 @@ class EC2:
     def aws_spot_instance_request(self):
         print("Processing EC2 Spot Instance Requests...")
 
-        spot_instance_requests = self.ec2_client.describe_spot_instance_requests()[
+        spot_instance_requests = self.aws_clients.ec2_client.describe_spot_instance_requests()[
             "SpotInstanceRequests"]
         for spot_instance_request in spot_instance_requests:
             request_id = spot_instance_request["SpotInstanceRequestId"]

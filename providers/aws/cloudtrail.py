@@ -4,9 +4,9 @@ from botocore.exceptions import ClientError
 
 
 class Cloudtrail:
-    def __init__(self, cloudtrail_client, script_dir, provider_name, schema_data, region, s3Bucket,
-                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id):
-        self.cloudtrail_client = cloudtrail_client
+    def __init__(self, aws_clients, script_dir, provider_name, schema_data, region, s3Bucket,
+                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id,hcl = None):
+        self.aws_clients = aws_clients
         self.transform_rules = {}
         self.provider_name = provider_name
         self.script_dir = script_dir
@@ -31,7 +31,7 @@ class Cloudtrail:
     def aws_cloudtrail(self):
         print("Processing AWS CloudTrail...")
 
-        trails = self.cloudtrail_client.describe_trails()["trailList"]
+        trails = self.aws_clients.cloudtrail_client.describe_trails()["trailList"]
         for trail in trails:
             trail_arn = trail["TrailARN"]
             trail_name = trail["Name"]
@@ -60,14 +60,14 @@ class Cloudtrail:
     def aws_cloudtrail_event_data_store(self):
         print("Processing AWS CloudTrail Event Data Store...")
 
-        trails = self.cloudtrail_client.describe_trails()["trailList"]
+        trails = self.aws_clients.cloudtrail_client.describe_trails()["trailList"]
 
         for trail in trails:
             trail_name = trail["Name"]
             trail_arn = trail["TrailARN"]
 
             try:
-                response = self.cloudtrail_client.get_event_selectors(
+                response = self.aws_clients.cloudtrail_client.get_event_selectors(
                     TrailName=trail_name)
                 event_selectors = response["EventSelectors"]
 

@@ -3,11 +3,9 @@ from utils.hcl import HCL
 
 
 class DocDb:
-    def __init__(self, docdb_client, ec2_client, kms_client, script_dir, provider_name, schema_data, region, s3Bucket,
-                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id):
-        self.docdb_client = docdb_client
-        self.ec2_client = ec2_client
-        self.kms_client = kms_client
+    def __init__(self, aws_clients, script_dir, provider_name, schema_data, region, s3Bucket,
+                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id,hcl = None):
+        self.aws_clients = aws_clients
         self.transform_rules = {}
         self.provider_name = provider_name
         self.script_dir = script_dir
@@ -56,7 +54,7 @@ class DocDb:
         subnet_ids = attributes.get(arg)
         subnet_names = []
         for subnet_id in subnet_ids:
-            response = self.ec2_client.describe_subnets(SubnetIds=[subnet_id])
+            response = self.aws_clients.ec2_client.describe_subnets(SubnetIds=[subnet_id])
 
             # Depending on how your subnets are tagged, you may need to adjust this line.
             # This assumes you have a tag 'Name' for your subnet names.
@@ -80,7 +78,7 @@ class DocDb:
 
     def get_vpc_name(self, attributes, arg):
         vpc_id = attributes.get(arg)
-        response = self.ec2_client.describe_vpcs(VpcIds=[vpc_id])
+        response = self.aws_clients.ec2_client.describe_vpcs(VpcIds=[vpc_id])
         vpc_name = next(
             (tag['Value'] for tag in response['Vpcs'][0]['Tags'] if tag['Key'] == 'Name'), None)
         return vpc_name
@@ -133,7 +131,7 @@ class DocDb:
         resource_type = "aws_docdb_cluster"
         print("Processing DocumentDB Clusters...")
 
-        paginator = self.docdb_client.get_paginator("describe_db_clusters")
+        paginator = self.aws_clients.docdb_client.get_paginator("describe_db_clusters")
         for page in paginator.paginate():
             for db_cluster in page["DBClusters"]:
                 if db_cluster["Engine"] == "docdb":
@@ -143,7 +141,7 @@ class DocDb:
 
                     ftstack = "docdb"
                     try:
-                        response = self.docdb_client.list_tags_for_resource(ResourceName=db_cluster["DBClusterArn"])
+                        response = self.aws_clients.docdb_client.list_tags_for_resource(ResourceName=db_cluster["DBClusterArn"])
                         tags = response.get('TagList', [])
                         for tag in tags:
                             if tag['Key'] == 'ftstack':
@@ -174,7 +172,7 @@ class DocDb:
     def aws_docdb_cluster_instance(self, db_cluster):
         print("Processing DocumentDB Cluster Instances...")
 
-        paginator = self.docdb_client.get_paginator("describe_db_instances")
+        paginator = self.aws_clients.docdb_client.get_paginator("describe_db_instances")
         for page in paginator.paginate():
             for db_instance in page["DBInstances"]:
                 if db_instance["Engine"] == "docdb" and db_instance["DBClusterIdentifier"] == db_cluster["DBClusterIdentifier"]:
@@ -210,7 +208,7 @@ class DocDb:
     def aws_docdb_cluster_parameter_group(self, parameter_group_name):
         print("Processing DocumentDB Cluster Parameter Groups...")
 
-        paginator = self.docdb_client.get_paginator(
+        paginator = self.aws_clients.docdb_client.get_paginator(
             "describe_db_cluster_parameter_groups")
         for page in paginator.paginate():
             for parameter_group in page["DBClusterParameterGroups"]:
@@ -232,7 +230,7 @@ class DocDb:
     def aws_docdb_subnet_group(self, subnet_group_name):
         print("Processing DocumentDB Subnet Groups...")
 
-        paginator = self.docdb_client.get_paginator(
+        paginator = self.aws_clients.docdb_client.get_paginator(
             "describe_db_subnet_groups")
         for page in paginator.paginate():
             for subnet_group in page["DBSubnetGroups"]:
@@ -256,7 +254,7 @@ class DocDb:
         print("Processing Security Groups...")
 
         # Create a response dictionary to collect responses for all security groups
-        response = self.ec2_client.describe_security_groups(
+        response = self.aws_clients.ec2_client.describe_security_groups(
             GroupIds=security_group_ids
         )
 
@@ -311,7 +309,7 @@ class DocDb:
     def aws_docdb_cluster_snapshot(self):
         print("Processing DocumentDB Cluster Snapshots...")
 
-        paginator = self.docdb_client.get_paginator(
+        paginator = self.aws_clients.docdb_client.get_paginator(
             "describe_db_cluster_snapshots")
         for page in paginator.paginate():
             for snapshot in page["DBClusterSnapshots"]:
@@ -336,7 +334,7 @@ class DocDb:
     def aws_docdb_event_subscription(self):
         print("Processing DocumentDB Event Subscriptions...")
 
-        paginator = self.docdb_client.get_paginator(
+        paginator = self.aws_clients.docdb_client.get_paginator(
             "describe_event_subscriptions")
         for page in paginator.paginate():
             for subscription in page["EventSubscriptionsList"]:
@@ -357,7 +355,7 @@ class DocDb:
     def aws_docdb_global_cluster(self):
         print("Processing DocumentDB Global Clusters...")
 
-        paginator = self.docdb_client.get_paginator("describe_db_clusters")
+        paginator = self.aws_clients.docdb_client.get_paginator("describe_db_clusters")
         for page in paginator.paginate():
             for cluster in page["DBClusters"]:
                 if "GlobalClusterIdentifier" in cluster and cluster["Engine"] == "docdb":
@@ -377,7 +375,7 @@ class DocDb:
 
     def aws_kms_key(self, key_id):
         print(f"  Processing KMS Key: {key_id}")
-        key_metadata = self.kms_client.describe_key(KeyId=key_id)[
+        key_metadata = self.aws_clients.kms_client.describe_key(KeyId=key_id)[
             "KeyMetadata"]
 
         # Skip this key if it is not customer-managed
@@ -399,7 +397,7 @@ class DocDb:
 
     def aws_kms_key_policy(self, key_id):
         print(f"  Processing KMS Key Policy for Key: {key_id}")
-        policy = self.kms_client.get_key_policy(
+        policy = self.aws_clients.kms_client.get_key_policy(
             KeyId=key_id, PolicyName="default")["Policy"]
 
         attributes = {

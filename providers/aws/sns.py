@@ -3,16 +3,10 @@ from utils.hcl import HCL
 
 
 class SNS:
-    def __init__(self, sns_client, script_dir, provider_name, schema_data, region, s3Bucket,
-                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id):
-        self.sns_client = sns_client
+    def __init__(self, aws_clients, script_dir, provider_name, schema_data, region, s3Bucket,
+                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id,hcl = None):
+        self.aws_clients = aws_clients
         self.transform_rules = {
-            "aws_sns_topic_policy": {
-                "hcl_json_multiline": {"policy": True}
-            },
-            "aws_sns_topic_subscription": {
-                "hcl_json_multiline": {"filter_policy": True}
-            },
         }
         self.provider_name = provider_name
         self.script_dir = script_dir
@@ -70,7 +64,7 @@ class SNS:
     def aws_sns_platform_application(self):
         print("Processing SNS Platform Applications...")
 
-        paginator = self.sns_client.get_paginator("list_platform_applications")
+        paginator = self.aws_clients.sns_client.get_paginator("list_platform_applications")
         for page in paginator.paginate():
             for platform_application in page.get("PlatformApplications", []):
                 arn = platform_application["PlatformApplicationArn"]
@@ -88,7 +82,7 @@ class SNS:
         print("Processing SNS SMS Preferences...")
 
         try:
-            preferences = self.sns_client.get_sms_attributes()["attributes"]
+            preferences = self.aws_clients.sns_client.get_sms_attributes()["attributes"]
             attributes = {key: value for key, value in preferences.items()}
 
             self.hcl.process_resource(
@@ -100,7 +94,7 @@ class SNS:
         resource_type = "aws_sns_topic"
         print("Processing SNS Topics...")
 
-        paginator = self.sns_client.get_paginator("list_topics")
+        paginator = self.aws_clients.sns_client.get_paginator("list_topics")
         for page in paginator.paginate():
             for topic in page.get("Topics", []):
                 arn = topic["TopicArn"]
@@ -113,7 +107,7 @@ class SNS:
 
                 ftstack = "sns"
                 try:
-                    tags_response = self.sns_client.list_tags_for_resource(ResourceArn=arn)
+                    tags_response = self.aws_clients.sns_client.list_tags_for_resource(ResourceArn=arn)
                     tags = tags_response.get('Tags', [])
                     for tag in tags:
                         if tag['Key'] == 'ftstack':
@@ -142,7 +136,7 @@ class SNS:
         name = arn.split(":")[-1]
 
         try:
-            policy = self.sns_client.get_topic_attributes(
+            policy = self.aws_clients.sns_client.get_topic_attributes(
                 TopicArn=arn)["Attributes"].get("Policy")
             if policy:
                 attributes = {
@@ -161,7 +155,7 @@ class SNS:
         name = arn.split(":")[-1]
 
         try:
-            policy = self.sns_client.get_topic_attributes(
+            policy = self.aws_clients.sns_client.get_topic_attributes(
                 TopicArn=arn)["Attributes"].get("DataProtectionPolicy")
             if policy:
                 attributes = {
@@ -178,7 +172,7 @@ class SNS:
     def aws_sns_topic_subscription(self, topic_arn):
         print("Processing SNS Topic Subscriptions...")
 
-        paginator = self.sns_client.get_paginator("list_subscriptions")
+        paginator = self.aws_clients.sns_client.get_paginator("list_subscriptions")
         for page in paginator.paginate():
             for subscription in page.get("Subscriptions", []):
                 # Process only subscriptions for the given topic ARN

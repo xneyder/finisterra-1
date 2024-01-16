@@ -3,9 +3,9 @@ from utils.hcl import HCL
 
 
 class CognitoIdentity:
-    def __init__(self, cognito_identity_client, script_dir, provider_name, schema_data, region, s3Bucket,
-                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id):
-        self.cognito_identity_client = cognito_identity_client
+    def __init__(self, aws_clients, script_dir, provider_name, schema_data, region, s3Bucket,
+                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id,hcl = None):
+        self.aws_clients = aws_clients
         self.transform_rules = {}
         self.provider_name = provider_name
         self.script_dir = script_dir
@@ -32,12 +32,12 @@ class CognitoIdentity:
     def aws_cognito_identity_pool(self):
         print("Processing Cognito Identity Pools...")
 
-        paginator = self.cognito_identity_client.get_paginator(
+        paginator = self.aws_clients.cognito_identity_client.get_paginator(
             "list_identity_pools")
         for page in paginator.paginate(MaxResults=60):
             for pool in page["IdentityPools"]:
                 pool_id = pool["IdentityPoolId"]
-                identity_pool = self.cognito_identity_client.describe_identity_pool(
+                identity_pool = self.aws_clients.cognito_identity_client.describe_identity_pool(
                     IdentityPoolId=pool_id)["IdentityPool"]
 
                 print(f"  Processing Cognito Identity Pool: {pool_id}")
@@ -53,15 +53,15 @@ class CognitoIdentity:
     def aws_cognito_identity_pool_provider_principal_tag(self):
         print("Processing Cognito Identity Pool Provider Principal Tags...")
 
-        paginator = self.cognito_identity_client.get_paginator(
+        paginator = self.aws_clients.cognito_identity_client.get_paginator(
             "list_identity_pools")
         for page in paginator.paginate(MaxResults=60):
             for pool in page["IdentityPools"]:
                 pool_id = pool["IdentityPoolId"]
-                pool_details = self.cognito_identity_client.describe_identity_pool(
+                pool_details = self.aws_clients.cognito_identity_client.describe_identity_pool(
                     IdentityPoolId=pool_id)
                 identity_pool_arn = pool_details["IdentityPoolArn"]
-                tags = self.cognito_identity_client.list_tags_for_resource(
+                tags = self.aws_clients.cognito_identity_client.list_tags_for_resource(
                     ResourceArn=identity_pool_arn)["Tags"]
 
                 if tags:
@@ -81,12 +81,12 @@ class CognitoIdentity:
     def aws_cognito_identity_pool_roles_attachment(self):
         print("Processing Cognito Identity Pool Roles Attachments...")
 
-        paginator = self.cognito_identity_client.get_paginator(
+        paginator = self.aws_clients.cognito_identity_client.get_paginator(
             "list_identity_pools")
         for page in paginator.paginate(MaxResults=60):
             for pool in page["IdentityPools"]:
                 pool_id = pool["IdentityPoolId"]
-                identity_pool = self.cognito_identity_client.describe_identity_pool(
+                identity_pool = self.aws_clients.cognito_identity_client.describe_identity_pool(
                     IdentityPoolId=pool_id)["IdentityPool"]
 
                 if "Roles" in identity_pool:

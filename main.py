@@ -20,10 +20,10 @@ def main(aws_account_id, aws_region, group_code):
     dynamoDBTable = f'ft-{aws_account_id}-{aws_region}-tfstate-lock'
     stateKey = f'finisterra/generated/aws/{aws_account_id}/{aws_region}/{group_code}'
 
-    provider = Aws(script_dir, s3Bucket, dynamoDBTable, stateKey, None, [])
-    provider.aws_account_id = aws_account_id
-    provider.aws_region = aws_region
-    provider.session = boto3.Session()
+    provider = Aws(script_dir, s3Bucket, dynamoDBTable, stateKey, aws_account_id, aws_region)
+    # provider.aws_account_id = aws_account_id
+    # provider.aws_region = aws_region
+    # provider.session = boto3.Session()
 
     if group_code == 'vpc':
         provider.vpc()

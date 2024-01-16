@@ -3,9 +3,9 @@ from utils.hcl import HCL
 
 
 class VpnClient:
-    def __init__(self, ec2_client, script_dir, provider_name, schema_data, region, s3Bucket,
-                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id):
-        self.ec2_client = ec2_client
+    def __init__(self, aws_clients, script_dir, provider_name, schema_data, region, s3Bucket,
+                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id,hcl = None):
+        self.aws_clients = aws_clients
         self.transform_rules = {}
         self.provider_name = provider_name
         self.script_dir = script_dir
@@ -32,11 +32,11 @@ class VpnClient:
     def aws_ec2_client_vpn_authorization_rule(self):
         print("Processing EC2 Client VPN Authorization Rules...")
 
-        response = self.ec2_client.describe_client_vpn_endpoints()
+        response = self.aws_clients.ec2_client.describe_client_vpn_endpoints()
         for endpoint in response["ClientVpnEndpoints"]:
             endpoint_id = endpoint["ClientVpnEndpointId"]
             try:
-                auth_rules_resp = self.ec2_client.describe_client_vpn_authorization_rules(
+                auth_rules_resp = self.aws_clients.ec2_client.describe_client_vpn_authorization_rules(
                     ClientVpnEndpointId=endpoint_id)
                 for rule in auth_rules_resp["AuthorizationRules"]:
                     print(
@@ -58,14 +58,14 @@ class VpnClient:
                     self.hcl.process_resource("aws_ec2_client_vpn_authorization_rule",
                                               f"{endpoint_id}_{rule['DestinationCidr']}_{rule['GroupId']}".replace("-", "_"), attributes)
 
-            except self.ec2_client.exceptions.ClientError as e:
+            except self.aws_clients.ec2_client.exceptions.ClientError as e:
                 print(
                     f"  Error processing EC2 Client VPN Authorization Rule: {str(e)}")
 
     def aws_ec2_client_vpn_endpoint(self):
         print("Processing EC2 Client VPN Endpoints...")
 
-        response = self.ec2_client.describe_client_vpn_endpoints()
+        response = self.aws_clients.ec2_client.describe_client_vpn_endpoints()
         for endpoint in response["ClientVpnEndpoints"]:
             endpoint_id = endpoint["ClientVpnEndpointId"]
             print(f"  Processing EC2 Client VPN Endpoint: {endpoint_id}")
@@ -91,10 +91,10 @@ class VpnClient:
     def aws_ec2_client_vpn_network_association(self):
         print("Processing EC2 Client VPN Network Associations...")
 
-        response = self.ec2_client.describe_client_vpn_endpoints()
+        response = self.aws_clients.ec2_client.describe_client_vpn_endpoints()
         for endpoint in response["ClientVpnEndpoints"]:
             endpoint_id = endpoint["ClientVpnEndpointId"]
-            associations = self.ec2_client.describe_client_vpn_target_networks(
+            associations = self.aws_clients.ec2_client.describe_client_vpn_target_networks(
                 ClientVpnEndpointId=endpoint_id)
             for association in associations["ClientVpnTargetNetworks"]:
                 association_id = association["AssociationId"]
@@ -113,10 +113,10 @@ class VpnClient:
     def aws_ec2_client_vpn_route(self):
         print("Processing EC2 Client VPN Routes...")
 
-        response = self.ec2_client.describe_client_vpn_endpoints()
+        response = self.aws_clients.ec2_client.describe_client_vpn_endpoints()
         for endpoint in response["ClientVpnEndpoints"]:
             endpoint_id = endpoint["ClientVpnEndpointId"]
-            routes = self.ec2_client.describe_client_vpn_routes(
+            routes = self.aws_clients.ec2_client.describe_client_vpn_routes(
                 ClientVpnEndpointId=endpoint_id)
             for route in routes["Routes"]:
                 route_id = f"{endpoint_id},{route['DestinationCidr']},{route['TargetSubnet']}"

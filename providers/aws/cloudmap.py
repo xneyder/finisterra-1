@@ -3,11 +3,9 @@ from utils.hcl import HCL
 
 
 class Cloudmap:
-    def __init__(self, cloudmap_client, route53_client, ec2_client, script_dir, provider_name, schema_data, region, s3Bucket,
-                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id):
-        self.cloudmap_client = cloudmap_client
-        self.route53_client = route53_client
-        self.ec2_client = ec2_client
+    def __init__(self, aws_clients, script_dir, provider_name, schema_data, region, s3Bucket,
+                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id,hcl = None):
+        self.aws_clients = aws_clients
         self.aws_account_id = aws_account_id
         self.transform_rules = {
             "aws_service_discovery_service": {
@@ -35,7 +33,7 @@ class Cloudmap:
 
     def get_vpc_name(self, attributes, arg):
         vpc_id = attributes.get(arg)
-        response = self.ec2_client.describe_vpcs(VpcIds=[vpc_id])
+        response = self.aws_clients.ec2_client.describe_vpcs(VpcIds=[vpc_id])
         vpc_name = next(
             (tag['Value'] for tag in response['Vpcs'][0]['Tags'] if tag['Key'] == 'Name'), None)
         return vpc_name
@@ -76,12 +74,12 @@ class Cloudmap:
     def aws_service_discovery_http_namespace(self):
         print("Processing AWS Service Discovery HTTP Namespaces...")
 
-        paginator = self.cloudmap_client.get_paginator("list_namespaces")
+        paginator = self.aws_clients.cloudmap_client.get_paginator("list_namespaces")
         for page in paginator.paginate():
             for namespace in page["Namespaces"]:
                 if namespace["Type"] == "HTTP":
                     namespace_id = namespace["Id"]
-                    http_namespace = self.cloudmap_client.get_namespace(Id=namespace_id)[
+                    http_namespace = self.aws_clients.cloudmap_client.get_namespace(Id=namespace_id)[
                         "Namespace"]
                     print(
                         f"  Processing AWS Service Discovery HTTP Namespace: {namespace_id}")
@@ -98,11 +96,11 @@ class Cloudmap:
     def aws_service_discovery_instance(self):
         print("Processing AWS Service Discovery Instances...")
 
-        paginator = self.cloudmap_client.get_paginator("list_services")
+        paginator = self.aws_clients.cloudmap_client.get_paginator("list_services")
         for page in paginator.paginate():
             for service in page["Services"]:
                 service_id = service["Id"]
-                instance_paginator = self.cloudmap_client.get_paginator(
+                instance_paginator = self.aws_clients.cloudmap_client.get_paginator(
                     "list_instances")
                 for instance_page in instance_paginator.paginate(ServiceId=service_id):
                     for instance in instance_page["Instances"]:
@@ -126,26 +124,26 @@ class Cloudmap:
         resource_type = "aws_service_discovery_private_dns_namespace"
         print("Processing AWS Service Discovery Private DNS Namespaces...")
 
-        paginator = self.cloudmap_client.get_paginator("list_namespaces")
+        paginator = self.aws_clients.cloudmap_client.get_paginator("list_namespaces")
         for page in paginator.paginate():
             for namespace in page["Namespaces"]:
                 if namespace["Type"] == "DNS_PRIVATE":
                     namespace_id = namespace["Id"]
-                    private_dns_namespace = self.cloudmap_client.get_namespace(Id=namespace_id)["Namespace"]
+                    private_dns_namespace = self.aws_clients.cloudmap_client.get_namespace(Id=namespace_id)["Namespace"]
                     print(f"  Processing AWS Service Discovery Private DNS Namespace: {namespace_id}")
 
                     # Get the hosted zone ID of the namespace
                     hosted_zone_id = private_dns_namespace["Properties"]["DnsProperties"]["HostedZoneId"]
 
                     # Get the VPC ID from the hosted zone
-                    hosted_zone = self.route53_client.get_hosted_zone(Id=hosted_zone_id)
+                    hosted_zone = self.aws_clients.route53_client.get_hosted_zone(Id=hosted_zone_id)
                     vpc_id = hosted_zone["VPCs"][0]["VPCId"]
 
                     id = namespace_id
 
                     ftstack = "cloudmap"
                     try:
-                        response = self.cloudmap_client.list_tags_for_resource(ResourceARN=private_dns_namespace["Arn"])
+                        response = self.aws_clients.cloudmap_client.list_tags_for_resource(ResourceARN=private_dns_namespace["Arn"])
                         tags = response.get('Tags', [])
                         for tag in tags:
                             if tag['Key'] == 'ftstack':
@@ -172,12 +170,12 @@ class Cloudmap:
     def aws_service_discovery_public_dns_namespace(self):
         print("Processing AWS Service Discovery Public DNS Namespaces...")
 
-        paginator = self.cloudmap_client.get_paginator("list_namespaces")
+        paginator = self.aws_clients.cloudmap_client.get_paginator("list_namespaces")
         for page in paginator.paginate():
             for namespace in page["Namespaces"]:
                 if namespace["Type"] == "DNS_PUBLIC":
                     namespace_id = namespace["Id"]
-                    public_dns_namespace = self.cloudmap_client.get_namespace(Id=namespace_id)[
+                    public_dns_namespace = self.aws_clients.cloudmap_client.get_namespace(Id=namespace_id)[
                         "Namespace"]
                     print(
                         f"  Processing AWS Service Discovery Public DNS Namespace: {namespace_id}")
@@ -194,7 +192,7 @@ class Cloudmap:
     def aws_service_discovery_service(self, namespace_id):
         print("Processing AWS Service Discovery Services...")
 
-        paginator = self.cloudmap_client.get_paginator("list_services")
+        paginator = self.aws_clients.cloudmap_client.get_paginator("list_services")
         for page in paginator.paginate(
             Filters=[
                 {
@@ -208,7 +206,7 @@ class Cloudmap:
         ):
             for service in page["Services"]:
                 service_id = service["Id"]
-                sd_service = self.cloudmap_client.get_service(Id=service_id)[
+                sd_service = self.aws_clients.cloudmap_client.get_service(Id=service_id)[
                     "Service"]
                 print(
                     f"  Processing AWS Service Discovery Service: {service_id}")

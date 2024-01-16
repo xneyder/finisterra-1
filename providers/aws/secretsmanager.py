@@ -3,9 +3,9 @@ from utils.hcl import HCL
 
 
 class Secretsmanager:
-    def __init__(self, secretsmanager_client, script_dir, provider_name, schema_data, region, s3Bucket,
-                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id):
-        self.secretsmanager_client = secretsmanager_client
+    def __init__(self, aws_clients, script_dir, provider_name, schema_data, region, s3Bucket,
+                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id,hcl = None):
+        self.aws_clients = aws_clients
         self.transform_rules = {}
         self.provider_name = provider_name
         self.script_dir = script_dir
@@ -32,7 +32,7 @@ class Secretsmanager:
     def aws_secretsmanager_secret(self):
         print("Processing Secrets Manager Secrets...")
 
-        paginator = self.secretsmanager_client.get_paginator("list_secrets")
+        paginator = self.aws_clients.secretsmanager_client.get_paginator("list_secrets")
         for page in paginator.paginate():
             for secret in page["SecretList"]:
                 secret_id = secret["ARN"]
@@ -49,14 +49,14 @@ class Secretsmanager:
     def aws_secretsmanager_secret_policy(self):
         print("Processing Secrets Manager Secret Policies...")
 
-        paginator = self.secretsmanager_client.get_paginator("list_secrets")
+        paginator = self.aws_clients.secretsmanager_client.get_paginator("list_secrets")
         for page in paginator.paginate():
             for secret in page["SecretList"]:
                 secret_id = secret["ARN"]
                 secret_name = secret["Name"]
 
                 try:
-                    policy_response = self.secretsmanager_client.get_resource_policy(
+                    policy_response = self.aws_clients.secretsmanager_client.get_resource_policy(
                         SecretId=secret_id)
                     if 'ResourcePolicy' in policy_response:    # Check if 'ResourcePolicy' exists
                         policy = policy_response["ResourcePolicy"]
@@ -72,20 +72,20 @@ class Secretsmanager:
                             "aws_secretsmanager_secret_policy", secret_name.replace("-", "_"), attributes)
                     else:
                         print(f"  No policy found for Secret: {secret_name}")
-                except self.secretsmanager_client.exceptions.ResourceNotFoundException:
+                except self.aws_clients.secretsmanager_client.exceptions.ResourceNotFoundException:
                     print(f"  No policy found for Secret: {secret_name}")
 
     def aws_secretsmanager_secret_rotation(self):
         print("Processing Secrets Manager Secret Rotations...")
 
-        paginator = self.secretsmanager_client.get_paginator("list_secrets")
+        paginator = self.aws_clients.secretsmanager_client.get_paginator("list_secrets")
         for page in paginator.paginate():
             for secret in page["SecretList"]:
                 secret_id = secret["ARN"]
                 secret_name = secret["Name"]
 
                 try:
-                    rotation_response = self.secretsmanager_client.describe_secret(
+                    rotation_response = self.aws_clients.secretsmanager_client.describe_secret(
                         SecretId=secret_id)
                     rotation_enabled = rotation_response["RotationEnabled"]
                     if rotation_enabled:
@@ -111,14 +111,14 @@ class Secretsmanager:
     def aws_secretsmanager_secret_version(self):
         print("Processing Secrets Manager Secret Versions...")
 
-        paginator = self.secretsmanager_client.get_paginator("list_secrets")
+        paginator = self.aws_clients.secretsmanager_client.get_paginator("list_secrets")
         for page in paginator.paginate():
             for secret in page["SecretList"]:
                 secret_id = secret["ARN"]
                 secret_name = secret["Name"]
 
                 # Call list_secret_version_ids directly instead of paginating
-                versions = self.secretsmanager_client.list_secret_version_ids(
+                versions = self.aws_clients.secretsmanager_client.list_secret_version_ids(
                     SecretId=secret_id)
 
                 for version in versions["Versions"]:

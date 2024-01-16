@@ -3,13 +3,10 @@ from utils.hcl import HCL
 from providers.aws.kms import KMS
 
 class Logs:
-    def __init__(self, logs_client, kms_client, iam_client, script_dir, provider_name, schema_data, region, s3Bucket,
-                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id, hcl=None):
-        self.logs_client = logs_client
+    def __init__(self, aws_clients, script_dir, provider_name, schema_data, region, s3Bucket,
+                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id,hcl = None):
+        self.aws_clients = aws_clients
         self.transform_rules = {
-            "aws_cloudwatch_log_resource_policy": {
-                "hcl_json_multiline": {"policy_document": True}
-            },
         }
         self.provider_name = provider_name
         self.aws_account_id = aws_account_id
@@ -27,7 +24,7 @@ class Logs:
         else:
             self.hcl = hcl
         self.resource_list = {}
-        self.kms_instance = KMS(kms_client, iam_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
+        self.kms_instance = KMS(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
 
         functions = {}
         self.hcl.functions.update(functions)
@@ -54,7 +51,7 @@ class Logs:
     def aws_cloudwatch_log_data_protection_policy(self):
         print("Processing CloudWatch Log Data Protection Policies...")
 
-        paginator = self.logs_client.get_paginator(
+        paginator = self.aws_clients.logs_client.get_paginator(
             "describe_resource_policies")
         for page in paginator.paginate():
             for policy in page["resourcePolicies"]:
@@ -74,7 +71,7 @@ class Logs:
     def aws_cloudwatch_log_destination(self):
         print("Processing CloudWatch Log Destinations...")
 
-        paginator = self.logs_client.get_paginator("describe_destinations")
+        paginator = self.aws_clients.logs_client.get_paginator("describe_destinations")
         for page in paginator.paginate():
             for destination in page["destinations"]:
                 destination_name = destination["destinationName"]
@@ -95,13 +92,13 @@ class Logs:
     def aws_cloudwatch_log_destination_policy(self):
         print("Processing CloudWatch Log Destination Policies...")
 
-        paginator = self.logs_client.get_paginator("describe_destinations")
+        paginator = self.aws_clients.logs_client.get_paginator("describe_destinations")
         for page in paginator.paginate():
             for destination in page["destinations"]:
                 destination_name = destination["destinationName"]
 
                 try:
-                    destination_policy = self.logs_client.get_destination_policy(
+                    destination_policy = self.aws_clients.logs_client.get_destination_policy(
                         destinationName=destination_name)
                     print(
                         f"  Processing CloudWatch Log Destination Policy: {destination_name}")
@@ -114,7 +111,7 @@ class Logs:
 
                     self.hcl.process_resource(
                         "aws_cloudwatch_log_destination_policy", destination_name.replace("-", "_"), attributes)
-                except self.logs_client.exceptions.ResourceNotFoundException:
+                except self.aws_clients.logs_client.exceptions.ResourceNotFoundException:
                     print(
                         f"  No Destination Policy found for Log Destination: {destination_name}")
 
@@ -122,7 +119,7 @@ class Logs:
         resource_type = "aws_cloudwatch_log_group"
         print("Processing CloudWatch Log Groups...")
 
-        paginator = self.logs_client.get_paginator("describe_log_groups")
+        paginator = self.aws_clients.logs_client.get_paginator("describe_log_groups")
         for page in paginator.paginate():
             for log_group in page["logGroups"]:
                 log_group_name = log_group["logGroupName"]
@@ -157,12 +154,12 @@ class Logs:
     def aws_cloudwatch_log_metric_filter(self):
         print("Processing CloudWatch Log Metric Filters...")
 
-        paginator = self.logs_client.get_paginator("describe_log_groups")
+        paginator = self.aws_clients.logs_client.get_paginator("describe_log_groups")
         for page in paginator.paginate():
             for log_group in page["logGroups"]:
                 log_group_name = log_group["logGroupName"]
 
-                paginator_filters = self.logs_client.get_paginator(
+                paginator_filters = self.aws_clients.logs_client.get_paginator(
                     "describe_metric_filters")
                 for filter_page in paginator_filters.paginate(logGroupName=log_group_name):
                     for metric_filter in filter_page["metricFilters"]:
@@ -184,7 +181,7 @@ class Logs:
     def aws_cloudwatch_log_resource_policy(self):
         print("Processing CloudWatch Log Resource Policies...")
 
-        paginator = self.logs_client.get_paginator(
+        paginator = self.aws_clients.logs_client.get_paginator(
             "describe_resource_policies")
         for page in paginator.paginate():
             for resource_policy in page["resourcePolicies"]:
@@ -204,12 +201,12 @@ class Logs:
     def aws_cloudwatch_log_stream(self):
         print("Processing CloudWatch Log Streams...")
 
-        paginator = self.logs_client.get_paginator("describe_log_groups")
+        paginator = self.aws_clients.logs_client.get_paginator("describe_log_groups")
         for page in paginator.paginate():
             for log_group in page["logGroups"]:
                 log_group_name = log_group["logGroupName"]
 
-                paginator_streams = self.logs_client.get_paginator(
+                paginator_streams = self.aws_clients.logs_client.get_paginator(
                     "describe_log_streams")
                 for stream_page in paginator_streams.paginate(logGroupName=log_group_name):
                     for log_stream in stream_page["logStreams"]:
@@ -229,12 +226,12 @@ class Logs:
     def aws_cloudwatch_log_subscription_filter(self):
         print("Processing CloudWatch Log Subscription Filters...")
 
-        paginator = self.logs_client.get_paginator("describe_log_groups")
+        paginator = self.aws_clients.logs_client.get_paginator("describe_log_groups")
         for page in paginator.paginate():
             for log_group in page["logGroups"]:
                 log_group_name = log_group["logGroupName"]
 
-                paginator_filters = self.logs_client.get_paginator(
+                paginator_filters = self.aws_clients.logs_client.get_paginator(
                     "describe_subscription_filters")
                 for filter_page in paginator_filters.paginate(logGroupName=log_group_name):
                     for subscription_filter in filter_page["subscriptionFilters"]:
@@ -257,7 +254,7 @@ class Logs:
     def aws_cloudwatch_query_definition(self):
         print("Processing CloudWatch Query Definitions...")
 
-        query_definitions_response = self.logs_client.describe_query_definitions()
+        query_definitions_response = self.aws_clients.logs_client.describe_query_definitions()
 
         for query_definition in query_definitions_response["queryDefinitions"]:
             query_definition_id = query_definition["queryDefinitionId"]

@@ -5,16 +5,15 @@ import json
 from providers.aws.kms import KMS
 
 class ECR:
-    def __init__(self, ecr_client, kms_client, iam_client, script_dir, provider_name, schema_data, region, s3Bucket,
-                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id, hcl = None):
-        self.ecr_client = ecr_client
+    def __init__(self, aws_clients, script_dir, provider_name, schema_data, region, s3Bucket,
+                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id,hcl = None):
+        self.aws_clients = aws_clients
         self.transform_rules = {}
         self.provider_name = provider_name
         self.script_dir = script_dir
         self.schema_data = schema_data
         self.region = region
         self.aws_account_id = aws_account_id
-        self.kms_client = kms_client
         
         self.workspace_id = workspace_id
         self.modules = modules
@@ -35,7 +34,7 @@ class ECR:
         self.hcl.functions.update(functions)
 
         self.resource_list = {}
-        self.kms_instance = KMS(kms_client, iam_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
+        self.kms_instance = KMS(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
 
     def get_field_from_attrs(self, attributes, arg):
         keys = arg.split(".")
@@ -94,10 +93,10 @@ class ECR:
     def get_kms_alias(self, kms_key_id):
         try:
             value = ""
-            response = self.kms_client.list_aliases()
+            response = self.aws_clients.kms_client.list_aliases()
             aliases = response.get('Aliases', [])
             while 'NextMarker' in response:
-                response = self.kms_client.list_aliases(Marker=response['NextMarker'])
+                response = self.aws_clients.kms_client.list_aliases(Marker=response['NextMarker'])
                 aliases.extend(response.get('Aliases', []))
             for alias in aliases:
                 if 'TargetKeyId' in alias and alias['TargetKeyId'] == kms_key_id.split('/')[-1]:
@@ -150,7 +149,7 @@ class ECR:
         resource_type = "aws_ecr_repository"
         print("Processing ECR Repositories...")
 
-        repositories = self.ecr_client.describe_repositories()["repositories"]
+        repositories = self.aws_clients.ecr_client.describe_repositories()["repositories"]
         for repo in repositories:
             repository_name = repo["repositoryName"]
             repository_arn = repo["repositoryArn"]
@@ -160,7 +159,7 @@ class ECR:
 
             ftstack = "ecr"
             try:
-                tags_response = self.ecr_client.list_tags_for_resource(resourceArn=repository_arn)
+                tags_response = self.aws_clients.ecr_client.list_tags_for_resource(resourceArn=repository_arn)
                 tags = tags_response.get('tags', [])
                 for tag in tags:
                     if tag['Key'] == 'ftstack':
@@ -197,9 +196,9 @@ class ECR:
         print(f"Processing ECR Repository Policy for: {repository_name}")
 
         try:
-            policy = self.ecr_client.get_repository_policy(
+            policy = self.aws_clients.ecr_client.get_repository_policy(
                 repositoryName=repository_name)
-        except self.ecr_client.exceptions.RepositoryPolicyNotFoundException:
+        except self.aws_clients.ecr_client.exceptions.RepositoryPolicyNotFoundException:
             return
 
         policy_text = json.loads(policy["policyText"])
@@ -215,9 +214,9 @@ class ECR:
         print(f"Processing ECR Lifecycle Policy for: {repository_name}")
 
         try:
-            lifecycle_policy = self.ecr_client.get_lifecycle_policy(repositoryName=repository_name)[
+            lifecycle_policy = self.aws_clients.ecr_client.get_lifecycle_policy(repositoryName=repository_name)[
                 "lifecyclePolicyText"]
-        except self.ecr_client.exceptions.LifecyclePolicyNotFoundException:
+        except self.aws_clients.ecr_client.exceptions.LifecyclePolicyNotFoundException:
             return
 
         print(
@@ -235,15 +234,15 @@ class ECR:
         resource_type = "aws_ecr_registry_policy"
 
         try:
-            registry_policy = self.ecr_client.get_registry_policy()
+            registry_policy = self.aws_clients.ecr_client.get_registry_policy()
             if "registryPolicyText" not in registry_policy:
                 return
             registry_policy = registry_policy["registryPolicyText"]
-        except self.ecr_client.exceptions.RegistryPolicyNotFoundException:
+        except self.aws_clients.ecr_client.exceptions.RegistryPolicyNotFoundException:
             return
 
         print(f"  Processing ECR Registry Policy")
-        id = self.ecr_client.describe_registries()["registries"][0]["registryId"],
+        id = self.aws_clients.ecr_client.describe_registries()["registries"][0]["registryId"],
 
         attributes = {
             "policy": json.dumps(json.loads(registry_policy), indent=2),
@@ -259,16 +258,16 @@ class ECR:
         print("Processing ECR Pull Through Cache Rules...")
         resource_type = "aws_ecr_pull_through_cache_rule"
 
-        repositories = self.ecr_client.describe_repositories()["repositories"]
+        repositories = self.aws_clients.ecr_client.describe_repositories()["repositories"]
         for repo in repositories:
             repository_name = repo["repositoryName"]
             try:
-                cache_settings = self.ecr_client.get_registry_policy()
+                cache_settings = self.aws_clients.ecr_client.get_registry_policy()
                 if "registryPolicyText" not in cache_settings:
                     continue
                 cache_settings = cache_settings["registryPolicyText"]
                 cache_settings_data = json.loads(cache_settings)
-            except self.ecr_client.exceptions.RegistryPolicyNotFoundException:
+            except self.aws_clients.ecr_client.exceptions.RegistryPolicyNotFoundException:
                 continue
 
             for rule in cache_settings_data.get("rules", []):
@@ -306,7 +305,7 @@ class ECR:
         resource_type = "aws_ecr_replication_configuration"
 
         try:
-            registry = self.ecr_client.describe_registry()
+            registry = self.aws_clients.ecr_client.describe_registry()
             registryId = registry["registryId"]
             replication_configuration = registry["replicationConfiguration"]
         except KeyError:

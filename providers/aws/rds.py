@@ -4,11 +4,9 @@ from providers.aws.iam_role import IAM_ROLE
 from providers.aws.logs import Logs
 
 class RDS:
-    def __init__(self, rds_client, logs_client, iam_client, kms_client, script_dir, provider_name, schema_data, region, s3Bucket,
-                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id, hcl=None):
-        self.rds_client = rds_client
-        self.logs_client = logs_client
-        self.iam_client = iam_client
+    def __init__(self, aws_clients, script_dir, provider_name, schema_data, region, s3Bucket,
+                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id,hcl = None):
+        self.aws_clients = aws_clients
         self.transform_rules = {}
         self.provider_name = provider_name
         self.script_dir = script_dir
@@ -28,10 +26,19 @@ class RDS:
         else:
             self.hcl = hcl
         
-        self.iam_role_instance = IAM_ROLE(iam_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
-        self.logs_instance = Logs(logs_client, kms_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
+        self.iam_role_instance = IAM_ROLE(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
+        self.logs_instance = Logs(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
 
         self.resource_list = {}
+
+        functions = {
+            'cloudwatch_log_group_name': self.cloudwatch_log_group_name,
+            'get_log_group_name': self.get_log_group_name,
+            'get_db_name': self.get_db_name,
+            'get_username': self.get_username,
+        }
+
+        self.hcl.functions.update(functions)
 
     def cloudwatch_log_group_name(self, attributes):
         parts = attributes.get('name').split('/')
@@ -64,13 +71,6 @@ class RDS:
 
         self.aws_db_instance()
 
-        functions = {
-            'cloudwatch_log_group_name': self.cloudwatch_log_group_name,
-            'get_log_group_name': self.get_log_group_name,
-            'get_db_name': self.get_db_name,
-            'get_username': self.get_username,
-        }
-
         self.hcl.refresh_state()
         self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id, {}, {})
 
@@ -80,7 +80,7 @@ class RDS:
         resource_type = "aws_db_instance"
         print("Processing DB Instances...")
 
-        paginator = self.rds_client.get_paginator("describe_db_instances")
+        paginator = self.aws_clients.rds_client.get_paginator("describe_db_instances")
         for page in paginator.paginate():
             for instance in page.get("DBInstances", []):
                 # Skip instances that belong to a cluster
@@ -99,7 +99,7 @@ class RDS:
 
                 ftstack = "rds"
                 try:
-                    tags_response = self.rds_client.list_tags_for_resource(ResourceName=instance["DBInstanceArn"])
+                    tags_response = self.aws_clients.rds_client.list_tags_for_resource(ResourceName=instance["DBInstanceArn"])
                     tags = tags_response.get('TagList', [])
                     for tag in tags:
                         if tag['Key'] == 'ftstack':
@@ -110,14 +110,12 @@ class RDS:
                     print("Error occurred: ", e)
 
                 attributes = {
-                    "id": instance_id,
-                    "apply_immediately": False,
-                    "delete_automated_backups": True,
-                    "skip_final_snapshot": False,
+                    "id": id,
                 }
                 self.hcl.process_resource(
                     resource_type, id, attributes)
-                self.hcl.add_stack(resource_type, id, ftstack)
+                DbiResourceId = instance.get("DbiResourceId", None)
+                self.hcl.add_stack(resource_type, DbiResourceId, ftstack)
 
                 db_option_group_name = instance.get(
                     'OptionGroupMemberships', [{}])[0].get('OptionGroupName', None)
@@ -153,7 +151,7 @@ class RDS:
         if option_group_name.startswith("default"):
             return
 
-        paginator = self.rds_client.get_paginator("describe_option_groups")
+        paginator = self.aws_clients.rds_client.get_paginator("describe_option_groups")
         for page in paginator.paginate():
             for option_group in page.get("OptionGroupsList", []):
                 # Skip the option group if it's not the given one
@@ -176,7 +174,7 @@ class RDS:
         if parameter_group_name.startswith("default"):
             return
 
-        paginator = self.rds_client.get_paginator(
+        paginator = self.aws_clients.rds_client.get_paginator(
             "describe_db_parameter_groups")
         for page in paginator.paginate():
             for parameter_group in page.get("DBParameterGroups", []):
@@ -200,7 +198,7 @@ class RDS:
         if db_subnet_group_name.startswith("default"):
             return
 
-        paginator = self.rds_client.get_paginator("describe_db_subnet_groups")
+        paginator = self.aws_clients.rds_client.get_paginator("describe_db_subnet_groups")
         for page in paginator.paginate():
             for db_subnet_group in page.get("DBSubnetGroups", []):
                 # Skip the subnet group if it's not the given one
@@ -219,7 +217,7 @@ class RDS:
         print(
             f"Processing DB Instance Automated Backups Replication {source_instance_arn}")
 
-        paginator = self.rds_client.get_paginator("describe_db_instances")
+        paginator = self.aws_clients.rds_client.get_paginator("describe_db_instances")
         for page in paginator.paginate():
             for instance in page.get("DBInstances", []):
                 if instance.get("ReadReplicaDBInstanceIdentifiers") and instance["DBInstanceArn"] == source_instance_arn:
@@ -227,7 +225,7 @@ class RDS:
                         continue
                     
                     # Fetching automated backup details
-                    backups_paginator = self.rds_client.get_paginator("describe_db_instance_automated_backups")
+                    backups_paginator = self.aws_clients.rds_client.get_paginator("describe_db_instance_automated_backups")
                     backups_page = backups_paginator.paginate(DBInstanceIdentifier=instance["DBInstanceIdentifier"])
 
                     for backup_page in backups_page:
@@ -252,7 +250,7 @@ class RDS:
         # assuming the log group name has prefix /aws/rds/instance/{instance_id}/{log_export_name}
         log_group_name_prefix = f"/aws/rds/instance/{instance_id}/{log_export_name}"
 
-        response = self.logs_client.describe_log_groups(
+        response = self.aws_clients.logs_client.describe_log_groups(
             logGroupNamePrefix=log_group_name_prefix)
 
         while True:
@@ -270,7 +268,7 @@ class RDS:
                         "aws_cloudwatch_log_group", log_group_name.replace("-", "_"), attributes)
 
             if 'nextToken' in response:
-                response = self.logs_client.describe_log_groups(
+                response = self.aws_clients.logs_client.describe_log_groups(
                     logGroupNamePrefix=log_group_name_prefix, nextToken=response['nextToken'])
             else:
                 break
@@ -279,7 +277,7 @@ class RDS:
         # the role name is the last part of the ARN
         role_name = role_arn.split('/')[-1]
 
-        role = self.iam_client.get_role(RoleName=role_name)
+        role = self.aws_clients.iam_client.get_role(RoleName=role_name)
         print(f"Processing IAM Role: {role_name}")
 
         attributes = {
@@ -296,7 +294,7 @@ class RDS:
         self.aws_iam_role_policy_attachment(role_name)
 
     def aws_iam_role_policy_attachment(self, role_name):
-        attached_policies = self.iam_client.list_attached_role_policies(
+        attached_policies = self.aws_clients.iam_client.list_attached_role_policies(
             RoleName=role_name)
 
         for policy in attached_policies['AttachedPolicies']:

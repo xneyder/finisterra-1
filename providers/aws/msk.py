@@ -3,11 +3,9 @@ from utils.hcl import HCL
 from providers.aws.security_group import SECURITY_GROUP
 
 class MSK:
-    def __init__(self, msk_client, ec2_client, appautoscaling_client, script_dir, provider_name, schema_data, region, s3Bucket,
-                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id, hcl=None):
-        self.msk_client = msk_client
-        self.ec2_client = ec2_client
-        self.appautoscaling_client = appautoscaling_client
+    def __init__(self, aws_clients, script_dir, provider_name, schema_data, region, s3Bucket,
+                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id,hcl = None):
+        self.aws_clients = aws_clients
         self.aws_account_id = aws_account_id
         self.transform_rules = {}
         self.provider_name = provider_name
@@ -27,7 +25,7 @@ class MSK:
             self.hcl = hcl
         self.resource_list = {}
 
-        self.security_group_instance = SECURITY_GROUP(ec2_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
+        self.security_group_instance = SECURITY_GROUP(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
 
         functions = {
             'get_field_from_attrs': self.get_field_from_attrs,
@@ -110,7 +108,7 @@ class MSK:
             attributes, 'broker_node_group_info.client_subnets')
         subnet_names = []
         for subnet_id in subnet_ids:
-            response = self.ec2_client.describe_subnets(SubnetIds=[subnet_id])
+            response = self.aws_clients.ec2_client.describe_subnets(SubnetIds=[subnet_id])
 
             # Check if 'Subnets' key exists and it's not empty
             if not response or 'Subnets' not in response or not response['Subnets']:
@@ -150,7 +148,7 @@ class MSK:
         first_sg_id = sg_ids[0]
 
         # Describe the security group to get its VPC ID
-        response = self.ec2_client.describe_security_groups(GroupIds=[
+        response = self.aws_clients.ec2_client.describe_security_groups(GroupIds=[
                                                             first_sg_id])
 
         # Extract and return the VPC ID
@@ -159,7 +157,7 @@ class MSK:
 
     def get_vpc_name_msk(self, attributes):
         vpc_id = self.get_vpc_id_msk_internal(attributes)
-        response = self.ec2_client.describe_vpcs(VpcIds=[vpc_id])
+        response = self.aws_clients.ec2_client.describe_vpcs(VpcIds=[vpc_id])
 
         if not response or 'Vpcs' not in response or not response['Vpcs']:
             # Handle this case as required, for example:
@@ -210,7 +208,7 @@ class MSK:
         security_group_names = []
 
         for security_group_id in security_group_ids:
-            response = self.ec2_client.describe_security_groups(
+            response = self.aws_clients.ec2_client.describe_security_groups(
                 GroupIds=[security_group_id])
             security_group = response['SecurityGroups'][0]
 
@@ -259,7 +257,7 @@ class MSK:
         print("Processing MSK Clusters...")
 
         # Pagination for list_clusters, if applicable
-        paginator = self.msk_client.get_paginator("list_clusters")
+        paginator = self.aws_clients.msk_client.get_paginator("list_clusters")
         page_iterator = paginator.paginate()
 
         for page in page_iterator:
@@ -271,7 +269,7 @@ class MSK:
 
                 ftstack = "msk"
                 try:
-                    tags_response = self.msk_client.list_tags_for_resource(ResourceArn=cluster_arn)
+                    tags_response = self.aws_clients.msk_client.list_tags_for_resource(ResourceArn=cluster_arn)
                     tags = tags_response.get('Tags', {})
                     if tags.get('ftstack', 'msk') != 'msk':
                         ftstack = "stack_"+tags.get('ftstack', 'msk')
@@ -289,7 +287,7 @@ class MSK:
                 self.hcl.add_stack(resource_type, id, ftstack)
 
                 # Extracting the Security Group IDs for the MSK Cluster
-                cluster_details = self.msk_client.describe_cluster(
+                cluster_details = self.aws_clients.msk_client.describe_cluster(
                     ClusterArn=cluster_arn
                 )
 
@@ -310,7 +308,7 @@ class MSK:
             f"Processing SCRAM Secret Associations for Cluster {cluster_arn}...")
 
         # Not all MSK methods might support pagination, so ensure this one does.
-        secrets = self.msk_client.list_scram_secrets(
+        secrets = self.aws_clients.msk_client.list_scram_secrets(
             ClusterArn=cluster_arn
         )
 
@@ -332,7 +330,7 @@ class MSK:
         print(
             f"Processing AppAutoScaling Targets for MSK Cluster ARN {cluster_arn}...")
 
-        paginator = self.appautoscaling_client.get_paginator(
+        paginator = self.aws_clients.appautoscaling_client.get_paginator(
             "describe_scalable_targets")
         page_iterator = paginator.paginate(
             ServiceNamespace='kafka',
@@ -358,7 +356,7 @@ class MSK:
         print(
             f"Processing AppAutoScaling Policies for MSK Cluster ARN {cluster_arn}...")
 
-        paginator = self.appautoscaling_client.get_paginator(
+        paginator = self.aws_clients.appautoscaling_client.get_paginator(
             "describe_scaling_policies")
         page_iterator = paginator.paginate(
             ServiceNamespace='kafka',
@@ -383,7 +381,7 @@ class MSK:
     def aws_msk_configuration(self, cluster_arn):
         print(f"Processing MSK Configuration for Cluster {cluster_arn}...")
 
-        cluster_details = self.msk_client.describe_cluster(
+        cluster_details = self.aws_clients.msk_client.describe_cluster(
             ClusterArn=cluster_arn
         )
 
@@ -394,7 +392,7 @@ class MSK:
         configuration_arn = cluster_details["ClusterInfo"]["CurrentBrokerSoftwareInfo"]["ConfigurationArn"]
 
         # Get the configuration details using the configuration ARN
-        configuration = self.msk_client.describe_configuration(
+        configuration = self.aws_clients.msk_client.describe_configuration(
             Arn=configuration_arn
         )
 
@@ -415,7 +413,7 @@ class MSK:
     #     print("Processing Security Groups...")
 
     #     # Create a response dictionary to collect responses for all security groups
-    #     response = self.ec2_client.describe_security_groups(
+    #     response = self.aws_clients.ec2_client.describe_security_groups(
     #         GroupIds=security_group_ids
     #     )
 

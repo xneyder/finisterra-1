@@ -3,11 +3,9 @@ from utils.hcl import HCL
 
 
 class StepFunction:
-    def __init__(self, sfn_client, iam_client, logs_client, script_dir, provider_name, schema_data, region, s3Bucket,
-                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id):
-        self.sfn_client = sfn_client
-        self.iam_client = iam_client
-        self.logs_client = logs_client
+    def __init__(self, aws_clients, script_dir, provider_name, schema_data, region, s3Bucket,
+                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id,hcl = None):
+        self.aws_clients = aws_clients
         self.transform_rules = {}
         self.provider_name = provider_name
         self.script_dir = script_dir
@@ -86,7 +84,7 @@ class StepFunction:
         resource_type = "aws_sfn_state_machine"
         print("Processing State Machines...")
 
-        paginator = self.sfn_client.get_paginator("list_state_machines")
+        paginator = self.aws_clients.sfn_client.get_paginator("list_state_machines")
         for page in paginator.paginate():
             for state_machine_summary in page["stateMachines"]:
                 print(f"  Processing State Machine: {state_machine_summary['name']}")
@@ -95,7 +93,7 @@ class StepFunction:
                 #     continue
 
                 # Call describe_state_machine to get detailed info, including roleArn
-                state_machine = self.sfn_client.describe_state_machine(
+                state_machine = self.aws_clients.sfn_client.describe_state_machine(
                     stateMachineArn=state_machine_summary['stateMachineArn']
                 )
 
@@ -104,7 +102,7 @@ class StepFunction:
 
                 ftstack = "stepfunction"
                 try:
-                    tags_response = self.sfn_client.list_tags_for_resource(resourceArn=state_machine_arn)
+                    tags_response = self.aws_clients.sfn_client.list_tags_for_resource(resourceArn=state_machine_arn)
                     tags = tags_response.get('tags', [])
                     for tag in tags:
                         if tag['key'] == 'ftstack':
@@ -148,7 +146,7 @@ class StepFunction:
         role_name = role_arn.split('/')[-1]  # Extract role name from ARN
 
         try:
-            role = self.iam_client.get_role(RoleName=role_name)['Role']
+            role = self.aws_clients.iam_client.get_role(RoleName=role_name)['Role']
 
             print(f"  Processing IAM Role: {role['Arn']}")
 
@@ -168,7 +166,7 @@ class StepFunction:
             f"Processing IAM Role Policy Attachments for role: {role_name}...")
 
         try:
-            paginator = self.iam_client.get_paginator(
+            paginator = self.aws_clients.iam_client.get_paginator(
                 'list_attached_role_policies')
             for page in paginator.paginate(RoleName=role_name):
                 for policy in page['AttachedPolicies']:
@@ -195,10 +193,10 @@ class StepFunction:
         print(f"Processing IAM Policy for Role {role_arn}...")
         role_name = role_arn.split("/")[-1]
 
-        list_policies = self.iam_client.list_role_policies(
+        list_policies = self.aws_clients.iam_client.list_role_policies(
             RoleName=role_name)
         for policy_name in list_policies["PolicyNames"]:
-            policy_document = self.iam_client.get_role_policy(
+            policy_document = self.aws_clients.iam_client.get_role_policy(
                 RoleName=role_name, PolicyName=policy_name)
 
             attributes = {
@@ -216,7 +214,7 @@ class StepFunction:
     #     print(f"Processing IAM Policy Attachment for Role {role_arn}...")
     #     role_name = role_arn.split("/")[-1]
 
-    #     list_attached_policies = self.iam_client.list_attached_role_policies(
+    #     list_attached_policies = self.aws_clients.iam_client.list_attached_role_policies(
     #         RoleName=role_name)
     #     for policy in list_attached_policies["AttachedPolicies"]:
     #         attributes = {
@@ -233,7 +231,7 @@ class StepFunction:
     def aws_cloudwatch_log_group(self, log_group_name):
         print(f"Processing CloudWatch Log Group {log_group_name}...")
 
-        log_groups = self.logs_client.describe_log_groups(
+        log_groups = self.aws_clients.logs_client.describe_log_groups(
             logGroupNamePrefix=log_group_name)
         for log_group in log_groups["logGroups"]:
             if log_group["logGroupName"] == log_group_name:

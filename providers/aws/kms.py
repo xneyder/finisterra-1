@@ -6,15 +6,11 @@ import botocore
 
 
 class KMS:
-    def __init__(self, kms_client, iam_client, script_dir, provider_name, schema_data, region, s3Bucket,
-                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id, hcl=None):
-        self.kms_client = kms_client
-        self.iam_client = iam_client
+    def __init__(self, aws_clients, script_dir, provider_name, schema_data, region, s3Bucket,
+                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id,hcl = None):
+        self.aws_clients = aws_clients
 
         self.transform_rules = {
-            "aws_kms_key_policy": {
-                "hcl_json_multiline": {"policy": True}
-            },
         }
         self.provider_name = provider_name
         self.script_dir = script_dir
@@ -61,21 +57,21 @@ class KMS:
         if key_arn:
             # Process only the key specified by the ARN
             try:
-                key_metadata = self.kms_client.describe_key(KeyId=key_arn)["KeyMetadata"]
+                key_metadata = self.aws_clients.kms_client.describe_key(KeyId=key_arn)["KeyMetadata"]
                 if key_metadata["KeyManager"] == "CUSTOMER":
                     self.process_key(key_metadata, ftstack)
             except botocore.exceptions.ClientError as e:
                 print(f"  Error processing KMS Key: {e}")
         else:
             # Process all customer-managed keys
-            paginator = self.kms_client.get_paginator("list_keys")
+            paginator = self.aws_clients.kms_client.get_paginator("list_keys")
             for page in paginator.paginate():
                 for key in page["Keys"]:
                     try:
                         key_id = key["KeyId"]
                         # if key_id != "e6a851cf-ad7f-4be1-8474-d9fb5c0c2af0":
                         #     continue
-                        key_metadata = self.kms_client.describe_key(KeyId=key_id)["KeyMetadata"]
+                        key_metadata = self.aws_clients.kms_client.describe_key(KeyId=key_id)["KeyMetadata"]
                         if key_metadata["KeyManager"] == "CUSTOMER":
                             self.process_key(key_metadata,ftstack)
                     except botocore.exceptions.ClientError as e:
@@ -112,7 +108,7 @@ class KMS:
         print("Processing KMS Aliases...")
         try:
             # List aliases directly for the specified key ARN
-            aliases = self.kms_client.list_aliases(KeyId=kms_arn)["Aliases"]
+            aliases = self.aws_clients.kms_client.list_aliases(KeyId=kms_arn)["Aliases"]
 
             for alias in aliases:
                 alias_name = alias["AliasName"]
@@ -144,7 +140,7 @@ class KMS:
 
     #     for key_arn in key_arns:
     #         for data in plaintext_data:
-    #             ciphertext = self.kms_client.encrypt(KeyId=key_arn, Plaintext=data)[
+    #             ciphertext = self.aws_clients.kms_client.encrypt(KeyId=key_arn, Plaintext=data)[
     #                 "CiphertextBlob"]
     #             b64_ciphertext = base64.b64encode(ciphertext).decode("utf-8")
     #             print(f"  Processing KMS Ciphertext for Key ARN: {key_arn}")
@@ -160,7 +156,7 @@ class KMS:
 
     # def aws_kms_custom_key_store(self):
     #     print("Processing KMS Custom Key Stores...")
-    #     custom_key_stores = self.kms_client.describe_custom_key_stores()[
+    #     custom_key_stores = self.aws_clients.kms_client.describe_custom_key_stores()[
     #         "CustomKeyStores"]
 
     #     for cks in custom_key_stores:
@@ -182,7 +178,7 @@ class KMS:
     #     print("Processing KMS Grants...")
     #     try:
     #         # Directly list grants for the specified key ARN
-    #         grants = self.kms_client.list_grants(KeyId=kms_arn)["Grants"]
+    #         grants = self.aws_clients.kms_client.list_grants(KeyId=kms_arn)["Grants"]
 
     #         for grant in grants:
     #             grant_id = grant["GrantId"]
@@ -200,7 +196,7 @@ class KMS:
 
     def check_iam_role_exists(self, role_name):
         try:
-            self.iam_client.get_role(RoleName=role_name)
+            self.aws_clients.iam_client.get_role(RoleName=role_name)
             return True  # Role exists
         except botocore.exceptions.ClientError as error:
             if error.response['Error']['Code'] == 'NoSuchEntity':
@@ -212,7 +208,7 @@ class KMS:
         print("Processing KMS Grants...")
         try:
             # Directly list grants for the specified key ARN
-            grants = self.kms_client.list_grants(KeyId=kms_arn)["Grants"]
+            grants = self.aws_clients.kms_client.list_grants(KeyId=kms_arn)["Grants"]
 
             for grant in grants:
                 grant_id = grant["GrantId"]
@@ -241,7 +237,7 @@ class KMS:
         print("Processing KMS Key Policies...")
         try:
             # Directly get the policy for the specified key ARN
-            policy = self.kms_client.get_key_policy(
+            policy = self.aws_clients.kms_client.get_key_policy(
                 KeyId=kms_arn, PolicyName="default")["Policy"]
 
             print(f"  Processing KMS Key Policy for Key: {kms_arn}")
@@ -260,12 +256,12 @@ class KMS:
 
     def aws_kms_replica_key(self):
         print("Processing KMS Replica Keys...")
-        paginator = self.kms_client.get_paginator("list_keys")
+        paginator = self.aws_clients.kms_client.get_paginator("list_keys")
 
         try:
             for page in paginator.paginate():
                 for key in page["Keys"]:
-                    key_metadata = self.kms_client.describe_key(KeyId=key["KeyId"])["KeyMetadata"]
+                    key_metadata = self.aws_clients.kms_client.describe_key(KeyId=key["KeyId"])["KeyMetadata"]
 
                     # Check if the key is multi-region
                     if key_metadata.get("MultiRegion", False):
@@ -297,12 +293,12 @@ class KMS:
 
     def aws_kms_external_key(self):
         print("Processing KMS External Keys...")
-        paginator = self.kms_client.get_paginator("list_keys")
+        paginator = self.aws_clients.kms_client.get_paginator("list_keys")
         for page in paginator.paginate():
             for key in page["Keys"]:
                 try:
                     key_id = key["KeyId"]
-                    key_metadata = self.kms_client.describe_key(KeyId=key_id)["KeyMetadata"]
+                    key_metadata = self.aws_clients.kms_client.describe_key(KeyId=key_id)["KeyMetadata"]
 
                     if key_metadata["Origin"] == "EXTERNAL":
                         print(f"  Processing KMS External Key: {key_id}")
@@ -323,12 +319,12 @@ class KMS:
 
     def aws_kms_replica_external_key(self):
         print("Processing KMS Replica External Keys...")
-        paginator = self.kms_client.get_paginator("list_keys")
+        paginator = self.aws_clients.kms_client.get_paginator("list_keys")
 
         try:
             for page in paginator.paginate():
                 for key in page["Keys"]:
-                    key_metadata = self.kms_client.describe_key(KeyId=key["KeyId"])["KeyMetadata"]
+                    key_metadata = self.aws_clients.kms_client.describe_key(KeyId=key["KeyId"])["KeyMetadata"]
 
                     # Check if the key's origin is external and it's a multi-region key
                     if key_metadata["Origin"] == "EXTERNAL" and key_metadata.get("MultiRegion", False):

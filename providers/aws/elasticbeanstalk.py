@@ -6,12 +6,9 @@ from providers.aws.security_group import SECURITY_GROUP
 from providers.aws.iam_role import IAM_ROLE
 
 class ElasticBeanstalk:
-    def __init__(self, elasticbeanstalk_client, iam_client, autoscaling_client, ec2_client, script_dir, provider_name, schema_data, region, s3Bucket,
-                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id, hcl=None):
-        self.elasticbeanstalk_client = elasticbeanstalk_client
-        self.iam_client = iam_client
-        self.autoscaling_client = autoscaling_client
-        self.ec2_client = ec2_client
+    def __init__(self, aws_clients, script_dir, provider_name, schema_data, region, s3Bucket,
+                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id,hcl = None):
+        self.aws_clients = aws_clients
         self.transform_rules = {}
         self.provider_name = provider_name
         self.script_dir = script_dir
@@ -35,8 +32,8 @@ class ElasticBeanstalk:
         self.insatce_profiles = {}
         self.security_groups = {}
 
-        self.security_group_instance = SECURITY_GROUP(ec2_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
-        self.iam_role_instance = IAM_ROLE(iam_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
+        self.security_group_instance = SECURITY_GROUP(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
+        self.iam_role_instance = IAM_ROLE(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
 
     # def init_fields(self, attributes):
     #     self.service_roles = {}
@@ -130,7 +127,7 @@ class ElasticBeanstalk:
     def aws_elastic_beanstalk_application(self):
         print("Processing Elastic Beanstalk Applications...")
 
-        applications = self.elasticbeanstalk_client.describe_applications()[
+        applications = self.aws_clients.elasticbeanstalk_client.describe_applications()[
             "Applications"]
 
         for app in applications:
@@ -148,12 +145,12 @@ class ElasticBeanstalk:
     def aws_elastic_beanstalk_application_version(self):
         print("Processing Elastic Beanstalk Application Versions...")
 
-        applications = self.elasticbeanstalk_client.describe_applications()[
+        applications = self.aws_clients.elasticbeanstalk_client.describe_applications()[
             "Applications"]
 
         for app in applications:
             app_name = app["ApplicationName"]
-            versions = self.elasticbeanstalk_client.describe_application_versions(
+            versions = self.aws_clients.elasticbeanstalk_client.describe_application_versions(
                 ApplicationName=app_name)["ApplicationVersions"]
 
             for version in versions:
@@ -184,19 +181,19 @@ class ElasticBeanstalk:
     def aws_elastic_beanstalk_configuration_template(self):
         print("Processing Elastic Beanstalk Configuration Templates...")
 
-        applications = self.elasticbeanstalk_client.describe_applications()[
+        applications = self.aws_clients.elasticbeanstalk_client.describe_applications()[
             "Applications"]
 
         for app in applications:
             app_name = app["ApplicationName"]
-            environments = self.elasticbeanstalk_client.describe_environments(
+            environments = self.aws_clients.elasticbeanstalk_client.describe_environments(
                 ApplicationName=app_name)["Environments"]
             templates = {}
 
             for env in environments:
                 try:
                     env_name = env["EnvironmentName"]
-                    options = self.elasticbeanstalk_client.describe_configuration_options(
+                    options = self.aws_clients.elasticbeanstalk_client.describe_configuration_options(
                         ApplicationName=app_name, EnvironmentName=env_name)["Options"]
 
                     for option in options:
@@ -234,7 +231,7 @@ class ElasticBeanstalk:
         resource_type = "aws_elastic_beanstalk_environment"
         print("Processing Elastic Beanstalk Environments...")
 
-        environments = self.elasticbeanstalk_client.describe_environments()["Environments"]
+        environments = self.aws_clients.elasticbeanstalk_client.describe_environments()["Environments"]
 
         for env in environments:
             env_id = env["EnvironmentId"]
@@ -246,7 +243,7 @@ class ElasticBeanstalk:
 
             ftstack = "beanstalk"
             try:
-                tags_response = self.elasticbeanstalk_client.list_tags_for_resource(
+                tags_response = self.aws_clients.elasticbeanstalk_client.list_tags_for_resource(
                     ResourceArn=env["EnvironmentArn"]
                 )
                 tags = tags_response.get('ResourceTags', [])
@@ -270,7 +267,7 @@ class ElasticBeanstalk:
             self.hcl.add_stack(resource_type, id, ftstack)
 
             # Retrieve the environment configuration details
-            config_settings = self.elasticbeanstalk_client.describe_configuration_settings(
+            config_settings = self.aws_clients.elasticbeanstalk_client.describe_configuration_settings(
                 ApplicationName=env["ApplicationName"],
                 EnvironmentName=env["EnvironmentName"]
             )
@@ -295,7 +292,7 @@ class ElasticBeanstalk:
             if ec2_instance_profile:
                 self.insatce_profiles[env_id] = ec2_instance_profile
                 # self.aws_iam_instance_profile(ec2_instance_profile)
-                instance_profile = self.iam_client.get_instance_profile(
+                instance_profile = self.aws_clients.iam_client.get_instance_profile(
                     InstanceProfileName=ec2_instance_profile)
                 ec2_role = instance_profile['InstanceProfile']['Roles'][0]['Arn']
                 self.ec2_roles[env_id] = ec2_role.split('/')[-1]
@@ -303,7 +300,7 @@ class ElasticBeanstalk:
                 # self.aws_iam_role(ec2_role)
 
             # Identify the Auto Scaling Group associated with the Elastic Beanstalk environment
-            auto_scaling_groups = self.autoscaling_client.describe_auto_scaling_groups()
+            auto_scaling_groups = self.aws_clients.autoscaling_client.describe_auto_scaling_groups()
 
             for group in auto_scaling_groups['AutoScalingGroups']:
                 # The Elastic Beanstalk environment name is part of the Auto Scaling Group name
@@ -314,14 +311,14 @@ class ElasticBeanstalk:
             # Get the Launch Configuration or Launch Template associated with the Auto Scaling Group
             if 'LaunchConfigurationName' in auto_scaling_group:
                 launch_config_name = auto_scaling_group['LaunchConfigurationName']
-                launch_config = self.autoscaling_client.describe_launch_configurations(
+                launch_config = self.aws_clients.autoscaling_client.describe_launch_configurations(
                     LaunchConfigurationNames=[launch_config_name]
                 )['LaunchConfigurations'][0]
 
                 security_group_ids = launch_config['SecurityGroups']
             elif 'LaunchTemplate' in auto_scaling_group:
                 launch_template_id = auto_scaling_group['LaunchTemplate']['LaunchTemplateId']
-                launch_template_version = self.ec2_client.describe_launch_template_versions(
+                launch_template_version = self.aws_clients.ec2_client.describe_launch_template_versions(
                     LaunchTemplateId=launch_template_id
                 )['LaunchTemplateVersions'][0]['LaunchTemplateData']
 

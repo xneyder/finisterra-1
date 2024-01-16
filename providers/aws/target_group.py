@@ -4,11 +4,9 @@ from providers.aws.acm import ACM
 from providers.aws.elbv2 import ELBV2
 
 class TargetGroup:
-    def __init__(self, elbv2_client, ec2_client, acm_client, s3_client, script_dir, provider_name, schema_data, region, s3Bucket,
-                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id, hcl = None):
-        self.elbv2_client = elbv2_client
-        self.ec2_client = ec2_client
-        self.acm_client = acm_client
+    def __init__(self, aws_clients, script_dir, provider_name, schema_data, region, s3Bucket,
+                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id,hcl = None):
+        self.aws_clients = aws_clients
         self.transform_rules = {
             "aws_ecs_task_definition": {
                 "hcl_json_multiline": {"container_definitions": True}
@@ -29,8 +27,8 @@ class TargetGroup:
                        self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules)
         self.resource_list = {}
 
-        self.acm_instance = ACM(acm_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
-        self.elbv2_instance = ELBV2(elbv2_client, ec2_client, acm_client, s3_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
+        self.acm_instance = ACM(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
+        self.elbv2_instance = ELBV2(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
 
         self.load_balancers = None
 
@@ -61,7 +59,7 @@ class TargetGroup:
 
     def get_listener_port(self, attributes, arg):
         listener_arn = attributes.get(arg)
-        response = self.elbv2_client.describe_listeners(
+        response = self.aws_clients.elbv2_client.describe_listeners(
             ListenerArns=[listener_arn])
         listener_port = response['Listeners'][0]['Port']
         return listener_port
@@ -84,7 +82,7 @@ class TargetGroup:
 
     def get_vpc_name_tg(self, attributes):
         vpc_id = attributes.get("vpc_id")
-        response = self.ec2_client.describe_vpcs(VpcIds=[vpc_id])
+        response = self.aws_clients.ec2_client.describe_vpcs(VpcIds=[vpc_id])
         vpc_name = next(
             (tag['Value'] for tag in response['Vpcs'][0]['Tags'] if tag['Key'] == 'Name'), None)
         return vpc_name
@@ -113,7 +111,7 @@ class TargetGroup:
         print("Processing Load Balancer Target Groups")
         resource_type = "aws_lb_target_group"
 
-        paginator = self.elbv2_client.get_paginator('describe_target_groups')
+        paginator = self.aws_clients.elbv2_client.get_paginator('describe_target_groups')
         response_iterator = paginator.paginate()
 
         for response in response_iterator:
@@ -154,13 +152,13 @@ class TargetGroup:
 
                 #Check if the target group is used in any loadbalancer default actions
                 if not self.load_balancers:     
-                    self.load_balancers = self.elbv2_client.describe_load_balancers()[
+                    self.load_balancers = self.aws_clients.elbv2_client.describe_load_balancers()[
                     "LoadBalancers"]
                 for lb in self.load_balancers:
                     lb_arn = lb["LoadBalancerArn"]
                     # print(f"Processing Load Balancer: {lb_arn}")
 
-                    listeners = self.elbv2_client.describe_listeners(
+                    listeners = self.aws_clients.elbv2_client.describe_listeners(
                         LoadBalancerArn=lb_arn)["Listeners"]
 
                     for listener in listeners:
@@ -175,21 +173,21 @@ class TargetGroup:
         print("Processing Load Balancer Listener Rules")
 
         if not self.load_balancers:     
-            self.load_balancers = self.elbv2_client.describe_load_balancers()[
+            self.load_balancers = self.aws_clients.elbv2_client.describe_load_balancers()[
                 "LoadBalancers"]
 
         for lb in self.load_balancers:
             lb_arn = lb["LoadBalancerArn"]
             # print(f"Processing Load Balancer: {lb_arn}")
 
-            listeners = self.elbv2_client.describe_listeners(
+            listeners = self.aws_clients.elbv2_client.describe_listeners(
                 LoadBalancerArn=lb_arn)["Listeners"]
 
             for listener in listeners:
                 listener_arn = listener["ListenerArn"]
                 # print(f"  Processing Load Balancer Listener: {listener_arn}")
 
-                rules = self.elbv2_client.describe_rules(
+                rules = self.aws_clients.elbv2_client.describe_rules(
                     ListenerArn=listener_arn)["Rules"]
 
                 for rule in rules:
@@ -230,7 +228,7 @@ class TargetGroup:
             "aws_lb_listener", listener_arn.split("/")[-1], attributes)
         
         #describe the listener and get me the list of all the acm arns used in the listener
-        listener = self.elbv2_client.describe_listeners(
+        listener = self.aws_clients.elbv2_client.describe_listeners(
             ListenerArns=[listener_arn])
         if listener:
             certificates = listener['Listeners'][0]['Certificates']

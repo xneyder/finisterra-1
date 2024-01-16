@@ -5,14 +5,9 @@ from providers.aws.kms import KMS
 from providers.aws.security_group import SECURITY_GROUP
 
 class EKS:
-    def __init__(self, eks_client, logs_client, ec2_client, iam_client, autoscaling_client, kms_client, script_dir, provider_name, schema_data, region, s3Bucket,
+    def __init__(self, aws_clients, script_dir, provider_name, schema_data, region, s3Bucket,
                  dynamoDBTable, state_key, workspace_id, modules, aws_account_id,hcl = None):
-        self.eks_client = eks_client
-        self.logs_client = logs_client
-        self.ec2_client = ec2_client
-        self.iam_client = iam_client
-        self.kms_client = kms_client
-        self.autoscaling_client = autoscaling_client
+        self.aws_clients = aws_clients
         self.transform_rules = {}
         self.provider_name = provider_name
         self.script_dir = script_dir
@@ -28,9 +23,9 @@ class EKS:
         self.resource_list = {}
         self.aws_account_id = aws_account_id
 
-        self.iam_role_instance = IAM_ROLE(iam_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
-        self.kms_instance = KMS(kms_client, iam_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
-        self.security_group_instance = SECURITY_GROUP(ec2_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
+        self.iam_role_instance = IAM_ROLE(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
+        self.kms_instance = KMS(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
+        self.security_group_instance = SECURITY_GROUP(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
 
         functions = {
             'get_field_from_attrs': self.get_field_from_attrs,
@@ -174,7 +169,7 @@ class EKS:
         
         subnet_names = []
         for subnet_id in subnet_ids:
-            response = self.ec2_client.describe_subnets(SubnetIds=[subnet_id])
+            response = self.aws_clients.ec2_client.describe_subnets(SubnetIds=[subnet_id])
 
             # Check if 'Subnets' key exists and it's not empty
             if not response or 'Subnets' not in response or not response['Subnets']:
@@ -438,7 +433,7 @@ class EKS:
             attributes, 'vpc_config.subnet_ids')
         subnet_names = []
         for subnet_id in subnet_ids:
-            response = self.ec2_client.describe_subnets(SubnetIds=[subnet_id])
+            response = self.aws_clients.ec2_client.describe_subnets(SubnetIds=[subnet_id])
 
             # Check if 'Subnets' key exists and it's not empty
             if not response or 'Subnets' not in response or not response['Subnets']:
@@ -470,7 +465,7 @@ class EKS:
     def get_vpc_name_eks(self, attributes):
         vpc_id = self.get_field_from_attrs(
             attributes, 'vpc_config.vpc_id')
-        response = self.ec2_client.describe_vpcs(VpcIds=[vpc_id])
+        response = self.aws_clients.ec2_client.describe_vpcs(VpcIds=[vpc_id])
 
         if not response or 'Vpcs' not in response or not response['Vpcs']:
             # Handle this case as required, for example:
@@ -507,10 +502,10 @@ class EKS:
         resource_name = 'aws_eks_cluster'
         print("Processing EKS Clusters...")
 
-        clusters = self.eks_client.list_clusters()["clusters"]
+        clusters = self.aws_clients.eks_client.list_clusters()["clusters"]
 
         for cluster_name in clusters:
-            cluster = self.eks_client.describe_cluster(name=cluster_name)[
+            cluster = self.aws_clients.eks_client.describe_cluster(name=cluster_name)[
                 "cluster"]
             tags = cluster.get("tags", {})
             ftstack = "eks"
@@ -571,11 +566,11 @@ class EKS:
         resource_name = 'aws_eks_addon'
         print(f"Processing EKS Add-ons for Cluster: {cluster_name}...")
 
-        addons = self.eks_client.list_addons(
+        addons = self.aws_clients.eks_client.list_addons(
             clusterName=cluster_name)["addons"]
 
         for addon_name in addons:
-            addon = self.eks_client.describe_addon(
+            addon = self.aws_clients.eks_client.describe_addon(
                 clusterName=cluster_name, addonName=addon_name)["addon"]
             print(
                 f"  Processing EKS Add-on: {addon_name} for Cluster: {cluster_name}")
@@ -598,7 +593,7 @@ class EKS:
             f"Processing IAM OpenID Connect Providers for Cluster: {cluster_name}...")
 
         # Get cluster details to retrieve OIDC issuer URL
-        cluster = self.eks_client.describe_cluster(name=cluster_name)[
+        cluster = self.aws_clients.eks_client.describe_cluster(name=cluster_name)[
             "cluster"]
         expected_oidc_url = cluster.get("identity", {}).get(
             "oidc", {}).get("issuer", "")
@@ -612,14 +607,14 @@ class EKS:
             return
 
         # List the OIDC identity providers in the AWS account
-        oidc_providers = self.iam_client.list_open_id_connect_providers().get(
+        oidc_providers = self.aws_clients.iam_client.list_open_id_connect_providers().get(
             "OpenIDConnectProviderList", [])
 
         for provider in oidc_providers:
             provider_arn = provider["Arn"]
 
             # Describe the specific OIDC provider using its ARN
-            oidc_provider = self.iam_client.get_open_id_connect_provider(
+            oidc_provider = self.aws_clients.iam_client.get_open_id_connect_provider(
                 OpenIDConnectProviderArn=provider_arn
             )
 
@@ -649,14 +644,14 @@ class EKS:
     def aws_eks_fargate_profile(self):
         print("Processing EKS Fargate Profiles...")
 
-        clusters = self.eks_client.list_clusters()["clusters"]
+        clusters = self.aws_clients.eks_client.list_clusters()["clusters"]
 
         for cluster_name in clusters:
-            fargate_profiles = self.eks_client.list_fargate_profiles(clusterName=cluster_name)[
+            fargate_profiles = self.aws_clients.eks_client.list_fargate_profiles(clusterName=cluster_name)[
                 "fargateProfileNames"]
 
             for profile_name in fargate_profiles:
-                fargate_profile = self.eks_client.describe_fargate_profile(
+                fargate_profile = self.aws_clients.eks_client.describe_fargate_profile(
                     clusterName=cluster_name, fargateProfileName=profile_name)["fargateProfile"]
                 print(
                     f"  Processing EKS Fargate Profile: {profile_name} for Cluster: {cluster_name}")
@@ -673,7 +668,7 @@ class EKS:
         print(
             f"Processing EKS Identity Provider Configs for Cluster: {cluster_name}...")
 
-        identity_provider_configs = self.eks_client.list_identity_provider_configs(
+        identity_provider_configs = self.aws_clients.eks_client.list_identity_provider_configs(
             clusterName=cluster_name)["identityProviderConfigs"]
 
         for config in identity_provider_configs:
@@ -693,7 +688,7 @@ class EKS:
     def aws_cloudwatch_log_group(self, log_group_name):
         print(f"Processing CloudWatch Log Group...")
 
-        paginator = self.logs_client.get_paginator('describe_log_groups')
+        paginator = self.aws_clients.logs_client.get_paginator('describe_log_groups')
 
         for page in paginator.paginate():
             for log_group in page['logGroups']:
@@ -719,7 +714,7 @@ class EKS:
         print(f"Processing EC2 Tags for Resource ID: {resource_id}")
 
         # Fetch the tags for the specified resource
-        response = self.ec2_client.describe_tags(
+        response = self.aws_clients.ec2_client.describe_tags(
             Filters=[
                 {
                     'Name': 'resource-id',
@@ -757,18 +752,18 @@ class EKS:
     def aws_eks_node_group(self, cluster_name, ftstack):
         print("Processing EKS Node Groups...")
 
-        clusters = self.eks_client.list_clusters()["clusters"]
+        clusters = self.aws_clients.eks_client.list_clusters()["clusters"]
 
         # Check if the provided cluster_name is in the list of clusters
         if cluster_name not in clusters:
             print(f"Cluster '{cluster_name}' not found!")
             return
 
-        node_groups = self.eks_client.list_nodegroups(
+        node_groups = self.aws_clients.eks_client.list_nodegroups(
             clusterName=cluster_name)["nodegroups"]
 
         for node_group_name in node_groups:
-            node_group = self.eks_client.describe_nodegroup(
+            node_group = self.aws_clients.eks_client.describe_nodegroup(
                 clusterName=cluster_name, nodegroupName=node_group_name)["nodegroup"]
             print(
                 f"  Processing EKS Node Group: {node_group_name} for Cluster: {cluster_name}")
@@ -798,7 +793,7 @@ class EKS:
         print("Processing AWS Launch Template...")
 
         # Describe the latest version of the launch template using the provided ID
-        response = self.ec2_client.describe_launch_template_versions(
+        response = self.aws_clients.ec2_client.describe_launch_template_versions(
             LaunchTemplateId=launch_template_id,
             Versions=['$Latest']
         )
@@ -850,7 +845,7 @@ class EKS:
             return
 
         try:
-            role = self.iam_client.get_role(RoleName=role_name)['Role']
+            role = self.aws_clients.iam_client.get_role(RoleName=role_name)['Role']
 
             print(f"  Processing IAM Role: {role['Arn']}")
 
@@ -871,7 +866,7 @@ class EKS:
             f"Processing IAM Role Policy Attachments for role: {role_name}...")
 
         try:
-            paginator = self.iam_client.get_paginator(
+            paginator = self.aws_clients.iam_client.get_paginator(
                 'list_attached_role_policies')
             for page in paginator.paginate(RoleName=role_name):
                 for policy in page['AttachedPolicies']:
@@ -897,7 +892,7 @@ class EKS:
 
         try:
             # List all scheduled actions for the specified Auto Scaling group
-            scheduled_actions = self.autoscaling_client.describe_scheduled_actions(
+            scheduled_actions = self.aws_clients.autoscaling_client.describe_scheduled_actions(
                 AutoScalingGroupName=autoscaling_group_name)['ScheduledUpdateGroupActions']
 
             for action in scheduled_actions:

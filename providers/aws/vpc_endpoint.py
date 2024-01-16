@@ -3,9 +3,9 @@ from utils.hcl import HCL
 from providers.aws.security_group import SECURITY_GROUP
 
 class VPCEndPoint:
-    def __init__(self, ec2_client, script_dir, provider_name, schema_data, region, s3Bucket,
-                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id, hcl=None):
-        self.ec2_client = ec2_client
+    def __init__(self, aws_clients, script_dir, provider_name, schema_data, region, s3Bucket,
+                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id,hcl = None):
+        self.aws_clients = aws_clients
         self.transform_rules = {}
         self.provider_name = provider_name
         self.script_dir = script_dir
@@ -34,14 +34,14 @@ class VPCEndPoint:
         }
         self.hcl.functions.update(functions)
 
-        self.security_group_instance = SECURITY_GROUP(ec2_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
+        self.security_group_instance = SECURITY_GROUP(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
 
 
     def get_subnet_names_vpce(self, attributes, arg):
         subnet_ids = attributes.get("subnet_ids", [])
         subnet_names = []
         for subnet_id in subnet_ids:
-            response = self.ec2_client.describe_subnets(SubnetIds=[subnet_id])
+            response = self.aws_clients.ec2_client.describe_subnets(SubnetIds=[subnet_id])
 
             # Check if 'Subnets' key exists and it's not empty
             if not response or 'Subnets' not in response or not response['Subnets']:
@@ -72,7 +72,7 @@ class VPCEndPoint:
         
     def get_vpc_name_vpce(self, attributes):
         vpc_id = attributes.get("vpc_id")
-        response = self.ec2_client.describe_vpcs(VpcIds=[vpc_id])
+        response = self.aws_clients.ec2_client.describe_vpcs(VpcIds=[vpc_id])
 
         if not response or 'Vpcs' not in response or not response['Vpcs']:
             # Handle this case as required, for example:
@@ -104,15 +104,17 @@ class VPCEndPoint:
         self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id, {}, {})
         self.json_plan = self.hcl.json_plan
 
-    def aws_vpc_endpoint(self, vpce_id, ftstack=None):
+    def aws_vpc_endpoint(self, vpce_id=None, ftstack=None):
         resource_type = "aws_vpc_endpoint"
         print(f"Processing VPC Endpoint: {vpce_id}...")
         self.resource_list['aws_vpc_endpoint'] = {}        
         try:
-            endpoint = self.ec2_client.describe_vpc_endpoints(VpcEndpointIds=[vpce_id])["VpcEndpoints"]
+            if vpce_id is None:
+                endpoints = self.aws_clients.ec2_client.describe_vpc_endpoints()["VpcEndpoints"]
+            else:
+                endpoints = self.aws_clients.ec2_client.describe_vpc_endpoints(VpcEndpointIds=[vpce_id])["VpcEndpoints"]
             
-            if endpoint:
-                endpoint = endpoint[0]
+            for endpoint in endpoints:
                 endpoint_id = endpoint["VpcEndpointId"]
                 vpc_id = endpoint["VpcId"]
                 service_name = endpoint["ServiceName"]
@@ -142,8 +144,8 @@ class VPCEndPoint:
                     security_group_id = security_group["GroupId"]
                     self.security_group_instance.aws_security_group(security_group_id, ftstack)
 
-            else:
-                print(f"No VPC Endpoint found with ID: {vpce_id}")
+            if not endpoints:
+                print("No VPC Endpoints found.")
         except Exception as e:
             print(f"An error occurred: {str(e)}")
             pass
@@ -151,7 +153,7 @@ class VPCEndPoint:
     def aws_vpc_endpoint_connection_accepter(self):
         print("Processing VPC Endpoint Connection Accepters...")
         self.resource_list['aws_vpc_endpoint_connection_accepter'] = {}
-        vpc_endpoints = self.ec2_client.describe_vpc_endpoints()[
+        vpc_endpoints = self.aws_clients.ec2_client.describe_vpc_endpoints()[
             "VpcEndpoints"]
 
         for endpoint in vpc_endpoints:
@@ -177,7 +179,7 @@ class VPCEndPoint:
     def aws_vpc_endpoint_connection_notification(self):
         print("Processing VPC Endpoint Connection Notifications...")
         self.resource_list['aws_vpc_endpoint_connection_notification'] = {}
-        connection_notifications = self.ec2_client.describe_vpc_endpoint_connection_notifications()[
+        connection_notifications = self.aws_clients.ec2_client.describe_vpc_endpoint_connection_notifications()[
             "ConnectionNotificationSet"]
 
         for notification in connection_notifications:
@@ -204,7 +206,7 @@ class VPCEndPoint:
     def aws_vpc_endpoint_policy(self):
         print("Processing VPC Endpoint Policies...")
         self.resource_list['aws_vpc_endpoint_policy'] = {}
-        vpc_endpoints = self.ec2_client.describe_vpc_endpoints()[
+        vpc_endpoints = self.aws_clients.ec2_client.describe_vpc_endpoints()[
             "VpcEndpoints"]
 
         for endpoint in vpc_endpoints:
@@ -228,7 +230,7 @@ class VPCEndPoint:
     def aws_vpc_endpoint_route_table_association(self):
         print("Processing VPC Endpoint Route Table Associations...")
         self.resource_list['aws_vpc_endpoint_route_table_association'] = {}
-        vpc_endpoints = self.ec2_client.describe_vpc_endpoints()[
+        vpc_endpoints = self.aws_clients.ec2_client.describe_vpc_endpoints()[
             "VpcEndpoints"]
 
         for endpoint in vpc_endpoints:
@@ -253,7 +255,7 @@ class VPCEndPoint:
     def aws_vpc_endpoint_security_group_association(self):
         print("Processing VPC Endpoint Security Group Associations...")
         self.resource_list['aws_vpc_endpoint_security_group_association'] = {}
-        vpc_endpoints = self.ec2_client.describe_vpc_endpoints()[
+        vpc_endpoints = self.aws_clients.ec2_client.describe_vpc_endpoints()[
             "VpcEndpoints"]
 
         for endpoint in vpc_endpoints:
@@ -279,7 +281,7 @@ class VPCEndPoint:
     def aws_vpc_endpoint_service(self):
         print("Processing VPC Endpoint Services...")
         self.resource_list['aws_vpc_endpoint_service'] = {}
-        vpc_endpoint_services = self.ec2_client.describe_vpc_endpoint_services()[
+        vpc_endpoint_services = self.aws_clients.ec2_client.describe_vpc_endpoint_services()[
             "ServiceDetails"]
 
         for service in vpc_endpoint_services:
@@ -309,7 +311,7 @@ class VPCEndPoint:
     def aws_vpc_endpoint_service_allowed_principal(self):
         print("Processing VPC Endpoint Service Allowed Principals...")
         self.resource_list['aws_vpc_endpoint_service_allowed_principal'] = {}
-        vpc_endpoint_services = self.ec2_client.describe_vpc_endpoint_service_configurations()[
+        vpc_endpoint_services = self.aws_clients.ec2_client.describe_vpc_endpoint_service_configurations()[
             "ServiceConfigurations"]
 
         for service in vpc_endpoint_services:
@@ -334,7 +336,7 @@ class VPCEndPoint:
     def aws_vpc_endpoint_subnet_association(self):
         print("Processing VPC Endpoint Subnet Associations...")
         self.resource_list['aws_vpc_endpoint_subnet_association'] = {}
-        vpc_endpoints = self.ec2_client.describe_vpc_endpoints()[
+        vpc_endpoints = self.aws_clients.ec2_client.describe_vpc_endpoints()[
             "VpcEndpoints"]
 
         for endpoint in vpc_endpoints:

@@ -4,9 +4,9 @@ import json
 
 
 class IAM_POLICY:
-    def __init__(self, iam_client, script_dir, provider_name, schema_data, region, s3Bucket,
-                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id):
-        self.iam_client = iam_client
+    def __init__(self, aws_clients, script_dir, provider_name, schema_data, region, s3Bucket,
+                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id,hcl = None):
+        self.aws_clients = aws_clients
         self.aws_account_id = aws_account_id
         self.workspace_id = workspace_id
         self.modules = modules
@@ -52,12 +52,12 @@ class IAM_POLICY:
 
     def aws_iam_access_key(self):
         print("Processing IAM Access Keys...")
-        paginator = self.iam_client.get_paginator("list_users")
+        paginator = self.aws_clients.iam_client.get_paginator("list_users")
 
         for page in paginator.paginate():
             for user in page["Users"]:
                 user_name = user["UserName"]
-                access_keys_paginator = self.iam_client.get_paginator(
+                access_keys_paginator = self.aws_clients.iam_client.get_paginator(
                     "list_access_keys")
 
                 for access_keys_page in access_keys_paginator.paginate(UserName=user_name):
@@ -77,7 +77,7 @@ class IAM_POLICY:
 
     def aws_iam_account_alias(self):
         print("Processing IAM Account Aliases...")
-        paginator = self.iam_client.get_paginator("list_account_aliases")
+        paginator = self.aws_clients.iam_client.get_paginator("list_account_aliases")
 
         for page in paginator.paginate():
             for alias in page["AccountAliases"]:
@@ -94,7 +94,7 @@ class IAM_POLICY:
         print("Processing IAM Account Password Policy...")
 
         try:
-            response = self.iam_client.get_account_password_policy()
+            response = self.aws_clients.iam_client.get_account_password_policy()
             policy = response["PasswordPolicy"]
             attributes = {
                 "id": "iam-account-password-policy",
@@ -112,12 +112,12 @@ class IAM_POLICY:
             self.hcl.process_resource(
                 "aws_iam_account_password_policy", "iam_account_password_policy", attributes)
             print("  IAM Account Password Policy processed.")
-        except self.iam_client.exceptions.NoSuchEntityException:
+        except self.aws_clients.iam_client.exceptions.NoSuchEntityException:
             print("  No IAM Account Password Policy found.")
 
     def aws_iam_group(self):
         print("Processing IAM Groups...")
-        paginator = self.iam_client.get_paginator("list_groups")
+        paginator = self.aws_clients.iam_client.get_paginator("list_groups")
 
         for page in paginator.paginate():
             for group in page["Groups"]:
@@ -136,12 +136,12 @@ class IAM_POLICY:
 
     def aws_iam_group_policy(self):
         print("Processing IAM Group Policies...")
-        paginator = self.iam_client.get_paginator("list_groups")
+        paginator = self.aws_clients.iam_client.get_paginator("list_groups")
 
         for page in paginator.paginate():
             for group in page["Groups"]:
                 group_name = group["GroupName"]
-                policies_paginator = self.iam_client.get_paginator(
+                policies_paginator = self.aws_clients.iam_client.get_paginator(
                     "list_group_policies")
 
                 for policies_page in policies_paginator.paginate(GroupName=group_name):
@@ -149,7 +149,7 @@ class IAM_POLICY:
                         print(
                             f"  Processing IAM Group Policy: {group_name} - {policy_name}")
 
-                        policy_document = self.iam_client.get_group_policy(
+                        policy_document = self.aws_clients.iam_client.get_group_policy(
                             GroupName=group_name, PolicyName=policy_name)
                         attributes = {
                             "id": f"{group_name}:{policy_name}",
@@ -162,7 +162,7 @@ class IAM_POLICY:
 
     def aws_iam_instance_profile(self):
         print("Processing IAM Instance Profiles...")
-        paginator = self.iam_client.get_paginator("list_instance_profiles")
+        paginator = self.aws_clients.iam_client.get_paginator("list_instance_profiles")
 
         for page in paginator.paginate():
             for instance_profile in page["InstanceProfiles"]:
@@ -181,14 +181,14 @@ class IAM_POLICY:
 
     def aws_iam_openid_connect_provider(self):
         print("Processing IAM OpenID Connect Providers...")
-        openid_providers = self.iam_client.list_open_id_connect_providers()[
+        openid_providers = self.aws_clients.iam_client.list_open_id_connect_providers()[
             "OpenIDConnectProviderList"]
 
         for provider in openid_providers:
             provider_arn = provider["Arn"]
             print(f"  Processing IAM OpenID Connect Provider: {provider_arn}")
 
-            provider_details = self.iam_client.get_open_id_connect_provider(
+            provider_details = self.aws_clients.iam_client.get_open_id_connect_provider(
                 OpenIDConnectProviderArn=provider_arn)
             attributes = {
                 "id": provider_arn,
@@ -201,7 +201,7 @@ class IAM_POLICY:
 
     def aws_iam_policy(self):
         print("Processing IAM Policies...")
-        paginator = self.iam_client.get_paginator("list_policies")
+        paginator = self.aws_clients.iam_client.get_paginator("list_policies")
 
         for page in paginator.paginate(Scope='Local'):
             for policy in page["Policies"]:
@@ -227,7 +227,7 @@ class IAM_POLICY:
 
     # def aws_iam_policy_attachment(self):
     #     print("Processing IAM Policy Attachments...")
-    #     paginator = self.iam_client.get_paginator("list_policies")
+    #     paginator = self.aws_clients.iam_client.get_paginator("list_policies")
 
     #     for page in paginator.paginate(Scope='Local'):
     #         for policy in page["Policies"]:
@@ -235,7 +235,7 @@ class IAM_POLICY:
     #             policy_name = policy["PolicyName"]
 
     #             # Process Group Attachments
-    #             group_paginator = self.iam_client.get_paginator(
+    #             group_paginator = self.aws_clients.iam_client.get_paginator(
     #                 "list_entities_for_policy")
     #             for group_page in group_paginator.paginate(PolicyArn=policy_arn, EntityFilter="Group"):
     #                 for group in group_page["PolicyGroups"]:
@@ -250,7 +250,7 @@ class IAM_POLICY:
     #                         "aws_iam_policy_attachment", attachment_name, attributes)
 
     #             # Process Role Attachments
-    #             role_paginator = self.iam_client.get_paginator(
+    #             role_paginator = self.aws_clients.iam_client.get_paginator(
     #                 "list_entities_for_policy")
     #             for role_page in role_paginator.paginate(PolicyArn=policy_arn, EntityFilter="Role"):
     #                 for role in role_page["PolicyRoles"]:
@@ -265,7 +265,7 @@ class IAM_POLICY:
     #                         "aws_iam_policy_attachment", attachment_name, attributes)
 
     #             # Process User Attachments
-    #             user_paginator = self.iam_client.get_paginator(
+    #             user_paginator = self.aws_clients.iam_client.get_paginator(
     #                 "list_entities_for_policy")
     #             for user_page in user_paginator.paginate(PolicyArn=policy_arn, EntityFilter="User"):
     #                 for user in user_page["PolicyUsers"]:
@@ -281,7 +281,7 @@ class IAM_POLICY:
 
     def aws_iam_role(self):
         print("Processing IAM Roles...")
-        paginator = self.iam_client.get_paginator("list_roles")
+        paginator = self.aws_clients.iam_client.get_paginator("list_roles")
 
         for page in paginator.paginate():
             for role in page["Roles"]:
@@ -306,17 +306,17 @@ class IAM_POLICY:
 
     def aws_iam_role_policy(self):
         print("Processing IAM Role Policies...")
-        paginator = self.iam_client.get_paginator("list_roles")
+        paginator = self.aws_clients.iam_client.get_paginator("list_roles")
 
         for page in paginator.paginate():
             for role in page["Roles"]:
                 role_name = role["RoleName"]
 
-                policy_paginator = self.iam_client.get_paginator(
+                policy_paginator = self.aws_clients.iam_client.get_paginator(
                     "list_role_policies")
                 for policy_page in policy_paginator.paginate(RoleName=role_name):
                     for policy_name in policy_page["PolicyNames"]:
-                        policy_document = self.iam_client.get_role_policy(
+                        policy_document = self.aws_clients.iam_client.get_role_policy(
                             RoleName=role_name, PolicyName=policy_name)
                         print(
                             f"  Processing IAM Role Policy: {policy_name} for Role: {role_name}")
@@ -332,7 +332,7 @@ class IAM_POLICY:
 
     def aws_iam_saml_provider(self):
         print("Processing IAM SAML Providers...")
-        saml_providers = self.iam_client.list_saml_providers()[
+        saml_providers = self.aws_clients.iam_client.list_saml_providers()[
             "SAMLProviderList"]
 
         for provider in saml_providers:
@@ -340,7 +340,7 @@ class IAM_POLICY:
             provider_name = provider_arn.split("/")[-1]
             print(f"  Processing IAM SAML Provider: {provider_name}")
 
-            metadata_document = self.iam_client.get_saml_provider(
+            metadata_document = self.aws_clients.iam_client.get_saml_provider(
                 SAMLProviderArn=provider_arn)["SAMLMetadataDocument"]
 
             attributes = {
@@ -353,7 +353,7 @@ class IAM_POLICY:
 
     def aws_iam_server_certificate(self):
         print("Processing IAM Server Certificates...")
-        paginator = self.iam_client.get_paginator("list_server_certificates")
+        paginator = self.aws_clients.iam_client.get_paginator("list_server_certificates")
 
         for page in paginator.paginate():
             for cert in page["ServerCertificateMetadataList"]:
@@ -361,7 +361,7 @@ class IAM_POLICY:
                 cert_name = cert["ServerCertificateName"]
                 print(f"  Processing IAM Server Certificate: {cert_name}")
 
-                server_cert = self.iam_client.get_server_certificate(
+                server_cert = self.aws_clients.iam_client.get_server_certificate(
                     ServerCertificateName=cert_name)
                 cert_body = server_cert["ServerCertificate"]["CertificateBody"]
                 cert_chain = server_cert["ServerCertificate"].get(
@@ -380,7 +380,7 @@ class IAM_POLICY:
 
     def aws_iam_service_linked_role(self):
         print("Processing IAM Service Linked Roles...")
-        paginator = self.iam_client.get_paginator("list_roles")
+        paginator = self.aws_clients.iam_client.get_paginator("list_roles")
 
         for page in paginator.paginate():
             for role in page["Roles"]:
@@ -399,10 +399,10 @@ class IAM_POLICY:
     def aws_iam_service_specific_credential(self):
         print("Processing IAM Service Specific Credentials...")
 
-        users = self.iam_client.list_users()["Users"]
+        users = self.aws_clients.iam_client.list_users()["Users"]
         for user in users:
             user_name = user["UserName"]
-            service_credentials = self.iam_client.list_service_specific_credentials(UserName=user_name)[
+            service_credentials = self.aws_clients.iam_client.list_service_specific_credentials(UserName=user_name)[
                 "ServiceSpecificCredentials"]
 
             for credential in service_credentials:
@@ -423,10 +423,10 @@ class IAM_POLICY:
     def aws_iam_signing_certificate(self):
         print("Processing IAM Signing Certificates...")
 
-        users = self.iam_client.list_users()["Users"]
+        users = self.aws_clients.iam_client.list_users()["Users"]
         for user in users:
             user_name = user["UserName"]
-            signing_certificates = self.iam_client.list_signing_certificates(
+            signing_certificates = self.aws_clients.iam_client.list_signing_certificates(
                 UserName=user_name)["Certificates"]
 
             for certificate in signing_certificates:
@@ -446,7 +446,7 @@ class IAM_POLICY:
     def aws_iam_user(self):
         print("Processing IAM Users...")
 
-        users = self.iam_client.list_users()["Users"]
+        users = self.aws_clients.iam_client.list_users()["Users"]
         for user in users:
             user_name = user["UserName"]
             print(f"  Processing IAM User: {user_name}")
@@ -462,10 +462,10 @@ class IAM_POLICY:
     def aws_iam_user_group_membership(self):
         print("Processing IAM User Group Memberships...")
 
-        users = self.iam_client.list_users()["Users"]
+        users = self.aws_clients.iam_client.list_users()["Users"]
         for user in users:
             user_name = user["UserName"]
-            groups_for_user = self.iam_client.list_groups_for_user(UserName=user_name)[
+            groups_for_user = self.aws_clients.iam_client.list_groups_for_user(UserName=user_name)[
                 "Groups"]
 
             for group in groups_for_user:
@@ -485,12 +485,12 @@ class IAM_POLICY:
     def aws_iam_user_login_profile(self):
         print("Processing IAM User Login Profiles...")
 
-        users = self.iam_client.list_users()["Users"]
+        users = self.aws_clients.iam_client.list_users()["Users"]
         for user in users:
             user_name = user["UserName"]
 
             try:
-                login_profile = self.iam_client.get_login_profile(UserName=user_name)[
+                login_profile = self.aws_clients.iam_client.get_login_profile(UserName=user_name)[
                     "LoginProfile"]
                 print(f"  Processing IAM User Login Profile: {user_name}")
 
@@ -501,23 +501,23 @@ class IAM_POLICY:
                 }
                 self.hcl.process_resource(
                     "aws_iam_user_login_profile", user_name, attributes)
-            except self.iam_client.exceptions.NoSuchEntityException:
+            except self.aws_clients.iam_client.exceptions.NoSuchEntityException:
                 print(f"  No login profile found for IAM User: {user_name}")
 
     def aws_iam_user_policy(self):
         print("Processing IAM User Policies...")
 
-        users = self.iam_client.list_users()["Users"]
+        users = self.aws_clients.iam_client.list_users()["Users"]
         for user in users:
             user_name = user["UserName"]
-            user_policies = self.iam_client.list_user_policies(UserName=user_name)[
+            user_policies = self.aws_clients.iam_client.list_user_policies(UserName=user_name)[
                 "PolicyNames"]
 
             for policy_name in user_policies:
                 policy_id = f"{user_name}:{policy_name}"
                 print(f"  Processing IAM User Policy: {policy_id}")
 
-                policy_document = self.iam_client.get_user_policy(
+                policy_document = self.aws_clients.iam_client.get_user_policy(
                     UserName=user_name, PolicyName=policy_name
                 )["PolicyDocument"]
 
@@ -533,10 +533,10 @@ class IAM_POLICY:
     def aws_iam_user_policy_attachment(self):
         print("Processing IAM User Policy Attachments...")
 
-        users = self.iam_client.list_users()["Users"]
+        users = self.aws_clients.iam_client.list_users()["Users"]
         for user in users:
             user_name = user["UserName"]
-            attached_policies = self.iam_client.list_attached_user_policies(
+            attached_policies = self.aws_clients.iam_client.list_attached_user_policies(
                 UserName=user_name)["AttachedPolicies"]
 
             for policy in attached_policies:
@@ -557,10 +557,10 @@ class IAM_POLICY:
     def aws_iam_user_ssh_key(self):
         print("Processing IAM User SSH Keys...")
 
-        users = self.iam_client.list_users()["Users"]
+        users = self.aws_clients.iam_client.list_users()["Users"]
         for user in users:
             user_name = user["UserName"]
-            ssh_keys = self.iam_client.list_ssh_public_keys(UserName=user_name)[
+            ssh_keys = self.aws_clients.iam_client.list_ssh_public_keys(UserName=user_name)[
                 "SSHPublicKeys"]
 
             for ssh_key in ssh_keys:
@@ -580,7 +580,7 @@ class IAM_POLICY:
     def aws_iam_virtual_mfa_device(self):
         print("Processing IAM Virtual MFA Devices...")
 
-        mfa_devices = self.iam_client.list_virtual_mfa_devices()[
+        mfa_devices = self.aws_clients.iam_client.list_virtual_mfa_devices()[
             "VirtualMFADevices"]
         for mfa_device in mfa_devices:
             mfa_device_arn = mfa_device["SerialNumber"]
@@ -607,12 +607,12 @@ class IAM_POLICY:
 
     def aws_iam_group_policy_attachment(self):
         print("Processing IAM Group Policy Attachments...")
-        paginator = self.iam_client.get_paginator("list_groups")
+        paginator = self.aws_clients.iam_client.get_paginator("list_groups")
 
         for page in paginator.paginate():
             for group in page["Groups"]:
                 group_name = group["GroupName"]
-                policy_paginator = self.iam_client.get_paginator(
+                policy_paginator = self.aws_clients.iam_client.get_paginator(
                     "list_attached_group_policies")
 
                 for policy_page in policy_paginator.paginate(GroupName=group_name):
@@ -631,12 +631,12 @@ class IAM_POLICY:
 
     def aws_iam_role_policy_attachment(self):
         print("Processing IAM Role Policy Attachments...")
-        paginator = self.iam_client.get_paginator("list_roles")
+        paginator = self.aws_clients.iam_client.get_paginator("list_roles")
 
         for page in paginator.paginate():
             for role in page["Roles"]:
                 role_name = role["RoleName"]
-                policy_paginator = self.iam_client.get_paginator(
+                policy_paginator = self.aws_clients.iam_client.get_paginator(
                     "list_attached_role_policies")
 
                 for policy_page in policy_paginator.paginate(RoleName=role_name):

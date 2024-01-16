@@ -3,9 +3,9 @@ from utils.hcl import HCL
 
 
 class Guardduty:
-    def __init__(self, guardduty_client, script_dir, provider_name, schema_data, region, s3Bucket,
-                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id):
-        self.guardduty_client = guardduty_client
+    def __init__(self, aws_clients, script_dir, provider_name, schema_data, region, s3Bucket,
+                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id,hcl = None):
+        self.aws_clients = aws_clients
         self.transform_rules = {}
         self.provider_name = provider_name
         self.script_dir = script_dir
@@ -37,7 +37,7 @@ class Guardduty:
     def aws_guardduty_detector(self):
         print("Processing GuardDuty Detectors...")
 
-        detectors = self.guardduty_client.list_detectors()["DetectorIds"]
+        detectors = self.aws_clients.guardduty_client.list_detectors()["DetectorIds"]
 
         for detector_id in detectors:
             print(f"  Processing GuardDuty Detector: {detector_id}")
@@ -52,20 +52,20 @@ class Guardduty:
     def aws_guardduty_filter(self):
         print("Processing GuardDuty Filters...")
 
-        detectors = self.guardduty_client.list_detectors()["DetectorIds"]
+        detectors = self.aws_clients.guardduty_client.list_detectors()["DetectorIds"]
 
         for detector_id in detectors:
             print(
                 f"Processing GuardDuty Filters for Detector ID: {detector_id}")
 
-            paginator = self.guardduty_client.get_paginator("list_filters")
+            paginator = self.aws_clients.guardduty_client.get_paginator("list_filters")
             page_iterator = paginator.paginate(DetectorId=detector_id)
 
             for page in page_iterator:
                 for filter_name in page["FilterNames"]:
                     print(f"  Processing GuardDuty Filter: {filter_name}")
 
-                    filter_details = self.guardduty_client.get_filter(
+                    filter_details = self.aws_clients.guardduty_client.get_filter(
                         DetectorId=detector_id, FilterName=filter_name)
 
                     attributes = {
@@ -82,7 +82,7 @@ class Guardduty:
     def aws_guardduty_invite_accepter(self):
         print("Processing GuardDuty Invite Accepters...")
 
-        invitations = self.guardduty_client.list_invitations()["Invitations"]
+        invitations = self.aws_clients.guardduty_client.list_invitations()["Invitations"]
 
         for invitation in invitations:
             print(
@@ -99,20 +99,20 @@ class Guardduty:
     def aws_guardduty_ipset(self):
         print("Processing GuardDuty IP Sets...")
 
-        detectors = self.guardduty_client.list_detectors()["DetectorIds"]
+        detectors = self.aws_clients.guardduty_client.list_detectors()["DetectorIds"]
 
         for detector_id in detectors:
             print(
                 f"Processing GuardDuty IP Sets for Detector ID: {detector_id}")
 
-            paginator = self.guardduty_client.get_paginator("list_ip_sets")
+            paginator = self.aws_clients.guardduty_client.get_paginator("list_ip_sets")
             page_iterator = paginator.paginate(DetectorId=detector_id)
 
             for page in page_iterator:
                 for ip_set_id in page["IpSetIds"]:
                     print(f"  Processing GuardDuty IP Set: {ip_set_id}")
 
-                    ip_set = self.guardduty_client.get_ip_set(
+                    ip_set = self.aws_clients.guardduty_client.get_ip_set(
                         DetectorId=detector_id, IpSetId=ip_set_id)
 
                     attributes = {
@@ -129,13 +129,13 @@ class Guardduty:
     def aws_guardduty_member(self):
         print("Processing GuardDuty Members...")
 
-        detectors = self.guardduty_client.list_detectors()["DetectorIds"]
+        detectors = self.aws_clients.guardduty_client.list_detectors()["DetectorIds"]
 
         for detector_id in detectors:
             print(
                 f"Processing GuardDuty Members for Detector ID: {detector_id}")
 
-            paginator = self.guardduty_client.get_paginator("list_members")
+            paginator = self.aws_clients.guardduty_client.get_paginator("list_members")
             page_iterator = paginator.paginate(DetectorId=detector_id)
 
             for page in page_iterator:
@@ -155,7 +155,7 @@ class Guardduty:
     def aws_guardduty_organization_admin_account(self):
         print("Processing GuardDuty Organization Admin Accounts...")
 
-        paginator = self.guardduty_client.get_paginator(
+        paginator = self.aws_clients.guardduty_client.get_paginator(
             "list_organization_admin_accounts")
 
         for page in paginator.paginate():
@@ -173,13 +173,13 @@ class Guardduty:
     def aws_guardduty_organization_configuration(self):
         print("Processing GuardDuty Organization Configuration...")
 
-        detectors = self.guardduty_client.list_detectors()["DetectorIds"]
+        detectors = self.aws_clients.guardduty_client.list_detectors()["DetectorIds"]
 
         for detector_id in detectors:
             print(
                 f"Processing GuardDuty Organization Configuration for Detector ID: {detector_id}")
 
-            org_config = self.guardduty_client.describe_organization_configuration(
+            org_config = self.aws_clients.guardduty_client.describe_organization_configuration(
                 DetectorId=detector_id)
 
             if org_config:
@@ -194,13 +194,13 @@ class Guardduty:
     def aws_guardduty_publishing_destination(self):
         print("Processing GuardDuty Publishing Destinations...")
 
-        detectors = self.guardduty_client.list_detectors()["DetectorIds"]
+        detectors = self.aws_clients.guardduty_client.list_detectors()["DetectorIds"]
 
         for detector_id in detectors:
             print(
                 f"Processing GuardDuty Publishing Destinations for Detector ID: {detector_id}")
 
-            response = self.guardduty_client.list_publishing_destinations(
+            response = self.aws_clients.guardduty_client.list_publishing_destinations(
                 DetectorId=detector_id)
 
             for destination in response["Destinations"]:
@@ -220,13 +220,13 @@ class Guardduty:
     def aws_guardduty_threatintelset(self):
         print("Processing GuardDuty ThreatIntelSets...")
 
-        detectors = self.guardduty_client.list_detectors()["DetectorIds"]
+        detectors = self.aws_clients.guardduty_client.list_detectors()["DetectorIds"]
 
         for detector_id in detectors:
             print(
                 f"Processing GuardDuty ThreatIntelSets for Detector ID: {detector_id}")
 
-            paginator = self.guardduty_client.get_paginator(
+            paginator = self.aws_clients.guardduty_client.get_paginator(
                 "list_threat_intel_sets")
             page_iterator = paginator.paginate(DetectorId=detector_id)
 
@@ -235,7 +235,7 @@ class Guardduty:
                     print(
                         f"  Processing GuardDuty ThreatIntelSet: {threat_intel_set}")
 
-                    set_details = self.guardduty_client.get_threat_intel_set(
+                    set_details = self.aws_clients.guardduty_client.get_threat_intel_set(
                         DetectorId=detector_id, ThreatIntelSetId=threat_intel_set)
                     attributes = {
                         "detector_id": detector_id,

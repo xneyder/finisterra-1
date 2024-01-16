@@ -4,9 +4,9 @@ import json
 
 
 class SECURITY_GROUP:
-    def __init__(self, ec2_client, script_dir, provider_name, schema_data, region, s3Bucket,
-                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id, hcl=None):
-        self.ec2_client = ec2_client
+    def __init__(self, aws_clients, script_dir, provider_name, schema_data, region, s3Bucket,
+                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id,hcl = None):
+        self.aws_clients = aws_clients
         self.aws_account_id = aws_account_id
         self.workspace_id = workspace_id
         self.modules = modules
@@ -32,7 +32,7 @@ class SECURITY_GROUP:
         # self.hcl.additional_data = {}
 
     def get_vpc_name(self, vpc_id):
-        response = self.ec2_client.describe_vpcs(VpcIds=[vpc_id])
+        response = self.aws_clients.ec2_client.describe_vpcs(VpcIds=[vpc_id])
         
         # Check if 'Tags' key exists and if it has any tags
         if 'Tags' in response['Vpcs'][0] and response['Vpcs'][0]['Tags']:
@@ -68,7 +68,7 @@ class SECURITY_GROUP:
         print("Processing Security Groups...")
 
         # Create a response dictionary to collect responses for all security groups
-        response = self.ec2_client.describe_security_groups()
+        response = self.aws_clients.ec2_client.describe_security_groups()
 
         for security_group in response["SecurityGroups"]:
             if security_group["GroupName"] == "default":
@@ -132,7 +132,7 @@ class SECURITY_GROUP:
 
     def aws_vpc_security_group_ingress_rule(self, security_group_id, ftstack=None):
         # Fetch security group rules
-        response = self.ec2_client.describe_security_group_rules(
+        response = self.aws_clients.ec2_client.describe_security_group_rules(
             Filters=[{'Name': 'group-id', 'Values': [security_group_id]}]
         )
 
@@ -157,7 +157,7 @@ class SECURITY_GROUP:
 
     def aws_vpc_security_group_egress_rule(self, security_group_id, ftstack=None):
         # Fetch security group rules
-        response = self.ec2_client.describe_security_group_rules(
+        response = self.aws_clients.ec2_client.describe_security_group_rules(
             Filters=[{'Name': 'group-id', 'Values': [security_group_id]}]
         )
 

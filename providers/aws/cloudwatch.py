@@ -3,14 +3,10 @@ from utils.hcl import HCL
 
 
 class Cloudwatch:
-    def __init__(self, cloudwatch_client, script_dir, provider_name, schema_data, region, s3Bucket,
-                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id):
-        self.cloudwatch_client = cloudwatch_client
-        self.transform_rules = {
-            "aws_cloudwatch_metric_alarm": {
-                "hcl_drop_fields": {"datapoints_to_alarm": 0},
-            },
-        }
+    def __init__(self, aws_clients, script_dir, provider_name, schema_data, region, s3Bucket,
+                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id,hcl = None):
+        self.aws_clients = aws_clients
+        self.transform_rules = {        }
         self.provider_name = provider_name
         self.script_dir = script_dir
         self.schema_data = schema_data
@@ -37,7 +33,7 @@ class Cloudwatch:
     def aws_cloudwatch_composite_alarm(self):
         print("Processing CloudWatch Composite Alarms...")
 
-        paginator = self.cloudwatch_client.get_paginator("describe_alarms")
+        paginator = self.aws_clients.cloudwatch_client.get_paginator("describe_alarms")
         for page in paginator.paginate(AlarmTypes=["CompositeAlarm"]):
             for composite_alarm in page["CompositeAlarms"]:
                 alarm_name = composite_alarm["AlarmName"]
@@ -60,13 +56,13 @@ class Cloudwatch:
     def aws_cloudwatch_dashboard(self):
         print("Processing CloudWatch Dashboards...")
 
-        paginator = self.cloudwatch_client.get_paginator("list_dashboards")
+        paginator = self.aws_clients.cloudwatch_client.get_paginator("list_dashboards")
         for page in paginator.paginate():
             for dashboard in page["DashboardEntries"]:
                 dashboard_name = dashboard["DashboardName"]
                 print(f"  Processing CloudWatch Dashboard: {dashboard_name}")
 
-                dashboard_body = self.cloudwatch_client.get_dashboard(
+                dashboard_body = self.aws_clients.cloudwatch_client.get_dashboard(
                     DashboardName=dashboard_name)["DashboardBody"]
 
                 attributes = {
@@ -81,7 +77,7 @@ class Cloudwatch:
     def aws_cloudwatch_metric_alarm(self):
         print("Processing CloudWatch Metric Alarms...")
 
-        paginator = self.cloudwatch_client.get_paginator("describe_alarms")
+        paginator = self.aws_clients.cloudwatch_client.get_paginator("describe_alarms")
         for page in paginator.paginate(AlarmTypes=["MetricAlarm"]):
             for metric_alarm in page["MetricAlarms"]:
                 alarm_name = metric_alarm["AlarmName"]
@@ -114,7 +110,7 @@ class Cloudwatch:
     def aws_cloudwatch_metric_stream(self):
         print("Processing CloudWatch Metric Streams...")
 
-        metric_streams = self.cloudwatch_client.list_metric_streams()[
+        metric_streams = self.aws_clients.cloudwatch_client.list_metric_streams()[
             "Entries"]
         for metric_stream in metric_streams:
             stream_name = metric_stream["Name"]

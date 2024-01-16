@@ -4,9 +4,9 @@ import json
 
 
 class ECR_PUBLIC:
-    def __init__(self, ecr_public_client, script_dir, provider_name, schema_data, region, s3Bucket,
-                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id):
-        self.ecr_public_client = ecr_public_client
+    def __init__(self, aws_clients, script_dir, provider_name, schema_data, region, s3Bucket,
+                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id,hcl = None):
+        self.aws_clients = aws_clients
         self.transform_rules = {}
         self.provider_name = provider_name
         self.script_dir = script_dir
@@ -32,7 +32,7 @@ class ECR_PUBLIC:
     def aws_ecrpublic_repository(self):
         print("Processing ECR Public Repositories...")
 
-        repositories = self.ecr_public_client.describe_repositories()[
+        repositories = self.aws_clients.ecr_public_client.describe_repositories()[
             "repositories"]
         for repo in repositories:
             repository_name = repo["repositoryName"]
@@ -49,16 +49,16 @@ class ECR_PUBLIC:
     def aws_ecrpublic_repository_policy(self):
         print("Processing ECR Public Repository Policies...")
 
-        repositories = self.ecr_public_client.describe_repositories()[
+        repositories = self.aws_clients.ecr_public_client.describe_repositories()[
             "repositories"]
         for repo in repositories:
             repository_name = repo["repositoryName"]
             repository_arn = repo["repositoryArn"]
 
             try:
-                policy = self.ecr_public_client.get_repository_policy(
+                policy = self.aws_clients.ecr_public_client.get_repository_policy(
                     repositoryName=repository_name)
-            except self.ecr_public_client.exceptions.RepositoryPolicyNotFoundException:
+            except self.aws_clients.ecr_public_client.exceptions.RepositoryPolicyNotFoundException:
                 continue
 
             policy_text = json.loads(policy["policyText"])

@@ -3,15 +3,10 @@ from utils.hcl import HCL
 
 
 class AutoScaling:
-    def __init__(self, autoscaling_client, cloudwatch_client, ec2_client, script_dir, provider_name, schema_data, region, s3Bucket,
-                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id):
-        self.autoscaling_client = autoscaling_client
-        self.cloudwatch_client = cloudwatch_client
-        self.transform_rules = {
-            "aws_autoscaling_policy": {
-                "hcl_drop_fields": {"min_adjustment_magnitude": 0},
-            },
-        }
+    def __init__(self, aws_clients, script_dir, provider_name, schema_data, region, s3Bucket,
+                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id,hcl = None):
+        self.aws_clients = aws_clients
+        self.transform_rules = {        }
         self.provider_name = provider_name
         self.script_dir = script_dir
         self.schema_data = schema_data
@@ -23,7 +18,7 @@ class AutoScaling:
         self.resource_list = {}
         self.aws_account_id = aws_account_id
         self.user_data = {}
-        self.ec2_client = ec2_client
+
 
         functions = {
             'build_autoscaling_policies': self.build_autoscaling_policies,
@@ -48,7 +43,7 @@ class AutoScaling:
         security_group_names = []
 
         for security_group_id in security_group_ids:
-            response = self.ec2_client.describe_security_groups(
+            response = self.aws_clients.ec2_client.describe_security_groups(
                 GroupIds=[security_group_id])
             security_group = response['SecurityGroups'][0]
 
@@ -149,7 +144,7 @@ class AutoScaling:
         subnet_ids = attributes.get(arg)
         subnet_names = []
         for subnet_id in subnet_ids:
-            response = self.ec2_client.describe_subnets(SubnetIds=[subnet_id])
+            response = self.aws_clients.ec2_client.describe_subnets(SubnetIds=[subnet_id])
 
             # Check if 'Subnets' key exists and it's not empty
             if not response or 'Subnets' not in response or not response['Subnets']:
@@ -198,7 +193,7 @@ class AutoScaling:
     def aws_autoscaling_attachment(self):
         print("Processing AutoScaling Attachments...")
 
-        as_groups = self.autoscaling_client.describe_auto_scaling_groups()[
+        as_groups = self.aws_clients.autoscaling_client.describe_auto_scaling_groups()[
             "AutoScalingGroups"]
 
         for as_group in as_groups:
@@ -219,7 +214,7 @@ class AutoScaling:
     def aws_autoscaling_group(self):
         print("Processing AutoScaling Groups...")
 
-        as_groups = self.autoscaling_client.describe_auto_scaling_groups()[
+        as_groups = self.aws_clients.autoscaling_client.describe_auto_scaling_groups()[
             "AutoScalingGroups"]
 
         for as_group in as_groups:
@@ -264,7 +259,7 @@ class AutoScaling:
     def aws_autoscaling_group_tag(self):
         print("Processing AutoScaling Group Tags...")
 
-        as_groups = self.autoscaling_client.describe_auto_scaling_groups()[
+        as_groups = self.aws_clients.autoscaling_client.describe_auto_scaling_groups()[
             "AutoScalingGroups"]
 
         for as_group in as_groups:
@@ -289,12 +284,12 @@ class AutoScaling:
     def aws_autoscaling_lifecycle_hook(self):
         print("Processing AutoScaling Lifecycle Hooks...")
 
-        as_groups = self.autoscaling_client.describe_auto_scaling_groups()[
+        as_groups = self.aws_clients.autoscaling_client.describe_auto_scaling_groups()[
             "AutoScalingGroups"]
 
         for as_group in as_groups:
             as_group_name = as_group["AutoScalingGroupName"]
-            hooks = self.autoscaling_client.describe_lifecycle_hooks(
+            hooks = self.aws_clients.autoscaling_client.describe_lifecycle_hooks(
                 AutoScalingGroupName=as_group_name)["LifecycleHooks"]
 
             for hook in hooks:
@@ -327,7 +322,7 @@ class AutoScaling:
     def aws_autoscaling_notification(self):
         print("Processing AutoScaling Notifications...")
 
-        as_groups = self.autoscaling_client.describe_auto_scaling_groups()[
+        as_groups = self.aws_clients.autoscaling_client.describe_auto_scaling_groups()[
             "AutoScalingGroups"]
 
         notification_types = [
@@ -362,7 +357,7 @@ class AutoScaling:
                     "aws_autoscaling_notification", resource_name.replace("-", "_"), attributes)
 
     def get_sns_topic_arns_for_autoscaling_group(self, as_group_name):
-        response = self.autoscaling_client.describe_notification_configurations(
+        response = self.aws_clients.autoscaling_client.describe_notification_configurations(
             AutoScalingGroupNames=[as_group_name])
         sns_topic_arns = [config['TopicARN']
                           for config in response['NotificationConfigurations']]
@@ -373,7 +368,7 @@ class AutoScaling:
 
         # Retrieving policies for the specified AutoScaling group
         try:
-            response = self.autoscaling_client.describe_policies(
+            response = self.aws_clients.autoscaling_client.describe_policies(
                 AutoScalingGroupName=as_group_name)
         except Exception as e:
             print(
@@ -421,12 +416,12 @@ class AutoScaling:
     def aws_autoscaling_schedule(self):
         print("Processing AutoScaling Schedules...")
 
-        as_groups = self.autoscaling_client.describe_auto_scaling_groups()[
+        as_groups = self.aws_clients.autoscaling_client.describe_auto_scaling_groups()[
             "AutoScalingGroups"]
 
         for as_group in as_groups:
             as_group_name = as_group["AutoScalingGroupName"]
-            scheduled_actions = self.autoscaling_client.describe_scheduled_actions(
+            scheduled_actions = self.aws_clients.autoscaling_client.describe_scheduled_actions(
                 AutoScalingGroupName=as_group_name)["ScheduledUpdateGroupActions"]
 
             for action in scheduled_actions:
@@ -461,7 +456,7 @@ class AutoScaling:
         print(f"Processing Launch Template: {id}")
 
         try:
-            response = self.ec2_client.describe_launch_templates(
+            response = self.aws_clients.ec2_client.describe_launch_templates(
                 LaunchTemplateIds=[id])
         except Exception as e:
             print(f"Error retrieving Launch Template {id}: {str(e)}")
@@ -478,7 +473,7 @@ class AutoScaling:
 
         default_version = launch_template.get("DefaultVersionNumber")
         try:
-            response_version = self.ec2_client.describe_launch_template_versions(
+            response_version = self.aws_clients.ec2_client.describe_launch_template_versions(
                 LaunchTemplateId=id,
                 Versions=[str(default_version)]
             )
@@ -517,7 +512,7 @@ class AutoScaling:
         print(f"Processing Launch Configuration: {id}")
 
         try:
-            response = self.autoscaling_client.describe_launch_configurations(
+            response = self.aws_clients.autoscaling_client.describe_launch_configurations(
                 LaunchConfigurationNames=[id])
         except Exception as e:
             print(f"Error retrieving Launch Configuration {id}: {str(e)}")
@@ -562,7 +557,7 @@ class AutoScaling:
 
         try:
             # Retrieve specific alarm
-            alarm = self.cloudwatch_client.describe_alarms(
+            alarm = self.aws_clients.cloudwatch_client.describe_alarms(
                 AlarmNames=[alarm_name])
         except Exception as e:
             print(f"Error retrieving CloudWatch Alarm {alarm_name}: {str(e)}")

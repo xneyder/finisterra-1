@@ -3,9 +3,9 @@ from utils.hcl import HCL
 
 
 class SSM:
-    def __init__(self, ssm_client, script_dir, provider_name, schema_data, region, s3Bucket,
-                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id):
-        self.ssm_client = ssm_client
+    def __init__(self, aws_clients, script_dir, provider_name, schema_data, region, s3Bucket,
+                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id,hcl = None):
+        self.aws_clients = aws_clients
         self.transform_rules = {}
         self.provider_name = provider_name
         self.script_dir = script_dir
@@ -40,7 +40,7 @@ class SSM:
     def aws_ssm_activation(self):
         print("Processing SSM Activations...")
 
-        paginator = self.ssm_client.get_paginator("describe_activations")
+        paginator = self.aws_clients.ssm_client.get_paginator("describe_activations")
         for page in paginator.paginate():
             for activation in page["ActivationList"]:
                 activation_id = activation["ActivationId"]
@@ -65,7 +65,7 @@ class SSM:
     def aws_ssm_association(self):
         print("Processing SSM Associations...")
 
-        paginator = self.ssm_client.get_paginator("list_associations")
+        paginator = self.aws_clients.ssm_client.get_paginator("list_associations")
         for page in paginator.paginate():
             for association in page["Associations"]:
                 association_id = association.get("AssociationId")
@@ -86,7 +86,7 @@ class SSM:
     def aws_ssm_default_patch_baseline(self):
         print("Processing SSM Default Patch Baselines...")
 
-        paginator = self.ssm_client.get_paginator("describe_patch_baselines")
+        paginator = self.aws_clients.ssm_client.get_paginator("describe_patch_baselines")
         for page in paginator.paginate(Filters=[{"Key": "OWNER", "Values": ["Self"]}]):
             for baseline in page["BaselineIdentities"]:
                 if baseline.get("DefaultBaseline"):
@@ -106,13 +106,13 @@ class SSM:
     def aws_ssm_document(self):
         print("Processing SSM Documents...")
 
-        paginator = self.ssm_client.get_paginator("list_documents")
+        paginator = self.aws_clients.ssm_client.get_paginator("list_documents")
         for page in paginator.paginate():
             for doc_info in page["DocumentIdentifiers"]:
                 document_name = doc_info["Name"]
                 print(f"  Processing SSM Document: {document_name}")
 
-                document = self.ssm_client.get_document(Name=document_name)
+                document = self.aws_clients.ssm_client.get_document(Name=document_name)
                 content = document["Content"]
 
                 attributes = {
@@ -133,7 +133,7 @@ class SSM:
     def aws_ssm_maintenance_window(self):
         print("Processing SSM Maintenance Windows...")
 
-        paginator = self.ssm_client.get_paginator(
+        paginator = self.aws_clients.ssm_client.get_paginator(
             "describe_maintenance_windows")
         for page in paginator.paginate():
             for window in page["WindowIdentities"]:
@@ -153,13 +153,13 @@ class SSM:
     def aws_ssm_maintenance_window_target(self):
         print("Processing SSM Maintenance Window Targets...")
 
-        paginator = self.ssm_client.get_paginator(
+        paginator = self.aws_clients.ssm_client.get_paginator(
             "describe_maintenance_windows")
         for page in paginator.paginate():
             for window in page["WindowIdentities"]:
                 window_id = window["WindowId"]
 
-                target_paginator = self.ssm_client.get_paginator(
+                target_paginator = self.aws_clients.ssm_client.get_paginator(
                     "describe_maintenance_window_targets")
                 for target_page in target_paginator.paginate(WindowId=window_id):
                     for target in target_page["Targets"]:
@@ -179,13 +179,13 @@ class SSM:
     def aws_ssm_maintenance_window_task(self):
         print("Processing SSM Maintenance Window Tasks...")
 
-        paginator = self.ssm_client.get_paginator(
+        paginator = self.aws_clients.ssm_client.get_paginator(
             "describe_maintenance_windows")
         for page in paginator.paginate():
             for window in page["WindowIdentities"]:
                 window_id = window["WindowId"]
 
-                task_paginator = self.ssm_client.get_paginator(
+                task_paginator = self.aws_clients.ssm_client.get_paginator(
                     "describe_maintenance_window_tasks")
                 for task_page in task_paginator.paginate(WindowId=window_id):
                     for task in task_page["Tasks"]:
@@ -208,13 +208,13 @@ class SSM:
     def aws_ssm_parameter(self):
         print("Processing SSM Parameters...")
 
-        paginator = self.ssm_client.get_paginator("describe_parameters")
+        paginator = self.aws_clients.ssm_client.get_paginator("describe_parameters")
         for page in paginator.paginate():
             for parameter in page["Parameters"]:
                 parameter_name = parameter["Name"]
                 print(f"  Processing SSM Parameter: {parameter_name}")
 
-                parameter_details = self.ssm_client.get_parameter(
+                parameter_details = self.aws_clients.ssm_client.get_parameter(
                     Name=parameter_name, WithDecryption=False)
                 attributes = {
                     "id": parameter_name,
@@ -228,7 +228,7 @@ class SSM:
     def aws_ssm_patch_baseline(self):
         print("Processing SSM Patch Baselines...")
 
-        paginator = self.ssm_client.get_paginator("describe_patch_baselines")
+        paginator = self.aws_clients.ssm_client.get_paginator("describe_patch_baselines")
         for page in paginator.paginate():
             for baseline in page["BaselineIdentities"]:
                 baseline_id = baseline["BaselineId"]
@@ -243,7 +243,7 @@ class SSM:
     def aws_ssm_patch_group(self):
         print("Processing SSM Patch Groups...")
 
-        paginator = self.ssm_client.get_paginator("describe_patch_groups")
+        paginator = self.aws_clients.ssm_client.get_paginator("describe_patch_groups")
         for page in paginator.paginate():
             for group in page["Mappings"]:
                 group_name = group["PatchGroup"]
@@ -260,7 +260,7 @@ class SSM:
     def aws_ssm_resource_data_sync(self):
         print("Processing SSM Resource Data Syncs...")
 
-        paginator = self.ssm_client.get_paginator("list_resource_data_sync")
+        paginator = self.aws_clients.ssm_client.get_paginator("list_resource_data_sync")
         for page in paginator.paginate():
             for data_sync in page["ResourceDataSyncItems"]:
                 sync_name = data_sync["SyncName"]
@@ -284,7 +284,7 @@ class SSM:
 
         for setting_id in setting_ids:
             try:
-                service_setting = self.ssm_client.get_service_setting(
+                service_setting = self.aws_clients.ssm_client.get_service_setting(
                     SettingId=setting_id)["ServiceSetting"]
                 print(f"  Processing SSM Service Setting: {setting_id}")
 
@@ -293,7 +293,7 @@ class SSM:
                 }
                 self.hcl.process_resource(
                     "aws_ssm_service_setting", setting_id.replace("/", "_"), attributes)
-            except self.ssm_client.exceptions.ServiceSettingNotFound:
+            except self.aws_clients.ssm_client.exceptions.ServiceSettingNotFound:
                 print(f"  SSM Service Setting not found: {setting_id}")
                 continue
             except Exception as e:

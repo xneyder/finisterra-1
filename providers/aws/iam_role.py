@@ -4,9 +4,9 @@ import json
 
 
 class IAM_ROLE:
-    def __init__(self, iam_client, script_dir, provider_name, schema_data, region, s3Bucket,
-                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id, hcl=None):
-        self.iam_client = iam_client
+    def __init__(self, aws_clients, script_dir, provider_name, schema_data, region, s3Bucket,
+                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id,hcl = None):
+        self.aws_clients = aws_clients
         self.aws_account_id = aws_account_id
         self.workspace_id = workspace_id
         self.modules = modules
@@ -46,7 +46,7 @@ class IAM_ROLE:
                 print(f"  Skipping Iam Role: {role_name} - already processed")
                 return
             
-        paginator = self.iam_client.get_paginator("list_roles")
+        paginator = self.aws_clients.iam_client.get_paginator("list_roles")
 
         for page in paginator.paginate():
             for role in page["Roles"]:
@@ -89,7 +89,7 @@ class IAM_ROLE:
 
     def aws_iam_instance_profile(self, role_name):
         print("Processing IAM Instance Profiles...")
-        paginator = self.iam_client.get_paginator("list_instance_profiles")
+        paginator = self.aws_clients.iam_client.get_paginator("list_instance_profiles")
 
         for page in paginator.paginate():
             for instance_profile in page["InstanceProfiles"]:
@@ -116,7 +116,7 @@ class IAM_ROLE:
     def aws_iam_role_policy_attachment(self, role_name, ftstack):
         print(f"Processing IAM Role Policy Attachments for {role_name}...")
 
-        policy_paginator = self.iam_client.get_paginator(
+        policy_paginator = self.aws_clients.iam_client.get_paginator(
             "list_attached_role_policies")
 
         for policy_page in policy_paginator.paginate(RoleName=role_name):

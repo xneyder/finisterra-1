@@ -5,9 +5,9 @@ from providers.aws.elbv2 import ELBV2
 from providers.aws.logs import Logs
 
 class Apigateway:
-    def __init__(self, apigateway_client, ec2_client, elbv2_client, acm_client, logs_client, kms_client, s3_client, script_dir, provider_name, schema_data, region, s3Bucket,
-                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id, hcl=None):
-        self.apigateway_client = apigateway_client
+    def __init__(self, aws_clients, script_dir, provider_name, schema_data, region, s3Bucket,
+                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id,hcl = None):
+        self.aws_clients = aws_clients
         self.transform_rules = {}
         self.provider_name = provider_name
         self.script_dir = script_dir
@@ -62,9 +62,9 @@ class Apigateway:
 
         self.hcl.functions.update(functions)
 
-        self.vpc_endpoint_instance = VPCEndPoint(ec2_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
-        self.elbv2_instance = ELBV2(elbv2_client, ec2_client, acm_client, s3_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
-        self.logs_instance = Logs(logs_client, kms_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
+        self.vpc_endpoint_instance = VPCEndPoint(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
+        self.elbv2_instance = ELBV2(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
+        self.logs_instance = Logs(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
 
     def get_field_from_attrs(self, attributes, arg):
         keys = arg.split(".")
@@ -109,7 +109,7 @@ class Apigateway:
         resource_id = attributes.get('resource_id')
         http_method = attributes.get('http_method')
         path = self.api_gateway_resource_list[rest_api_id][resource_id]
-        # path = self.apigateway_client.get_resource(restApiId=rest_api_id, resourceId=resource_id)['path']
+        # path = self.aws_clients.apigateway_client.get_resource(restApiId=rest_api_id, resourceId=resource_id)['path']
         result[path] = {'methods':{}}
         result[path]['methods'][http_method] = {}
         result[path]['methods'][http_method]['authorization'] = attributes.get('authorization')
@@ -194,7 +194,7 @@ class Apigateway:
         resource_id = attributes.get('resource_id')
         #get path for resource
         path = self.api_gateway_resource_list[rest_api_id][resource_id]
-        # path = self.apigateway_client.get_resource(restApiId=rest_api_id, resourceId=resource_id)['path']
+        # path = self.aws_clients.apigateway_client.get_resource(restApiId=rest_api_id, resourceId=resource_id)['path']
         if path == '/':
             depth = 0
         else:
@@ -207,7 +207,7 @@ class Apigateway:
         resource_id = attributes.get('resource_id')
         #get path for resource
         path = self.api_gateway_resource_list[rest_api_id][resource_id]
-        # path = self.apigateway_client.get_resource(restApiId=rest_api_id, resourceId=resource_id)['path']
+        # path = self.aws_clients.apigateway_client.get_resource(restApiId=rest_api_id, resourceId=resource_id)['path']
         if path == '/':
             depth = 0
         else:
@@ -220,7 +220,7 @@ class Apigateway:
         resource_id = attributes.get('resource_id')
         #Get the resource path
         path = self.api_gateway_resource_list[rest_api_id][resource_id]
-        # path = self.apigateway_client.get_resource(restApiId=rest_api_id, resourceId=resource_id)['path']
+        # path = self.aws_clients.apigateway_client.get_resource(restApiId=rest_api_id, resourceId=resource_id)['path']
         http_method = attributes.get('http_method')
         return f"{path}/{http_method}"
     
@@ -229,7 +229,7 @@ class Apigateway:
         resource_id = attributes.get('resource_id')
         #Get the resource path
         path = self.api_gateway_resource_list[rest_api_id][resource_id]
-        # path = self.apigateway_client.get_resource(restApiId=rest_api_id, resourceId=resource_id)['path']
+        # path = self.aws_clients.apigateway_client.get_resource(restApiId=rest_api_id, resourceId=resource_id)['path']
         http_method = attributes.get('http_method')
         return f"{path}/{http_method}"
     
@@ -238,7 +238,7 @@ class Apigateway:
         resource_id = attributes.get('resource_id')
         #Get the resource path
         path = self.api_gateway_resource_list[rest_api_id][resource_id]
-        # path = self.apigateway_client.get_resource(restApiId=rest_api_id, resourceId=resource_id)['path']
+        # path = self.aws_clients.apigateway_client.get_resource(restApiId=rest_api_id, resourceId=resource_id)['path']
         http_method = attributes.get('http_method')
         return f"{path}/{http_method}/{attributes.get('status_code')}"
 
@@ -247,7 +247,7 @@ class Apigateway:
         resource_id = attributes.get('resource_id')        
         #Get the resource path
         path = self.api_gateway_resource_list[rest_api_id][resource_id]
-        # path = self.apigateway_client.get_resource(restApiId=rest_api_id, resourceId=resource_id)['path']
+        # path = self.aws_clients.apigateway_client.get_resource(restApiId=rest_api_id, resourceId=resource_id)['path']
         http_method = attributes.get('http_method')
         return f"{path}/{http_method}/{attributes.get('status_code')}"
 
@@ -331,7 +331,7 @@ class Apigateway:
     def get_stage_name(self,attributes):
         restApiId=attributes['rest_api_id']
         deploymentId=attributes['id']
-        stages=self.apigateway_client.get_stages(restApiId=restApiId, deploymentId=deploymentId)
+        stages=self.aws_clients.apigateway_client.get_stages(restApiId=restApiId, deploymentId=deploymentId)
         return stages['item'][0]['stageName']
 
     # def build_deployment(self, attributes, arg):
@@ -412,7 +412,7 @@ class Apigateway:
     def aws_api_gateway_account(self):
         print("Processing API Gateway Account...")
 
-        account = self.apigateway_client.get_account()
+        account = self.aws_clients.apigateway_client.get_account()
 
         attributes = {}
 
@@ -434,10 +434,10 @@ class Apigateway:
         resource_type = "aws_api_gateway_rest_api"
         print("Processing API Gateway REST APIs...")
 
-        rest_apis = self.apigateway_client.get_rest_apis()["items"]
+        rest_apis = self.aws_clients.apigateway_client.get_rest_apis()["items"]
 
         # Get the region from the client
-        region = self.apigateway_client.meta.region_name
+        region = self.aws_clients.apigateway_client.meta.region_name
 
         for rest_api in rest_apis:
 
@@ -456,7 +456,7 @@ class Apigateway:
 
             ftstack = "apigateway"
             try:
-                response = self.apigateway_client.get_tags(resourceArn=arn)
+                response = self.aws_clients.apigateway_client.get_tags(resourceArn=arn)
                 tags = response.get('tags', {})
                 for tag_key, tag_value in tags.items():
                     if tag_key == 'ftstack':
@@ -495,7 +495,7 @@ class Apigateway:
             "rest_api_id": rest_api_id
         }
         
-        # deployment = self.apigateway_client.get_deployment(
+        # deployment = self.aws_clients.apigateway_client.get_deployment(
         #     restApiId=rest_api_id,
         #     deploymentId=deployment_id
         # )
@@ -510,7 +510,7 @@ class Apigateway:
     def aws_api_gateway_stage(self, rest_api_id, ftstack):
         print("Processing API Gateway Stages...")
 
-        stages = self.apigateway_client.get_stages(
+        stages = self.aws_clients.apigateway_client.get_stages(
             restApiId=rest_api_id)["item"]
         # filtered_stages = [stage for stage in stages if stage["deploymentId"] == deployment_id]
 
@@ -535,7 +535,7 @@ class Apigateway:
             
             self.aws_api_gateway_deployment(rest_api_id, stage["deploymentId"], ftstack)
 
-            # response = self.apigateway_client.get_export(
+            # response = self.aws_clients.apigateway_client.get_export(
             #     restApiId=rest_api_id,
             #     stageName="dummy",
             #     exportType='oas30',
@@ -556,7 +556,7 @@ class Apigateway:
             print(f"Processing API Gateway Methods for resource: {resource_id}...")
 
             # Attempt to retrieve the resource methods, default to an empty dict if not found
-            response = self.apigateway_client.get_resource(restApiId=rest_api_id, resourceId=resource_id)
+            response = self.aws_clients.apigateway_client.get_resource(restApiId=rest_api_id, resourceId=resource_id)
             methods = response.get("resourceMethods", {})
 
             for method, details in methods.items():
@@ -581,7 +581,7 @@ class Apigateway:
     def aws_api_gateway_method_settings(self, rest_api_id):
         print("Processing API Gateway Method Settings...")
 
-        stages = self.apigateway_client.get_stages(
+        stages = self.aws_clients.apigateway_client.get_stages(
             restApiId=rest_api_id)["item"]
 
         for stage in stages:
@@ -605,7 +605,7 @@ class Apigateway:
     def aws_api_gateway_rest_api_policy(self, rest_api_id):
         print("Processing API Gateway REST API Policies...")
 
-        rest_api = self.apigateway_client.get_rest_api(
+        rest_api = self.aws_clients.apigateway_client.get_rest_api(
             restApiId=rest_api_id)
 
         policy = rest_api.get("policy", None)
@@ -629,7 +629,7 @@ class Apigateway:
         resource_type = "aws_api_gateway_vpc_link"
         print(f"Processing API Gateway VPC Link: {vpc_link_id}")
 
-        vpc_link = self.apigateway_client.get_vpc_link(
+        vpc_link = self.aws_clients.apigateway_client.get_vpc_link(
             vpcLinkId=vpc_link_id
         )
 
@@ -650,7 +650,7 @@ class Apigateway:
     # def aws_api_gateway_api_key(self):
     #     print("Processing API Gateway API Keys...")
 
-    #     paginator = self.apigateway_client.get_paginator("get_api_keys")
+    #     paginator = self.aws_clients.apigateway_client.get_paginator("get_api_keys")
     #     page_iterator = paginator.paginate()
 
     #     for page in page_iterator:
@@ -674,10 +674,10 @@ class Apigateway:
     # def aws_api_gateway_authorizer(self):
     #     print("Processing API Gateway Authorizers...")
 
-    #     rest_apis = self.apigateway_client.get_rest_apis()["items"]
+    #     rest_apis = self.aws_clients.apigateway_client.get_rest_apis()["items"]
 
     #     for rest_api in rest_apis:
-    #         authorizers = self.apigateway_client.get_authorizers(
+    #         authorizers = self.aws_clients.apigateway_client.get_authorizers(
     #             restApiId=rest_api["id"])["items"]
 
     #         for authorizer in authorizers:
@@ -706,10 +706,10 @@ class Apigateway:
     # def aws_api_gateway_base_path_mapping(self):
     #     print("Processing API Gateway Base Path Mappings...")
 
-    #     domain_names = self.apigateway_client.get_domain_names()["items"]
+    #     domain_names = self.aws_clients.apigateway_client.get_domain_names()["items"]
 
     #     for domain_name in domain_names:
-    #         base_path_mappings = self.apigateway_client.get_base_path_mappings(
+    #         base_path_mappings = self.aws_clients.apigateway_client.get_base_path_mappings(
     #             domainName=domain_name["domainName"])["items"]
 
     #         for base_path_mapping in base_path_mappings:
@@ -732,7 +732,7 @@ class Apigateway:
     # def aws_api_gateway_client_certificate(self):
     #     print("Processing API Gateway Client Certificates...")
 
-    #     client_certificates = self.apigateway_client.get_client_certificates()[
+    #     client_certificates = self.aws_clients.apigateway_client.get_client_certificates()[
     #         "items"]
 
     #     for client_certificate in client_certificates:
@@ -750,10 +750,10 @@ class Apigateway:
     # def aws_api_gateway_documentation_part(self):
     #     print("Processing API Gateway Documentation Parts...")
 
-    #     rest_apis = self.apigateway_client.get_rest_apis()["items"]
+    #     rest_apis = self.aws_clients.apigateway_client.get_rest_apis()["items"]
 
     #     for rest_api in rest_apis:
-    #         documentation_parts = self.apigateway_client.get_documentation_parts(
+    #         documentation_parts = self.aws_clients.apigateway_client.get_documentation_parts(
     #             restApiId=rest_api["id"])["items"]
 
     #         for documentation_part in documentation_parts:
@@ -772,10 +772,10 @@ class Apigateway:
     # def aws_api_gateway_documentation_version(self):
     #     print("Processing API Gateway Documentation Versions...")
 
-    #     rest_apis = self.apigateway_client.get_rest_apis()["items"]
+    #     rest_apis = self.aws_clients.apigateway_client.get_rest_apis()["items"]
 
     #     for rest_api in rest_apis:
-    #         documentation_versions = self.apigateway_client.get_documentation_versions(
+    #         documentation_versions = self.aws_clients.apigateway_client.get_documentation_versions(
     #             restApiId=rest_api["id"])["items"]
 
     #         for documentation_version in documentation_versions:
@@ -794,7 +794,7 @@ class Apigateway:
     # def aws_api_gateway_domain_name(self):
     #     print("Processing API Gateway Domain Names...")
 
-    #     domain_names = self.apigateway_client.get_domain_names()["items"]
+    #     domain_names = self.aws_clients.apigateway_client.get_domain_names()["items"]
 
     #     for domain_name in domain_names:
     #         print(
@@ -813,7 +813,7 @@ class Apigateway:
     def aws_api_gateway_gateway_response(self, rest_api_id):
         print(f"Processing API Gateway Gateway Responses for Rest API: {rest_api_id}")
 
-        gateway_responses = self.apigateway_client.get_gateway_responses(
+        gateway_responses = self.aws_clients.apigateway_client.get_gateway_responses(
             restApiId=rest_api_id)["items"]
 
         for gateway_response in gateway_responses:
@@ -836,7 +836,7 @@ class Apigateway:
         try:
 
             # Retrieve the integration for the specified method
-            integration = self.apigateway_client.get_integration(
+            integration = self.aws_clients.apigateway_client.get_integration(
                 restApiId=api_id, resourceId=resource_id, httpMethod=method)
             
             path = self.api_gateway_resource_list[api_id][resource_id]
@@ -872,7 +872,7 @@ class Apigateway:
     def aws_api_gateway_integration_response(self, rest_api_id, resource_id, method):
         print("Processing API Gateway Integration Responses...")
 
-        integration = self.apigateway_client.get_integration(
+        integration = self.aws_clients.apigateway_client.get_integration(
             restApiId=rest_api_id, resourceId=resource_id, httpMethod=method)
         
         for status_code in integration["integrationResponses"]:
@@ -895,7 +895,7 @@ class Apigateway:
     def aws_api_gateway_method_response(self, rest_api_id, resource_id, method):
         print("Processing API Gateway Method Responses...")
 
-        method_details = self.apigateway_client.get_method(
+        method_details = self.aws_clients.apigateway_client.get_method(
             restApiId=rest_api_id, resourceId=resource_id, httpMethod=method)
         
         for status_code in method_details["methodResponses"].keys():
@@ -917,7 +917,7 @@ class Apigateway:
     def aws_api_gateway_model(self, rest_api_id):
         print(f"Processing API Gateway Models for Rest API: {rest_api_id}")
 
-        models = self.apigateway_client.get_models(restApiId=rest_api_id)["items"]
+        models = self.aws_clients.apigateway_client.get_models(restApiId=rest_api_id)["items"]
 
         for model in models:
             print(f"  Processing API Gateway Model: {model['name']}")
@@ -934,10 +934,10 @@ class Apigateway:
     # def aws_api_gateway_request_validator(self):
     #     print("Processing API Gateway Request Validators...")
 
-    #     rest_apis = self.apigateway_client.get_rest_apis()["items"]
+    #     rest_apis = self.aws_clients.apigateway_client.get_rest_apis()["items"]
 
     #     for rest_api in rest_apis:
-    #         validators = self.apigateway_client.get_request_validators(
+    #         validators = self.aws_clients.apigateway_client.get_request_validators(
     #             restApiId=rest_api["id"])["items"]
 
     #         for validator in validators:
@@ -959,7 +959,7 @@ class Apigateway:
     def aws_api_gateway_resource(self, api_id, ftstack):
         print(f"Processing API Gateway Resources for API: {api_id}")
 
-        paginator = self.apigateway_client.get_paginator("get_resources")
+        paginator = self.aws_clients.apigateway_client.get_paginator("get_resources")
         page_iterator = paginator.paginate(restApiId=api_id)
 
         for page in page_iterator:
@@ -989,7 +989,7 @@ class Apigateway:
     # def aws_api_gateway_usage_plan_key(self):
     #     print("Processing API Gateway Usage Plans and Usage Plan Keys...")
 
-    #     paginator = self.apigateway_client.get_paginator("get_usage_plans")
+    #     paginator = self.aws_clients.apigateway_client.get_paginator("get_usage_plans")
     #     page_iterator = paginator.paginate()
 
     #     for page in page_iterator:
@@ -997,7 +997,7 @@ class Apigateway:
     #             usage_plan_id = usage_plan["id"]
 
     #             # Process Usage Plan Keys
-    #             paginator_key = self.apigateway_client.get_paginator(
+    #             paginator_key = self.aws_clients.apigateway_client.get_paginator(
     #                 "get_usage_plan_keys")
     #             page_iterator_key = paginator_key.paginate(
     #                 usagePlanId=usage_plan_id)
@@ -1022,7 +1022,7 @@ class Apigateway:
     # def aws_api_gateway_usage_plan(self):
     #     print("Processing API Gateway Usage Plans...")
 
-    #     paginator = self.apigateway_client.get_paginator("get_usage_plans")
+    #     paginator = self.aws_clients.apigateway_client.get_paginator("get_usage_plans")
     #     page_iterator = paginator.paginate()
 
     #     for page in page_iterator:
@@ -1044,7 +1044,7 @@ class Apigateway:
     # def aws_api_gateway_usage_plan_key(self):
     #     print("Processing API Gateway Usage Plan Keys...")
 
-    #     paginator = self.apigateway_client.get_paginator("get_usage_plans")
+    #     paginator = self.aws_clients.apigateway_client.get_paginator("get_usage_plans")
     #     page_iterator = paginator.paginate()
 
     #     for page in page_iterator:
@@ -1052,7 +1052,7 @@ class Apigateway:
     #             usage_plan_id = usage_plan["id"]
 
     #             # Process Usage Plan Keys
-    #             paginator_key = self.apigateway_client.get_paginator(
+    #             paginator_key = self.aws_clients.apigateway_client.get_paginator(
     #                 "get_usage_plan_keys")
     #             page_iterator_key = paginator_key.paginate(
     #                 usagePlanId=usage_plan_id)

@@ -3,9 +3,9 @@ from utils.hcl import HCL
 
 
 class Backup:
-    def __init__(self, backup_client, script_dir, provider_name, schema_data, region, s3Bucket,
-                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id):
-        self.backup_client = backup_client
+    def __init__(self, aws_clients, script_dir, provider_name, schema_data, region, s3Bucket,
+                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id,hcl = None):
+        self.aws_clients = aws_clients
         self.transform_rules = {}
         self.provider_name = provider_name
         self.script_dir = script_dir
@@ -30,11 +30,11 @@ class Backup:
     def aws_backup_plan(self):
         print("Processing AWS Backup Plans...")
 
-        paginator = self.backup_client.get_paginator("list_backup_plans")
+        paginator = self.aws_clients.backup_client.get_paginator("list_backup_plans")
         for page in paginator.paginate():
             for backup_plan in page["BackupPlansList"]:
                 backup_plan_id = backup_plan["BackupPlanId"]
-                plan = self.backup_client.get_backup_plan(
+                plan = self.aws_clients.backup_client.get_backup_plan(
                     BackupPlanId=backup_plan_id)["BackupPlan"]
                 print(f"  Processing AWS Backup Plan: {backup_plan_id}")
 
@@ -51,11 +51,11 @@ class Backup:
     def aws_backup_vault(self):
         print("Processing AWS Backup Vaults...")
 
-        paginator = self.backup_client.get_paginator("list_backup_vaults")
+        paginator = self.aws_clients.backup_client.get_paginator("list_backup_vaults")
         for page in paginator.paginate():
             for backup_vault in page["BackupVaultList"]:
                 backup_vault_name = backup_vault["BackupVaultName"]
-                vault = self.backup_client.describe_backup_vault(
+                vault = self.aws_clients.backup_client.describe_backup_vault(
                     BackupVaultName=backup_vault_name)
                 print(f"  Processing AWS Backup Vault: {backup_vault_name}")
 

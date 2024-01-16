@@ -3,9 +3,9 @@ from utils.hcl import HCL
 
 
 class Apigatewayv2:
-    def __init__(self, apigatewayv2_client, script_dir, provider_name, schema_data, region, s3Bucket,
-                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id):
-        self.apigatewayv2_client = apigatewayv2_client
+    def __init__(self, aws_clients, script_dir, provider_name, schema_data, region, s3Bucket,
+                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id,hcl = None):
+        self.aws_clients = aws_clients
         self.transform_rules = {}
         self.provider_name = provider_name
         self.script_dir = script_dir
@@ -40,7 +40,7 @@ class Apigatewayv2:
     def aws_apigatewayv2_api(self):
         print("Processing API Gateway v2 APIs...")
 
-        paginator = self.apigatewayv2_client.get_paginator("get_apis")
+        paginator = self.aws_clients.apigatewayv2_client.get_paginator("get_apis")
         page_iterator = paginator.paginate()
 
         for page in page_iterator:
@@ -66,13 +66,13 @@ class Apigatewayv2:
     def aws_apigatewayv2_api_mapping(self):
         print("Processing API Gateway v2 API Mappings...")
 
-        apis = self.apigatewayv2_client.get_apis()["Items"]
+        apis = self.aws_clients.apigatewayv2_client.get_apis()["Items"]
         for api in apis:
             api_id = api["ApiId"]
             print(
                 f"  Processing API Gateway v2 API Mappings for API ID: {api_id}")
 
-            paginator = self.apigatewayv2_client.get_paginator(
+            paginator = self.aws_clients.apigatewayv2_client.get_paginator(
                 "get_api_mappings")
             page_iterator = paginator.paginate(ApiId=api_id)
 
@@ -95,13 +95,13 @@ class Apigatewayv2:
     def aws_apigatewayv2_authorizer(self):
         print("Processing API Gateway v2 Authorizers...")
 
-        apis = self.apigatewayv2_client.get_apis()["Items"]
+        apis = self.aws_clients.apigatewayv2_client.get_apis()["Items"]
         for api in apis:
             api_id = api["ApiId"]
             print(
                 f"  Processing API Gateway v2 Authorizers for API ID: {api_id}")
 
-            paginator = self.apigatewayv2_client.get_paginator(
+            paginator = self.aws_clients.apigatewayv2_client.get_paginator(
                 "get_authorizers")
             page_iterator = paginator.paginate(ApiId=api_id)
 
@@ -128,13 +128,13 @@ class Apigatewayv2:
     def aws_apigatewayv2_deployment(self):
         print("Processing API Gateway v2 Deployments...")
 
-        apis = self.apigatewayv2_client.get_apis()["Items"]
+        apis = self.aws_clients.apigatewayv2_client.get_apis()["Items"]
         for api in apis:
             api_id = api["ApiId"]
             print(
                 f"  Processing API Gateway v2 Deployments for API ID: {api_id}")
 
-            paginator = self.apigatewayv2_client.get_paginator(
+            paginator = self.aws_clients.apigatewayv2_client.get_paginator(
                 "get_deployments")
             page_iterator = paginator.paginate(ApiId=api_id)
 
@@ -155,7 +155,7 @@ class Apigatewayv2:
     def aws_apigatewayv2_domain_name(self):
         print("  Processing API Gateway v2 Domain Names")
 
-        paginator = self.apigatewayv2_client.get_paginator("get_domain_names")
+        paginator = self.aws_clients.apigatewayv2_client.get_paginator("get_domain_names")
         page_iterator = paginator.paginate()
 
         for page in page_iterator:
@@ -174,13 +174,13 @@ class Apigatewayv2:
     def aws_apigatewayv2_integration(self):
         print("Processing API Gateway v2 Integrations...")
 
-        apis = self.apigatewayv2_client.get_apis()["Items"]
+        apis = self.aws_clients.apigatewayv2_client.get_apis()["Items"]
         for api in apis:
             api_id = api["ApiId"]
             print(
                 f"  Processing API Gateway v2 Integrations for API ID: {api_id}")
 
-            paginator = self.apigatewayv2_client.get_paginator(
+            paginator = self.aws_clients.apigatewayv2_client.get_paginator(
                 "get_integrations")
             page_iterator = paginator.paginate(ApiId=api_id)
 
@@ -210,20 +210,20 @@ class Apigatewayv2:
     def aws_apigatewayv2_integration_response(self):
         print("Processing API Gateway v2 Integration Responses...")
 
-        apis = self.apigatewayv2_client.get_apis()["Items"]
+        apis = self.aws_clients.apigatewayv2_client.get_apis()["Items"]
         for api in apis:
             api_id = api["ApiId"]
             print(
                 f"  Processing API Gateway v2 Integration Responses for API ID: {api_id}")
 
-            integrations = self.apigatewayv2_client.get_integrations(ApiId=api_id)[
+            integrations = self.aws_clients.apigatewayv2_client.get_integrations(ApiId=api_id)[
                 "Items"]
             for integration in integrations:
                 integration_id = integration["IntegrationId"]
                 print(
                     f"    Processing API Gateway v2 Integration Responses for Integration ID: {integration_id}")
 
-                paginator = self.apigatewayv2_client.get_paginator(
+                paginator = self.aws_clients.apigatewayv2_client.get_paginator(
                     "get_integration_responses")
                 page_iterator = paginator.paginate(
                     ApiId=api_id, IntegrationId=integration_id)
@@ -245,12 +245,12 @@ class Apigatewayv2:
     def aws_apigatewayv2_model(self):
         print("Processing API Gateway v2 Models...")
 
-        apis = self.apigatewayv2_client.get_apis()["Items"]
+        apis = self.aws_clients.apigatewayv2_client.get_apis()["Items"]
         for api in apis:
             api_id = api["ApiId"]
             print(f"  Processing API Gateway v2 Models for API ID: {api_id}")
 
-            paginator = self.apigatewayv2_client.get_paginator("get_models")
+            paginator = self.aws_clients.apigatewayv2_client.get_paginator("get_models")
             page_iterator = paginator.paginate(ApiId=api_id)
 
             for page in page_iterator:
@@ -271,13 +271,13 @@ class Apigatewayv2:
     def aws_apigatewayv2_route(self):
         print("Processing API Gateway v2 Routes...")
 
-        api_ids = self.apigatewayv2_client.get_apis()["Items"]
+        api_ids = self.aws_clients.apigatewayv2_client.get_apis()["Items"]
 
         for api in api_ids:
             api_id = api["ApiId"]
             print(f"  Processing API Gateway v2 Routes for API ID: {api_id}")
 
-            paginator = self.apigatewayv2_client.get_paginator("get_routes")
+            paginator = self.aws_clients.apigatewayv2_client.get_paginator("get_routes")
             page_iterator = paginator.paginate(ApiId=api_id)
 
             for page in page_iterator:
@@ -299,20 +299,20 @@ class Apigatewayv2:
     def aws_apigatewayv2_route_response(self):
         print("Processing API Gateway v2 Route Responses...")
 
-        api_ids = self.apigatewayv2_client.get_apis()["Items"]
+        api_ids = self.aws_clients.apigatewayv2_client.get_apis()["Items"]
 
         for api in api_ids:
             api_id = api["ApiId"]
             print(f"  Processing Route Responses for API ID: {api_id}")
 
-            routes = self.apigatewayv2_client.get_routes(ApiId=api_id)["Items"]
+            routes = self.aws_clients.apigatewayv2_client.get_routes(ApiId=api_id)["Items"]
 
             for route in routes:
                 route_id = route["RouteId"]
                 print(
                     f"    Processing API Gateway v2 Route Responses for Route ID: {route_id}")
 
-                paginator = self.apigatewayv2_client.get_paginator(
+                paginator = self.aws_clients.apigatewayv2_client.get_paginator(
                     "get_route_responses")
                 page_iterator = paginator.paginate(
                     ApiId=api_id, RouteId=route_id)
@@ -334,13 +334,13 @@ class Apigatewayv2:
     def aws_apigatewayv2_stage(self):
         print("Processing API Gateway v2 Stages...")
 
-        api_ids = self.apigatewayv2_client.get_apis()["Items"]
+        api_ids = self.aws_clients.apigatewayv2_client.get_apis()["Items"]
 
         for api in api_ids:
             api_id = api["ApiId"]
             print(f"  Processing API Gateway v2 Stages for API ID: {api_id}")
 
-            paginator = self.apigatewayv2_client.get_paginator("get_stages")
+            paginator = self.aws_clients.apigatewayv2_client.get_paginator("get_stages")
             page_iterator = paginator.paginate(ApiId=api_id)
 
             for page in page_iterator:
@@ -365,7 +365,7 @@ class Apigatewayv2:
     def aws_apigatewayv2_vpc_link(self):
         print("Processing API Gateway v2 VPC Links...")
 
-        vpc_links = self.apigatewayv2_client.get_vpc_links()["Items"]
+        vpc_links = self.aws_clients.apigatewayv2_client.get_vpc_links()["Items"]
 
         for vpc_link in vpc_links:
             print(

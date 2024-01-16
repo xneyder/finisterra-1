@@ -4,13 +4,10 @@ import json
 
 
 class SQS:
-    def __init__(self, sqs_client, script_dir, provider_name, schema_data, region, s3Bucket,
-                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id):
-        self.sqs_client = sqs_client
+    def __init__(self, aws_clients, script_dir, provider_name, schema_data, region, s3Bucket,
+                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id,hcl = None):
+        self.aws_clients = aws_clients
         self.transform_rules = {
-            "aws_sqs_queue_policy": {
-                "hcl_json_multiline": {"policy": True}
-            }
         }
         self.provider_name = provider_name
         self.script_dir = script_dir
@@ -68,7 +65,7 @@ class SQS:
         resource_type = "aws_sqs_queue"
         print("Processing SQS Queues...")
 
-        paginator = self.sqs_client.get_paginator("list_queues")
+        paginator = self.aws_clients.sqs_client.get_paginator("list_queues")
         for page in paginator.paginate():
             for queue_url in page.get("QueueUrls", []):
                 queue_name = queue_url.split("/")[-1]
@@ -81,7 +78,7 @@ class SQS:
 
                 fstack = "sqs"
                 try:
-                    tags_response = self.sqs_client.list_queue_tags(QueueUrl=queue_url)
+                    tags_response = self.aws_clients.sqs_client.list_queue_tags(QueueUrl=queue_url)
                     tags = tags_response.get('Tags', {})
                     if tags.get('ftstack', 'sqs') != 'sqs':
                         fstack = "stack_"+tags.get('ftstack', 'sqs')
@@ -99,7 +96,7 @@ class SQS:
                 self.aws_sqs_queue_policy(queue_url)
 
                 # Get the redrive policy for the queue
-                response = self.sqs_client.get_queue_attributes(
+                response = self.aws_clients.sqs_client.get_queue_attributes(
                     QueueUrl=queue_url,
                     AttributeNames=['RedrivePolicy']
                 )
@@ -110,7 +107,7 @@ class SQS:
                         response['Attributes']['RedrivePolicy'])
                     if 'deadLetterTargetArn' in redrive_policy:
                         # get the url of the DLQ by the arn
-                        dlq_url = self.sqs_client.get_queue_url(
+                        dlq_url = self.aws_clients.sqs_client.get_queue_url(
                             QueueName=redrive_policy['deadLetterTargetArn'].split(":")[-1])
                         self.dlq_list[dlq_url['QueueUrl']] = queue_url
 
@@ -122,7 +119,7 @@ class SQS:
         print("Processing SQS Queue Policies...")
 
         queue_name = queue_url.split("/")[-1]
-        response = self.sqs_client.get_queue_attributes(
+        response = self.aws_clients.sqs_client.get_queue_attributes(
             QueueUrl=queue_url, AttributeNames=["Policy"])
 
         if "Attributes" in response and "Policy" in response["Attributes"]:
@@ -143,7 +140,7 @@ class SQS:
         print("Processing SQS Queue Redrive Policies...")
 
         queue_name = queue_url.split("/")[-1]
-        response = self.sqs_client.get_queue_attributes(
+        response = self.aws_clients.sqs_client.get_queue_attributes(
             QueueUrl=queue_url,
             AttributeNames=['RedrivePolicy']
         )
@@ -167,7 +164,7 @@ class SQS:
         print("Processing SQS Queue Redrive Allow Policies...")
 
         queue_name = queue_url.split("/")[-1]
-        response = self.sqs_client.get_queue_attributes(
+        response = self.aws_clients.sqs_client.get_queue_attributes(
             QueueUrl=queue_url,
             # AttributeNames=['RedriveAllowPolicy']
         )

@@ -3,15 +3,10 @@ from utils.hcl import HCL
 
 
 class CognitoIDP:
-    def __init__(self, cognito_idp_client, script_dir, provider_name, schema_data, region, s3Bucket,
-                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id):
-        self.cognito_idp_client = cognito_idp_client
-        self.transform_rules = {
-            "aws_cognito_user": {
-                "hcl_json_multiline": {"identities": True}
-            },
-
-        }
+    def __init__(self, aws_clients, script_dir, provider_name, schema_data, region, s3Bucket,
+                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id,hcl = None):
+        self.aws_clients = aws_clients
+        self.transform_rules = {        }
         self.provider_name = provider_name
         self.script_dir = script_dir
         self.schema_data = schema_data
@@ -47,11 +42,11 @@ class CognitoIDP:
     def aws_cognito_identity_provider(self):
         print("Processing Cognito Identity Providers...")
 
-        paginator = self.cognito_idp_client.get_paginator("list_user_pools")
+        paginator = self.aws_clients.cognito_idp_client.get_paginator("list_user_pools")
         for page in paginator.paginate(MaxResults=60):
             for pool in page["UserPools"]:
                 pool_id = pool["Id"]
-                providers = self.cognito_idp_client.list_identity_providers(UserPoolId=pool_id)[
+                providers = self.aws_clients.cognito_idp_client.list_identity_providers(UserPoolId=pool_id)[
                     "Providers"]
                 for provider in providers:
                     attributes = {
@@ -66,11 +61,11 @@ class CognitoIDP:
     def aws_cognito_managed_user_pool_client(self):
         print("Processing Cognito Managed User Pool Clients...")
 
-        paginator = self.cognito_idp_client.get_paginator("list_user_pools")
+        paginator = self.aws_clients.cognito_idp_client.get_paginator("list_user_pools")
         for page in paginator.paginate(MaxResults=60):
             for pool in page["UserPools"]:
                 pool_id = pool["Id"]
-                clients = self.cognito_idp_client.list_user_pool_clients(UserPoolId=pool_id)[
+                clients = self.aws_clients.cognito_idp_client.list_user_pool_clients(UserPoolId=pool_id)[
                     "UserPoolClients"]
                 for client in clients:
                     attributes = {
@@ -85,11 +80,11 @@ class CognitoIDP:
     def aws_cognito_resource_server(self):
         print("Processing Cognito Resource Servers...")
 
-        paginator = self.cognito_idp_client.get_paginator("list_user_pools")
+        paginator = self.aws_clients.cognito_idp_client.get_paginator("list_user_pools")
         for page in paginator.paginate(MaxResults=60):
             for pool in page["UserPools"]:
                 pool_id = pool["Id"]
-                resource_servers = self.cognito_idp_client.list_resource_servers(
+                resource_servers = self.aws_clients.cognito_idp_client.list_resource_servers(
                     UserPoolId=pool_id, MaxResults=50)["ResourceServers"]
                 for server in resource_servers:
                     attributes = {
@@ -105,12 +100,12 @@ class CognitoIDP:
     def aws_cognito_risk_configuration(self):
         print("Processing Cognito Risk Configurations...")
 
-        paginator = self.cognito_idp_client.get_paginator("list_user_pools")
+        paginator = self.aws_clients.cognito_idp_client.get_paginator("list_user_pools")
         for page in paginator.paginate(MaxResults=60):
             for pool in page["UserPools"]:
                 pool_id = pool["Id"]
                 try:
-                    risk_config_response = self.cognito_idp_client.describe_risk_configuration(
+                    risk_config_response = self.aws_clients.cognito_idp_client.describe_risk_configuration(
                         UserPoolId=pool_id)
                     if "RiskConfiguration" in risk_config_response:
                         risk_config = risk_config_response["RiskConfiguration"]
@@ -126,18 +121,18 @@ class CognitoIDP:
                     else:
                         print(
                             f"  No Risk Configuration key found for user pool: {pool_id}")
-                except self.cognito_idp_client.exceptions.ResourceNotFoundException:
+                except self.aws_clients.cognito_idp_client.exceptions.ResourceNotFoundException:
                     print(
                         f"  No Risk Configuration found for user pool: {pool_id}")
 
     def aws_cognito_user(self):
         print("Processing Cognito Users...")
 
-        paginator = self.cognito_idp_client.get_paginator("list_user_pools")
+        paginator = self.aws_clients.cognito_idp_client.get_paginator("list_user_pools")
         for page in paginator.paginate(MaxResults=60):
             for pool in page["UserPools"]:
                 pool_id = pool["Id"]
-                user_paginator = self.cognito_idp_client.get_paginator(
+                user_paginator = self.aws_clients.cognito_idp_client.get_paginator(
                     "list_users")
                 for user_page in user_paginator.paginate(UserPoolId=pool_id):
                     for user in user_page["Users"]:
@@ -153,11 +148,11 @@ class CognitoIDP:
     def aws_cognito_user_group(self):
         print("Processing Cognito User Groups...")
 
-        paginator = self.cognito_idp_client.get_paginator("list_user_pools")
+        paginator = self.aws_clients.cognito_idp_client.get_paginator("list_user_pools")
         for page in paginator.paginate(MaxResults=60):
             for pool in page["UserPools"]:
                 pool_id = pool["Id"]
-                group_paginator = self.cognito_idp_client.get_paginator(
+                group_paginator = self.aws_clients.cognito_idp_client.get_paginator(
                     "list_groups")
                 for group_page in group_paginator.paginate(UserPoolId=pool_id):
                     for group in group_page["Groups"]:
@@ -175,15 +170,15 @@ class CognitoIDP:
     def aws_cognito_user_in_group(self):
         print("Processing Cognito Users in Groups...")
 
-        paginator = self.cognito_idp_client.get_paginator("list_user_pools")
+        paginator = self.aws_clients.cognito_idp_client.get_paginator("list_user_pools")
         for page in paginator.paginate(MaxResults=60):
             for pool in page["UserPools"]:
                 pool_id = pool["Id"]
-                group_paginator = self.cognito_idp_client.get_paginator(
+                group_paginator = self.aws_clients.cognito_idp_client.get_paginator(
                     "list_groups")
                 for group_page in group_paginator.paginate(UserPoolId=pool_id):
                     for group in group_page["Groups"]:
-                        user_paginator = self.cognito_idp_client.get_paginator(
+                        user_paginator = self.aws_clients.cognito_idp_client.get_paginator(
                             "list_users_in_group")
                         for user_page in user_paginator.paginate(UserPoolId=pool_id, GroupName=group["GroupName"]):
                             for user in user_page["Users"]:
@@ -199,11 +194,11 @@ class CognitoIDP:
     def aws_cognito_user_pool(self):
         print("Processing Cognito User Pools...")
 
-        paginator = self.cognito_idp_client.get_paginator("list_user_pools")
+        paginator = self.aws_clients.cognito_idp_client.get_paginator("list_user_pools")
         for page in paginator.paginate(MaxResults=60):
             for pool in page["UserPools"]:
                 pool_id = pool["Id"]
-                user_pool = self.cognito_idp_client.describe_user_pool(UserPoolId=pool_id)[
+                user_pool = self.aws_clients.cognito_idp_client.describe_user_pool(UserPoolId=pool_id)[
                     "UserPool"]
                 attributes = {
                     "id": pool_id,
@@ -224,15 +219,15 @@ class CognitoIDP:
     def aws_cognito_user_pool_client(self):
         print("Processing Cognito User Pool Clients...")
 
-        paginator = self.cognito_idp_client.get_paginator("list_user_pools")
+        paginator = self.aws_clients.cognito_idp_client.get_paginator("list_user_pools")
         for page in paginator.paginate(MaxResults=60):
             for pool in page["UserPools"]:
                 pool_id = pool["Id"]
-                client_paginator = self.cognito_idp_client.get_paginator(
+                client_paginator = self.aws_clients.cognito_idp_client.get_paginator(
                     "list_user_pool_clients")
                 for client_page in client_paginator.paginate(UserPoolId=pool_id, MaxResults=60):
                     for client in client_page["UserPoolClients"]:
-                        client_details = self.cognito_idp_client.describe_user_pool_client(
+                        client_details = self.aws_clients.cognito_idp_client.describe_user_pool_client(
                             UserPoolId=pool_id, ClientId=client["ClientId"])["UserPoolClient"]
                         attributes = {
                             "id": client["ClientId"],
@@ -247,16 +242,16 @@ class CognitoIDP:
     def aws_cognito_user_pool_domain(self):
         print("Processing Cognito User Pool Domains...")
 
-        paginator = self.cognito_idp_client.get_paginator("list_user_pools")
+        paginator = self.aws_clients.cognito_idp_client.get_paginator("list_user_pools")
         for page in paginator.paginate(MaxResults=60):
             for pool in page["UserPools"]:
                 pool_id = pool["Id"]
-                user_pool = self.cognito_idp_client.describe_user_pool(
+                user_pool = self.aws_clients.cognito_idp_client.describe_user_pool(
                     UserPoolId=pool_id)["UserPool"]
 
                 if "Domain" in user_pool:
                     domain = user_pool["Domain"]
-                    domain_description = self.cognito_idp_client.describe_user_pool_domain(
+                    domain_description = self.aws_clients.cognito_idp_client.describe_user_pool_domain(
                         Domain=domain)["DomainDescription"]
                     attributes = {
                         "id": domain_description["Domain"],
@@ -269,12 +264,12 @@ class CognitoIDP:
     def aws_cognito_user_pool_ui_customization(self):
         print("Processing Cognito User Pool UI Customizations...")
 
-        paginator = self.cognito_idp_client.get_paginator("list_user_pools")
+        paginator = self.aws_clients.cognito_idp_client.get_paginator("list_user_pools")
         for page in paginator.paginate(MaxResults=60):
             for pool in page["UserPools"]:
                 pool_id = pool["Id"]
                 try:
-                    ui_customization_response = self.cognito_idp_client.get_ui_customization(
+                    ui_customization_response = self.aws_clients.cognito_idp_client.get_ui_customization(
                         UserPoolId=pool_id)
                     if "UICustomization" in ui_customization_response:
                         ui_customization = ui_customization_response["UICustomization"]
@@ -297,6 +292,6 @@ class CognitoIDP:
                     else:
                         print(
                             f"  No UI customization found for user pool: {pool_id}")
-                except self.cognito_idp_client.exceptions.ResourceNotFoundException:
+                except self.aws_clients.cognito_idp_client.exceptions.ResourceNotFoundException:
                     print(
                         f"  ResourceNotFoundException: No UI customization found for user pool: {pool_id}")

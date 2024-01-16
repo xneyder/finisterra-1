@@ -3,23 +3,10 @@ from utils.hcl import HCL
 
 
 class Elasticache:
-    def __init__(self, elasticache_client, script_dir, provider_name, schema_data, region, s3Bucket,
-                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id):
-        self.elasticache_client = elasticache_client
+    def __init__(self, aws_clients, script_dir, provider_name, schema_data, region, s3Bucket,
+                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id,hcl = None):
+        self.aws_clients = aws_clients
         self.transform_rules = {
-            "aws_elasticache_replication_group": {
-                "hcl_keep_fields": {"description": True},
-            },
-            "aws_elasticache_cluster": {
-                "hcl_keep_fields": {"engine": True},
-            },
-            "aws_elasticache_user": {
-                "hcl_transform_fields": {
-                    "engine": {'source': 'redis', 'target': 'REDIS'},
-                },
-                "hcl_drop_blocks": {"authentication_mode": {"type": "no-password"}},
-
-            },
         }
         self.provider_name = provider_name
         self.script_dir = script_dir
@@ -67,7 +54,7 @@ class Elasticache:
     def aws_elasticache_cluster(self):
         print("Processing ElastiCache Clusters...")
 
-        paginator = self.elasticache_client.get_paginator(
+        paginator = self.aws_clients.elasticache_client.get_paginator(
             "describe_cache_clusters")
         for page in paginator.paginate():
             for cluster in page["CacheClusters"]:
@@ -89,7 +76,7 @@ class Elasticache:
     def aws_elasticache_global_replication_group(self):
         print("Processing ElastiCache Global Replication Groups...")
 
-        paginator = self.elasticache_client.get_paginator(
+        paginator = self.aws_clients.elasticache_client.get_paginator(
             "describe_global_replication_groups")
         for page in paginator.paginate():
             for global_replication_group in page["GlobalReplicationGroups"]:
@@ -109,7 +96,7 @@ class Elasticache:
     def aws_elasticache_parameter_group(self):
         print("Processing ElastiCache Parameter Groups...")
 
-        paginator = self.elasticache_client.get_paginator(
+        paginator = self.aws_clients.elasticache_client.get_paginator(
             "describe_cache_parameter_groups")
         for page in paginator.paginate():
             for parameter_group in page["CacheParameterGroups"]:
@@ -129,7 +116,7 @@ class Elasticache:
     def aws_elasticache_replication_group(self):
         print("Processing ElastiCache Replication Groups...")
 
-        paginator = self.elasticache_client.get_paginator(
+        paginator = self.aws_clients.elasticache_client.get_paginator(
             "describe_replication_groups")
         for page in paginator.paginate():
             for replication_group in page["ReplicationGroups"]:
@@ -157,7 +144,7 @@ class Elasticache:
     def aws_elasticache_subnet_group(self):
         print("Processing ElastiCache Subnet Groups...")
 
-        paginator = self.elasticache_client.get_paginator(
+        paginator = self.aws_clients.elasticache_client.get_paginator(
             "describe_cache_subnet_groups")
         for page in paginator.paginate():
             for subnet_group in page["CacheSubnetGroups"]:
@@ -177,7 +164,7 @@ class Elasticache:
     def aws_elasticache_user(self):
         print("Processing ElastiCache Users...")
 
-        paginator = self.elasticache_client.get_paginator("describe_users")
+        paginator = self.aws_clients.elasticache_client.get_paginator("describe_users")
         for page in paginator.paginate():
             for user in page["Users"]:
                 print(f"  Processing ElastiCache User: {user['UserId']}")
@@ -198,7 +185,7 @@ class Elasticache:
     def aws_elasticache_user_group(self):
         print("Processing ElastiCache User Groups...")
 
-        paginator = self.elasticache_client.get_paginator(
+        paginator = self.aws_clients.elasticache_client.get_paginator(
             "describe_user_groups")
         for page in paginator.paginate():
             for user_group in page["UserGroups"]:
@@ -218,7 +205,7 @@ class Elasticache:
     def aws_elasticache_user_group_association(self):
         print("Processing ElastiCache User Group Associations...")
 
-        paginator = self.elasticache_client.get_paginator(
+        paginator = self.aws_clients.elasticache_client.get_paginator(
             "describe_replication_groups")
         for page in paginator.paginate():
             for replication_group in page["ReplicationGroups"]:

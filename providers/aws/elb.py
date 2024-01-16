@@ -3,9 +3,9 @@ from utils.hcl import HCL
 
 
 class ELB:
-    def __init__(self, elb_client, script_dir, provider_name, schema_data, region, s3Bucket,
-                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id):
-        self.elb_client = elb_client
+    def __init__(self, aws_clients, script_dir, provider_name, schema_data, region, s3Bucket,
+                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id,hcl = None):
+        self.aws_clients = aws_clients
         self.transform_rules = {}
         self.provider_name = provider_name
         self.script_dir = script_dir
@@ -37,12 +37,12 @@ class ELB:
     def aws_app_cookie_stickiness_policy(self):
         print("Processing App Cookie Stickiness Policies...")
 
-        load_balancers = self.elb_client.describe_load_balancers()[
+        load_balancers = self.aws_clients.elb_client.describe_load_balancers()[
             "LoadBalancerDescriptions"]
 
         for lb in load_balancers:
             lb_name = lb["LoadBalancerName"]
-            policies = self.elb_client.describe_load_balancer_policies(
+            policies = self.aws_clients.elb_client.describe_load_balancer_policies(
                 LoadBalancerName=lb_name)["PolicyDescriptions"]
 
             for policy in policies:
@@ -62,7 +62,7 @@ class ELB:
     def aws_elb(self):
         print("Processing Elastic Load Balancers...")
 
-        load_balancers = self.elb_client.describe_load_balancers()[
+        load_balancers = self.aws_clients.elb_client.describe_load_balancers()[
             "LoadBalancerDescriptions"]
 
         for lb in load_balancers:
@@ -81,7 +81,7 @@ class ELB:
     def aws_elb_attachment(self):
         print("Processing ELB Attachments...")
 
-        load_balancers = self.elb_client.describe_load_balancers()[
+        load_balancers = self.aws_clients.elb_client.describe_load_balancers()[
             "LoadBalancerDescriptions"]
 
         for lb in load_balancers:
@@ -104,12 +104,12 @@ class ELB:
     def aws_lb_cookie_stickiness_policy(self):
         print("Processing Load Balancer Cookie Stickiness Policies...")
 
-        load_balancers = self.elb_client.describe_load_balancers()[
+        load_balancers = self.aws_clients.elb_client.describe_load_balancers()[
             "LoadBalancerDescriptions"]
 
         for lb in load_balancers:
             lb_name = lb["LoadBalancerName"]
-            policies = self.elb_client.describe_load_balancer_policies(
+            policies = self.aws_clients.elb_client.describe_load_balancer_policies(
                 LoadBalancerName=lb_name)["PolicyDescriptions"]
 
             for policy in policies:
@@ -129,12 +129,12 @@ class ELB:
     def aws_lb_ssl_negotiation_policy(self):
         print("Processing Load Balancer SSL Negotiation Policies...")
 
-        load_balancers = self.elb_client.describe_load_balancers()[
+        load_balancers = self.aws_clients.elb_client.describe_load_balancers()[
             "LoadBalancerDescriptions"]
 
         for lb in load_balancers:
             lb_name = lb["LoadBalancerName"]
-            policies = self.elb_client.describe_load_balancer_policies(
+            policies = self.aws_clients.elb_client.describe_load_balancer_policies(
                 LoadBalancerName=lb_name)["PolicyDescriptions"]
 
             for policy in policies:
@@ -154,12 +154,12 @@ class ELB:
     def aws_load_balancer_backend_server_policy(self):
         print("Processing Load Balancer Backend Server Policies...")
 
-        load_balancers = self.elb_client.describe_load_balancers()[
+        load_balancers = self.aws_clients.elb_client.describe_load_balancers()[
             "LoadBalancerDescriptions"]
 
         for lb in load_balancers:
             lb_name = lb["LoadBalancerName"]
-            policies = self.elb_client.describe_load_balancer_policies(
+            policies = self.aws_clients.elb_client.describe_load_balancer_policies(
                 LoadBalancerName=lb_name)["PolicyDescriptions"]
 
             for policy in policies:
@@ -179,7 +179,7 @@ class ELB:
     def aws_load_balancer_listener_policy(self):
         print("Processing Load Balancer Listener Policies...")
 
-        load_balancers = self.elb_client.describe_load_balancers()[
+        load_balancers = self.aws_clients.elb_client.describe_load_balancers()[
             "LoadBalancerDescriptions"]
 
         for lb in load_balancers:
@@ -206,12 +206,12 @@ class ELB:
     def aws_load_balancer_policy(self):
         print("Processing Load Balancer Policies...")
 
-        load_balancers = self.elb_client.describe_load_balancers()[
+        load_balancers = self.aws_clients.elb_client.describe_load_balancers()[
             "LoadBalancerDescriptions"]
 
         for lb in load_balancers:
             lb_name = lb["LoadBalancerName"]
-            policies = self.elb_client.describe_load_balancer_policies(
+            policies = self.aws_clients.elb_client.describe_load_balancer_policies(
                 LoadBalancerName=lb_name)["PolicyDescriptions"]
 
             for policy in policies:
@@ -230,12 +230,12 @@ class ELB:
     def aws_proxy_protocol_policy(self):
         print("Processing Proxy Protocol Policies...")
 
-        load_balancers = self.elb_client.describe_load_balancers()[
+        load_balancers = self.aws_clients.elb_client.describe_load_balancers()[
             "LoadBalancerDescriptions"]
 
         for lb in load_balancers:
             lb_name = lb["LoadBalancerName"]
-            policies = self.elb_client.describe_load_balancer_policies(
+            policies = self.aws_clients.elb_client.describe_load_balancer_policies(
                 LoadBalancerName=lb_name)["PolicyDescriptions"]
 
             for policy in policies:

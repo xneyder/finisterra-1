@@ -3,17 +3,10 @@ from utils.hcl import HCL
 
 
 class Opensearch:
-    def __init__(self, opensearch_client, script_dir, provider_name, schema_data, region, s3Bucket,
-                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id):
-        self.opensearch_client = opensearch_client
+    def __init__(self, aws_clients, script_dir, provider_name, schema_data, region, s3Bucket,
+                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id,hcl = None):
+        self.aws_clients = aws_clients
         self.transform_rules = {
-            # "aws_opensearch_domain_policy": {
-            #     "hcl_json_multiline": {"access_policies": True},
-            # },
-            # "aws_opensearch_domain": {
-            #     "hcl_drop_blocks": {"cognito_options": {"enabled": False}},
-            #     "hcl_drop_fields": {"warm_count": 0},
-            # }
         }
         self.provider_name = provider_name
         self.script_dir = script_dir
@@ -57,10 +50,10 @@ class Opensearch:
     def aws_opensearch_domain(self):
         print("Processing OpenSearch Domain...")
 
-        domains = self.opensearch_client.list_domain_names()["DomainNames"]
+        domains = self.aws_clients.opensearch_client.list_domain_names()["DomainNames"]
         for domain in domains:
             domain_name = domain["DomainName"]
-            domain_info = self.opensearch_client.describe_domain(DomainName=domain_name)[
+            domain_info = self.aws_clients.opensearch_client.describe_domain(DomainName=domain_name)[
                 "DomainStatus"]
             arn = domain_info["ARN"]
             print(f"  Processing OpenSearch Domain: {domain_name}")
@@ -83,7 +76,7 @@ class Opensearch:
         print("Processing OpenSearch Domain Policy...")
 
         # Since the domain is already known, we don't need to retrieve all domains
-        domain_info = self.opensearch_client.describe_domain(DomainName=domain_name)[
+        domain_info = self.aws_clients.opensearch_client.describe_domain(DomainName=domain_name)[
             "DomainStatus"]
         arn = domain_info["ARN"]
         access_policy = domain_info["AccessPolicies"]
@@ -102,11 +95,11 @@ class Opensearch:
     # def aws_opensearch_domain_saml_options(self):
     #     print("Processing OpenSearch Domain SAML Options...")
 
-    #     domains = self.opensearch_client.list_domain_names(
+    #     domains = self.aws_clients.opensearch_client.list_domain_names(
     #         EngineType='OpenSearch')["DomainNames"]
     #     for domain in domains:
     #         domain_name = domain["DomainName"]
-    #         domain_status = self.opensearch_client.describe_domain(DomainName=domain_name)[
+    #         domain_status = self.aws_clients.opensearch_client.describe_domain(DomainName=domain_name)[
     #             "DomainStatus"]
     #         arn = domain_status["ARN"]
     #         saml_options = domain_status.get("SamlOptions", None)
@@ -131,7 +124,7 @@ class Opensearch:
     #     # You need to create the connection first, then use the connection_id to describe the connection.
     #     # Replace <your_connection_id> with the actual connection_id.
     #     connection_id = "<your_connection_id>"
-    #     connection_info = self.opensearch_client.describe_outbound_cross_cluster_search_connections(
+    #     connection_info = self.aws_clients.opensearch_client.describe_outbound_cross_cluster_search_connections(
     #         ConnectionIds=[connection_id])["CrossClusterSearchConnections"][0]
     #     domain_info = connection_info["SourceDomainInfo"]
     #     destination_info = connection_info["DestinationDomainInfo"]

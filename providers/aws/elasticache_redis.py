@@ -3,24 +3,10 @@ from utils.hcl import HCL
 from providers.aws.security_group import SECURITY_GROUP
 
 class ElasticacheRedis:
-    def __init__(self, elasticache_client, ec2_client, script_dir, provider_name, schema_data, region, s3Bucket,
-                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id):
-        self.elasticache_client = elasticache_client
-        self.ec2_client = ec2_client
+    def __init__(self, aws_clients, script_dir, provider_name, schema_data, region, s3Bucket,
+                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id,hcl = None):
+        self.aws_clients = aws_clients
         self.transform_rules = {
-            "aws_elasticache_replication_group": {
-                "hcl_keep_fields": {"description": True},
-            },
-            "aws_elasticache_cluster": {
-                "hcl_keep_fields": {"engine": True},
-            },
-            "aws_elasticache_user": {
-                "hcl_transform_fields": {
-                    "engine": {'source': 'redis', 'target': 'REDIS'},
-                },
-                "hcl_drop_blocks": {"authentication_mode": {"type": "no-password"}},
-
-            },
         }
         self.provider_name = provider_name
         self.script_dir = script_dir
@@ -38,7 +24,7 @@ class ElasticacheRedis:
         self.processed_parameter_groups = set()
         self.processed_security_groups = set()
 
-        self.security_group_instance = SECURITY_GROUP(ec2_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
+        self.security_group_instance = SECURITY_GROUP(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
 
         functions = {
             # 'match_security_group': self.match_security_group,
@@ -83,7 +69,7 @@ class ElasticacheRedis:
         subnet_ids = attributes.get(arg)
         subnet_names = []
         for subnet_id in subnet_ids:
-            response = self.ec2_client.describe_subnets(SubnetIds=[subnet_id])
+            response = self.aws_clients.ec2_client.describe_subnets(SubnetIds=[subnet_id])
 
             # Check if 'Subnets' key exists and it's not empty
             if not response or 'Subnets' not in response or not response['Subnets']:
@@ -114,7 +100,7 @@ class ElasticacheRedis:
 
     def get_vpc_name(self, attributes, arg):
         vpc_id = attributes.get(arg)
-        response = self.ec2_client.describe_vpcs(VpcIds=[vpc_id])
+        response = self.aws_clients.ec2_client.describe_vpcs(VpcIds=[vpc_id])
 
         if not response or 'Vpcs' not in response or not response['Vpcs']:
             # Handle this case as required, for example:
@@ -141,7 +127,7 @@ class ElasticacheRedis:
         security_group_ids = attributes.get(arg)
         result=[]
         for security_group_id in security_group_ids:
-            response = self.ec2_client.describe_security_groups(GroupIds=[security_group_id])
+            response = self.aws_clients.ec2_client.describe_security_groups(GroupIds=[security_group_id])
             if not response or 'SecurityGroups' not in response or not response['SecurityGroups']:
                 # Handle this case as required, for example:
                 print(f"No security group information found for Security Group ID: {security_group_id}")
@@ -159,14 +145,14 @@ class ElasticacheRedis:
         if subnet_ids:
             subnet_id = subnet_ids[0]
             #get the vpc id for the subnet_id
-            response = self.ec2_client.describe_subnets(SubnetIds=[subnet_id])
+            response = self.aws_clients.ec2_client.describe_subnets(SubnetIds=[subnet_id])
             if not response or 'Subnets' not in response or not response['Subnets']:
                 # Handle this case as required, for example:
                 print(f"No subnet information found for Subnet ID: {subnet_id}")
                 return None
             vpc_id = response['Subnets'][0].get('VpcId', None)
 
-        response = self.ec2_client.describe_vpcs(VpcIds=[vpc_id])
+        response = self.aws_clients.ec2_client.describe_vpcs(VpcIds=[vpc_id])
 
         if not response or 'Vpcs' not in response or not response['Vpcs']:
             # Handle this case as required, for example:
@@ -251,7 +237,7 @@ class ElasticacheRedis:
         resource_type = "aws_elasticache_replication_group"
         print("Processing ElastiCache Replication Groups...")
 
-        paginator = self.elasticache_client.get_paginator("describe_replication_groups")
+        paginator = self.aws_clients.elasticache_client.get_paginator("describe_replication_groups")
         for page in paginator.paginate():
             for replication_group in page["ReplicationGroups"]:                
                 # Skip the groups that are not Redis
@@ -266,7 +252,7 @@ class ElasticacheRedis:
 
                 ftstack = "elasticache_redis"
                 try:
-                    tags_response = self.elasticache_client.list_tags_for_resource(ResourceName=replication_group["ARN"])
+                    tags_response = self.aws_clients.elasticache_client.list_tags_for_resource(ResourceName=replication_group["ARN"])
                     tags = tags_response.get('TagList', [])
                     for tag in tags:
                         if tag['Key'] == 'ftstack':
@@ -289,7 +275,7 @@ class ElasticacheRedis:
 
                 # Process the member Cache Clusters
                 for cache_cluster_id in replication_group["MemberClusters"]:
-                    cache_cluster = self.elasticache_client.describe_cache_clusters(
+                    cache_cluster = self.aws_clients.elasticache_client.describe_cache_clusters(
                         CacheClusterId=cache_cluster_id)["CacheClusters"][0]
 
                     if "CacheSubnetGroupName" in cache_cluster and not cache_cluster["CacheSubnetGroupName"].startswith("default") and cache_cluster["CacheSubnetGroupName"] not in self.processed_subnet_groups:
@@ -318,7 +304,7 @@ class ElasticacheRedis:
     def aws_elasticache_parameter_group(self, group_name):
         print(f"    Processing ElastiCache Parameter Group: {group_name}...")
 
-        response = self.elasticache_client.describe_cache_parameter_groups(
+        response = self.aws_clients.elasticache_client.describe_cache_parameter_groups(
             CacheParameterGroupName=group_name)
 
         for parameter_group in response["CacheParameterGroups"]:
@@ -336,7 +322,7 @@ class ElasticacheRedis:
     def aws_elasticache_subnet_group(self, group_name):
         print(f"    Processing ElastiCache Subnet Group: {group_name}...")
 
-        response = self.elasticache_client.describe_cache_subnet_groups(
+        response = self.aws_clients.elasticache_client.describe_cache_subnet_groups(
             CacheSubnetGroupName=group_name)
 
         for subnet_group in response["CacheSubnetGroups"]:
@@ -354,7 +340,7 @@ class ElasticacheRedis:
         print("Processing Security Groups...")
 
         # Create a response dictionary to collect responses for all security groups
-        response = self.ec2_client.describe_security_groups(
+        response = self.aws_clients.ec2_client.describe_security_groups(
             GroupIds=security_group_ids
         )
 
@@ -408,7 +394,7 @@ class ElasticacheRedis:
     # def aws_elasticache_user(self):
     #     print("Processing ElastiCache Users...")
 
-    #     paginator = self.elasticache_client.get_paginator("describe_users")
+    #     paginator = self.aws_clients.elasticache_client.get_paginator("describe_users")
     #     for page in paginator.paginate():
     #         for user in page["Users"]:
     #             print(f"  Processing ElastiCache User: {user['UserId']}")
@@ -429,7 +415,7 @@ class ElasticacheRedis:
     # def aws_elasticache_user_group(self):
     #     print("Processing ElastiCache User Groups...")
 
-    #     paginator = self.elasticache_client.get_paginator(
+    #     paginator = self.aws_clients.elasticache_client.get_paginator(
     #         "describe_user_groups")
     #     for page in paginator.paginate():
     #         for user_group in page["UserGroups"]:
@@ -449,7 +435,7 @@ class ElasticacheRedis:
     # def aws_elasticache_user_group_association(self):
     #     print("Processing ElastiCache User Group Associations...")
 
-    #     paginator = self.elasticache_client.get_paginator(
+    #     paginator = self.aws_clients.elasticache_client.get_paginator(
     #         "describe_replication_groups")
     #     for page in paginator.paginate():
     #         for replication_group in page["ReplicationGroups"]:

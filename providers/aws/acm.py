@@ -4,9 +4,9 @@ import datetime
 
 
 class ACM:
-    def __init__(self, acm_client, script_dir, provider_name, schema_data, region, s3Bucket,
+    def __init__(self, aws_clients, script_dir, provider_name, schema_data, region, s3Bucket,
                  dynamoDBTable, state_key, workspace_id, modules, aws_account_id, hcl = None):
-        self.acm_client = acm_client
+        self.aws_clients = aws_clients
         self.transform_rules = {}
         self.provider_name = provider_name
         self.script_dir = script_dir
@@ -77,7 +77,7 @@ class ACM:
                 print(f"  Skipping ACM Certificate: {acm_arn} already processed")
                 return
 
-        paginator = self.acm_client.get_paginator("list_certificates")
+        paginator = self.aws_clients.acm_client.get_paginator("list_certificates")
         for page in paginator.paginate():
             for cert_summary in page["CertificateSummaryList"]:
                 cert_arn = cert_summary["CertificateArn"]
@@ -88,7 +88,7 @@ class ACM:
                     continue
 
                 # Get certificate details to check for expiration and type
-                cert_details = self.acm_client.describe_certificate(
+                cert_details = self.aws_clients.acm_client.describe_certificate(
                     CertificateArn=cert_arn)["Certificate"]
                 certificate_type = cert_details["Type"]
 
@@ -112,7 +112,7 @@ class ACM:
                 if not ftstack:
                     ftstack = "acm"
                     try:
-                        response = self.acm_client.list_tags_for_certificate(CertificateArn=cert_arn)
+                        response = self.aws_clients.acm_client.list_tags_for_certificate(CertificateArn=cert_arn)
                         tags = response.get('Tags', {})
                         for tag in tags:
                             if tag['Key'] == 'ftstack':

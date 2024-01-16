@@ -7,11 +7,9 @@ from providers.aws.acm import ACM
 from providers.aws.logs import Logs
 
 class Elasticsearch:
-    def __init__(self, elasticsearch_client, ec2_client, kms_client, iam_client, acm_client, logs_client, script_dir, provider_name, schema_data, region, s3Bucket,
-                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id):
-        self.elasticsearch_client = elasticsearch_client
-        self.ec2_client = ec2_client
-        self.kms_client = kms_client
+    def __init__(self, aws_clients, script_dir, provider_name, schema_data, region, s3Bucket,
+                 dynamoDBTable, state_key, workspace_id, modules, aws_account_id,hcl = None):
+        self.aws_clients = aws_clients
         self.transform_rules = {}
         self.provider_name = provider_name
         self.script_dir = script_dir
@@ -36,10 +34,10 @@ class Elasticsearch:
 
         self.hcl.functions.update(functions)
 
-        self.security_group_instance = SECURITY_GROUP(ec2_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
-        self.kms_instance = KMS(kms_client, iam_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
-        self.acm_instance = ACM(acm_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
-        self.logs_instance = Logs(logs_client, kms_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
+        self.security_group_instance = SECURITY_GROUP(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
+        self.kms_instance = KMS(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
+        self.acm_instance = ACM(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
+        self.logs_instance = Logs(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
 
     def get_field_from_attrs(self, attributes, arg):
         keys = arg.split(".")
@@ -59,7 +57,7 @@ class Elasticsearch:
     def es_get_tags(self, attributes):
         arn = attributes.get("arn", None)
         if arn:
-            tags_response = self.elasticsearch_client.list_tags(
+            tags_response = self.aws_clients.elasticsearch_client.list_tags(
                 ARN=arn
             )
             tags = tags_response.get("TagList", [])
@@ -80,10 +78,10 @@ class Elasticsearch:
             if subnets:
                 #get the vpc id for the first subnet
                 subnet_id = subnets[0]
-                response = self.ec2_client.describe_subnets(SubnetIds=[subnet_id])
+                response = self.aws_clients.ec2_client.describe_subnets(SubnetIds=[subnet_id])
                 vpc_id = response['Subnets'][0]['VpcId']
         if vpc_id:
-            response = self.ec2_client.describe_vpcs(VpcIds=[vpc_id])
+            response = self.aws_clients.ec2_client.describe_vpcs(VpcIds=[vpc_id])
             vpc_name = next(
                 (tag['Value'] for tag in response['Vpcs'][0]['Tags'] if tag['Key'] == 'Name'), None)
             return vpc_name
@@ -106,7 +104,7 @@ class Elasticsearch:
     def es_get_subnet_names(self, subnet_ids):
         subnet_names = []
         for subnet_id in subnet_ids:
-            response = self.ec2_client.describe_subnets(SubnetIds=[subnet_id])
+            response = self.aws_clients.ec2_client.describe_subnets(SubnetIds=[subnet_id])
 
             # Check if 'Subnets' key exists and it's not empty
             if not response or 'Subnets' not in response or not response['Subnets']:
@@ -141,10 +139,10 @@ class Elasticsearch:
     def get_kms_alias(self, kms_key_id):
         try:
             value = ""
-            response = self.kms_client.list_aliases()
+            response = self.aws_clients.kms_client.list_aliases()
             aliases = response.get('Aliases', [])
             while 'NextMarker' in response:
-                response = self.kms_client.list_aliases(Marker=response['NextMarker'])
+                response = self.aws_clients.kms_client.list_aliases(Marker=response['NextMarker'])
                 aliases.extend(response.get('Aliases', []))
             for alias in aliases:
                 if 'TargetKeyId' in alias and alias['TargetKeyId'] == kms_key_id.split('/')[-1]:
@@ -171,10 +169,10 @@ class Elasticsearch:
         resource_type = "aws_elasticsearch_domain"
         print("Processing OpenSearch Domain...")
 
-        domains = self.elasticsearch_client.list_domain_names()["DomainNames"]
+        domains = self.aws_clients.elasticsearch_client.list_domain_names()["DomainNames"]
         for domain in domains:
             domain_name = domain["DomainName"]
-            domain_info = self.elasticsearch_client.describe_elasticsearch_domain(DomainName=domain_name)[
+            domain_info = self.aws_clients.elasticsearch_client.describe_elasticsearch_domain(DomainName=domain_name)[
                 "DomainStatus"]
             arn = domain_info["ARN"]
             print(f"  Processing OpenSearch Domain: {domain_name}")
@@ -187,7 +185,7 @@ class Elasticsearch:
             }
 
             # Get the tags of the domain
-            tags_response = self.elasticsearch_client.list_tags(
+            tags_response = self.aws_clients.elasticsearch_client.list_tags(
                 ARN=arn
             )
             tags = tags_response.get("TagList", [])
@@ -240,7 +238,7 @@ class Elasticsearch:
         print("Processing OpenSearch Domain Policy...")
 
         # Since the domain is already known, we don't need to retrieve all domains
-        domain_info = self.elasticsearch_client.describe_elasticsearch_domain(DomainName=domain_name)[
+        domain_info = self.aws_clients.elasticsearch_client.describe_elasticsearch_domain(DomainName=domain_name)[
             "DomainStatus"]
         arn = domain_info["ARN"]
         # access_policy = domain_info["AccessPolicies"]
