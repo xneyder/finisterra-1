@@ -45,7 +45,7 @@ jobs:
       - name: Get services
         id: get-services
         run: |
-          result="['vpc','acm','apigateway','autoscaling','cloudmap','cloudfront','logs','docdb','dynamodb','ec2','ecr','ecs','eks','elbv2','elasticache_redis','elasticbeanstalk','guardduty','iam','kms','aws_lambda','rds','s3','sns','sqs','wafv2','stepfunction','msk','aurora','security_group','vpc_endpoint','vpn_client','elasticsearch']"
+          result='["vpc","acm","apigateway","autoscaling","cloudmap","cloudfront","logs","docdb","dynamodb","ec2","ecr","ecs","eks","elbv2","elasticache_redis","elasticbeanstalk","guardduty","iam","kms","aws_lambda","rds","s3","sns","sqs","wafv2","stepfunction","msk","aurora","security_group","vpc_endpoint","vpn_client","elasticsearch"]'
           services=$(echo "$result" | jq -c '.')
           echo "services=$services" >> $GITHUB_OUTPUT
 
