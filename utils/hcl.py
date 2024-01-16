@@ -201,7 +201,6 @@ class HCL:
     def prepare_folder(self, folder):
         try:
             os.chdir(self.script_dir)
-            temp_dir = os.path.join(self.script_dir, "tmp", ".terraform")
             generated_path = os.path.join(folder)
             self.create_folder(generated_path)
             os.chdir(generated_path)
@@ -215,7 +214,10 @@ class HCL:
                 destination_folder, ".terraform")
             if os.path.exists(terraform_folder):
                 shutil.rmtree(terraform_folder)
-            shutil.copytree(temp_dir, terraform_folder)
+            temp_dir = os.path.join(self.script_dir, "tmp", ".terraform")
+            #Check if temp_dir exists
+            if  os.path.exists(temp_dir):
+                shutil.copytree(temp_dir, terraform_folder)
             print("Initializing Terraform...")
             subprocess.run(["terraform", "init"], check=True)
         except Exception as e:
