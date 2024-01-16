@@ -1,4 +1,4 @@
-name: Generate TF 379070455575 us-east-1
+name: Test Modules
 permissions:
   id-token: write
   contents: write
