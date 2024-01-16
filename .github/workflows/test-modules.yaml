@@ -95,4 +95,5 @@ jobs:
           pip install -r requirements.txt
           python main.py $AWS_ACCOUNT_ID ${{ env.AWS_REGION }} ${{ matrix.service }}
 
-        #   docker run -v /tmp/generated:/app/generated -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY -e AWS_SESSION_TOKEN=$AWS_SESSION_TOKEN -e AWS_REGION=$AWS_REGION public.ecr.aws/u5n7c4j1/ft-terraformer:latest main.py ${AWS_ACCOUNT_ID} ${{ env.AWS_REGION }} ${{ matrix.service }}
+      - name: Setup upterm session
+        uses: lhotari/action-upterm@v1
