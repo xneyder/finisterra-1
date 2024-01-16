@@ -31,7 +31,7 @@ class Guardduty:
         self.aws_guardduty_threatintelset()
 
         self.hcl.refresh_state()
-        self.hcl.generate_hcl_file()
+        # self.hcl.generate_hcl_file()
         self.json_plan = self.hcl.json_plan
 
     def aws_guardduty_detector(self):
