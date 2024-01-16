@@ -123,6 +123,7 @@ jobs:
               # Succeeded, diff is empty (no changes)
               rm terraform.tfplan  # delete the plan so we don't comment
             else
-            if [ $? == 1 ]; then
-              exit 1  # actual error, fail
+              if [ $? == 1 ]; then
+                exit 1  # actual error, fail
+              fi
             fi
