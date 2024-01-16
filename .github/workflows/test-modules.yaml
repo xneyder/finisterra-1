@@ -1,0 +1,95 @@
+name: Generate TF 379070455575 us-east-1
+permissions:
+  id-token: write
+  contents: write
+  checks: write
+  security-events: write
+  actions: write
+  pull-requests: write
+
+on:
+  workflow_dispatch:
+    inputs:
+      AWS_REGION:
+        description: "AWS Region"
+        required: true
+        default: "us-east-1"
+      AWS_ACCESS_KEY_ID:
+        required: true
+        type: string
+      AWS_SECRET_ACCESS_KEY:
+        required: true
+        type: string
+      AWS_SESSION_TOKEN:
+        required: false
+        type: string
+
+env:
+  AWS_REGION: ${{ inputs.AWS_REGION }}
+  AWS_ACCESS_KEY_ID: ${{ inputs.AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ inputs.AWS_SECRET_ACCESS_KEY }}
+  AWS_SESSION_TOKEN: ${{ inputs.AWS_SESSION_TOKEN }}
+
+concurrency:
+  group: ${{ github.workflow }}
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Get services
+        id: get-services
+        run: |
+          result="['vpc','acm','apigateway','autoscaling','cloudmap','cloudfront','logs','docdb','dynamodb','ec2','ecr','ecs','eks','elbv2','elasticache_redis','elasticbeanstalk','guardduty','iam','kms','aws_lambda','rds','s3','sns','sqs','wafv2','stepfunction','msk','aurora','security_group','vpc_endpoint','vpn_client','elasticsearch']"
+          services=$(echo "$result" | jq -c '.')
+          echo "services=$services" >> $GITHUB_OUTPUT
+
+    outputs:
+      services: ${{ steps.get-services.outputs.services }}
+
+  generate_tf_code:
+    needs: [setup]
+    if: needs.setup.outputs.services != '[]'
+    name: ${{ matrix.service }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service: ${{fromJson(needs.setup.outputs.services)}}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Generate TF files for ${{ matrix.service }}
+        run: |
+          MAX_RETRIES=5
+          RETRY_DELAY=10  # initial delay in seconds
+          retry_count=0
+
+          while [[ $retry_count -lt $MAX_RETRIES ]]; do
+            docker pull public.ecr.aws/u5n7c4j1/ft-terraformer:latest && break
+            retry_count=$((retry_count + 1))
+            
+            # If we've reached the max number of retries, exit with an error
+            if [[ $retry_count -eq $MAX_RETRIES ]]; then
+              echo "Max retries reached. Exiting."
+              exit 1
+            fi
+
+            echo "Failed to pull image. Retrying in $RETRY_DELAY seconds..."
+            sleep $RETRY_DELAY
+            RETRY_DELAY=$((RETRY_DELAY * 2))  # double the delay for the next iteration
+          done
+
+          # get the aws_account id using sts and put in a variiable called aws_account_id
+          AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+
+
+          docker run -v /tmp/generated:/app/generated -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY -e AWS_SESSION_TOKEN=$AWS_SESSION_TOKEN -e AWS_REGION=$AWS_REGION public.ecr.aws/u5n7c4j1/ft-terraformer:latest main.py ${AWS_ACCOUNT_ID} ${{ env.AWS_REGION }} ${{ matrix.service }}

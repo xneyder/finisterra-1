@@ -212,6 +212,7 @@ class TargetGroup:
                     
                     # get the load balancer arn from the listener arn
                     load_balancer_arn = listener['LoadBalancerArn']
+                    print(load_balancer_arn)
                     if load_balancer_arn:
                         self.elbv2_instance.aws_lb(load_balancer_arn, ftstack)
                     
