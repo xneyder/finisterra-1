@@ -48,8 +48,8 @@ jobs:
       - name: Get services
         id: get-services
         run: |
-          #result='["vpc"]'
-          result='["vpc","acm","apigateway","autoscaling","cloudmap","cloudfront","logs","docdb","dynamodb","ec2","ecr","ecs","eks","elbv2","elasticache_redis","elasticbeanstalk","iam","kms","aws_lambda","rds","s3","sns","sqs","wafv2","stepfunction","msk","aurora","security_group","vpc_endpoint","elasticsearch"]'
+          result='["vpc"]'
+          #result='["vpc","acm","apigateway","autoscaling","cloudmap","cloudfront","logs","docdb","dynamodb","ec2","ecr","ecs","eks","elbv2","elasticache_redis","elasticbeanstalk","iam","kms","aws_lambda","rds","s3","sns","sqs","wafv2","stepfunction","msk","aurora","security_group","vpc_endpoint","elasticsearch"]'
           services=$(echo "$result" | jq -c '.')
           echo "services=$services" >> $GITHUB_OUTPUT
 
@@ -114,6 +114,7 @@ jobs:
           use-aws-auth: false
           enable-terraform-change-pr-commenter: true
           terragrunt-working-directory: "generated/${{ matrix.service }}"
+          include-plan-job-summary: true
           terragrunt-command: |
             if [[ ! -f "terragrunt.hcl" ]]; then
               echo "No resources found for ${AWS_MODULE}"
