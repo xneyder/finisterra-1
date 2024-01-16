@@ -26,7 +26,6 @@ class VpnClient:
         self.aws_ec2_client_vpn_route()
 
         self.hcl.refresh_state()
-        self.hcl.generate_hcl_file()
         self.json_plan = self.hcl.json_plan
 
     def aws_ec2_client_vpn_authorization_rule(self):
