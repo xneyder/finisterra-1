@@ -40,6 +40,23 @@ class ElasticacheRedis:
 
         self.security_group_instance = SECURITY_GROUP(ec2_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
 
+        functions = {
+            # 'match_security_group': self.match_security_group,
+            'auto_minor_version_upgrade': self.auto_minor_version_upgrade,
+            'build_dict_var': self.build_dict_var,
+            'get_subnet_names': self.get_subnet_names,
+            'get_vpc_name': self.get_vpc_name,
+            'get_vpc_name_by_subnet': self.get_vpc_name_by_subnet,
+            # 'get_security_group_rules': self.get_security_group_rules,
+            'get_subnet_ids': self.get_subnet_ids,
+            'get_vpc_id': self.get_vpc_id,
+            'get_vpc_id_by_subnet': self.get_vpc_id_by_subnet,
+            'get_security_group_names': self.get_security_group_names,
+            # 'aws_security_group_rule_import_id': self.aws_security_group_rule_import_id,
+        }
+
+        self.hcl.functions.update(functions)        
+
     def match_security_group(self, parent_attributes, child_attributes):
         child_security_group_id = child_attributes.get("id", None)
         for security_group in parent_attributes.get("security_group_ids", []):
@@ -225,8 +242,7 @@ class ElasticacheRedis:
 
         self.hcl.refresh_state()
 
-        self.hcl.module_hcl_code("terraform.tfstate", os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), "elasticcache_redis.yaml"), functions, self.region, self.aws_account_id, {}, {})
+        self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id, {}, {})
 
         self.json_plan = self.hcl.json_plan
 

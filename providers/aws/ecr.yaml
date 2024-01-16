@@ -3,16 +3,13 @@ aws_ecr_repository:
   terraform_module: "github.com/finisterra-io/terraform-aws-modules.git//ecr?ref=main"
   terraform_module_version: "1.6.0"
   name_field: repository_name
-  keys:
-    - repository_name
-  # path: "ecr"
+  joined_fields:
+    repository_kms_key:
+      sub_fields:
+        - repository_kms_key
   target_resource_name: this
   defaults:
-    attach_repository_policy: false
-    create_lifecycle_policy: false
     repository_type: private
-    manage_registry_scanning_configuration: false
-    # create_registry_replication_configuration: false
   fields:
     repository_name:
       field: name
@@ -26,7 +23,11 @@ aws_ecr_repository:
       arg: encryption_configuration.encryption_type
       type: string
     repository_kms_key:
-      function: get_field_from_attrs
+      function: ecr_get_repository_kms_key
+      arg: encryption_configuration.kms_key
+      type: string
+    repository_kms_key_alias:
+      function: ecr_get_repository_kms_key_alias
       arg: encryption_configuration.kms_key
       type: string
     repository_force_delete:

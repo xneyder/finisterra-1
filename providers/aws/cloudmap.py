@@ -25,6 +25,14 @@ class Cloudmap:
                        self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules)
         self.resource_list = {}
 
+        functions = {
+            'get_vpc_name': self.get_vpc_name,
+            'build_service_names': self.build_service_names,
+            'aws_service_discovery_private_dns_namespace_import_id': self.aws_service_discovery_private_dns_namespace_import_id,
+        }
+
+        self.hcl.functions.update(functions)
+
     def get_vpc_name(self, attributes, arg):
         vpc_id = attributes.get(arg)
         response = self.ec2_client.describe_vpcs(VpcIds=[vpc_id])
@@ -59,16 +67,9 @@ class Cloudmap:
         self.aws_service_discovery_private_dns_namespace()
         # self.aws_service_discovery_public_dns_namespace()
 
-        functions = {
-            'get_vpc_name': self.get_vpc_name,
-            'build_service_names': self.build_service_names,
-            'aws_service_discovery_private_dns_namespace_import_id': self.aws_service_discovery_private_dns_namespace_import_id,
-        }
-
         self.hcl.refresh_state()
 
-        self.hcl.module_hcl_code("terraform.tfstate", os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), "cloudmap.yaml"), functions, self.region, self.aws_account_id, {}, {})
+        self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id, {}, {})
 
         self.json_plan = self.hcl.json_plan
 

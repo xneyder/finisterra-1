@@ -33,6 +33,9 @@ class Elasticache:
                        self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules)
         self.resource_list = {}
 
+        functions = {}
+        self.hcl.functions.update(functions)
+
     def elasticache(self):
         self.hcl.prepare_folder(os.path.join("generated", "elasticache"))
 
@@ -51,12 +54,11 @@ class Elasticache:
         self.aws_elasticache_user_group()
         self.aws_elasticache_user_group_association()
 
-        functions = {}
+        
 
         self.hcl.refresh_state()
 
-        self.hcl.module_hcl_code("terraform.tfstate", os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), "elasticcache.yaml"), functions, self.region, self.aws_account_id, {}, {})
+        self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id, {}, {})
 
         exit()
 

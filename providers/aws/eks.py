@@ -32,6 +32,30 @@ class EKS:
         self.kms_instance = KMS(kms_client, iam_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
         self.security_group_instance = SECURITY_GROUP(ec2_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
 
+        functions = {
+            'get_field_from_attrs': self.get_field_from_attrs,
+            'build_cluster_addons': self.build_cluster_addons,
+            'cloudwatch_log_group_name': self.cloudwatch_log_group_name,
+            'join_ec2_tag_resource_id': self.join_ec2_tag_resource_id,
+            'build_cluster_tags': self.build_cluster_tags,
+            'join_eks_cluster_and_oidc_provider': self.join_eks_cluster_and_oidc_provider,
+            'build_managed_node_groups': self.build_managed_node_groups,
+            'join_node_group_launch_template': self.join_node_group_launch_template,
+            'build_launch_templates': self.build_launch_templates,
+            'build_node_group_roles': self.build_node_group_roles,
+            'build_node_group_role_policy_attachments': self.build_node_group_role_policy_attachments,
+            'join_node_group_autoscaling_schedule': self.join_node_group_autoscaling_schedule,
+            'build_node_group_autoscaling_schedules': self.build_node_group_autoscaling_schedules,
+            'get_node_group_name': self.get_node_group_name,
+            'get_subnet_names': self.get_subnet_names,
+            'get_subnet_ids': self.get_subnet_ids,
+            'get_vpc_name_eks': self.get_vpc_name_eks,
+            'get_vpc_id_eks': self.get_vpc_id_eks,
+        }
+
+        self.hcl.functions.update(functions)
+
+
     def get_field_from_attrs(self, attributes, arg):
         keys = arg.split(".")
         result = attributes
@@ -475,33 +499,8 @@ class EKS:
 
         self.aws_eks_cluster()
 
-
-        functions = {
-            'get_field_from_attrs': self.get_field_from_attrs,
-            'build_cluster_addons': self.build_cluster_addons,
-            'cloudwatch_log_group_name': self.cloudwatch_log_group_name,
-            'join_ec2_tag_resource_id': self.join_ec2_tag_resource_id,
-            'build_cluster_tags': self.build_cluster_tags,
-            'join_eks_cluster_and_oidc_provider': self.join_eks_cluster_and_oidc_provider,
-            'build_managed_node_groups': self.build_managed_node_groups,
-            'join_node_group_launch_template': self.join_node_group_launch_template,
-            'build_launch_templates': self.build_launch_templates,
-            'build_node_group_roles': self.build_node_group_roles,
-            'build_node_group_role_policy_attachments': self.build_node_group_role_policy_attachments,
-            'join_node_group_autoscaling_schedule': self.join_node_group_autoscaling_schedule,
-            'build_node_group_autoscaling_schedules': self.build_node_group_autoscaling_schedules,
-            'get_node_group_name': self.get_node_group_name,
-            'get_subnet_names': self.get_subnet_names,
-            'get_subnet_ids': self.get_subnet_ids,
-            'get_vpc_name_eks': self.get_vpc_name_eks,
-            'get_vpc_id_eks': self.get_vpc_id_eks,
-        }
-
         self.hcl.refresh_state()
-        config_file_list = ["eks.yaml", "security_group.yaml", "iam_role.yaml", "kms.yaml"]
-        for index,config_file in enumerate(config_file_list):
-            config_file_list[index] = os.path.join(os.path.dirname(os.path.abspath(__file__)),config_file )
-        self.hcl.module_hcl_code("terraform.tfstate",config_file_list, functions, self.region, self.aws_account_id, {}, {})
+        self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id, {}, {})
         self.json_plan = self.hcl.json_plan
 
     def aws_eks_cluster(self):

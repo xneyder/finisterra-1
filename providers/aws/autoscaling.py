@@ -25,6 +25,20 @@ class AutoScaling:
         self.user_data = {}
         self.ec2_client = ec2_client
 
+        functions = {
+            'build_autoscaling_policies': self.build_autoscaling_policies,
+            'join_launch_configuration': self.join_launch_configuration,
+            'join_launch_template': self.join_launch_template,
+            'get_field_from_attrs': self.get_field_from_attrs,
+            'build_aws_cloudwatch_metric_alarms': self.build_aws_cloudwatch_metric_alarms,
+            'get_user_data': self.get_user_data,
+            'get_subnet_ids': self.get_subnet_ids,
+            'get_subnet_names': self.get_subnet_names,
+            'get_security_group_names': self.get_security_group_names,
+        }
+
+        self.hcl.functions.update(functions)
+
     def get_user_data(self, attributes):
         name = attributes.get("name")
         return self.user_data.get(name)
@@ -177,20 +191,7 @@ class AutoScaling:
 
         self.hcl.refresh_state()
 
-        functions = {
-            'build_autoscaling_policies': self.build_autoscaling_policies,
-            'join_launch_configuration': self.join_launch_configuration,
-            'join_launch_template': self.join_launch_template,
-            'get_field_from_attrs': self.get_field_from_attrs,
-            'build_aws_cloudwatch_metric_alarms': self.build_aws_cloudwatch_metric_alarms,
-            'get_user_data': self.get_user_data,
-            'get_subnet_ids': self.get_subnet_ids,
-            'get_subnet_names': self.get_subnet_names,
-            'get_security_group_names': self.get_security_group_names,
-        }
-
-        self.hcl.module_hcl_code("terraform.tfstate", os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), "autoscalling.yaml"), functions, self.region, self.aws_account_id, {}, {})
+        self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id, {}, {})
 
         self.json_plan = self.hcl.json_plan
 

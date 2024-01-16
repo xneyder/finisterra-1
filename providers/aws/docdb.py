@@ -21,6 +21,18 @@ class DocDb:
                        self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules)
         self.resource_list = {}
 
+        functions = {
+            'build_dict_var': self.build_dict_var,
+            'match_security_group': self.match_security_group,
+            'build_cluster_instances': self.build_cluster_instances,
+            'get_subnet_names': self.get_subnet_names,
+            'get_vpc_name': self.get_vpc_name,
+            'get_security_group_rules': self.get_security_group_rules,
+            'aws_security_group_rule_import_id': self.aws_security_group_rule_import_id,
+        }
+
+        self.hcl.functions.update(functions)        
+
     def build_dict_var(self, attributes, arg):
         key = attributes[arg]
         result = {key: {}}
@@ -110,20 +122,10 @@ class DocDb:
 
         self.aws_docdb_cluster()
 
-        functions = {
-            'build_dict_var': self.build_dict_var,
-            'match_security_group': self.match_security_group,
-            'build_cluster_instances': self.build_cluster_instances,
-            'get_subnet_names': self.get_subnet_names,
-            'get_vpc_name': self.get_vpc_name,
-            'get_security_group_rules': self.get_security_group_rules,
-            'aws_security_group_rule_import_id': self.aws_security_group_rule_import_id,
-        }
 
         self.hcl.refresh_state()
 
-        self.hcl.module_hcl_code("terraform.tfstate", os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), "docdb.yaml"), functions, self.region, self.aws_account_id, {}, {})
+        self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id, {}, {})
 
         self.json_plan = self.hcl.json_plan
 

@@ -48,9 +48,7 @@ class KMS:
 
         self.hcl.refresh_state()
 
-        
-        self.hcl.module_hcl_code("terraform.tfstate", os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), "kms.yaml"), {}, self.region, self.aws_account_id, self.additional_data, {}, {})
+        self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id, {}, {})
 
         self.json_plan = self.hcl.json_plan
 

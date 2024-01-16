@@ -24,6 +24,9 @@ class IAM_ROLE:
                                 self.script_dir, self.transform_rules, self.region, self.s3Bucket, self.dynamoDBTable, self.state_key, self.workspace_id, self.modules)
         else:
             self.hcl = hcl
+        functions = {}
+
+        self.hcl.functions.update(functions)
 
     def iam(self):        
         self.hcl.prepare_folder(os.path.join("generated"))
@@ -31,10 +34,7 @@ class IAM_ROLE:
         self.aws_iam_role()
         self.hcl.refresh_state()
 
-        functions = {}
-
-        self.hcl.module_hcl_code("terraform.tfstate", os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), "iam_role.yaml"), functions, self.region, self.aws_account_id, {}, {})
+        self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id, {}, {})
 
         self.json_plan = self.hcl.json_plan
 

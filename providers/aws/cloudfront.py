@@ -284,10 +284,7 @@ class CloudFront:
         self.hcl.id_key_list.append("cloudfront_access_identity_path")
         self.hcl.id_key_list.append("bucket_domain_name")
         self.hcl.id_key_list.append("qualified_arn")
-        config_file_list = ["cloudfront.yaml", "acm.yaml", "s3.yaml", "aws_lambda.yaml", "iam_role.yaml", "wafv2.yaml"]
-        for index,config_file in enumerate(config_file_list):
-            config_file_list[index] = os.path.join(os.path.dirname(os.path.abspath(__file__)),config_file )
-        self.hcl.module_hcl_code("terraform.tfstate",config_file_list, {}, self.region, self.aws_account_id, {}, {})
+        self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id, {}, {})
 
         self.json_plan = self.hcl.json_plan
 

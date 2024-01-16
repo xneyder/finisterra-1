@@ -32,6 +32,33 @@ class Dynamodb:
                        self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules)
         self.resource_list = {}
 
+        functions = {
+            'get_field_from_attrs': self.get_field_from_attrs,
+            'get_name_from_arn': self.get_name_from_arn,
+            'aws_appautoscaling_target_name': self.aws_appautoscaling_target_name,
+            'autoscaling_read': self.autoscaling_read,
+            'autoscaling_write': self.autoscaling_write,
+            'aws_appautoscaling_policy_name': self.aws_appautoscaling_policy_name,
+            'table_read_policy_name': self.table_read_policy_name,
+            'table_write_policy_name': self.table_write_policy_name,
+            'index_read_policy_name': self.index_read_policy_name,
+            'index_write_policy_name': self.index_write_policy_name,
+            'autoscaling_read_enabled': self.autoscaling_read_enabled,
+            'autoscaling_write_enabled': self.autoscaling_write_enabled,
+            'aws_dyanmodb_target_name': self.aws_dyanmodb_target_name,
+            'aws_appautoscaling_policy_import_id': self.aws_appautoscaling_policy_import_id,
+            'aws_appautoscaling_target_import_id': self.aws_appautoscaling_target_import_id,
+            'is_not_read_capacity': self.is_not_read_capacity,
+            'is_not_write_capacity': self.is_not_write_capacity,
+            'is_not_read_index_capacity': self.is_not_read_index_capacity,
+            'is_not_write_index_capacity': self.is_not_write_index_capacity,
+            'build_autoscaling': self.build_autoscaling,
+            'build_autoscaling_policy': self.build_autoscaling_policy,
+            'get_autosaling_type': self.get_autosaling_type,
+        }
+
+        self.hcl.functions.update(functions)        
+
     def get_field_from_attrs(self, attributes, arg):
         keys = arg.split(".")
         result = attributes
@@ -243,34 +270,10 @@ class Dynamodb:
 
         self.aws_dynamodb_table()
 
-        functions = {
-            'get_field_from_attrs': self.get_field_from_attrs,
-            'get_name_from_arn': self.get_name_from_arn,
-            'aws_appautoscaling_target_name': self.aws_appautoscaling_target_name,
-            'autoscaling_read': self.autoscaling_read,
-            'autoscaling_write': self.autoscaling_write,
-            'aws_appautoscaling_policy_name': self.aws_appautoscaling_policy_name,
-            'table_read_policy_name': self.table_read_policy_name,
-            'table_write_policy_name': self.table_write_policy_name,
-            'index_read_policy_name': self.index_read_policy_name,
-            'index_write_policy_name': self.index_write_policy_name,
-            'autoscaling_read_enabled': self.autoscaling_read_enabled,
-            'autoscaling_write_enabled': self.autoscaling_write_enabled,
-            'aws_dyanmodb_target_name': self.aws_dyanmodb_target_name,
-            'aws_appautoscaling_policy_import_id': self.aws_appautoscaling_policy_import_id,
-            'aws_appautoscaling_target_import_id': self.aws_appautoscaling_target_import_id,
-            'is_not_read_capacity': self.is_not_read_capacity,
-            'is_not_write_capacity': self.is_not_write_capacity,
-            'is_not_read_index_capacity': self.is_not_read_index_capacity,
-            'is_not_write_index_capacity': self.is_not_write_index_capacity,
-            'build_autoscaling': self.build_autoscaling,
-            'build_autoscaling_policy': self.build_autoscaling_policy,
-            'get_autosaling_type': self.get_autosaling_type,
-        }
+
         self.hcl.refresh_state()
 
-        self.hcl.module_hcl_code("terraform.tfstate", os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), "dynamodb.yaml"), functions, self.region, self.aws_account_id, {}, {})
+        self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id, {}, {})
 
         # self.hcl.generate_hcl_file()
         self.json_plan = self.hcl.json_plan

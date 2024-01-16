@@ -26,6 +26,14 @@ class SNS:
                        self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules)
         self.resource_list = {}
 
+        functions = {
+            'build_subscriptions': self.build_subscriptions,
+            'signature_version': self.signature_version,
+            'get_key_from_arn': self.get_key_from_arn,
+        }
+
+        self.hcl.functions.update(functions)        
+
     def build_subscriptions(self, attributes):
         key = attributes['arn'].split(':')[-1]
         result = {key: {}}
@@ -51,16 +59,11 @@ class SNS:
         # self.aws_sns_sms_preferences()
         self.aws_sns_topic()
 
-        functions = {
-            'build_subscriptions': self.build_subscriptions,
-            'signature_version': self.signature_version,
-            'get_key_from_arn': self.get_key_from_arn,
-        }
+
 
         self.hcl.refresh_state()
 
-        self.hcl.module_hcl_code("terraform.tfstate", os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), "sns.yaml"), functions, self.region, self.aws_account_id, {}, {})
+        self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id, {}, {})
 
         self.json_plan = self.hcl.json_plan
 

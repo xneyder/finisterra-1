@@ -25,6 +25,15 @@ class SQS:
         self.resource_list = {}
         self.dlq_list = {}
 
+        functions = {
+            'aws_sqs_queue_target_name': self.aws_sqs_queue_target_name,
+            'is_dql': self.is_dql,
+            'get_parent_url': self.get_parent_url,
+
+        }
+
+        self.hcl.functions.update(functions)        
+
     def aws_sqs_queue_target_name(self, attributes, arg):
         url = attributes.get(arg)
         if url in self.dlq_list:
@@ -48,16 +57,10 @@ class SQS:
 
         self.aws_sqs_queue()
 
-        functions = {
-            'aws_sqs_queue_target_name': self.aws_sqs_queue_target_name,
-            'is_dql': self.is_dql,
-            'get_parent_url': self.get_parent_url,
 
-        }
         self.hcl.refresh_state()
 
-        self.hcl.module_hcl_code("terraform.tfstate", os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), "sqs.yaml"), functions, self.region, self.aws_account_id, {}, {})
+        self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id, {}, {})
 
         self.json_plan = self.hcl.json_plan
 

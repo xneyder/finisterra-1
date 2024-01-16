@@ -1,4 +1,5 @@
 import os
+import botocore
 from utils.hcl import HCL
 import json
 from providers.aws.kms import KMS
@@ -13,6 +14,7 @@ class ECR:
         self.schema_data = schema_data
         self.region = region
         self.aws_account_id = aws_account_id
+        self.kms_client = kms_client
         
         self.workspace_id = workspace_id
         self.modules = modules
@@ -21,6 +23,17 @@ class ECR:
                        self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules)
         else:
             self.hcl = hcl
+
+        functions = {
+            'get_field_from_attrs': self.get_field_from_attrs,
+            'build_registry_replication_rules': self.build_registry_replication_rules,
+            'get_registry_scan_rules': self.get_registry_scan_rules,
+            'ecr_get_repository_kms_key': self.ecr_get_repository_kms_key,
+            'ecr_get_repository_kms_key_alias': self.ecr_get_repository_kms_key_alias,
+        }
+
+        self.hcl.functions.update(functions)
+
         self.resource_list = {}
         self.kms_instance = KMS(kms_client, iam_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
 
@@ -77,7 +90,43 @@ class ECR:
 
             result.append(record)
         return result
+    
+    def get_kms_alias(self, kms_key_id):
+        try:
+            value = ""
+            response = self.kms_client.list_aliases()
+            aliases = response.get('Aliases', [])
+            while 'NextMarker' in response:
+                response = self.kms_client.list_aliases(Marker=response['NextMarker'])
+                aliases.extend(response.get('Aliases', []))
+            for alias in aliases:
+                if 'TargetKeyId' in alias and alias['TargetKeyId'] == kms_key_id.split('/')[-1]:
+                    value = alias['AliasName']
+                    break
+            return value
+        except botocore.exceptions.ClientError as e:
+            if e.response['Error']['Code'] == 'AccessDeniedException':
+                return ""
+            else:
+                raise e    
 
+    def ecr_get_repository_kms_key(self, attributes, arg):
+        kms_key_id = self.get_field_from_attrs(attributes, arg)
+        if kms_key_id:
+            kms_alias = self.get_kms_alias(kms_key_id)
+            if kms_alias:
+                return None
+            return kms_key_id
+        return None
+    
+    def ecr_get_repository_kms_key_alias(self, attributes, arg):
+        kms_key_id = self.get_field_from_attrs(attributes, arg)
+        if kms_key_id:
+            kms_alias = self.get_kms_alias(kms_key_id)
+            if kms_alias:
+                return kms_alias
+            return None
+        return None
 
     def ecr(self):
         self.hcl.prepare_folder(os.path.join("generated"))
@@ -89,17 +138,10 @@ class ECR:
             self.aws_ecr_pull_through_cache_rule()
             self.aws_ecr_replication_configuration()
 
-        functions = {
-            'get_field_from_attrs': self.get_field_from_attrs,
-            'build_registry_replication_rules': self.build_registry_replication_rules,
-            'get_registry_scan_rules': self.get_registry_scan_rules,
-        }
+
 
         self.hcl.refresh_state()
-        config_file_list = ["kms.yaml","ecr.yaml", "iam.yaml"]
-        for index,config_file in enumerate(config_file_list):
-            config_file_list[index] = os.path.join(os.path.dirname(os.path.abspath(__file__)),config_file )
-        self.hcl.module_hcl_code("terraform.tfstate",config_file_list, {}, self.region, self.aws_account_id, {}, {})
+        self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id, {}, {})
 
         # self.hcl.generate_hcl_file()
         self.json_plan = self.hcl.json_plan
@@ -134,12 +176,13 @@ class ECR:
             }
             self.hcl.process_resource(
                 resource_type, repository_name.replace("-", "_"), attributes)
+            
 
-            repository_kms_key = repo.get("encryptionConfiguration", {})
-            if repository_kms_key:
-                encryptionKeyId = repository_kms_key.get("encryptionKeyId", None)
-                if encryptionKeyId:
-                    self.kms_instance.aws_kms_key(encryptionKeyId, ftstack)
+            emcryption_configuration = repo.get("encryptionConfiguration", {})
+            if emcryption_configuration:
+                kmsKey = emcryption_configuration.get("kmsKey", None)
+                if kmsKey:
+                    self.kms_instance.aws_kms_key(kmsKey, ftstack)
 
             self.hcl.add_stack(resource_type, id, ftstack)
 

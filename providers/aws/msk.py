@@ -29,6 +29,26 @@ class MSK:
 
         self.security_group_instance = SECURITY_GROUP(ec2_client, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
 
+        functions = {
+            'get_field_from_attrs': self.get_field_from_attrs,
+            'get_subnet_names': self.get_subnet_names,
+            'get_subnet_ids': self.get_subnet_ids,
+            'join_configuration': self.join_configuration,
+            'match_security_group': self.match_security_group,
+            'get_server_properties': self.get_server_properties,
+            'get_public_access_enabled': self.get_public_access_enabled,
+            'get_vpc_name_msk': self.get_vpc_name_msk,
+            'get_vpc_id_msk': self.get_vpc_id_msk,
+            'get_security_group_names': self.get_security_group_names,
+            'aws_security_group_rule_import_id': self.aws_security_group_rule_import_id,
+            # 'get_security_group_rules': self.get_security_group_rules,
+            'get_provisioned_throughput': self.get_provisioned_throughput,
+
+        }
+
+        self.hcl.functions.update(functions)
+
+
     def get_field_from_attrs(self, attributes, arg):
         try:
             keys = arg.split(".")
@@ -228,27 +248,9 @@ class MSK:
 
         self.aws_msk_cluster()
 
-        functions = {
-            'get_field_from_attrs': self.get_field_from_attrs,
-            'get_subnet_names': self.get_subnet_names,
-            'get_subnet_ids': self.get_subnet_ids,
-            'join_configuration': self.join_configuration,
-            'match_security_group': self.match_security_group,
-            'get_server_properties': self.get_server_properties,
-            'get_public_access_enabled': self.get_public_access_enabled,
-            'get_vpc_name_msk': self.get_vpc_name_msk,
-            'get_vpc_id_msk': self.get_vpc_id_msk,
-            'get_security_group_names': self.get_security_group_names,
-            'aws_security_group_rule_import_id': self.aws_security_group_rule_import_id,
-            # 'get_security_group_rules': self.get_security_group_rules,
-            'get_provisioned_throughput': self.get_provisioned_throughput,
-
-        }
-
         self.hcl.refresh_state()
 
-        self.hcl.module_hcl_code("terraform.tfstate",
-                                 os.path.join(os.path.dirname(os.path.abspath(__file__)), "msk.yaml"), functions, self.region, self.aws_account_id, {}, {})
+        self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id, {}, {})
 
         self.json_plan = self.hcl.json_plan
 

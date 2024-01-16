@@ -23,6 +23,16 @@ class StepFunction:
         self.resource_roles = {}
         self.resource_log_groups = {}
 
+        functions = {
+            'get_field_from_attrs': self.get_field_from_attrs,
+            'join_role': self.join_role,
+            'join_log_group': self.join_log_group,
+            'get_role_name_from_arn': self.get_role_name_from_arn,
+            'to_list': self.to_list,
+        }
+
+        self.hcl.functions.update(functions)        
+
     def get_field_from_attrs(self, attributes, arg):
         keys = arg.split(".")
         result = attributes
@@ -66,18 +76,9 @@ class StepFunction:
 
         self.aws_sfn_state_machine()
 
-        functions = {
-            'get_field_from_attrs': self.get_field_from_attrs,
-            'join_role': self.join_role,
-            'join_log_group': self.join_log_group,
-            'get_role_name_from_arn': self.get_role_name_from_arn,
-            'to_list': self.to_list,
-        }
-
         self.hcl.refresh_state()
 
-        self.hcl.module_hcl_code("terraform.tfstate", os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), "stepfunction.yaml"), functions, self.region, self.aws_account_id, {}, {})
+        self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id, {}, {})
 
         self.json_plan = self.hcl.json_plan
 

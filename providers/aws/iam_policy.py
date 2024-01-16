@@ -19,6 +19,10 @@ class IAM_POLICY:
                        self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules)
         self.resource_list = {}
 
+        functions = {'get_policy_documents': self.get_policy_documents,}
+
+        self.hcl.functions.update(functions)
+
 
     def get_policy_documents(self, attributes):
         # convert data_dict to str
@@ -42,10 +46,7 @@ class IAM_POLICY:
         self.aws_iam_policy()
         self.hcl.refresh_state()
 
-        functions = {'get_policy_documents': self.get_policy_documents,}
-
-        self.hcl.module_hcl_code("terraform.tfstate", os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), "iam_policy.yaml"), functions, self.region, self.aws_account_id, {}, {})
+        self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id, {}, {})
 
         self.json_plan = self.hcl.json_plan
 

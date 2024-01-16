@@ -11,7 +11,7 @@ import hashlib
 import importlib
 from utils.filesystem import create_tmp_terragrunt
 import traceback
-
+import glob
 
 class HCL:
     def __init__(self, schema_data, provider_name, script_dir, transform_rules, region, bucket, dynamodb_table, state_key, workspace_id, modules):
@@ -900,10 +900,10 @@ class HCL:
         return value
 
 
-    def module_hcl_code(self, terraform_state_file, config_file_list, functions={}, aws_region="", aws_account_id="", to_remove = {}, additional_data={}):
+    def module_hcl_code(self, terraform_state_file, config_file_folder, functions={}, aws_region="", aws_account_id="", to_remove = {}, additional_data={}):
         self.functions.update(functions)
-        if not isinstance(config_file_list, list):
-            config_file_list = [config_file_list]
+
+        config_file_list = glob.glob(config_file_folder + "/*.yaml")
 
         config = {}
         for config_file in config_file_list:

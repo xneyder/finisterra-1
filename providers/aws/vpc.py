@@ -602,10 +602,7 @@ class VPC:
         self.aws_vpc()
 
         self.hcl.refresh_state()
-        config_file_list = ["vpc.yaml","iam_role.yaml", "s3.yaml", "logs.yaml"]
-        for index,config_file in enumerate(config_file_list):
-            config_file_list[index] = os.path.join(os.path.dirname(os.path.abspath(__file__)),config_file )
-        self.hcl.module_hcl_code("terraform.tfstate",config_file_list, {}, self.region, self.aws_account_id, {}, {})
+        self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id, {}, {})
 
         # exit()
 
