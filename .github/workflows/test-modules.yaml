@@ -31,6 +31,7 @@ env:
   AWS_SESSION_TOKEN: ${{ inputs.AWS_SESSION_TOKEN }}
   TERRAFORM_VERSION: "1.5.0"
   TERRAGRUNT_VERSION: "0.50.4"
+  TF_PLAN: "False"
 
 concurrency:
   group: ${{ github.workflow }}
@@ -87,6 +88,7 @@ jobs:
           python-version: "3.9"
 
       - name: Generate TF files for ${{ matrix.service }}
+        id: generate_tf_code
         run: |
           # get the aws_account id using sts and put in a variiable called aws_account_id
           AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
@@ -95,7 +97,15 @@ jobs:
           pip install -r requirements.txt
           python main.py $AWS_ACCOUNT_ID ${{ env.AWS_REGION }} ${{ matrix.service }}
 
-      - name: Plan Terraform ${{ matrix.service.service_name }}-${{ matrix.service.aws_account_id }}-${{ matrix.service.aws_region }}
+          #check if generated/${{ matrix.service }} folder exists and if put true or false in files_generated github output
+          if [ -d "generated/${{ matrix.service }}" ]; then
+              echo "files_generated=true" >> $GITHUB_OUTPUT
+          else
+              echo "files_generated=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Plan Terraform ${{ matrix.service }}
+        if: steps.generate_tf_code.outputs.files_generated == 'true'
         uses: datadrivers/terragrunt-action@v0.10.2
         with:
           github-token: ${{ github.token }}

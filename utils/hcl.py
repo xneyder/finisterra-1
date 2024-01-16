@@ -1136,9 +1136,13 @@ class HCL:
         subprocess.run(["terragrunt", "run-all", "hclfmt"], check=True)
         subprocess.run(["terraform", "fmt", "-recursive"], check=True)
         subprocess.run(["terragrunt", "run-all", "--terragrunt-exclude-dir", ".",  "validate"], check=True)
-        print("Running terragrunt plan on generated files...")
+        
         os.rename("terraform.tfstate", "terraform.tfstate.disabled")
-        subprocess.run(["terragrunt", "run-all", "--terragrunt-exclude-dir", ".", "plan"], check=True)
+        
+        TF_PLAN = os.environ.get("TF_PLAN", True)
+        if not TF_PLAN:
+            print("Running terragrunt plan on generated files...")
+            subprocess.run(["terragrunt", "run-all", "--terragrunt-exclude-dir", ".", "plan"], check=True)
 
     def add_stack(self, resource_name, id, ftstack):
         if ftstack:
