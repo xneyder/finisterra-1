@@ -68,6 +68,10 @@ jobs:
         with:
           fetch-depth: 0
 
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.9"
+
       - name: Generate TF files for ${{ matrix.service }}
         run: |
           # get the aws_account id using sts and put in a variiable called aws_account_id
