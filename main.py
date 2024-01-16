@@ -11,7 +11,9 @@ from utils.filesystem import create_root_terragrunt, create_gitignore_file
 @click.argument('aws_account_id')
 @click.argument('aws_region')
 @click.argument('group_code')
-def main(aws_account_id, aws_region, group_code):
+@click.option('--tf_plan', default=True, type=bool, help='Whether to generate a Terraform plan')
+
+def main(aws_account_id, aws_region, group_code, tf_plan):
     """Fetches AWS resources using boto3."""
     print("Fetching AWS resources using boto3...")
 

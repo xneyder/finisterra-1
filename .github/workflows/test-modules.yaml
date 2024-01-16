@@ -94,3 +94,25 @@ jobs:
           # run the python script main.py aws_account_id aws_region service_name but need to install the python requirements.txt first
           pip install -r requirements.txt
           python main.py $AWS_ACCOUNT_ID ${{ env.AWS_REGION }} ${{ matrix.service }}
+
+      - name: Plan Terraform ${{ matrix.service.service_name }}-${{ matrix.service.aws_account_id }}-${{ matrix.service.aws_region }}
+        uses: datadrivers/terragrunt-action@v0.10.2
+        with:
+          github-token: ${{ github.token }}
+          terraform-version: ${{ env.TERRAFORM_VERSION }}
+          terragrunt-version: ${{ env.TERRAGRUNT_VERSION }}
+          use-aws-auth: false
+          enable-terraform-change-pr-commenter: true
+          terragrunt-working-directory: "generated/${{ matrix.service }}"
+          terragrunt-command: |
+            if [[ ! -f "terragrunt.hcl" ]]; then
+              echo "No resources found for ${AWS_MODULE}"
+              exit 0
+            fi
+            if terragrunt plan --terragrunt-non-interactive -detailed-exitcode -out=terraform.tfplan -lock-timeout=10m; then
+              # Succeeded, diff is empty (no changes)
+              rm terraform.tfplan  # delete the plan so we don't comment
+            else
+            if [ $? == 1 ]; then
+              exit 1  # actual error, fail
+            fi
