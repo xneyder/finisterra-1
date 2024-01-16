@@ -94,6 +94,3 @@ jobs:
           # run the python script main.py aws_account_id aws_region service_name but need to install the python requirements.txt first
           pip install -r requirements.txt
           python main.py $AWS_ACCOUNT_ID ${{ env.AWS_REGION }} ${{ matrix.service }}
-
-      - name: Setup upterm session
-        uses: lhotari/action-upterm@v1
