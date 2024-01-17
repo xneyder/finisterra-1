@@ -448,6 +448,9 @@ class S3:
         print(f"  Processing S3 Bucket: {bucket_name}")
         resource_type = "aws_s3_bucket"
 
+        # if bucket_name != "kh-data-deepintent-import-backup":
+        #     return
+
         # Retrieve the region of the bucket
         bucket_location_response = self.aws_clients.s3_client.get_bucket_location(Bucket=bucket_name)
         bucket_region = bucket_location_response['LocationConstraint']

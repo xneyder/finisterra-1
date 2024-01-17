@@ -205,6 +205,8 @@ aws_s3_bucket:
       join:
         bucket:
           field: bucket
+      second_index:
+        field: name
       target_resource_name: this
       fields:
         intelligent_tiering:
