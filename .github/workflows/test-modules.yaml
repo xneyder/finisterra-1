@@ -120,14 +120,7 @@ jobs:
               echo "No resources found for ${AWS_MODULE}"
               exit 0
             fi
-            if terragrunt plan --terragrunt-non-interactive -detailed-exitcode -out=terraform.tfplan -lock-timeout=10m; then
-              # Succeeded, diff is empty (no changes)
-              rm terraform.tfplan  # delete the plan so we don't comment
-            else
-              if [ $? == 1 ]; then
-                exit 1  # actual error, fail
-              fi
-            fi
+            terragrunt plan --terragrunt-non-interactive -out=terraform.tfplan -lock-timeout=10m
 
     #   - name: Generate list using Markdown
     #     run: |
