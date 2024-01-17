@@ -107,9 +107,14 @@ class SQS:
                         response['Attributes']['RedrivePolicy'])
                     if 'deadLetterTargetArn' in redrive_policy:
                         # get the url of the DLQ by the arn
-                        dlq_url = self.aws_clients.sqs_client.get_queue_url(
-                            QueueName=redrive_policy['deadLetterTargetArn'].split(":")[-1])
-                        self.dlq_list[dlq_url['QueueUrl']] = queue_url
+                        deadLetterTargetArn = redrive_policy['deadLetterTargetArn'].split(":")[-1]
+                        try:
+                            dlq_url = self.aws_clients.sqs_client.get_queue_url(
+                                QueueName=redrive_policy['deadLetterTargetArn'].split(":")[-1])
+                            self.dlq_list[dlq_url['QueueUrl']] = queue_url
+                        except Exception as e:
+                            print("Error occurred: ", e)
+                            continue
 
                 # Call aws_sqs_queue_redrive_policy with the queue_url as an argument
                 self.aws_sqs_queue_redrive_policy(queue_url)
