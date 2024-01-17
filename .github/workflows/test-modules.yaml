@@ -48,8 +48,8 @@ jobs:
       - name: Get services
         id: get-services
         run: |
-          result='["vpc"]'
-          #result='["vpc","acm","apigateway","autoscaling","cloudmap","cloudfront","logs","docdb","dynamodb","ec2","ecr","ecs","eks","elbv2","elasticache_redis","elasticbeanstalk","iam","kms","aws_lambda","rds","s3","sns","sqs","wafv2","stepfunction","msk","aurora","security_group","vpc_endpoint","elasticsearch"]'
+          #result='["vpc"]'
+          result='["vpc","acm","apigateway","autoscaling","cloudmap","cloudfront","logs","docdb","dynamodb","ec2","ecr","ecs","eks","elbv2","elasticache_redis","elasticbeanstalk","iam","kms","aws_lambda","rds","s3","sns","sqs","wafv2","stepfunction","msk","aurora","security_group","vpc_endpoint","elasticsearch"]'
           services=$(echo "$result" | jq -c '.')
           echo "services=$services" >> $GITHUB_OUTPUT
 
@@ -121,11 +121,3 @@ jobs:
               exit 0
             fi
             terragrunt plan --terragrunt-non-interactive -out=terraform.tfplan -lock-timeout=10m
-
-    #   - name: Generate list using Markdown
-    #     run: |
-    #       echo "This is the lead in sentence for the list" >> $GITHUB_STEP_SUMMARY
-    #       echo "" >> $GITHUB_STEP_SUMMARY # this is a blank line
-    #       echo "- Lets add a bullet point" >> $GITHUB_STEP_SUMMARY
-    #       echo "- Lets add a second bullet point" >> $GITHUB_STEP_SUMMARY
-    #       echo "- How about a third one?" >> $GITHUB_STEP_SUMMARY
