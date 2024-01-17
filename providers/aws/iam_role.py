@@ -41,51 +41,55 @@ class IAM_ROLE:
     def aws_iam_role(self, role_name=None, ftstack=None):
         resource_type = "aws_iam_role"
         print("Processing IAM Roles...")
-        if role_name and ftstack:
-            if self.hcl.id_resource_processed(resource_type, role_name, ftstack):
-                print(f"  Skipping Iam Role: {role_name} - already processed")
+        
+        # If role_name is provided, process only that specific role
+        if role_name:
+            if ftstack and self.hcl.id_resource_processed(resource_type, role_name, ftstack):
+                print(f"  Skipping IAM Role: {role_name} - already processed")
                 return
-            
-        paginator = self.aws_clients.iam_client.get_paginator("list_roles")
 
+            # Fetch and process the specific role
+            try:
+                role = self.aws_clients.iam_client.get_role(RoleName=role_name)["Role"]
+                self.process_iam_role(role, ftstack)
+            except Exception as e:
+                print(f"Error fetching IAM Role {role_name}: {e}")
+            return
+
+        # Code to process all roles if no specific role_name is provided
+        paginator = self.aws_clients.iam_client.get_paginator("list_roles")
         for page in paginator.paginate():
             for role in page["Roles"]:
-                current_role_name = role["RoleName"]
-                role_path = role["Path"]
+                self.process_iam_role(role, ftstack)
 
+    def process_iam_role(self, role, ftstack=None):
+        current_role_name = role["RoleName"]
+        role_path = role["Path"]
 
-                # Ignore roles managed or created by AWS
-                if role_path.startswith("/aws-service-role/") or "AWS-QuickSetup" in current_role_name:
-                    # print(f"  Skipping IAM Role: {current_role_name}")
-                    continue
+        # Ignore roles managed or created by AWS
+        if role_path.startswith("/aws-service-role/") or "AWS-QuickSetup" in current_role_name:
+            return
 
-                # Process only the specified role if role_name is provided
-                if role_name and current_role_name != role_name:
-                    continue
+        print(f"  Processing IAM Role: {current_role_name}")
+        id = current_role_name
+        attributes = {
+            "id": id,
+            "name": current_role_name,
+            "assume_role_policy": json.dumps(role["AssumeRolePolicyDocument"]),
+            "description": role.get("Description"),
+            "path": role_path,
+        }
+        self.hcl.process_resource(resource_type, current_role_name, attributes)
+        if not ftstack:
+            ftstack = "iam"
+        self.hcl.add_stack(resource_type, id, ftstack)
 
-                # if current_role_name != 'test-spa-deep-linking':
-                #     continue
+        # Call aws_iam_role_policy_attachment for the current role_name
+        self.aws_iam_role_policy_attachment(current_role_name, ftstack)
 
-                print(f"  Processing IAM Role: {current_role_name}")
-                id = current_role_name
+        # Now call aws_iam_instance_profile for the current role_name
+        self.aws_iam_instance_profile(current_role_name)
 
-                attributes = {
-                    "id": id,
-                    "name": current_role_name,
-                    "assume_role_policy": json.dumps(role["AssumeRolePolicyDocument"]),
-                    "description": role.get("Description"),
-                    "path": role_path,
-                }
-                self.hcl.process_resource(resource_type, current_role_name, attributes)   
-                if not ftstack:
-                    ftstack = "iam"
-                self.hcl.add_stack(resource_type, id, ftstack)
-
-                # Call aws_iam_role_policy_attachment for the current role_name
-                self.aws_iam_role_policy_attachment(current_role_name, ftstack)
-
-                # Now call aws_iam_instance_profile for the current role_name
-                self.aws_iam_instance_profile(current_role_name)
 
     def aws_iam_instance_profile(self, role_name):
         print("Processing IAM Instance Profiles...")
