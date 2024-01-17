@@ -80,7 +80,7 @@ class SECURITY_GROUP:
 
             # if security_group["GroupName"] != "launch-wizard-18":
             #     continue
-            # if security_group["GroupId"] != "sg-058cbed90f9688f49":
+            # if security_group["GroupId"] != "sg-0b98ed17d0b26c599":
             #     continue
 
             is_elasticbeanstalk = any(tag['Key'].startswith(

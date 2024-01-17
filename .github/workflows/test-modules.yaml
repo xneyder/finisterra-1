@@ -112,7 +112,7 @@ jobs:
           terraform-version: ${{ env.TERRAFORM_VERSION }}
           terragrunt-version: ${{ env.TERRAGRUNT_VERSION }}
           use-aws-auth: false
-          enable-terraform-change-pr-commenter: true
+          enable-terraform-change-pr-commenter: false
           terragrunt-working-directory: "generated/${{ matrix.service }}"
           include-plan-job-summary: true
           terragrunt-command: |
@@ -129,10 +129,17 @@ jobs:
               fi
             fi
 
-      - name: Generate list using Markdown
-        run: |
-          echo "This is the lead in sentence for the list" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY # this is a blank line
-          echo "- Lets add a bullet point" >> $GITHUB_STEP_SUMMARY
-          echo "- Lets add a second bullet point" >> $GITHUB_STEP_SUMMARY
-          echo "- How about a third one?" >> $GITHUB_STEP_SUMMARY
+      - name: Comment with TF Plan
+        uses: finisterra-io/terraform-change-pr-commenter@main
+        with:
+          json-file: "generated/${{ matrix.service }}/tfplan.json"
+          expand-comment: "true"
+          include-plan-job-summary: "true"
+
+    #   - name: Generate list using Markdown
+    #     run: |
+    #       echo "This is the lead in sentence for the list" >> $GITHUB_STEP_SUMMARY
+    #       echo "" >> $GITHUB_STEP_SUMMARY # this is a blank line
+    #       echo "- Lets add a bullet point" >> $GITHUB_STEP_SUMMARY
+    #       echo "- Lets add a second bullet point" >> $GITHUB_STEP_SUMMARY
+    #       echo "- How about a third one?" >> $GITHUB_STEP_SUMMARY
