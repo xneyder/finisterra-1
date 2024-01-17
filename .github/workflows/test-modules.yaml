@@ -106,7 +106,7 @@ jobs:
 
       - name: Plan Terraform ${{ matrix.service }}
         if: steps.generate_tf_code.outputs.files_generated == 'true'
-        uses: datadrivers/terragrunt-action@v0.10.2
+        uses: finisterra/terragrunt-action@main
         with:
           github-token: ${{ github.token }}
           terraform-version: ${{ env.TERRAFORM_VERSION }}
@@ -128,13 +128,6 @@ jobs:
                 exit 1  # actual error, fail
               fi
             fi
-
-      - name: Comment with TF Plan
-        uses: finisterra-io/terraform-change-pr-commenter@main
-        with:
-          json-file: "generated/${{ matrix.service }}/tfplan.json"
-          expand-comment: "true"
-          include-plan-job-summary: "true"
 
     #   - name: Generate list using Markdown
     #     run: |
