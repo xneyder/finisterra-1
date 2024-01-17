@@ -106,7 +106,7 @@ jobs:
 
       - name: Plan Terraform ${{ matrix.service }}
         if: steps.generate_tf_code.outputs.files_generated == 'true'
-        uses: finisterra/terragrunt-action@main
+        uses: finisterra-io/terragrunt-action@main
         with:
           github-token: ${{ github.token }}
           terraform-version: ${{ env.TERRAFORM_VERSION }}
