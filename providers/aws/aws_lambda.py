@@ -23,14 +23,7 @@ class AwsLambda:
     def __init__(self, aws_clients, script_dir, provider_name, schema_data, region, s3Bucket,
                  dynamoDBTable, state_key, workspace_id, modules, aws_account_id,hcl = None):
         self.aws_clients = aws_clients
-        self.transform_rules = {
-            "aws_lambda_function": {
-                "hcl_apply_function_dict": {
-                    "environment.variables": {'function': [convert_to_terraform_format]}
-                },
-                "hcl_drop_fields": {"vpc_config.vpc_id": "ALL"},
-            },
-        }
+        self.transform_rules = {        }
         self.provider_name = provider_name
         self.script_dir = script_dir
         self.schema_data = schema_data
@@ -131,86 +124,83 @@ class AwsLambda:
         resource_type = "aws_lambda_function"
         print("Processing Lambda Functions...", selected_function_name)
 
+        if selected_function_name and ftstack:
+            if self.hcl.id_resource_processed(resource_type, selected_function_name, ftstack):
+                print(f"  Skipping Lambda Function: {selected_function_name} already processed")
+                return
+            self.process_single_lambda_function(selected_function_name, ftstack)
+            return
+
         paginator = self.aws_clients.lambda_client.get_paginator('list_functions')
-        page_iterator = paginator.paginate()
-
-        for page in page_iterator:
-            functions = page['Functions']
-
-            for function in functions:
+        for page in paginator.paginate():
+            for function in page['Functions']:
                 function_name = function['FunctionName']
+                self.process_single_lambda_function(function_name, ftstack)
 
-                if selected_function_name and function_name != selected_function_name:
-                    continue
+    def process_single_lambda_function(self, function_name, ftstack=None):
+        resource_type = "aws_lambda_function"
+        print(f"  Processing Lambda Function: {function_name}")
 
-                print(f"  Processing Lambda Function: {function_name}")
+        function_details = self.aws_clients.lambda_client.get_function(FunctionName=function_name)
+        function_arn = function_details["Configuration"]["FunctionArn"]
 
-                # Get more detailed information about the function
-                function_details = self.aws_clients.lambda_client.get_function(FunctionName=function_name)
+        if not ftstack:
+            ftstack = "aws_lambda"
+            try:
+                tags = self.aws_clients.lambda_client.list_tags(Resource=function_arn)['Tags']
+                if tags.get('ftstack', 'aws_lambda') != 'aws_lambda':
+                    ftstack = "stack_" + tags.get('ftstack', 'aws_lambda')
+            except Exception as e:
+                print("Error occurred: ", e)
 
-                function_arn = function_details["Configuration"]["FunctionArn"]
+        s3_bucket = ''
+        s3_key = ''
 
-                if not ftstack:
-                    ftstack = "aws_lambda"
-                    try:
-                        tags = self.aws_clients.lambda_client.list_tags(Resource=function_arn)['Tags']
-                        if tags.get('ftstack', 'aws_lambda') != 'aws_lambda':
-                            ftstack = "stack_"+tags.get('ftstack', 'aws_lambda')
-                    except Exception as e:
-                        print("Error occurred: ", e)            
+        if 'Code' in function_details:
+            if 'S3Bucket' in function_details['Code']:
+                s3_bucket = function_details['Code']['S3Bucket']
+            if 'S3Key' in function_details['Code']:
+                s3_key = function_details['Code']['S3Key']
 
-                s3_bucket = ''
-                s3_key = ''
+        code_url = function_details['Code']['Location']
+        url_parts = urlparse(code_url)
 
-                # Check if function's code is stored in S3
-                if 'Code' in function_details:
-                    if 'S3Bucket' in function_details['Code']:
-                        s3_bucket = function_details['Code']['S3Bucket']
-                    if 'S3Key' in function_details['Code']:
-                        s3_key = function_details['Code']['S3Key']
+        conn = http.client.HTTPSConnection(url_parts.netloc)
+        conn.request("GET", url_parts.path)
+        response = conn.getresponse()
 
-                # Download the function's deployment package
-                code_url = function_details['Code']['Location']
-                url_parts = urlparse(code_url)
+        folder = os.path.join(ftstack)
+        os.makedirs(folder, exist_ok=True)
+        filename = os.path.join(folder, f"{function_name}.zip")
+        with open(filename, "wb") as f:
+            f.write(response.read())
 
-                conn = http.client.HTTPSConnection(url_parts.netloc)
-                conn.request("GET", url_parts.path)
-                response = conn.getresponse()
+        print(f"  Lambda Function code saved as: {filename}")
 
-                folder = os.path.join(ftstack)
-                os.makedirs(folder, exist_ok=True)
-                filename = os.path.join(folder, f"{function_name}.zip")
-                with open(filename, "wb") as f:
-                    f.write(response.read())
+        attributes = {
+            "id": function_arn,
+            "function_name": function_name,
+            "runtime": function_details["Configuration"]["Runtime"],
+            "role": function_details["Configuration"]["Role"],
+            "handler": function_details["Configuration"]["Handler"],
+            "timeout": function_details["Configuration"]["Timeout"],
+            "memory_size": function_details["Configuration"]["MemorySize"],
+            "description": function_details["Configuration"].get("Description", ""),
+            "publish": False,
+            "s3_bucket": s3_bucket,
+            "s3_key": s3_key,
+            "filename": filename,
+        }
 
-                print(f"  Lambda Function code saved as: {filename}")
+        self.hcl.process_resource(resource_type, function_arn, attributes)
+        self.hcl.add_stack(resource_type, function_arn, ftstack)
 
-                attributes = {
-                    "id": function_arn,
-                    "function_name": function_name,
-                    "runtime": function_details["Configuration"]["Runtime"],
-                    "role": function_details["Configuration"]["Role"],
-                    "handler": function_details["Configuration"]["Handler"],
-                    "timeout": function_details["Configuration"]["Timeout"],
-                    "memory_size": function_details["Configuration"]["MemorySize"],
-                    "description": function_details["Configuration"].get("Description", ""),
-                    "publish": False,
-                    "s3_bucket": s3_bucket,
-                    "s3_key": s3_key,
-                    "filename": filename,  # Add filename to the attributes
-                }
-                self.hcl.process_resource(
-                    resource_type, function_arn, attributes)
-                
-                self.hcl.add_stack(resource_type, function_arn, ftstack)
-                role_name = function_details["Configuration"]["Role"].split('/')[-1]
-                self.iam_role_instance.aws_iam_role(role_name, ftstack)
+        role_name = function_details["Configuration"]["Role"].split('/')[-1]
+        self.iam_role_instance.aws_iam_role(role_name, ftstack)
 
-                # self.aws_iam_role(function_details["Configuration"]["Role"])
+        log_group_name = f"/aws/lambda/{function_name}"
+        self.aws_cloudwatch_log_group(log_group_name)
 
-                # Process the CloudWatch Log Group for this Lambda function
-                log_group_name = f"/aws/lambda/{function_name}"
-                self.aws_cloudwatch_log_group(log_group_name)
 
     # def aws_iam_role(self, role_arn, aws_iam_policy=False):
     #     print(f"Processing IAM Role: {role_arn}...")

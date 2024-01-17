@@ -32,6 +32,22 @@ class Aurora:
         self.resource_list = {}
         self.aws_rds_cluster_attrs = {}
 
+        functions = {
+            'init_cluster_attributes': self.init_cluster_attributes,
+            'build_instances': self.build_instances,
+            'get_instance_identifier': self.get_instance_identifier,
+            'build_cluster_endpoint': self.build_cluster_endpoint,
+            'build_cluster_role_association': self.build_cluster_role_association,
+            'cloudwatch_log_group_name': self.cloudwatch_log_group_name,
+            'get_log_group_name': self.get_log_group_name,
+            'build_resource_id': self.build_resource_id,
+            'get_field_from_attrs': self.get_field_from_attrs,
+
+
+        }
+
+        self.hcl.functions.update(functions)
+
     def init_cluster_attributes(self, attributes):
         self.aws_rds_cluster_attrs = attributes
         return None
@@ -99,7 +115,7 @@ class Aurora:
     def build_cluster_endpoint(self, attributes):
         result = {}
         identifier = attributes.get("cluster_endpoint_identifier", None)
-        type = attributes.get("cluster_endpoint_type", None)
+        type = attributes.get("custom_endpoint_type", None)
         if type:
             result["type"] = type
         excluded_members = attributes.get('excluded_members', [])
@@ -170,20 +186,6 @@ class Aurora:
 
         # self.aws_security_group()
         # self.aws_security_group_rule()
-
-        functions = {
-            'init_cluster_attributes': self.init_cluster_attributes,
-            'build_instances': self.build_instances,
-            'get_instance_identifier': self.get_instance_identifier,
-            'build_cluster_endpoint': self.build_cluster_endpoint,
-            'build_cluster_role_association': self.build_cluster_role_association,
-            'cloudwatch_log_group_name': self.cloudwatch_log_group_name,
-            'get_log_group_name': self.get_log_group_name,
-            'build_resource_id': self.build_resource_id,
-            'get_field_from_attrs': self.get_field_from_attrs,
-
-
-        }
 
         self.hcl.refresh_state()
         self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id, {}, {})
@@ -646,11 +648,11 @@ class Aurora:
                     endpoint_id = rds_cluster_endpoint["DBClusterEndpointIdentifier"]
                     print(f"  Processing RDS Cluster Endpoint: {endpoint_id}")
                     attributes = {
-                        "id": rds_cluster_endpoint["DBClusterEndpointArn"],
-                        "endpoint_identifier": endpoint_id,
-                        "cluster_identifier": rds_cluster_endpoint["DBClusterIdentifier"],
-                        "endpoint_type": rds_cluster_endpoint["EndpointType"],
-                        "custom_endpoint_type": rds_cluster_endpoint.get("CustomEndpointType"),
+                        "id": endpoint_id,
+                        # "endpoint_identifier": endpoint_id,
+                        # "cluster_identifier": rds_cluster_endpoint["DBClusterIdentifier"],
+                        # "endpoint_type": rds_cluster_endpoint["EndpointType"],
+                        # "custom_endpoint_type": rds_cluster_endpoint.get("CustomEndpointType"),
                     }
                     self.hcl.process_resource(
                         "aws_rds_cluster_endpoint", endpoint_id.replace("-", "_"), attributes)
@@ -668,10 +670,10 @@ class Aurora:
                     print(f"  Processing RDS Cluster Instance: {instance_id}")
                     attributes = {
                         "id": rds_instance["DBInstanceArn"],
-                        "instance_identifier": instance_id,
-                        "cluster_identifier": rds_instance["DBClusterIdentifier"],
-                        "instance_class": rds_instance["DBInstanceClass"],
-                        "engine": rds_instance["Engine"],
+                        # "instance_identifier": instance_id,
+                        # "cluster_identifier": rds_instance["DBClusterIdentifier"],
+                        # "instance_class": rds_instance["DBInstanceClass"],
+                        # "engine": rds_instance["Engine"],
                     }
                     self.hcl.process_resource(
                         "aws_rds_cluster_instance", instance_id.replace("-", "_"), attributes)
