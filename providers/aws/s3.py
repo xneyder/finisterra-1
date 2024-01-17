@@ -45,6 +45,7 @@ class S3:
             'aws_s3_build_replication_configuration': self.aws_s3_build_replication_configuration,
             'aws_s3_get_inventory_configuration': self.aws_s3_get_inventory_configuration,
             'aws_s3_get_analytics_configuration': self.aws_s3_get_analytics_configuration,
+            's3_build_tiering': self.s3_build_tiering,
         }
         self.hcl.functions.update(functions)
         self.processed_resources = {}
@@ -76,7 +77,22 @@ class S3:
             result['target_prefix'] = tmp
 
         return result
-    
+
+    def s3_build_tiering(self, state):
+        result = {}
+        name = state.get("name", "")
+        result[name] = {}
+        tiering = state.get("tiering", [])
+        if tiering:
+            result[name]["tiering"] = tiering
+        filter = state.get("filter", [])
+        if filter:
+            result[name]["filter"] = filter
+        status = state.get("status", "")
+        if status:
+            result[name]["status"] = status
+        return result
+
     def aws_s3_get_inventory_configuration(self, state, arg):
         name = state.get("name", "")
         result = {}
@@ -626,9 +642,9 @@ class S3:
             config_id = config["Id"]
             print(
                 f"  Processing S3 Bucket Intelligent Tiering Configuration: {config_id} for bucket {bucket_name}")
-
+            
             attributes = {
-                "id": config_id,
+                "id": bucket_name+":"+config_id,
                 "bucket": bucket_name,
                 "name": config_id,
                 # "filter": config["Filter"],

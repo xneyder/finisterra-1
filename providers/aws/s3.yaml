@@ -201,14 +201,15 @@ aws_s3_bucket:
         object_ownership:
           function: aws_s3_bucket_ownership_controls_object_ownership
 
-    aws_s3_bucket_intelligent_tiering_configuration: #no tested
+    aws_s3_bucket_intelligent_tiering_configuration:
       join:
         bucket:
           field: bucket
       target_resource_name: this
       fields:
         intelligent_tiering:
-          field: intelligent_tiering
+          function: s3_build_tiering
+          type: map
 
     aws_s3_bucket_metric: #no tested
       join:
