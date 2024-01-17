@@ -112,7 +112,7 @@ jobs:
           terraform-version: ${{ env.TERRAFORM_VERSION }}
           terragrunt-version: ${{ env.TERRAGRUNT_VERSION }}
           use-aws-auth: false
-          enable-terraform-change-pr-commenter: false
+          enable-terraform-change-pr-commenter: true
           terragrunt-working-directory: "generated/${{ matrix.service }}"
           include-plan-job-summary: true
           terragrunt-command: |
