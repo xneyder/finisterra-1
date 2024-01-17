@@ -72,69 +72,59 @@ class ACM:
     def aws_acm_certificate(self, acm_arn=None, ftstack=None):
         resource_name = "aws_acm_certificate"
         print("Processing ACM Certificates...")
+
         if acm_arn and ftstack:
             if self.hcl.id_resource_processed(resource_name, acm_arn, ftstack):
                 print(f"  Skipping ACM Certificate: {acm_arn} already processed")
                 return
+            self.process_single_acm_certificate(acm_arn, ftstack)
+            return
 
         paginator = self.aws_clients.acm_client.get_paginator("list_certificates")
         for page in paginator.paginate():
             for cert_summary in page["CertificateSummaryList"]:
                 cert_arn = cert_summary["CertificateArn"]
-                cert_domain = cert_summary["DomainName"]
+                self.process_single_acm_certificate(cert_arn, ftstack)
 
-                # Skip processing if a specific ACM ARN is provided and it doesn't match
-                if acm_arn and cert_arn != acm_arn:
-                    continue
+    def process_single_acm_certificate(self, cert_arn, ftstack=None):
+        resource_name = "aws_acm_certificate"
+        # Fetch certificate details
+        cert_details = self.aws_clients.acm_client.describe_certificate(CertificateArn=cert_arn)["Certificate"]
+        cert_domain = cert_details["DomainName"]
+        certificate_type = cert_details["Type"]
+        status = cert_details["Status"]
+        expiration_date = cert_details.get("NotAfter")
 
-                # Get certificate details to check for expiration and type
-                cert_details = self.aws_clients.acm_client.describe_certificate(
-                    CertificateArn=cert_arn)["Certificate"]
-                certificate_type = cert_details["Type"]
+        # Skip processing based on certain conditions (e.g., certificate type, status, expiration)
+        if certificate_type == "IMPORTED" or status != "ISSUED" or (expiration_date and expiration_date < datetime.datetime.now(tz=datetime.timezone.utc)):
+            return
 
-                # Skip imported certificates
-                # if certificate_type == "IMPORTED":
-                #     continue
+        print(f"  Processing ACM Certificate: {cert_arn}")
 
-                # Skip not issued certificates
-                status = cert_details["Status"]
-                if status != "ISSUED":
-                    continue
+        # Tag processing and other logic
+        if not ftstack:
+            ftstack = "acm"
+            try:
+                response = self.aws_clients.acm_client.list_tags_for_certificate(CertificateArn=cert_arn)
+                tags = response.get('Tags', {})
+                for tag in tags:
+                    if tag['Key'] == 'ftstack':
+                        if tag['Value'] != 'acm':
+                            ftstack = "stack_" + tag['Value']
+                        break
+            except Exception as e:
+                print("Error occurred: ", e)
 
-                expiration_date = cert_details["NotAfter"]
+        id = cert_arn
+        attributes = {
+            "id": id,
+            "domain_name": cert_domain,
+        }
 
-                # Skip expired certificates 
-                if expiration_date < datetime.datetime.now(tz=datetime.timezone.utc):
-                    continue
+        self.hcl.process_resource(resource_name, cert_arn.replace("-", "_"), attributes)
+        self.hcl.add_stack(resource_name, id, ftstack)
 
-                print(f"  Processing ACM Certificate: {cert_arn}")
-
-                if not ftstack:
-                    ftstack = "acm"
-                    try:
-                        response = self.aws_clients.acm_client.list_tags_for_certificate(CertificateArn=cert_arn)
-                        tags = response.get('Tags', {})
-                        for tag in tags:
-                            if tag['Key'] == 'ftstack':
-                                if tag['Value'] != 'acm':
-                                    ftstack = "stack_" + tag['Value']
-                                break
-                    except Exception as e:
-                        print("Error occurred: ", e)
-
-                id = cert_arn
-
-                attributes = {
-                    "id": id,
-                    "domain_name": cert_domain,
-                }
-
-                self.hcl.process_resource(
-                    resource_name, cert_arn.replace("-", "_"), attributes)
-                
-                self.hcl.add_stack(resource_name, id, ftstack)
-
-                # self.aws_acm_certificate_validation(cert_arn, cert_details)
+        # self.aws_acm_certificate_validation(cert_arn, cert_details)
 
     def aws_acm_certificate_validation(self, cert_arn, cert):
         print(f"  Processing ACM Certificate Validation: {cert_arn}")

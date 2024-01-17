@@ -78,6 +78,7 @@ class SECURITY_GROUP:
             self.process_security_group(security_group, ftstack)
 
     def process_security_group(self, security_group, ftstack=None):
+        resource_type = "aws_security_group"
         if security_group["GroupName"] == "default":
             return
 

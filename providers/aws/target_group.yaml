@@ -2,7 +2,10 @@ aws_lb_target_group:
   terraform_module: "github.com/finisterra-io/terraform-aws-modules.git//alb/modules/target_group?ref=main"
   terraform_module_version: "5.2.0"
   joined_fields:
-    listener_arn:
+    # listener_arn:
+    #   sub_fields:
+    #     - listener_arn
+    listener_rules:
       sub_fields:
         - listener_arn
   target_resource_name: this
@@ -48,9 +51,9 @@ aws_lb_target_group:
         function: get_id_from_arn
         arg: arn
       fields:
-        listener_arn:
-          field: listener_arn
-          type: string
+        # listener_arn:
+        #   field: listener_arn
+        #   type: string
         listener_rules:
           function: get_listener_rules
           type: map

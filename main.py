@@ -131,7 +131,7 @@ def main(aws_account_id, aws_region, group_code):
     print("Finished processing AWS resources.")
 
     TF_PLAN = os.environ.get("TF_PLAN", True)
-    if not TF_PLAN:
+    if TF_PLAN:
         create_gitignore_file("./")
         stateKey = f'finisterra/generated/aws/{aws_account_id}/{aws_region}'
         create_root_terragrunt(s3Bucket, aws_region,

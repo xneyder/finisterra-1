@@ -77,8 +77,9 @@ class TargetGroup:
         result[key]['priority'] = attributes.get('priority')
         result[key]['conditions'] = attributes.get('condition')
         result[key]['tags'] = attributes.get('tags')
-        result[key]['port'] = self.get_listener_port(
-            attributes, 'listener_arn')
+        # result[key]['port'] = self.get_listener_port(
+        #     attributes, 'listener_arn')
+        result[key]['listener_arn'] = attributes.get('listener_arn')
         return result
 
     def get_vpc_name_tg(self, attributes):
@@ -215,7 +216,6 @@ class TargetGroup:
                     
                     # get the load balancer arn from the listener arn
                     load_balancer_arn = listener['LoadBalancerArn']
-                    print(load_balancer_arn)
                     if load_balancer_arn:
                         self.elbv2_instance.aws_lb(load_balancer_arn, ftstack)
                     

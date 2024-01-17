@@ -63,6 +63,7 @@ class IAM_ROLE:
                 self.process_iam_role(role, ftstack)
 
     def process_iam_role(self, role, ftstack=None):
+        resource_type = "aws_iam_role"
         current_role_name = role["RoleName"]
         role_path = role["Path"]
 
