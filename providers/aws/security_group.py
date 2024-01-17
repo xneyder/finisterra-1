@@ -57,78 +57,65 @@ class SECURITY_GROUP:
 
     def aws_security_group(self, security_group_id=None, ftstack=None):
         resource_type = "aws_security_group"
-        if security_group_id and ftstack:
-            if self.hcl.id_resource_processed(resource_type, security_group_id, ftstack):
+
+        # If security_group_id is provided, process only that specific security group
+        if security_group_id:
+            if ftstack and self.hcl.id_resource_processed(resource_type, security_group_id, ftstack):
                 print(f"  Skipping Security Group: {security_group_id} - already processed")
                 return
-                    
-        # if security_group_id in self.processed_security_groups:
-        #     if ftstack in self.processed_security_groups[security_group_id]:
-        #         return
+
+            try:
+                response = self.aws_clients.ec2_client.describe_security_groups(GroupIds=[security_group_id])
+                for security_group in response["SecurityGroups"]:
+                    self.process_security_group(security_group, ftstack)
+            except Exception as e:
+                print(f"Error fetching Security Group {security_group_id}: {e}")
+            return
+
         print("Processing Security Groups...")
-
-        # Create a response dictionary to collect responses for all security groups
         response = self.aws_clients.ec2_client.describe_security_groups()
-
         for security_group in response["SecurityGroups"]:
-            if security_group["GroupName"] == "default":
-                continue
+            self.process_security_group(security_group, ftstack)
 
-            # Process only the specified security group if security_group_id is provided
-            if security_group_id and security_group["GroupId"] != security_group_id:
-                continue
+    def process_security_group(self, security_group, ftstack=None):
+        if security_group["GroupName"] == "default":
+            return
 
-            # if security_group["GroupName"] != "launch-wizard-18":
-            #     continue
-            # if security_group["GroupId"] != "sg-0b98ed17d0b26c599":
-            #     continue
+        # Check for Elastic Beanstalk or EKS AutoScaling group
+        is_elasticbeanstalk = any(tag['Key'].startswith('elasticbeanstalk:') for tag in security_group.get('Tags', []))
+        is_eks = any(tag['Key'].startswith('eks:') for tag in security_group.get('Tags', []))
+        if is_elasticbeanstalk or is_eks:
+            print(f"  Skipping Elastic Beanstalk or EKS AutoScaling Group: {security_group['GroupName']}")
+            return
 
-            is_elasticbeanstalk = any(tag['Key'].startswith(
-                'elasticbeanstalk:') for tag in security_group.get('Tags', []))
-            is_eks = any(tag['Key'].startswith('eks:')
-                         for tag in security_group.get('Tags', []))
+        print(f"  Processing Security Group: {security_group['GroupName']}")
+        vpc_id = security_group.get("VpcId", "")
+        id = security_group["GroupId"]
 
-            if is_elasticbeanstalk or is_eks:
-                print(
-                    f"  Skipping Elastic Beanstalk or EKS AutoScaling Group: {security_group['GroupName']}")
-                continue  # Skip this AutoScaling group and move to the next
-            print(
-                f"  Processing Security Group: {security_group['GroupName']}")
-            
-            vpc_id = security_group.get("VpcId", "")
+        attributes = {
+            "id": id,
+            "name": security_group["GroupName"],
+            "description": security_group.get("Description", ""),
+            "vpc_id": vpc_id,
+            "owner_id": security_group.get("OwnerId", ""),
+        }
 
-            id = security_group["GroupId"]
+        self.hcl.process_resource(resource_type, security_group["GroupId"].replace("-", "_"), attributes)
+        if not ftstack:
+            ftstack = "security_group"
+        self.hcl.add_stack(resource_type, id, ftstack)
 
-            attributes = {
-                "id": id,
-                "name": security_group["GroupName"],
-                "description": security_group.get("Description", ""),
-                "vpc_id": vpc_id,
-                "owner_id": security_group.get("OwnerId", ""),
-            }
+        self.aws_vpc_security_group_ingress_rule(security_group["GroupId"], ftstack)
+        self.aws_vpc_security_group_egress_rule(security_group["GroupId"], ftstack)
 
-            self.hcl.process_resource(
-                resource_type, security_group["GroupId"].replace("-", "_"), attributes)
-            
-            if not ftstack:
-                ftstack = "security_group"
-            self.hcl.add_stack(resource_type, id, ftstack)
-            # print("==========================", ftstack)
+        vpc_name = self.get_vpc_name(vpc_id)
+        if 'vpc' not in self.hcl.additional_data:
+            self.hcl.additional_data['vpc'] = {}
 
-            # if id not in self.processed_security_groups:
-            #     self.processed_security_groups[id] = {}
-            # self.processed_security_groups[id][ftstack] = True
+        self.hcl.additional_data['vpc'][vpc_id] = {
+            "name": vpc_name,
+        }
 
-            self.aws_vpc_security_group_ingress_rule(security_group["GroupId"], ftstack)
-            self.aws_vpc_security_group_egress_rule(security_group["GroupId"], ftstack)
-
-            vpc_name = self.get_vpc_name(vpc_id)
-            if 'vpc' not in self.hcl.additional_data:
-                self.hcl.additional_data['vpc'] = {}
-
-            self.hcl.additional_data['vpc'][vpc_id] = {
-                "name": vpc_name,
-            }
 
     def aws_vpc_security_group_ingress_rule(self, security_group_id, ftstack=None):
         # Fetch security group rules

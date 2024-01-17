@@ -405,120 +405,99 @@ class S3:
         return result
 
     def aws_s3_bucket(self, selected_s3_bucket=None, ftstack=None):
-        print("Processing S3 Buckets...")
         resource_name = "aws_s3_bucket"
+        print("Processing S3 Buckets...")
+
         if selected_s3_bucket and ftstack:
             if self.hcl.id_resource_processed(resource_name, selected_s3_bucket, ftstack):
                 print(f"  Skipping S3 Bucket: {selected_s3_bucket} - already processed")
                 return
+            self.process_single_s3_bucket(selected_s3_bucket, ftstack)
+            return
 
         response = self.aws_clients.s3_client.list_buckets()
         all_buckets = response["Buckets"]
 
-        buckets = []
-
         for bucket in all_buckets:
             bucket_name = bucket["Name"]
-
-            # if bucket_name != "posthog-cloud-dev-us-east-1-app-assets":
-            # if 'neustar' not in bucket_name:
-            # if 'noovie' in bucket_name:
-                # continue
-
-            # Retrieve the region of the bucket
-            bucket_location_response = self.aws_clients.s3_client.get_bucket_location(
-                Bucket=bucket_name)
+            bucket_location_response = self.aws_clients.s3_client.get_bucket_location(Bucket=bucket_name)
             bucket_region = bucket_location_response['LocationConstraint']
-
-            # If bucket_region is None, set it to us-east-1
             if bucket_region is None:
                 bucket_region = 'us-east-1'
 
-            # If the bucket's region matches self.region, process the bucket
             if bucket_region == self.region:
-                buckets.append(bucket)
-
-        # buckets = [{"Name": "allogy-gov-bundles"}]
-        # buckets = [buckets[0], buckets[1]]
-
-        for bucket in buckets:
-            if selected_s3_bucket and bucket["Name"] != selected_s3_bucket:
-                continue
-            bucket_name = bucket["Name"]
-
-            # Retrieve the region of the bucket
-            bucket_location_response = self.aws_clients.s3_client.get_bucket_location(
-                Bucket=bucket_name)
-            bucket_region = bucket_location_response['LocationConstraint']
-
-            # If bucket_region is None, set it to us-east-1
-            if bucket_region is None:
-                bucket_region = 'us-east-1'
-
-            # If the bucket's region matches self.region, process the bucket
-            if bucket_region == self.region:
-                print(f"  Processing S3 Bucket: {bucket_name}")
-
-                # describe the bucket and get the tags
-                if not ftstack:
-                    ftstack = "s3"
-                    try:
-                        response = self.aws_clients.s3_client.get_bucket_tagging(Bucket=bucket_name)
-                        tags = response.get('TagSet', {})
-                        for tag in tags:
-                            if tag['Key'] == 'ftstack':
-                                if tag['Value'] != 's3':
-                                    ftstack = "stack_"+tag['Value']
-                                break
-                    except ClientError as e:
-                        if e.response['Error']['Code'] == 'NoSuchTagSet':
-                            pass
-                        else:
-                            raise e
-
-                id = bucket_name
-
-                attributes = {
-                    "id": id,
-                    "bucket": bucket_name,
-                }
-
-                self.hcl.process_resource(
-                    resource_name, bucket_name, attributes)
+                self.process_single_s3_bucket(bucket_name, ftstack)
                 
-                self.hcl.add_stack(resource_name, id, ftstack)
-                
-            else:
-                print(
-                    f"  Skipping S3 Bucket (different region): {bucket_name}")
+    def process_single_s3_bucket(self, bucket_name, ftstack=None):
+        print(f"  Processing S3 Bucket: {bucket_name}")
+        resource_type = "aws_s3_bucket"
 
-            if "gov" not in self.region:
-                self.aws_s3_bucket_accelerate_configuration(bucket)
-                self.aws_s3_bucket_intelligent_tiering_configuration(bucket)
+        # Retrieve the region of the bucket
+        bucket_location_response = self.aws_clients.s3_client.get_bucket_location(Bucket=bucket_name)
+        bucket_region = bucket_location_response['LocationConstraint']
 
-            self.aws_s3_bucket_acl(bucket)
-            self.aws_s3_bucket_analytics_configuration(bucket)
-            self.aws_s3_bucket_cors_configuration(bucket)
-            self.aws_s3_bucket_inventory(bucket)
-            self.aws_s3_bucket_lifecycle_configuration(bucket)
-            self.aws_s3_bucket_logging(bucket)
-            self.aws_s3_bucket_metric(bucket)
-            # self.aws_s3_bucket_notification(bucket) #will be called from other modules
-            self.aws_s3_bucket_object_lock_configuration(bucket)
-            self.aws_s3_bucket_ownership_controls(bucket)
-            self.aws_s3_bucket_policy(bucket)
-            self.aws_s3_bucket_public_access_block(bucket)
-            self.aws_s3_bucket_replication_configuration(bucket)
-            self.aws_s3_bucket_request_payment_configuration(bucket)
-            self.aws_s3_bucket_server_side_encryption_configuration(bucket)
-            self.aws_s3_bucket_versioning(bucket)
-            self.aws_s3_bucket_website_configuration(bucket)
-            # self.aws_s3_bucket_object() # Too long to add
+        # If bucket_region is None, set it to us-east-1
+        if bucket_region is None:
+            bucket_region = 'us-east-1'
 
-    def aws_s3_bucket_accelerate_configuration(self, bucket):
+        # Skip processing if the bucket's region does not match self.region
+        if bucket_region != self.region:
+            print(f"  Skipping S3 Bucket (different region): {bucket_name}")
+            return
+
+        # Describe the bucket and get the tags
+        if not ftstack:
+            ftstack = "s3"
+            try:
+                response = self.aws_clients.s3_client.get_bucket_tagging(Bucket=bucket_name)
+                tags = response.get('TagSet', {})
+                for tag in tags:
+                    if tag['Key'] == 'ftstack':
+                        if tag['Value'] != 's3':
+                            ftstack = "stack_" + tag['Value']
+                        break
+            except ClientError as e:
+                if e.response['Error']['Code'] == 'NoSuchTagSet':
+                    pass
+                else:
+                    raise e
+
+        id = bucket_name
+
+        attributes = {
+            "id": id,
+            "bucket": bucket_name,
+        }
+
+        self.hcl.process_resource(resource_type, bucket_name, attributes)
+        self.hcl.add_stack(resource_type, id, ftstack)
+
+        # Add calls to various aws_s3_bucket_* functions
+        if "gov" not in self.region:
+            self.aws_s3_bucket_accelerate_configuration(bucket_name)
+            self.aws_s3_bucket_intelligent_tiering_configuration(bucket_name)
+
+        self.aws_s3_bucket_acl(bucket_name)
+        self.aws_s3_bucket_analytics_configuration(bucket_name)
+        self.aws_s3_bucket_cors_configuration(bucket_name)
+        self.aws_s3_bucket_inventory(bucket_name)
+        self.aws_s3_bucket_lifecycle_configuration(bucket_name)
+        self.aws_s3_bucket_logging(bucket_name)
+        self.aws_s3_bucket_metric(bucket_name)
+        # self.aws_s3_bucket_notification(bucket_name) #will be called from other modules
+        self.aws_s3_bucket_object_lock_configuration(bucket_name)
+        self.aws_s3_bucket_ownership_controls(bucket_name)
+        self.aws_s3_bucket_policy(bucket_name)
+        self.aws_s3_bucket_public_access_block(bucket_name)
+        self.aws_s3_bucket_replication_configuration(bucket_name)
+        self.aws_s3_bucket_request_payment_configuration(bucket_name)
+        self.aws_s3_bucket_server_side_encryption_configuration(bucket_name)
+        self.aws_s3_bucket_versioning(bucket_name)
+        self.aws_s3_bucket_website_configuration(bucket_name)
+
+    def aws_s3_bucket_accelerate_configuration(self, bucket_name):
         print("Processing S3 Bucket Accelerate Configurations...")
 
-        bucket_name = bucket["Name"]
         try:
             accelerate_config = self.aws_clients.s3_client.get_bucket_accelerate_configuration(
                 Bucket=bucket_name)
@@ -545,13 +524,12 @@ class S3:
             else:
                 raise
 
-    def aws_s3_bucket_acl(self, bucket):
+    def aws_s3_bucket_acl(self, bucket_name):
         print("Processing S3 Bucket ACLs...")
 
         # Get the Canonical User ID of your AWS account
         account_canonical_id = self.aws_clients.s3_client.list_buckets()['Owner']['ID']
 
-        bucket_name = bucket["Name"]
 
         # Try to get the object ownership control of the bucket
         try:
@@ -586,10 +564,9 @@ class S3:
             self.hcl.process_resource(
                 "aws_s3_bucket_acl", bucket_name, attributes)
 
-    def aws_s3_bucket_analytics_configuration(self, bucket):
+    def aws_s3_bucket_analytics_configuration(self, bucket_name):
         print("Processing S3 Bucket Analytics Configurations...")
 
-        bucket_name = bucket["Name"]
         analytics_configs = self.aws_clients.s3_client.list_bucket_analytics_configurations(
             Bucket=bucket_name)
 
@@ -614,10 +591,9 @@ class S3:
                 attributes
             )
 
-    def aws_s3_bucket_cors_configuration(self, bucket):
+    def aws_s3_bucket_cors_configuration(self, bucket_name):
         print("Processing S3 Bucket CORS Configurations...")
 
-        bucket_name = bucket["Name"]
         try:
             cors = self.aws_clients.s3_client.get_bucket_cors(Bucket=bucket_name)
             print(
@@ -637,10 +613,9 @@ class S3:
             else:
                 raise
 
-    def aws_s3_bucket_intelligent_tiering_configuration(self, bucket):
+    def aws_s3_bucket_intelligent_tiering_configuration(self, bucket_name):
         print("Processing S3 Bucket Intelligent Tiering Configurations...")
 
-        bucket_name = bucket["Name"]
         intelligent_tiering_configs = self.aws_clients.s3_client.list_bucket_intelligent_tiering_configurations(
             Bucket=bucket_name)
 
@@ -663,10 +638,9 @@ class S3:
             self.hcl.process_resource("aws_s3_bucket_intelligent_tiering_configuration",
                                       f"{bucket_name}-{config_id}".replace("-", "_"), attributes)
 
-    def aws_s3_bucket_inventory(self, bucket):
+    def aws_s3_bucket_inventory(self, bucket_name):
         print("Processing S3 Bucket Inventories...")
 
-        bucket_name = bucket["Name"]
         inventory_configs = self.aws_clients.s3_client.list_bucket_inventory_configurations(
             Bucket=bucket_name)
 
@@ -691,9 +665,8 @@ class S3:
             self.hcl.process_resource(
                 "aws_s3_bucket_inventory", f"{bucket_name}-{config_id}".replace("-", "_"), attributes)
 
-    def aws_s3_bucket_lifecycle_configuration(self, bucket):
+    def aws_s3_bucket_lifecycle_configuration(self, bucket_name):
         print("Processing S3 Bucket Lifecycle Configurations...")
-        bucket_name = bucket["Name"]
         try:
             lifecycle = self.aws_clients.s3_client.get_bucket_lifecycle_configuration(
                 Bucket=bucket_name)
@@ -713,9 +686,8 @@ class S3:
             else:
                 raise
 
-    def aws_s3_bucket_logging(self, bucket):
+    def aws_s3_bucket_logging(self, bucket_name):
         print("Processing S3 Bucket Logging...")
-        bucket_name = bucket["Name"]
         logging = self.aws_clients.s3_client.get_bucket_logging(
             Bucket=bucket_name)
         if "LoggingEnabled" in logging:
@@ -731,9 +703,8 @@ class S3:
             self.hcl.process_resource(
                 "aws_s3_bucket_logging", bucket_name, attributes)
 
-    def aws_s3_bucket_metric(self, bucket):
+    def aws_s3_bucket_metric(self, bucket_name):
         print("Processing S3 Bucket Metrics...")
-        bucket_name = bucket["Name"]
         metrics = self.aws_clients.s3_client.list_bucket_metrics_configurations(
             Bucket=bucket_name)
         if "MetricsConfigurationList" not in metrics:
@@ -751,9 +722,8 @@ class S3:
             self.hcl.process_resource(
                 "aws_s3_bucket_metric", f"{bucket_name}-{metric_id}".replace("-", "_"), attributes)
 
-    def aws_s3_bucket_notification(self, bucket):
+    def aws_s3_bucket_notification(self, bucket_name):
         print("Processing S3 Bucket Notifications...")
-        bucket_name = bucket["Name"]
         notifications = self.aws_clients.s3_client.get_bucket_notification_configuration(
             Bucket=bucket_name)
         for event in notifications.keys():
@@ -768,9 +738,8 @@ class S3:
                 self.hcl.process_resource(
                     "aws_s3_bucket_notification", bucket_name, attributes)
 
-    def aws_s3_bucket_object(self, bucket):
+    def aws_s3_bucket_object(self, bucket_name):
         print("Processing S3 Bucket Objects...")
-        bucket_name = bucket["Name"]
         objects = self.aws_clients.s3_client.list_objects(Bucket=bucket_name)
         for obj in objects.get("Contents", []):
             key = obj["Key"]
@@ -784,9 +753,8 @@ class S3:
             self.hcl.process_resource(
                 "aws_s3_bucket_object", f"{bucket_name}-{key}".replace("-", "_"), attributes)
 
-    def aws_s3_bucket_object_lock_configuration(self, bucket):
+    def aws_s3_bucket_object_lock_configuration(self, bucket_name):
         print("Processing S3 Bucket Object Lock Configurations...")
-        bucket_name = bucket["Name"]
         try:
             object_lock_configuration = self.aws_clients.s3_client.get_object_lock_configuration(
                 Bucket=bucket_name)
@@ -809,9 +777,8 @@ class S3:
                 print(
                     f"  No Object Lock Configuration for bucket: {bucket_name}")
 
-    def aws_s3_bucket_ownership_controls(self, bucket):
+    def aws_s3_bucket_ownership_controls(self, bucket_name):
         print("Processing S3 Bucket Ownership Controls...")
-        bucket_name = bucket["Name"]
         try:
             ownership_controls = self.aws_clients.s3_client.get_bucket_ownership_controls(
                 Bucket=bucket_name)
@@ -833,9 +800,8 @@ class S3:
                 print(
                     f"  No Ownership Controls for bucket: {bucket_name}")
 
-    def aws_s3_bucket_policy(self, bucket):
+    def aws_s3_bucket_policy(self, bucket_name):
         print("Processing S3 Bucket Policies...")
-        bucket_name = bucket["Name"]
         try:
             bucket_policy = self.aws_clients.s3_client.get_bucket_policy(
                 Bucket=bucket_name)
@@ -853,9 +819,8 @@ class S3:
             if e.response["Error"]["Code"] != "NoSuchBucketPolicy":
                 raise
 
-    def aws_s3_bucket_public_access_block(self, bucket):
+    def aws_s3_bucket_public_access_block(self, bucket_name):
         print("Processing S3 Bucket Public Access Blocks...")
-        bucket_name = bucket["Name"]
         try:
             public_access_block = self.aws_clients.s3_client.get_public_access_block(
                 Bucket=bucket_name)
@@ -878,9 +843,8 @@ class S3:
             if e.response["Error"]["Code"] != "NoSuchPublicAccessBlockConfiguration":
                 raise
 
-    def aws_s3_bucket_replication_configuration(self, bucket):
+    def aws_s3_bucket_replication_configuration(self, bucket_name):
         print("Processing S3 Bucket Replication Configurations...")
-        bucket_name = bucket["Name"]
         try:
             replication_configuration = self.aws_clients.s3_client.get_bucket_replication(
                 Bucket=bucket_name)
@@ -900,9 +864,8 @@ class S3:
             if e.response["Error"]["Code"] != "ReplicationConfigurationNotFoundError":
                 raise
 
-    def aws_s3_bucket_request_payment_configuration(self, bucket):
+    def aws_s3_bucket_request_payment_configuration(self, bucket_name):
         print("Processing S3 Bucket Request Payment Configurations...")
-        bucket_name = bucket["Name"]
         try:
             request_payment_configuration = self.aws_clients.s3_client.get_bucket_request_payment(
                 Bucket=bucket_name)
@@ -921,9 +884,8 @@ class S3:
             if e.response["Error"]["Code"] != "NoSuchRequestPaymentConfiguration":
                 raise
 
-    def aws_s3_bucket_server_side_encryption_configuration(self, bucket):
+    def aws_s3_bucket_server_side_encryption_configuration(self, bucket_name):
         print("Processing S3 Bucket Server Side Encryption Configurations...")
-        bucket_name = bucket["Name"]
         try:
             encryption_configuration = self.aws_clients.s3_client.get_bucket_encryption(
                 Bucket=bucket_name)
@@ -943,10 +905,9 @@ class S3:
             if e.response["Error"]["Code"] != "ServerSideEncryptionConfigurationNotFoundError":
                 raise
 
-    def aws_s3_bucket_versioning(self, bucket):
+    def aws_s3_bucket_versioning(self, bucket_name):
         print("Processing S3 Bucket Versioning Configurations...")
 
-        bucket_name = bucket["Name"]
 
         try:
             versioning_configuration = self.aws_clients.s3_client.get_bucket_versioning(
@@ -968,10 +929,9 @@ class S3:
             if e.response["Error"]["Code"] != "NoSuchVersioningConfiguration":
                 raise
 
-    def aws_s3_bucket_website_configuration(self, bucket):
+    def aws_s3_bucket_website_configuration(self, bucket_name):
         print("Processing S3 Bucket Website Configurations...")
 
-        bucket_name = bucket["Name"]
         try:
             website_config = self.aws_clients.s3_client.get_bucket_website(
                 Bucket=bucket_name)

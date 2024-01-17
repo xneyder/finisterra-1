@@ -31,6 +31,7 @@ class TargetGroup:
         self.elbv2_instance = ELBV2(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
 
         self.load_balancers = None
+        self.listeners = {}
 
         functions = {
             'join_aws_lb_target_group_to_aws_lb_listener_rule': self.join_aws_lb_target_group_to_aws_lb_listener_rule,
@@ -158,10 +159,11 @@ class TargetGroup:
                     lb_arn = lb["LoadBalancerArn"]
                     # print(f"Processing Load Balancer: {lb_arn}")
 
-                    listeners = self.aws_clients.elbv2_client.describe_listeners(
-                        LoadBalancerArn=lb_arn)["Listeners"]
+                    if lb_arn not in self.listeners:
+                        self.listeners[lb_arn] = self.aws_clients.elbv2_client.describe_listeners(
+                            LoadBalancerArn=lb_arn)["Listeners"]
 
-                    for listener in listeners:
+                    for listener in self.listeners[lb_arn]:
                         default_actions = listener.get('DefaultActions', [])
                         for default_action in default_actions:
                             if default_action.get('TargetGroupArn') == tg_arn:
@@ -180,10 +182,11 @@ class TargetGroup:
             lb_arn = lb["LoadBalancerArn"]
             # print(f"Processing Load Balancer: {lb_arn}")
 
-            listeners = self.aws_clients.elbv2_client.describe_listeners(
-                LoadBalancerArn=lb_arn)["Listeners"]
+            if lb_arn not in self.listeners:
+                self.listeners[lb_arn] = self.aws_clients.elbv2_client.describe_listeners(
+                    LoadBalancerArn=lb_arn)["Listeners"]
 
-            for listener in listeners:
+            for listener in self.listeners[lb_arn]:
                 listener_arn = listener["ListenerArn"]
                 # print(f"  Processing Load Balancer Listener: {listener_arn}")
 

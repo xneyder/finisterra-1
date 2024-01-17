@@ -1138,9 +1138,9 @@ class HCL:
         subprocess.run(["terragrunt", "run-all", "--terragrunt-exclude-dir", ".",  "validate"], check=True)
         
         os.rename("terraform.tfstate", "terraform.tfstate.disabled")
-        
+
         TF_PLAN = os.environ.get("TF_PLAN", True)
-        if not TF_PLAN:
+        if TF_PLAN:
             print("Running terragrunt plan on generated files...")
             subprocess.run(["terragrunt", "run-all", "--terragrunt-exclude-dir", ".", "plan"], check=True)
 
