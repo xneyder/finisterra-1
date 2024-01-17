@@ -631,9 +631,9 @@ class S3:
                 "id": config_id,
                 "bucket": bucket_name,
                 "name": config_id,
-                "filter": config["Filter"],
-                "status": config["Status"],
-                "tierings": config["Tierings"],
+                # "filter": config["Filter"],
+                # "status": config["Status"],
+                # "tierings": config["Tierings"],
             }
             self.hcl.process_resource("aws_s3_bucket_intelligent_tiering_configuration",
                                       f"{bucket_name}-{config_id}".replace("-", "_"), attributes)
