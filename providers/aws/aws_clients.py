@@ -42,4 +42,5 @@ class AwsClients:
         self.sfn_client = session.client('stepfunctions', region_name=aws_region)
         self.sts_client = session.client('sts', region_name=aws_region)
         self.wafv2_client = session.client('wafv2', region_name=aws_region)
+        self.codeartifact_client = session.client('codeartifact', region_name=aws_region)
         

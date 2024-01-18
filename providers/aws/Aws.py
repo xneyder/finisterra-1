@@ -58,6 +58,7 @@ from providers.aws.target_group import TargetGroup
 # from utils.filesystem import create_tmp_terragrunt
 from providers.aws.elasticsearch import Elasticsearch
 from providers.aws.aws_clients import AwsClients
+from providers.aws.codeartifact import CodeArtifact
 
 
 class Aws:
@@ -744,3 +745,12 @@ class Aws:
         instance.elasticsearch()
         self.json_plan = instance.json_plan
         self.resource_list['elasticsearch'] = instance.resource_list
+
+
+    def codeartifact(self):
+        instance = CodeArtifact(self.aws_clients_instance, self.script_dir, self.provider_name,
+                       self.schema_data, self.aws_region, self.s3Bucket,
+                       self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
+        instance.codeartifact()
+        self.json_plan = instance.json_plan
+        self.resource_list['codeartifact'] = instance.resource_list

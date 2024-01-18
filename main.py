@@ -124,6 +124,9 @@ def main(aws_account_id, aws_region, group_code):
         provider.target_group()
     elif group_code == 'elasticsearch':
         provider.elasticsearch()
+    elif group_code == 'codeartifact':
+        provider.codeartifact()
+
     else:
         print(f"Group code {group_code} not found.")
         exit()

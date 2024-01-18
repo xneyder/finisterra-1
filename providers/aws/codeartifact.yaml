@@ -1,0 +1,67 @@
+aws_codeartifact_domain:
+  terraform_module: "github.com/finisterra-io/terraform-aws-modules.git//code-artifact?ref=main"
+  terraform_module_version: "5.2.0"
+  target_resource_name: this
+  name_field: domain
+  fields:
+    domain:
+      field: domain
+      type: string
+    encryption_key:
+      field: encryption_key
+      type: string
+    tags:
+      field: tags
+      type: map
+  childs:
+    aws_codeartifact_domain_permissions_policy:
+      join:
+        domain:
+          field: domain
+      target_resource_name: this
+      fields:
+        domain_policy_document:
+          field: policy_document
+          type: string
+          multiline: true
+        domain_policy_domain_owner:
+          field: domain_owner
+          type: string
+    aws_codeartifact_repository:
+      join:
+        domain:
+          field: domain
+      target_resource_name: this
+      fields:
+        repository:
+          field: repository
+          type: string
+        description:
+          field: description
+          type: string
+        repository_domain_owner:
+          field: domain_owner
+          type: string
+        external_connections:
+          field: external_connections
+          type: list
+        upstreams:
+          field: upstreams
+          type: list
+        repository_tags:
+          field: tags
+          type: map
+      childs:
+        aws_codeartifact_repository_permissions_policy:
+          join:
+            repository:
+              field: repository
+          target_resource_name: this
+          fields:
+            repository_policy_document:
+              field: policy_document
+              type: string
+              multiline: true
+            repository_policy_domain_owner:
+              field: domain_owner
+              type: string

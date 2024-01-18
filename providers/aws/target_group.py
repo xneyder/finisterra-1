@@ -7,11 +7,7 @@ class TargetGroup:
     def __init__(self, aws_clients, script_dir, provider_name, schema_data, region, s3Bucket,
                  dynamoDBTable, state_key, workspace_id, modules, aws_account_id,hcl = None):
         self.aws_clients = aws_clients
-        self.transform_rules = {
-            "aws_ecs_task_definition": {
-                "hcl_json_multiline": {"container_definitions": True}
-            },
-        }
+        self.transform_rules = {}
         self.provider_name = provider_name
         self.script_dir = script_dir
         self.schema_data = schema_data
