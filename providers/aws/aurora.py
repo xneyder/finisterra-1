@@ -188,7 +188,7 @@ class Aurora:
         # self.aws_security_group_rule()
 
         self.hcl.refresh_state()
-        self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id, {}, {})
+        self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id)
         self.json_plan = self.hcl.json_plan
 
     def aws_db_cluster_snapshot(self):

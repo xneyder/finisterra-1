@@ -348,7 +348,7 @@ class HCL:
 
         return False
 
-    def process_resource_module(self, resource, resources, config, functions={}, additional_data={}):
+    def process_resource_module(self, resource, resources, config):
         root_attributes = set()
 
         def process_resource(resource, resources, config, parent_root_attribute_key_value=None):
@@ -905,7 +905,7 @@ class HCL:
         return value
 
 
-    def module_hcl_code(self, terraform_state_file, config_file_folder, functions={}, aws_region="", aws_account_id="", to_remove = {}, additional_data={}):
+    def module_hcl_code(self, terraform_state_file, config_file_folder, functions={}, aws_region="", aws_account_id=""):
         self.functions.update(functions)
 
         config_file_list = glob.glob(config_file_folder + "/*.yaml")
@@ -928,7 +928,7 @@ class HCL:
                 resource_config = config[resource['type']]
                 self.additional_output_fields = resource_config.get('additional_output_fields', {})
                 instance = self.process_resource_module(
-                    resource, resources, config, self.functions, self.additional_data)
+                    resource, resources, config)
                 if not instance:
                     continue
                 instance['module'] = resource_config.get('terraform_module')
@@ -1033,11 +1033,9 @@ class HCL:
                             try:
                                 try:
                                     if index in instance["joined_fields"]:
-                                        # print("===========", index)
                                         joined_sub_fields = instance["joined_fields"][index].get('sub_fields', [])
                                         value_json = json.loads(value)
                                         value_items=self.collect_json_values(value_json, index)
-                                        # print(value_items)
                                         for value_item_dict in value_items:
                                             for index_item, value_item in value_item_dict.items():
                                                 if index_item in joined_sub_fields or "ALL" in joined_sub_fields:

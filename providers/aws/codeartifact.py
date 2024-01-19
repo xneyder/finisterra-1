@@ -23,48 +23,9 @@ class CodeArtifact:
                        self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules)
         self.resource_list = {}
 
-
-        self.load_balancers = None
-        self.listeners = {}
-
-        functions = {
-            "codeartifact_build_repositories": self.codeartifact_build_repositories,
-            "codeartifact_build_repositories_policy": self.codeartifact_build_repositories_policy,
-            "code_artifact_get_encryption_key_alias": self.code_artifact_get_encryption_key_alias,
-            "code_artifact_get_encryption_key": self.code_artifact_get_encryption_key,
-        }
-        self.kms_instance = KMS(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
-
+        functions = {}
         self.hcl.functions.update(functions)
-
-    def codeartifact_build_repositories(self, attributes, arg):
-        result = {}
-        repository = attributes.get("repository")
-        result[repository] = {}
-        description = attributes.get("description")
-        if description:
-            result[repository]["description"] = description
-        external_connections = attributes.get("external_connections")
-        if external_connections:
-            result[repository]["external_connections"] = external_connections
-        upstreams = attributes.get("upstreams")
-        if upstreams:
-            result[repository]["upstreams"] = upstreams
-        tags = attributes.get("tags")
-        if tags:
-            result[repository]["tags"] = tags
-
-        return result
-
-    def codeartifact_build_repositories_policy(self, attributes, arg):
-        result = {}
-        repository = attributes.get("repository")
-        result[repository] = {}
-        policy_document = attributes.get("policy_document")
-        if policy_document:
-            result[repository]["policy_document"] = policy_document
-
-        return result
+        self.kms_instance = KMS(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
 
     def code_artifact_get_kms_alias(self, kms_key_id):
         if kms_key_id:
@@ -87,30 +48,11 @@ class CodeArtifact:
                     raise e
         return ""
 
-    def code_artifact_get_encryption_key_alias(self, attributes, arg):
-        kms_key_id = attributes.get("encryption_key")
-        alias = ""
-        if kms_key_id:
-            alias = self.code_artifact_get_kms_alias(kms_key_id)
-        return alias
-            
-    def code_artifact_get_encryption_key(self, attributes, arg):
-        kms_key_id = attributes.get("encryption_key")
-        if kms_key_id:
-            alias = self.code_artifact_get_kms_alias(kms_key_id)
-            if not alias:
-                return kms_key_id
-        return ""
-
     def codeartifact(self):
         self.hcl.prepare_folder(os.path.join("generated"))
-
         self.aws_codeartifact_domain()
-
         self.hcl.refresh_state()
-
-        self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id, {}, {})
-
+        self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id)
         self.json_plan = self.hcl.json_plan
 
     def aws_codeartifact_domain(self, domain_name=None, ftstack=None):
@@ -136,9 +78,6 @@ class CodeArtifact:
                     # Ignore ResourceNotFoundException and continue
                     pass
 
-                kms_key_id = domain["encryptionKey"]
-                if kms_key_id:
-                    self.kms_instance.aws_kms_key(kms_key_id, ftstack)
 
     def process_single_codeartifact_domain(self, domain_name, ftstack=None):
         resource_type = "aws_codeartifact_domain"
@@ -163,6 +102,18 @@ class CodeArtifact:
         self.hcl.process_resource(resource_type, id, attributes)
         self.hcl.add_stack(resource_type, id, ftstack)
 
+        kms_key_id = domain_info["domain"].get("encryptionKey")
+        if kms_key_id:
+            alias = self.code_artifact_get_kms_alias(kms_key_id)
+            if alias:
+                if 'codeartifact' not in self.hcl.additional_data:
+                    self.hcl.additional_data["codeartifact"] = {}
+                if id not in self.hcl.additional_data["codeartifact"]:
+                    self.hcl.additional_data["codeartifact"] = {}
+                self.hcl.additional_data["codeartifact"][id] = {"kms_key_alias": alias}
+            kms_key_id = kms_key_id.split('/')[-1]
+            self.kms_instance.aws_kms_key(kms_key_id, ftstack)
+
         # Process repositories in the specified domain
         repositories = self.aws_clients.codeartifact_client.list_repositories_in_domain(domain=domain_name)
         for repository in repositories["repositories"]:
@@ -171,14 +122,9 @@ class CodeArtifact:
             self.aws_codeartifact_repository(domain_name, repository_arn, repository_name)
     
     def aws_codeartifact_repository(self, domain_name, repository_arn, repository_name):
-        print("Processing CodeArtifact Repositories")
         resource_type = "aws_codeartifact_repository"
-
-        # response = self.aws_clients.codeartifact_client.describe_repository(domain=domain_name, repository=repository_arn)
-                                
         print(f"  Processing CodeArtifact Repository: {repository_arn}")
 
-        # repository_arn = f"arn:aws:codeartifact:{self.region}:{self.aws_account_id}:repository/{repository_name}"
         id = repository_arn
         attributes = {
             "id": id,
@@ -198,7 +144,7 @@ class CodeArtifact:
         
             
     def aws_codeartifact_repository_permissions_policy(self, repository_arn):
-        print("Processing CodeArtifact Repository Permissions Policy")
+        print(f"Processing CodeArtifact Repository Permissions Policy {repository_arn}")
         resource_type = "aws_codeartifact_repository_permissions_policy"
         id = repository_arn
         attributes = {
@@ -207,7 +153,7 @@ class CodeArtifact:
         self.hcl.process_resource(resource_type, id, attributes)
 
     def aws_codeartifact_domain_permissions_policy(self, domain_name_arn):
-        print("Processing CodeArtifact Domain Permissions Policy")
+        print(f"Processing CodeArtifact Domain Permissions Policy {domain_name_arn}")
         resource_type = "aws_codeartifact_domain_permissions_policy"
         id = domain_name_arn
         attributes = {

@@ -49,7 +49,6 @@ from providers.aws.aurora import Aurora
 from providers.aws.aws_lambda import AwsLambda
 from providers.aws.kms import KMS
 from providers.aws.elasticbeanstalk import ElasticBeanstalk
-from providers.aws.elb import ELB
 from providers.aws.elbv2 import ELBV2
 from providers.aws.stepfunction import StepFunction
 from providers.aws.msk import MSK
@@ -686,14 +685,6 @@ class Aws:
         instance.elasticbeanstalk()
         self.json_plan = instance.json_plan
         self.resource_list['elasticbeanstalk'] = instance.resource_list
-
-    def elb(self):
-        instance = ELB(self.aws_clients_instance, self.script_dir, self.provider_name,
-                       self.schema_data, self.aws_region, self.s3Bucket,
-                       self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
-        instance.elb()
-        self.json_plan = instance.json_plan
-        self.resource_list['elb'] = instance.resource_list
 
     def elbv2(self):
         instance = ELBV2(self.aws_clients_instance, self.script_dir, self.provider_name,

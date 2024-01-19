@@ -23,50 +23,15 @@ class ACM:
             self.hcl = hcl
         self.resource_list = {}
 
-        functions = {
-            'get_field_from_attrs': self.get_field_from_attrs,
-            'get_validation_method': self.get_validation_method,
-        }
+        functions = {}
 
         self.hcl.functions.update(functions)
 
-    def get_field_from_attrs(self, attributes, arg):
-        keys = arg.split(".")
-        result = attributes
-        for key in keys:
-            if isinstance(result, list):
-                result = [sub_result.get(key, None) if isinstance(
-                    sub_result, dict) else None for sub_result in result]
-                if len(result) == 1:
-                    result = result[0]
-            else:
-                result = result.get(key, None)
-            if result is None:
-                return None
-        return result
-
-    def get_validation_method(self, attributes):
-        validation_method = attributes.get("validation_method", None)
-        if validation_method == "NONE":
-            return None
-        return validation_method
-
-
     def acm(self):
         self.hcl.prepare_folder(os.path.join("generated"))
-
-        # aws_acm_certificate.this	resource
-        # aws_acm_certificate_validation.this	resource
-        # aws_route53_record.validation	resource
-
         self.aws_acm_certificate()
-
-
-
         self.hcl.refresh_state()
-
-        self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id, {}, {})
-
+        self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id)
         self.json_plan = self.hcl.json_plan
 
     def aws_acm_certificate(self, acm_arn=None, ftstack=None):

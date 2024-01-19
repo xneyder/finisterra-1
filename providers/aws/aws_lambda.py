@@ -117,7 +117,7 @@ class AwsLambda:
 
 
         self.hcl.refresh_state()
-        self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id, {}, {})
+        self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id)
         self.json_plan = self.hcl.json_plan
         
     def aws_lambda_function(self, selected_function_name=None, ftstack=None):

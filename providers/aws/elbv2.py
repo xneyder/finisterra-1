@@ -31,16 +31,16 @@ class ELBV2:
         self.listeners = {}
 
         functions = {
-            'get_vpc_name_elbv2': self.get_vpc_name_elbv2,
-            'get_security_group_names_elbv2': self.get_security_group_names_elbv2,
-            'get_subnet_names_elbv2': self.get_subnet_names_elbv2,
-            'get_listeners_elbv2': self.get_listeners_elbv2,
-            'get_listener_certificate_elbv2': self.get_listener_certificate_elbv2,
-            'get_port_domain_name_elbv2': self.get_port_domain_name_elbv2,
-            'get_port_elbv2': self.get_port_elbv2,
-            'get_vpc_id_elbv2': self.get_vpc_id_elbv2,
-            'get_subnet_ids_elbv2': self.get_subnet_ids_elbv2,
-            'init_fields_elbv2': self.init_fields_elbv2,
+            # 'get_vpc_name_elbv2': self.get_vpc_name_elbv2,
+            # 'get_security_group_names_elbv2': self.get_security_group_names_elbv2,
+            # 'get_subnet_names_elbv2': self.get_subnet_names_elbv2,
+            # 'get_listeners_elbv2': self.get_listeners_elbv2,
+            # 'get_listener_certificate_elbv2': self.get_listener_certificate_elbv2,
+            # 'get_port_domain_name_elbv2': self.get_port_domain_name_elbv2,
+            # 'get_port_elbv2': self.get_port_elbv2,
+            # 'get_vpc_id_elbv2': self.get_vpc_id_elbv2,
+            # 'get_subnet_ids_elbv2': self.get_subnet_ids_elbv2,
+            # 'init_fields_elbv2': self.init_fields_elbv2,
         }
 
         self.hcl.functions.update(functions)
@@ -50,120 +50,12 @@ class ELBV2:
         self.s3_instance = S3(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
         # self.target_group_instance = TargetGroup(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
 
-    def init_fields_elbv2(self, attributes):
-        self.listeners = {}
+    # def init_fields_elbv2(self, attributes):
+    #     self.listeners = {}
 
-        return None
-
-    def get_security_group_names_elbv2(self, attributes, arg):
-        security_group_ids = attributes.get(arg)
-        security_group_names = []
-
-        for security_group_id in security_group_ids:
-            response = self.aws_clients.ec2_client.describe_security_groups(
-                GroupIds=[security_group_id])
-            security_group = response['SecurityGroups'][0]
-
-            security_group_name = security_group.get('GroupName')
-            # Just to be extra safe, if GroupName is somehow missing, fall back to the security group ID
-            if not security_group_name:
-                security_group_name = security_group_id
-
-            security_group_names.append(security_group_name)
-
-        return security_group_names
-
-    def get_fixed_response(self, attributes):
-        default_action = attributes.get('default_action')
-
-        if default_action and isinstance(default_action, list) and default_action:
-            fixed_response = default_action[0].get('fixed_response')
-            return fixed_response
-
-            # if fixed_response and isinstance(fixed_response, list) and fixed_response:
-            #     return [fixed_response[0]]
-
-        return []
-
-    def get_redirect(self, attributes):
-        default_action = attributes.get('default_action')
-
-        if default_action and isinstance(default_action, list) and default_action:
-            redirect = default_action[0].get('redirect')
-            return redirect
-
-            # if redirect and isinstance(redirect, list) and redirect:
-            #     return [redirect[0]]
-
-        return []  # default to an empty dictionary if conditions are not met
-
-    def get_listeners_elbv2(self, attributes):
-        listener = {
-            'port': attributes.get('port'),
-            'protocol': attributes.get('protocol'),
-            'ssl_policy': attributes.get('ssl_policy'),
-            'certificate_arn': attributes.get('certificate_arn'),
-            # 'acm_domain_name': domain_name,
-            # 'additional_certificates': [],
-            # 'listener_fixed_response': self.get_fixed_response(attributes),
-            # 'listener_redirect': self.get_redirect(attributes),
-            'default_action': attributes.get('default_action'),
-            'tags': attributes.get('tags'),
-        }
-
-        # Filter out keys with undesirable values
-        # self.listeners[attributes.get('port')] = {k: v for k, v in listener.items() if v not in [{}, [], "", None]}
-        self.listeners[attributes.get('port')] = {k: v for k, v in listener.items()}
-
-        return self.listeners
-
-    def get_port_elbv2(self, attributes):
-        return str(attributes.get('port'))
-
-    def get_listener_certificate_elbv2(self, attributes):
-        listener_arn = attributes.get('listener_arn')
-        # Get the port of the listener
-        response_listener = self.aws_clients.elbv2_client.describe_listeners(
-            ListenerArns=[listener_arn]
-        )
-        listener_port = response_listener['Listeners'][0]['Port']
-
-        certificate_arn = attributes.get('certificate_arn')
-        if certificate_arn:
-            # Get the domain name for the certificate
-            response = self.aws_clients.acm_client.describe_certificate(
-                CertificateArn=certificate_arn)
-            domain_name = response['Certificate']['DomainName']
-
-            # if listener_port in self.listeners:
-            #     self.listeners[listener_port]['additional_certificates'].append(
-            #         {'certificate_arn': certificate_arn, 'domain_name': domain_name}
-            #     )
-
-        return self.listeners
-
-    def get_port_domain_name_elbv2(self, attributes):
-        listener_arn = attributes.get('listener_arn')
-
-        # Get the port of the listener
-        response_listener = self.aws_clients.elbv2_client.describe_listeners(
-            ListenerArns=[listener_arn]
-        )
-        listener_port = response_listener['Listeners'][0]['Port']
-
-        domain_name = ""
-        if attributes.get('certificate_arn'):
-            # Use the ACM client
-            response = self.aws_clients.acm_client.describe_certificate(
-                CertificateArn=attributes.get('certificate_arn')
-            )
-            domain_name = response['Certificate']['DomainName']
-
-        # Return in the format 'port-domain_name'
-        return f"{listener_port}-{domain_name}"
-
-    def get_subnet_names_elbv2(self, attributes, arg):
-        subnet_ids = attributes.get(arg)
+    #     return None
+        
+    def get_subnet_names(self, subnet_ids):
         subnets_info = []
         for subnet_id in subnet_ids:
             response = self.aws_clients.ec2_client.describe_subnets(SubnetIds=[subnet_id])
@@ -189,17 +81,8 @@ class ELBV2:
                 print(f"No 'Name' tag or CIDR block found for Subnet ID: {subnet_id}")
 
         return subnets_info
-
-
-    def get_subnet_ids_elbv2(self, attributes, arg):
-        subnet_names = self.get_subnet_names_elbv2(attributes, arg)
-        if subnet_names:
-            return ""
-        else:
-            return attributes.get(arg)
-
-    def get_vpc_name_elbv2(self, attributes, arg):
-        vpc_id = attributes.get(arg)
+    
+    def get_vpc_name(self, vpc_id):
         response = self.aws_clients.ec2_client.describe_vpcs(VpcIds=[vpc_id])
 
         if not response or 'Vpcs' not in response or not response['Vpcs']:
@@ -214,15 +97,7 @@ class ELBV2:
         if vpc_name is None:
             print(f"No 'Name' tag found for VPC ID: {vpc_id}")
 
-        return vpc_name
-
-    def get_vpc_id_elbv2(self, attributes, arg):
-        vpc_name = self.get_vpc_name_elbv2(attributes, arg)
-        if vpc_name is None:
-            return attributes.get(arg)
-        else:
-            return ""
-
+        return vpc_name    
 
     def elbv2(self):
         self.hcl.prepare_folder(os.path.join("generated"))
@@ -231,7 +106,7 @@ class ELBV2:
 
         self.hcl.refresh_state()
 
-        self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id, {}, {})
+        self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id)
 
         self.json_plan = self.hcl.json_plan
 
@@ -294,6 +169,26 @@ class ELBV2:
         self.hcl.process_resource(resource_type, lb_name, attributes)
         self.hcl.add_stack(resource_type, id, ftstack)
 
+        AvailabilityZones = lb.get("AvailabilityZones", [])
+        if AvailabilityZones:
+            subnets = self.get_subnet_names([az["SubnetId"] for az in AvailabilityZones])
+            if subnets:
+                if resource_type not in self.hcl.additional_data:
+                    self.hcl.additional_data[resource_type] = {}
+                if id not in self.hcl.additional_data[resource_type]:
+                    self.hcl.additional_data[resource_type][id] = {}
+                self.hcl.additional_data[resource_type][id]["subnet_names"] = subnets
+
+        VpcId = lb.get("VpcId", "")
+        if VpcId:
+            vpc_name = self.get_vpc_name(VpcId)
+            if vpc_name:
+                if resource_type not in self.hcl.additional_data:
+                    self.hcl.additional_data[resource_type] = {}
+                if id not in self.hcl.additional_data[resource_type]:
+                    self.hcl.additional_data[resource_type][id] = {}
+                self.hcl.additional_data[resource_type][id]["vpc_name"] = vpc_name
+
         # load_balancer_arns.append(lb_arn)
 
         # Extract the security group IDs associated with this load balancer
@@ -319,15 +214,8 @@ class ELBV2:
             self.s3_instance.aws_s3_bucket(s3_access_lobs_bucket, ftstack)
         self.aws_lb_listener([lb_arn], ftstack)
 
-        # Call the other functions for listeners and listener certificates
-        # listener_arns = self.aws_lb_listener(load_balancer_arns, ftstack)
-        # for listener_arn in listener_arns:
-        #     self.acm_instance.aws_acm_certificate(listener_arn, ftstack)
-
     def aws_lb_listener(self, load_balancer_arns, ftstack=None):
         print("Processing Load Balancer Listeners...")
-
-        # listener_arns = []
 
         for lb_arn in load_balancer_arns:
             paginator = self.aws_clients.elbv2_client.get_paginator("describe_listeners")
@@ -355,7 +243,6 @@ class ELBV2:
                     #         self.target_group_instance.aws_lb_target_group(target_group_arn, ftstack)
                     #         exit()
 
-        # return listener_arns
 
     def aws_lb_listener_certificate(self, listener_arns, ftstack):
         print("Processing Load Balancer Listener Certificates...")

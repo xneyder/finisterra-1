@@ -13,8 +13,9 @@ aws_acm_certificate:
       field: subject_alternative_names
       type: list
     validation_method:
-      function: get_validation_method
+      function: acm_get_validation_method
       type: string
+      arg: id
       module_default: "DNS"
     key_algorithm:
       field: key_algorithm

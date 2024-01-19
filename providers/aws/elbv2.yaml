@@ -24,9 +24,9 @@ aws_lb:
         type: map
         key_in_key: port
   fields:
-    init:
-      function: init_fields_elbv2
-      type: string
+    # init:
+    #   function: init_fields_elbv2
+    #   type: string
     load_balancer_name:
       field: name
       type: string
@@ -110,19 +110,23 @@ aws_lb:
       target_resource_name: this
       second_index:
         function: get_port_elbv2
+        arg: id
       fields:
         aws_lb_listeners:
           function: get_listeners_elbv2
+          arg: id
           type: map
-      childs:
-        aws_lb_listener_certificate:
-          join:
-            arn:
-              field: listener_arn
-          target_resource_name: https_sni
-          second_index:
-            function: get_port_domain_name_elbv2
-          fields:
-            aws_lb_listeners:
-              function: get_listener_certificate_elbv2
-              type: map
+      # childs:
+      #   aws_lb_listener_certificate:
+      #     join:
+      #       arn:
+      #         field: listener_arn
+      #     target_resource_name: https_sni
+      #     second_index:
+      #       function: get_port_domain_name_elbv2
+      #       arg: id
+      #     fields:
+      #       aws_lb_listeners:
+      #         function: get_listener_certificate_elbv2
+      #         type: map
+      #         arg: id

@@ -140,7 +140,7 @@ class ECR:
 
 
         self.hcl.refresh_state()
-        self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id, {}, {})
+        self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id)
 
         # self.hcl.generate_hcl_file()
         self.json_plan = self.hcl.json_plan
