@@ -3,6 +3,10 @@ aws_codeartifact_domain:
   terraform_module_version: "5.2.0"
   target_resource_name: this
   name_field: domain
+  joined_fields:
+    encryption_key:
+      subfields:
+        - encryption_key
   fields:
     domain:
       field: domain
@@ -10,6 +14,10 @@ aws_codeartifact_domain:
     encryption_key:
       field: encryption_key
       type: string
+    encryption_key_alias:
+      function: code_artifact_get_kms_alias
+      type: string
+      arg: id
     tags:
       field: tags
       type: map

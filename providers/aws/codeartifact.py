@@ -1,6 +1,7 @@
 import os
 from utils.hcl import HCL
 import botocore
+from providers.aws.kms import KMS
 
 class CodeArtifact:
     def __init__(self, aws_clients, script_dir, provider_name, schema_data, region, s3Bucket,
@@ -29,7 +30,9 @@ class CodeArtifact:
         functions = {
             "codeartifact_build_repositories": self.codeartifact_build_repositories,
             "codeartifact_build_repositories_policy": self.codeartifact_build_repositories_policy,
-        }        
+            "code_artifact_get_kms_alias": self.code_artifact_get_kms_alias,
+        }
+        self.kms_instance = KMS(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
 
         self.hcl.functions.update(functions)
 
@@ -62,7 +65,27 @@ class CodeArtifact:
 
         return result
 
-
+    def code_artifact_get_kms_alias(self, attributes, arg):
+        kms_key_id = attributes.get("encryption_key")
+        if kms_key_id:
+            try:
+                value = ""
+                response = self.aws_clients.kms_client.list_aliases()
+                aliases = response.get('Aliases', [])
+                while 'NextMarker' in response:
+                    response = self.aws_clients.kms_client.list_aliases(Marker=response['NextMarker'])
+                    aliases.extend(response.get('Aliases', []))
+                for alias in aliases:
+                    if 'TargetKeyId' in alias and alias['TargetKeyId'] == kms_key_id.split('/')[-1]:
+                        value = alias['AliasName']
+                        break
+                return value
+            except botocore.exceptions.ClientError as e:
+                if e.response['Error']['Code'] == 'AccessDeniedException':
+                    return ""
+                else:
+                    raise e
+        return ""
 
 
     def codeartifact(self):
@@ -98,6 +121,10 @@ class CodeArtifact:
                 except botocore.exceptions.ClientError as error:
                     # Ignore ResourceNotFoundException and continue
                     pass
+
+                kms_key_id = domain["encryptionKey"]
+                if kms_key_id:
+                    self.kms_instance.aws_kms_key(kms_key_id, ftstack)
 
     def process_single_codeartifact_domain(self, domain_name, ftstack=None):
         resource_type = "aws_codeartifact_domain"
