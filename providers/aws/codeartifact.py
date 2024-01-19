@@ -26,9 +26,43 @@ class CodeArtifact:
         self.load_balancers = None
         self.listeners = {}
 
-        functions = {}        
+        functions = {
+            "codeartifact_build_repositories": self.codeartifact_build_repositories,
+            "codeartifact_build_repositories_policy": self.codeartifact_build_repositories_policy,
+        }        
 
         self.hcl.functions.update(functions)
+
+    def codeartifact_build_repositories(self, attributes, arg):
+        result = {}
+        repository = attributes.get("repository")
+        result[repository] = {}
+        description = attributes.get("description")
+        if description:
+            result[repository]["description"] = description
+        external_connections = attributes.get("external_connections")
+        if external_connections:
+            result[repository]["external_connections"] = external_connections
+        upstreams = attributes.get("upstreams")
+        if upstreams:
+            result[repository]["upstreams"] = upstreams
+        tags = attributes.get("tags")
+        if tags:
+            result[repository]["tags"] = tags
+
+        return result
+
+    def codeartifact_build_repositories_policy(self, attributes, arg):
+        result = {}
+        repository = attributes.get("repository")
+        result[repository] = {}
+        policy_document = attributes.get("policy_document")
+        if policy_document:
+            result[repository]["policy_document"] = policy_document
+
+        return result
+
+
 
 
     def codeartifact(self):
@@ -77,7 +111,7 @@ class CodeArtifact:
         }
 
         if not ftstack:
-            ftstack = "code_artifact"
+            ftstack = "codeartifact"
             # Retrieve and process domain tags if they exist
             domain_tags = self.aws_clients.codeartifact_client.list_tags_for_resource(resourceArn=domain_arn)
             for tag in domain_tags.get('Tags', []):
@@ -112,11 +146,15 @@ class CodeArtifact:
         self.hcl.process_resource(
             resource_type, id, attributes)
         
-        policy = self.aws_clients.codeartifact_client.get_repository_permissions_policy(
-            domain=domain_name, repository=repository_name)
+        try:
+            policy = self.aws_clients.codeartifact_client.get_repository_permissions_policy(
+                domain=domain_name, repository=repository_name)
+            if policy["policy"]:
+                self.aws_codeartifact_repository_permissions_policy(repository_arn)
+        except botocore.exceptions.ClientError as error:
+            # Ignore ResourceNotFoundException and continue
+            pass
         
-        if policy["policy"]:
-            self.aws_codeartifact_repository_permissions_policy(repository_arn)
             
     def aws_codeartifact_repository_permissions_policy(self, repository_arn):
         print("Processing CodeArtifact Repository Permissions Policy")

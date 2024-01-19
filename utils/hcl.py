@@ -874,6 +874,9 @@ class HCL:
                     # Skip replacement for lines containing 'module'
                     continue
 
+                if f'"{name_value}": ' in line:
+                    continue
+
                 if instance["replace_name"] and "<<EOF" not in line:
                     line = re.sub(r'\"' + re.escape(name_value) + r'\"', "local." + name_field, line)
 

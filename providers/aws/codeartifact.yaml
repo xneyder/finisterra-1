@@ -20,48 +20,32 @@ aws_codeartifact_domain:
           field: domain
       target_resource_name: this
       fields:
-        domain_policy_document:
+        policy_document:
           field: policy_document
           type: string
           multiline: true
-        domain_policy_domain_owner:
-          field: domain_owner
-          type: string
     aws_codeartifact_repository:
       join:
         domain:
           field: domain
       target_resource_name: this
+      second_index:
+        field: repository
       fields:
-        repository:
-          field: repository
-          type: string
-        description:
-          field: description
-          type: string
-        repository_domain_owner:
-          field: domain_owner
-          type: string
-        external_connections:
-          field: external_connections
-          type: list
-        upstreams:
-          field: upstreams
-          type: list
-        repository_tags:
-          field: tags
+        repositories:
+          function: codeartifact_build_repositories
           type: map
+          arg: id
       childs:
         aws_codeartifact_repository_permissions_policy:
           join:
             repository:
               field: repository
+          second_index:
+            field: repository
           target_resource_name: this
           fields:
-            repository_policy_document:
-              field: policy_document
-              type: string
-              multiline: true
-            repository_policy_domain_owner:
-              field: domain_owner
-              type: string
+            repositories:
+              function: codeartifact_build_repositories_policy
+              type: map
+              arg: id
