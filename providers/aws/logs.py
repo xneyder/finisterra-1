@@ -115,40 +115,40 @@ class Logs:
                     print(
                         f"  No Destination Policy found for Log Destination: {destination_name}")
 
-    def aws_cloudwatch_log_group(self, specific_log_group_name=None, ftstack = None):
-        resource_type = "aws_cloudwatch_log_group"
+    def aws_cloudwatch_log_group(self, specific_log_group_name=None, ftstack=None):
         print("Processing CloudWatch Log Groups...")
+
+        if specific_log_group_name:
+            self.process_single_log_group(specific_log_group_name, ftstack)
+            return
 
         paginator = self.aws_clients.logs_client.get_paginator("describe_log_groups")
         for page in paginator.paginate():
             for log_group in page["logGroups"]:
                 log_group_name = log_group["logGroupName"]
-
-                # Skip AWS managed log groups
                 if log_group_name.startswith("/aws"):
                     continue
+                self.process_single_log_group(log_group_name, ftstack)
 
-                # Process only the specified log group if given
-                if specific_log_group_name and log_group_name != specific_log_group_name:
-                    continue
+    def process_single_log_group(self, log_group_name, ftstack=None):
+        resource_type = "aws_cloudwatch_log_group"
+        print(f"  Processing CloudWatch Log Group: {log_group_name}")
+        id = log_group_name
+        attributes = {
+            "id": id,
+            "name": log_group_name,
+        }
 
-                print(f"  Processing CloudWatch Log Group: {log_group_name}")
-                id = log_group_name
+        self.hcl.process_resource(resource_type, id, attributes)
+        if not ftstack:
+            ftstack = "logs"
 
-                attributes = {
-                    "id": id,
-                    "name": log_group_name,
-                }
+        # Fetch details of the log group for additional information like KMS key
+        log_group = self.aws_clients.logs_client.describe_log_groups(logGroupNamePrefix=log_group_name)["logGroups"][0]
+        if "kmsKeyId" in log_group:
+            self.kms_instance.aws_kms_key(log_group["kmsKeyId"], ftstack)
 
-                self.hcl.process_resource(
-                    resource_type, id, attributes)
-                if not ftstack:
-                    ftstack = "logs"
-
-                if "kmsKeyId" in log_group:
-                    self.kms_instance.aws_kms_key(log_group["kmsKeyId"], ftstack)
-
-                self.hcl.add_stack(resource_type, id, ftstack)
+        self.hcl.add_stack(resource_type, id, ftstack)
 
 
     def aws_cloudwatch_log_metric_filter(self):

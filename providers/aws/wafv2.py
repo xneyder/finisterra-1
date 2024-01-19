@@ -61,20 +61,21 @@ class Wafv2:
 
         self.json_plan = self.hcl.json_plan
 
-    def aws_wafv2_ip_set(self, ip_set_id):
-        print(f"Processing WAFv2 IP Set: {ip_set_id}")
+    def aws_wafv2_ip_set(self, waf_id, ip_set_name, scope):
+        print(f"Processing WAFv2 IP Set:  {ip_set_name}")
 
-        scope = 'REGIONAL'
-        ip_set_info = self.aws_clients.wafv2_client.get_ip_set(
-            Id=ip_set_id, Scope=scope)["IPSet"]
+        # scope = 'REGIONAL'
+        # ip_set_info = self.aws_clients.wafv2_client.get_ip_set(
+            # Id=ip_set_id, Name=ip_set_name, Scope=scope)["IPSet"]
+        # build the if = ipsetid/name/scope from the ar example: arn:aws:wafv2:us-east-1:130964665983:global/ipset/cf-test/3eddbd94-f198-421b-bd23-69dfee001aa4
         attributes = {
-            "id": ip_set_id,
-            "name": ip_set_info["Name"],
-            "description": ip_set_info.get("Description", ""),
+            "id": waf_id,
+            "name": ip_set_name,
             "scope": scope,
         }
         self.hcl.process_resource(
-            "aws_wafv2_ip_set", ip_set_id.replace("-", "_"), attributes)
+            "aws_wafv2_ip_set", waf_id.replace("-", "_"), attributes)
+
 
     # def aws_wafv2_regex_pattern_set(self):
     #     print("Processing WAFv2 Regex Pattern Sets...")
@@ -169,8 +170,10 @@ class Wafv2:
                 # Find IP sets for the ACL
                 ip_sets = self.aws_clients.wafv2_client.list_ip_sets(Scope=scope)["IPSets"]
                 for ip_set in ip_sets:
-                    ip_set_id = ip_set["Id"]
-                    self.aws_wafv2_ip_set(ip_set_id)
+                    print(ip_set)
+
+                    ip_set_name = ip_set["Name"]
+                    self.aws_wafv2_ip_set(web_acl_id, ip_set_name, scope)
 
                 # call the other functions with appropriate arguments
                 # self.aws_wafv2_web_acl_association(web_acl_id)
