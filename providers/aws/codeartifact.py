@@ -30,7 +30,8 @@ class CodeArtifact:
         functions = {
             "codeartifact_build_repositories": self.codeartifact_build_repositories,
             "codeartifact_build_repositories_policy": self.codeartifact_build_repositories_policy,
-            "code_artifact_get_kms_alias": self.code_artifact_get_kms_alias,
+            "code_artifact_get_encryption_key_alias": self.code_artifact_get_encryption_key_alias,
+            "code_artifact_get_encryption_key": self.code_artifact_get_encryption_key,
         }
         self.kms_instance = KMS(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
 
@@ -65,8 +66,7 @@ class CodeArtifact:
 
         return result
 
-    def code_artifact_get_kms_alias(self, attributes, arg):
-        kms_key_id = attributes.get("encryption_key")
+    def code_artifact_get_kms_alias(self, kms_key_id):
         if kms_key_id:
             try:
                 value = ""
@@ -87,6 +87,20 @@ class CodeArtifact:
                     raise e
         return ""
 
+    def code_artifact_get_encryption_key_alias(self, attributes, arg):
+        kms_key_id = attributes.get("encryption_key")
+        alias = ""
+        if kms_key_id:
+            alias = self.code_artifact_get_kms_alias(kms_key_id)
+        return alias
+            
+    def code_artifact_get_encryption_key(self, attributes, arg):
+        kms_key_id = attributes.get("encryption_key")
+        if kms_key_id:
+            alias = self.code_artifact_get_kms_alias(kms_key_id)
+            if not alias:
+                return kms_key_id
+        return ""
 
     def codeartifact(self):
         self.hcl.prepare_folder(os.path.join("generated"))

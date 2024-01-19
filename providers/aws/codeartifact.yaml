@@ -12,10 +12,11 @@ aws_codeartifact_domain:
       field: domain
       type: string
     encryption_key:
-      field: encryption_key
+      function: code_artifact_get_encryption_key
       type: string
+      arg: id
     encryption_key_alias:
-      function: code_artifact_get_kms_alias
+      function: code_artifact_get_encryption_key_alias
       type: string
       arg: id
     tags:
