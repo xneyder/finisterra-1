@@ -23,45 +23,19 @@ class Cloudmap:
                        self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules)
         self.resource_list = {}
 
-        functions = {
-            'get_vpc_name': self.get_vpc_name,
-            'build_service_names': self.build_service_names,
-            'aws_service_discovery_private_dns_namespace_import_id': self.aws_service_discovery_private_dns_namespace_import_id,
-        }
+        functions = {}
 
         self.hcl.functions.update(functions)
 
-    def get_vpc_name(self, attributes, arg):
-        vpc_id = attributes.get(arg)
+    def get_vpc_name(self, vpc_id):
         response = self.aws_clients.ec2_client.describe_vpcs(VpcIds=[vpc_id])
         vpc_name = next(
             (tag['Value'] for tag in response['Vpcs'][0]['Tags'] if tag['Key'] == 'Name'), None)
         return vpc_name
 
-    def build_service_names(self, attributes):
-        key = attributes.get("name")
-        result = {}
-        result[key] = {
-            'name': attributes.get("name"),
-            'description': attributes.get("description"),
-            'dns_records': attributes.get("dns_config", [{}])[0].get("dns_records", [{}]),
-            'routing_policy': attributes.get("dns_config", [{}])[0].get("routing_policy", ""),
-            'health_check_config': attributes.get("health_check_config"),
-            'health_check_custom_config': attributes.get("health_check_custom_config"),
-            'tags': attributes.get("tags"),
-        }
-        return result
-
-    def aws_service_discovery_private_dns_namespace_import_id(self, attributes):
-        namespace_id = attributes.get("id")
-        vpc_id = attributes.get("vpc")
-        return f"{namespace_id}:{vpc_id}"
-
     def cloudmap(self):
         self.hcl.prepare_folder(os.path.join("generated"))
 
-        # self.aws_service_discovery_http_namespace()
-        # self.aws_service_discovery_instance()
         self.aws_service_discovery_private_dns_namespace()
         # self.aws_service_discovery_public_dns_namespace()
 
@@ -165,6 +139,14 @@ class Cloudmap:
 
                     self.aws_service_discovery_service(namespace_id)
                     self.hcl.add_stack(resource_type, id, ftstack)
+
+                    vpc_name = self.get_vpc_name(vpc_id)
+                    if vpc_name:
+                        if resource_type not in self.hcl.additional_data:
+                            self.hcl.additional_data[resource_type] = {}
+                        if id not in self.hcl.additional_data[resource_type]:
+                            self.hcl.additional_data[resource_type][id] = {}
+                        self.hcl.additional_data[resource_type][id]["vpc_name"] = vpc_name
 
 
     def aws_service_discovery_public_dns_namespace(self):

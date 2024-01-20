@@ -15,8 +15,8 @@ aws_instance:
       sub_fields:
         - instance_profile
   fields:
-    ec2_init_fields:
-      function: ec2_init_fields
+    # ec2_init_fields:
+    #   function: ec2_init_fields
     ami:
       field: ami
       type: string
@@ -35,7 +35,7 @@ aws_instance:
       type: bool
       module_default: false
     user_data:
-      function: get_user_data
+      function: ec2_get_user_data
       arg: id
       type: string
       multiline: true
@@ -189,12 +189,11 @@ aws_instance:
               field: id
           target_resource_name: default
           second_index:
-            function: get_device_name
+            function: ec2_get_device_name
           fields:
             device_name_list:
-              function: get_device_name_list
+              function: ec2_get_device_name_list
               type: map
-
     aws_eip:
       join:
         id:
@@ -206,18 +205,18 @@ aws_instance:
       target_resource_name: default
       fields:
         public_ip_addresses:
-          function: get_public_ip_addresses
+          function: ec2_get_public_ip_addresses
           type: map
           arg: id
 
-    aws_network_interface_attachment:
-      join:
-        id:
-          field: instance_id
-      target_resource_name: additional
-      second_index:
-        function: get_device_index
-      fields:
-        additional_ips_count:
-          function: get_additional_ips_count
-          type: number
+    # aws_network_interface_attachment:
+    #   join:
+    #     id:
+    #       field: instance_id
+    #   target_resource_name: additional
+    #   second_index:
+    #     function: ec2_get_device_index
+    #   fields:
+    #     additional_ips_count:
+    #       function: ec2_get_additional_ips_count
+    #       type: number

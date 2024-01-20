@@ -74,26 +74,31 @@ aws_cloudfront_distribution:
       field: logging_config
       type: map
     origin:
-      function: build_origin
+      function: cloudfront_build_origin
       type: map
+      arg: id
     origin_group:
       field: origin_group
       type: list
     default_cache_behavior:
-      function: build_default_cache_behavior
+      function: cloudfront_build_default_cache_behavior
       type: map
+      arg: id
     ordered_cache_behavior:
-      function: build_ordered_cache_behavior
+      function: cloudfront_build_ordered_cache_behavior
       type: list
+      arg: id
     viewer_certificate:
-      function: build_viewer_certificate
+      function: cloudfront_build_viewer_certificate
       type: map
+      arg: id
     custom_error_response:
       field: custom_error_response
       type: list
     geo_restriction:
-      function: build_geo_restriction
+      function: cloudfront_build_geo_restriction
       type: map
+      arg: id
   childs:
     aws_cloudfront_monitoring_subscription:
       join:

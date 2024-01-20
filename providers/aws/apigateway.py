@@ -27,37 +27,35 @@ class Apigateway:
         self.api_gateway_resource_list = {}
 
         functions = {
-            'get_field_from_attrs': self.get_field_from_attrs,
-            'aws_api_gateway_deployment_import_id': self.aws_api_gateway_deployment_import_id,
-            'build_stages': self.build_stages,
-            # 'build_deployment': self.build_deployment,
-            'get_stage_name': self.get_stage_name,
-            'build_deployments': self.build_deployments,
-            'get_stage_name_index': self.get_stage_name_index,
-            'get_gateway_method_settings': self.get_gateway_method_settings,
-            'build_api_gateway_method_settings': self.build_api_gateway_method_settings,
-            "apigateway_build_resources": self.apigateway_build_resources,
-            "apigateway_target_resource_name": self.apigateway_target_resource_name,
-            "apigateway_resource_import_id": self.apigateway_resource_import_id,
-            "apigateway_build_methods": self.apigateway_build_methods,
-            "apigateway_method_index": self.apigateway_method_index,
-            "apigateway_target_method_name": self.apigateway_target_method_name,
-            "apigateway_method_import_id": self.apigateway_method_import_id,
-            # "apigateway_match_integration": self.apigateway_match_integration,
-            "apigateway_integration_index": self.apigateway_integration_index,
-            "apigateway_target_integration_name": self.apigateway_target_integration_name,
-            "apigateway_integration_import_id": self.apigateway_integration_import_id,
-            "apigateway_build_integrations": self.apigateway_build_integrations,
-            "apigateway_build_method_responses": self.apigateway_build_method_responses,
-            "apigateway_method_response_import_id": self.apigateway_method_response_import_id,
-            "apigateway_method_response_index": self.apigateway_method_response_index,
-            "apigateway_integration_response_index": self.apigateway_integration_response_index,
-            "apigateway_build_integration_responses": self.apigateway_build_integration_responses,
-            "apigateway_integration_response_import_id": self.apigateway_integration_response_import_id,
-            "apigateway_build_gateway_responses": self.apigateway_build_gateway_responses,
-            "apigateway_gateway_response_import_id": self.apigateway_gateway_response_import_id,
-            "apigateway_model_import_id": self.apigateway_model_import_id,
-            "apigateway_build_models": self.apigateway_build_models,
+            # # 'get_field_from_attrs': self.get_field_from_attrs,
+            # 'apigateway_deployment_import_id': self.apigateway_deployment_import_id,
+            # 'apigateway_build_stages': self.apigateway_build_stages,
+            # # 'apigateway_get_stage_name': self.apigateway_get_stage_name,
+            # 'apigateway_build_deployments': self.apigateway_build_deployments,
+            # 'apigateway_get_stage_name_index': self.apigateway_get_stage_name_index,
+            # 'apigateway_get_method_settings': self.apigateway_get_method_settings,
+            # 'apigateway_build_method_settings': self.apigateway_build_method_settings,
+            # "apigateway_build_resources": self.apigateway_build_resources,
+            # "apigateway_target_resource_name": self.apigateway_target_resource_name,
+            # "apigateway_resource_import_id": self.apigateway_resource_import_id,
+            # "apigateway_build_methods": self.apigateway_build_methods,
+            # "apigateway_method_index": self.apigateway_method_index,
+            # "apigateway_target_method_name": self.apigateway_target_method_name,
+            # "apigateway_method_import_id": self.apigateway_method_import_id,
+            # "apigateway_integration_index": self.apigateway_integration_index,
+            # "apigateway_target_integration_name": self.apigateway_target_integration_name,
+            # "apigateway_integration_import_id": self.apigateway_integration_import_id,
+            # "apigateway_build_integrations": self.apigateway_build_integrations,
+            # "apigateway_build_method_responses": self.apigateway_build_method_responses,
+            # "apigateway_method_response_import_id": self.apigateway_method_response_import_id,
+            # "apigateway_method_response_index": self.apigateway_method_response_index,
+            # "apigateway_integration_response_index": self.apigateway_integration_response_index,
+            # "apigateway_build_integration_responses": self.apigateway_build_integration_responses,
+            # "apigateway_integration_response_import_id": self.apigateway_integration_response_import_id,
+            # "apigateway_build_gateway_responses": self.apigateway_build_gateway_responses,
+            # "apigateway_gateway_response_import_id": self.apigateway_gateway_response_import_id,
+            # "apigateway_model_import_id": self.apigateway_model_import_id,
+            # "apigateway_build_models": self.apigateway_build_models,
         }
 
         self.hcl.functions.update(functions)
@@ -66,322 +64,22 @@ class Apigateway:
         self.elbv2_instance = ELBV2(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
         self.logs_instance = Logs(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
 
-    def get_field_from_attrs(self, attributes, arg):
-        keys = arg.split(".")
-        result = attributes
-        for key in keys:
-            if isinstance(result, list):
-                result = [sub_result.get(key, None) if isinstance(
-                    sub_result, dict) else None for sub_result in result]
-                if len(result) == 1:
-                    result = result[0]
-            else:
-                result = result.get(key, None)
-            if result is None:
-                return None
-        return result
-    
-    def apigateway_build_resources(self, attributes, arg):
-        result = {}
-        path = attributes.get('path')
-        path_part= attributes.get('path_part')
-        parent_path_part = path.replace(path_part, '')
-
-        if parent_path_part != '/':
-            parent_path_part = parent_path_part.rstrip('/')
-
-        result[path] = {}
-        result[path]['path_part'] = path_part
-        result[path]['parent_path_part'] = parent_path_part
-
-        #calculate the depth by looking at the number of slashes in the path
-        if path == '/':
-            depth = 0
-        else:
-            depth = path.count('/')
-        result[path]['depth'] = depth
-
-        return result
-    
-    def apigateway_build_methods(self, attributes, arg):
-        result = {}
-        rest_api_id = attributes.get('rest_api_id')
-        resource_id = attributes.get('resource_id')
-        http_method = attributes.get('http_method')
-        path = self.api_gateway_resource_list[rest_api_id][resource_id]
-        # path = self.aws_clients.apigateway_client.get_resource(restApiId=rest_api_id, resourceId=resource_id)['path']
-        result[path] = {'methods':{}}
-        result[path]['methods'][http_method] = {}
-        result[path]['methods'][http_method]['authorization'] = attributes.get('authorization')
-        result[path]['methods'][http_method]['authorizer_id'] = attributes.get('authorizer_id')
-        result[path]['methods'][http_method]['authorization_scopes'] = attributes.get('authorization_scopes')
-        result[path]['methods'][http_method]['api_key_required'] = attributes.get('api_key_required')
-        result[path]['methods'][http_method]['operation_name'] = attributes.get('operation_name')
-        result[path]['methods'][http_method]['request_models'] = attributes.get('request_models')
-        result[path]['methods'][http_method]['request_validator_id'] = attributes.get('request_validator_id')
-        result[path]['methods'][http_method]['request_parameters'] = attributes.get('request_parameters')
-
-        return result
-    
-    def apigateway_build_integrations(self, attributes, arg):
-        result = {}
-        rest_api_id = attributes.get('rest_api_id')
-        resource_id = attributes.get('resource_id')
-        http_method = attributes.get('http_method')
-        path = self.api_gateway_resource_list[rest_api_id][resource_id]
-        result[path] = {'methods':{}}
-        result[path]['methods'][http_method] = {"integration":{}}
-        result[path]['methods'][http_method]['integration']['integration_http_method'] = attributes.get('integration_http_method')
-        result[path]['methods'][http_method]['integration']['type'] = attributes.get('type')
-        result[path]['methods'][http_method]['integration']['connection_type'] = attributes.get('connection_type')
-        result[path]['methods'][http_method]['integration']['connection_id'] = attributes.get('connection_id')
-        result[path]['methods'][http_method]['integration']['uri'] = attributes.get('uri')
-        result[path]['methods'][http_method]['integration']['credentials'] = attributes.get('credentials')
-        result[path]['methods'][http_method]['integration']['request_templates'] = attributes.get('request_templates')
-        result[path]['methods'][http_method]['integration']['request_parameters'] = attributes.get('request_parameters')
-        result[path]['methods'][http_method]['integration']['passthrough_behavior'] = attributes.get('passthrough_behavior')
-        result[path]['methods'][http_method]['integration']['cache_key_parameters'] = attributes.get('cache_key_parameters')
-        result[path]['methods'][http_method]['integration']['cache_namespace'] = attributes.get('cache_namespace')
-        result[path]['methods'][http_method]['integration']['content_handling'] = attributes.get('content_handling')
-        result[path]['methods'][http_method]['integration']['timeout_milliseconds'] = attributes.get('timeout_milliseconds')
-        result[path]['methods'][http_method]['integration']['tls_config'] = attributes.get('tls_config')
-
-        return result
-        
-
-    def apigateway_build_method_responses(self, attributes, arg):
-        result = {}
-        rest_api_id = attributes.get('rest_api_id')
-        resource_id = attributes.get('resource_id')
-        http_method = attributes.get('http_method')
-        path = self.api_gateway_resource_list[rest_api_id][resource_id]
-        result[path] = {'methods':{}}
-        result[path]['methods'][http_method] = {"method_responses":{}}
-        result[path]['methods'][http_method]['method_responses'][attributes.get('status_code')]={}
-        result[path]['methods'][http_method]['method_responses'][attributes.get('status_code')]['response_models'] = attributes.get('response_models')
-        result[path]['methods'][http_method]['method_responses'][attributes.get('status_code')]['response_parameters'] = attributes.get('response_parameters')
-
-        return result
-
-    def apigateway_build_integration_responses(self, attributes, arg):
-        result = {}
-        rest_api_id = attributes.get('rest_api_id')
-        resource_id = attributes.get('resource_id')
-        http_method = attributes.get('http_method')
-        path = self.api_gateway_resource_list[rest_api_id][resource_id]
-        result[path] = {'methods':{}}
-        result[path]['methods'][http_method] = {"integration":{}}
-        result[path]['methods'][http_method]['integration']['responses'] = {}
-        result[path]['methods'][http_method]['integration']['responses'][attributes.get('status_code')]={}
-        result[path]['methods'][http_method]['integration']['responses'][attributes.get('status_code')]['response_templates'] = attributes.get('response_templates')
-        result[path]['methods'][http_method]['integration']['responses'][attributes.get('status_code')]['response_parameters'] = attributes.get('response_parameters')
-        result[path]['methods'][http_method]['integration']['responses'][attributes.get('status_code')]['content_handling'] = attributes.get('content_handling')
-        result[path]['methods'][http_method]['integration']['responses'][attributes.get('status_code')]['selection_pattern'] = attributes.get('selection_pattern')
-
-        return result
-
-    def apigateway_target_resource_name(self, attributes, arg):
-        path = attributes.get('path')
-        if path == '/':
-            depth = 0
-        else:
-            depth = path.count('/')
-        
-        return "depth_"+str(depth)
-    
-    def apigateway_target_method_name(self, attributes, arg):
-        rest_api_id = attributes.get('rest_api_id')
-        resource_id = attributes.get('resource_id')
-        #get path for resource
-        path = self.api_gateway_resource_list[rest_api_id][resource_id]
-        # path = self.aws_clients.apigateway_client.get_resource(restApiId=rest_api_id, resourceId=resource_id)['path']
-        if path == '/':
-            depth = 0
-        else:
-            depth = path.count('/')
-        
-        return "depth_"+str(depth)
-    
-    def apigateway_target_integration_name(self, attributes, arg):
-        rest_api_id = attributes.get('rest_api_id')
-        resource_id = attributes.get('resource_id')
-        #get path for resource
-        path = self.api_gateway_resource_list[rest_api_id][resource_id]
-        # path = self.aws_clients.apigateway_client.get_resource(restApiId=rest_api_id, resourceId=resource_id)['path']
-        if path == '/':
-            depth = 0
-        else:
-            depth = path.count('/')
-        
-        return "depth_"+str(depth)
-    
-    def apigateway_method_index(self, attributes):
-        rest_api_id = attributes.get('rest_api_id')
-        resource_id = attributes.get('resource_id')
-        #Get the resource path
-        path = self.api_gateway_resource_list[rest_api_id][resource_id]
-        # path = self.aws_clients.apigateway_client.get_resource(restApiId=rest_api_id, resourceId=resource_id)['path']
-        http_method = attributes.get('http_method')
-        return f"{path}/{http_method}"
-    
-    def apigateway_integration_index(self, attributes):
-        rest_api_id = attributes.get('rest_api_id')
-        resource_id = attributes.get('resource_id')
-        #Get the resource path
-        path = self.api_gateway_resource_list[rest_api_id][resource_id]
-        # path = self.aws_clients.apigateway_client.get_resource(restApiId=rest_api_id, resourceId=resource_id)['path']
-        http_method = attributes.get('http_method')
-        return f"{path}/{http_method}"
-    
-    def apigateway_method_response_index(self, attributes):
-        rest_api_id = attributes.get('rest_api_id')
-        resource_id = attributes.get('resource_id')
-        #Get the resource path
-        path = self.api_gateway_resource_list[rest_api_id][resource_id]
-        # path = self.aws_clients.apigateway_client.get_resource(restApiId=rest_api_id, resourceId=resource_id)['path']
-        http_method = attributes.get('http_method')
-        return f"{path}/{http_method}/{attributes.get('status_code')}"
-
-    def apigateway_integration_response_index(self, attributes):
-        rest_api_id = attributes.get('rest_api_id')
-        resource_id = attributes.get('resource_id')        
-        #Get the resource path
-        path = self.api_gateway_resource_list[rest_api_id][resource_id]
-        # path = self.aws_clients.apigateway_client.get_resource(restApiId=rest_api_id, resourceId=resource_id)['path']
-        http_method = attributes.get('http_method')
-        return f"{path}/{http_method}/{attributes.get('status_code')}"
-
-
-    def aws_api_gateway_deployment_import_id(self, attributes):
-        return f"{attributes['rest_api_id']}/{attributes['id']}"
-    
-    def apigateway_resource_import_id(self, attributes):
-        return f"{attributes['rest_api_id']}/{attributes['id']}"
-    
-    def apigateway_method_import_id(self, attributes):
-        return f"{attributes['rest_api_id']}/{attributes['resource_id']}/{attributes['http_method']}"
-
-    def apigateway_integration_import_id(self, attributes):
-        return f"{attributes['rest_api_id']}/{attributes['resource_id']}/{attributes['http_method']}"
-
-    def apigateway_method_response_import_id(self, attributes):
-        return f"{attributes['rest_api_id']}/{attributes['resource_id']}/{attributes['http_method']}/{attributes['status_code']}"
-
-    def apigateway_integration_response_import_id(self, attributes):
-        return f"{attributes['rest_api_id']}/{attributes['resource_id']}/{attributes['http_method']}/{attributes['status_code']}"
-    
-    def apigateway_gateway_response_import_id(self, attributes):
-        return f"{attributes['rest_api_id']}/{attributes['response_type']}"
-    
-    def apigateway_model_import_id(self, attributes):
-        return f"{attributes['rest_api_id']}/{attributes['name']}"
-    
-    def apigateway_build_models(self, attributes, arg):
-        result = {}
-        name = attributes.get('name')
-        result[name] = {}
-        result[name]['content_type'] = attributes.get('content_type')
-        result[name]['description'] = attributes.get('description')
-        result[name]['schema'] = attributes.get('schema')
-
-        return result
-
-
-    def apigateway_build_gateway_responses(self, attributes, arg):
-        result = {}
-        response_type = attributes.get('response_type')
-        result[response_type] = {}
-        result[response_type]['status_code'] = attributes.get('status_code')
-        result[response_type]['response_templates'] = attributes.get('response_templates')
-        result[response_type]['response_parameters'] = attributes.get('response_parameters')
-
-        return result
-    
-
-    def get_gateway_method_settings(self, attributes):
-        stage_name = attributes['stage_name']
-        method_path = attributes['method_path']
-        return f"{stage_name}/{method_path}"
-    
-    def build_api_gateway_method_settings(self, attributes, arg):
-        result = {}
-        stage_name = attributes['stage_name']
-        method_path = attributes['method_path']
-        key = f"{stage_name}/{method_path}"
-        result[key] = {}
-        result[key]['stage_name'] = stage_name
-        result[key]['method_path'] = method_path
-        settings = attributes.get('settings')
-        if settings:
-            result[key]['cache_data_encrypted'] = settings[0].get('cache_data_encrypted')
-            result[key]['cache_ttl_in_seconds'] = settings[0].get('cache_ttl_in_seconds')
-            result[key]['caching_enabled'] = settings[0].get('caching_enabled')
-            result[key]['data_trace_enabled'] = settings[0].get('data_trace_enabled')
-            result[key]['logging_level'] = settings[0].get('logging_level')
-            result[key]['metrics_enabled'] = settings[0].get('metrics_enabled')
-            result[key]['require_authorization_for_cache_control'] = settings[0].get('require_authorization_for_cache_control')
-            result[key]['throttling_burst_limit'] = settings[0].get('throttling_burst_limit')
-            result[key]['throttling_rate_limit'] = settings[0].get('throttling_rate_limit')
-            result[key]['unauthorized_cache_control_header_strategy'] = settings[0].get('unauthorized_cache_control_header_strategy')
-
-        return result
-    
-
-    
-    def get_stage_name(self,attributes):
-        restApiId=attributes['rest_api_id']
-        deploymentId=attributes['id']
-        stages=self.aws_clients.apigateway_client.get_stages(restApiId=restApiId, deploymentId=deploymentId)
-        return stages['item'][0]['stageName']
-
-    # def build_deployment(self, attributes, arg):
-    #     description = attributes.get('description')
-    #     #use boto3 to get the stage name of the deployment
-    #     stage_name = self.get_stage_name(attributes)
-    #     result = {}
-    #     result[stage_name] = {}
-    #     result[stage_name]['deployment_description'] = description
+    # def get_field_from_attrs(self, attributes, arg):
+    #     keys = arg.split(".")
+    #     result = attributes
+    #     for key in keys:
+    #         if isinstance(result, list):
+    #             result = [sub_result.get(key, None) if isinstance(
+    #                 sub_result, dict) else None for sub_result in result]
+    #             if len(result) == 1:
+    #                 result = result[0]
+    #         else:
+    #             result = result.get(key, None)
+    #         if result is None:
+    #             return None
     #     return result
-
-    def get_stage_name_index(self, attributes):
-        stage_name = attributes['stage_name']
-        deployment_id = attributes['deployment_id']
-        return f"{deployment_id}-{stage_name}"
-
-    def build_stages(self, attributes, arg):
-        stage_name = attributes['stage_name']
-        deployment_id = attributes['deployment_id']
-        result = {}
-        if deployment_id not in result:
-            result[deployment_id] = {'stages':{}}
-        result[deployment_id]['stages'][stage_name] = {}
-        result[deployment_id]['stages'][stage_name]['xray_tracing_enabled'] = attributes.get('xray_tracing_enabled')
-        result[deployment_id]['stages'][stage_name]['cache_cluster_enabled'] = attributes.get('cache_cluster_enabled')
-        tmp = attributes.get('cache_cluster_size')
-        if tmp:
-            result[deployment_id]['stages'][stage_name]['cache_cluster_size'] = tmp
-        tmp = attributes.get('description')
-        if tmp:
-            result[deployment_id]['stages'][stage_name]['description'] = tmp
-        tmp = attributes.get('tags')
-        if tmp:
-            result[deployment_id]['stages'][stage_name]['tags'] = tmp
-        tmp = attributes.get('variables')
-        if tmp:
-            result[deployment_id]['stages'][stage_name]['variables'] = tmp
-        tmp = attributes.get('access_log_settings')
-        if tmp:
-            result[deployment_id]['stages'][stage_name]['access_log_settings'] = tmp
-
-        return result
     
-    def build_deployments(self, attributes, arg):
-        deployment_id = attributes['id']
-        result = {}
-        if deployment_id not in result:
-            result[deployment_id] = {}
-        result[deployment_id]['description'] = attributes.get('description')
-        return result
+
 
     def apigateway(self):
         self.hcl.prepare_folder(os.path.join("generated"))
@@ -832,9 +530,7 @@ class Apigateway:
 
     def aws_api_gateway_integration(self, api_id, resource_id, method, ftstack):
         print("Processing API Gateway Integrations...")
-
         try:
-
             # Retrieve the integration for the specified method
             integration = self.aws_clients.apigateway_client.get_integration(
                 restApiId=api_id, resourceId=resource_id, httpMethod=method)
@@ -957,6 +653,7 @@ class Apigateway:
     #                 "aws_api_gateway_request_validator", resource_name, attributes)
 
     def aws_api_gateway_resource(self, api_id, ftstack):
+        resource_type="aws_api_gateway_resource"
         print(f"Processing API Gateway Resources for API: {api_id}")
 
         paginator = self.aws_clients.apigateway_client.get_paginator("get_resources")
@@ -974,6 +671,12 @@ class Apigateway:
                     "parent_id": resource.get("parentId"),
                     "path_part": resource.get("pathPart"),
                 }
+
+                if resource_type not in self.hcl.additional_data:
+                    self.hcl.additional_data[resource_type] = {}
+                if resource_id not in self.hcl.additional_data[resource_type]:
+                    self.hcl.additional_data[resource_type][resource_id] = {}
+                self.hcl.additional_data[resource_type][resource_id]["path"] = resource.get("path")
 
                 if api_id not in self.api_gateway_resource_list:
                     self.api_gateway_resource_list[api_id] = {}

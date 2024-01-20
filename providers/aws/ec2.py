@@ -22,20 +22,7 @@ class EC2:
         else:
             self.hcl = hcl
 
-        functions = {
-            'get_field_from_attrs': self.get_field_from_attrs,
-            'get_device_index': self.get_device_index,
-            'get_additional_ips_count': self.get_additional_ips_count,
-            'ec2_init_fields': self.ec2_init_fields,
-            'get_device_name': self.get_device_name,
-            'get_device_name_list': self.get_device_name_list,
-            'get_user_data': self.get_user_data,
-            'get_public_ip_addresses': self.get_public_ip_addresses,
-            "get_subnet_name_ec2": self.get_subnet_name_ec2,
-            "get_subnet_id_ec2": self.get_subnet_id_ec2,
-            "get_kms_key_id_ec2": self.get_kms_key_id_ec2,
-            "get_kms_key_alias_ec2": self.get_kms_key_alias_ec2,
-        }
+        functions = {}
 
         self.hcl.functions.update(functions)
 
@@ -45,20 +32,7 @@ class EC2:
         self.security_group_instance = SECURITY_GROUP(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
         self.kms_instance = KMS(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
         self.iam_role_instance = IAM_ROLE(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)        
-
-    def ec2_init_fields(self, attributes):
-        self.additional_ips_count = 0
-
-        return None
-    
-    def get_public_ip_addresses(self, attributes, arg):
-        result ={}
-        public_ip = attributes.get("public_ip")
-        if public_ip is not None:
-            tags = attributes.get("tags")
-            result[public_ip] = {'tags': tags }
-        return result
-    
+        
     def decode_base64(self, encoded_str):
         if encoded_str is not None:
             # Decode the base64 string
@@ -69,38 +43,17 @@ class EC2:
         else:
             return "No data to decode."    
     
-    def get_user_data(self, attributes, arg):
-        instance_id = attributes.get(arg)
+    def ec2_get_user_data(self, instance_id):
         response = self.aws_clients.ec2_client.describe_instance_attribute(
             InstanceId=instance_id, 
             Attribute='userData'
         )
-        #decode base64 response["UserData"]["value"]  and return it
         if "UserData" in response:
             if "value" in response["UserData"]:
                 return self.decode_base64(response["UserData"]["Value"])
         return None
 
-    def get_field_from_attrs(self, attributes, arg):
-        keys = arg.split(".")
-        result = attributes
-        for key in keys:
-            if isinstance(result, list):
-                result = [sub_result.get(key, None) if isinstance(
-                    sub_result, dict) else None for sub_result in result]
-                if len(result) == 1:
-                    result = result[0]
-            else:
-                result = result.get(key, None)
-            if result is None:
-                return None
-        return result
-
-    def get_device_index(self, attributes):
-        return attributes.get("device_index", 0)-1
-    
-    def get_subnet_name_ec2(self, attributes, arg):
-        subnet_id = attributes.get('subnet_id')
+    def get_subnet_name_ec2(self, subnet_id):
         subnet_name = ""
         response = self.aws_clients.ec2_client.describe_subnets(SubnetIds=[subnet_id])
 
@@ -119,19 +72,7 @@ class EC2:
 
         return subnet_name
 
-    def get_subnet_id_ec2(self, attributes, arg):
-        subnet_name = self.get_subnet_name_ec2(attributes, arg)
-        if subnet_name:
-            return ""
-        else:
-            return attributes.get("subnet_id")  
-
-    def get_additional_ips_count(self, attributes):
-        self.additional_ips_count += 1
-        return self.additional_ips_count
-
-    def get_device_name(self, attributes):
-        volume_id = attributes.get("id")
+    def ec2_get_device_name(self, volume_id):
         if not volume_id:
             return None
 
@@ -143,51 +84,6 @@ class EC2:
 
         return None
 
-    def get_device_name_list(self, attributes):
-        volume_id = attributes.get("id")
-        device_name = self.get_device_name(attributes)
-        if not device_name:
-            return None
-
-        result = {}
-        result[device_name] = {}
-
-        volume_type = attributes.get("type")
-        iops = attributes.get("iops")
-        throughput = attributes.get("throughput")
-
-        if volume_type != "gp2" and iops:
-            result[device_name]["iops"] = iops
-
-        if throughput and throughput != 0:
-            result[device_name]["throughput"] = throughput
-
-        # Add other fields conditionally if they are not empty or have a non-zero value
-        for key in ["size", "tags", "encrypted", "kms_key_id", "type"]:
-            value = attributes.get(key)
-            if key == "kms_key_id":
-                # Get the key alias if it exists using boto3
-                if value:
-                    kms_alias = self.get_kms_alias(value)
-                    if kms_alias:
-                        value = kms_alias
-                        key = "kms_key_alias"
-            if value:
-                result[device_name][key] = value
-
-        return result
-    
-    # def get_kms_alias(self, kms_key_id):
-    #     value = ""
-    #     response = self.aws_clients.kms_client.list_aliases()
-    #     if 'Aliases' in response and response['Aliases']:
-    #         for alias in response['Aliases']:
-    #             if 'TargetKeyId' in alias:
-    #                 if alias['TargetKeyId'] == kms_key_id.split('/')[-1]:
-    #                     value = alias['AliasName']
-    #                     break
-    #     return value
-    
     def get_kms_alias(self, kms_key_id):
         value = ""
         response = self.aws_clients.kms_client.list_aliases()
@@ -201,24 +97,6 @@ class EC2:
                 break
         return value    
     
-    def get_kms_key_id_ec2(self, attributes, arg):
-        root_block_device = attributes.get("root_block_device")
-        if root_block_device:
-            kms_key_id = root_block_device[0].get("kms_key_id")
-            kms_key_alias =  self.get_kms_alias(kms_key_id)
-            if not kms_key_alias:
-                return kms_key_id
-        return None
-    
-    def get_kms_key_alias_ec2(self, attributes, arg):
-        kms_key_alias = None
-        root_block_device = attributes.get("root_block_device")
-        if root_block_device:
-            kms_key_id = root_block_device[0].get("kms_key_id")
-            if kms_key_id:
-                kms_key_alias =  self.get_kms_alias(kms_key_id)
-        return kms_key_alias
-
     def ec2(self):
         self.hcl.prepare_folder(os.path.join("generated"))
 
@@ -464,12 +342,6 @@ class EC2:
 
                 attributes = {
                     "id": id,
-                    # "ami": instance.get("ImageId", None),
-                    # "instance_type": instance.get("InstanceType", None),
-                    # "availability_zone": instance.get("Placement", {}).get("AvailabilityZone", None),
-                    # "key_name": instance.get("KeyName", None),
-                    # "subnet_id": instance.get("SubnetId", None),
-                    # "vpc_security_group_ids": [sg["GroupId"] for sg in instance.get("SecurityGroups", [])],
                 }
 
                 # Call root_block_device.kms_key_id
@@ -486,6 +358,13 @@ class EC2:
                             if 'KmsKeyId' in volume:
                                 keyArn = volume['KmsKeyId']
                                 self.kms_instance.aws_kms_key(keyArn, ftstack)
+                                kms_key_alias = self.get_kms_alias(keyArn)
+                                if kms_key_alias:
+                                    if resource_type not in self.hcl.additional_data:
+                                        self.hcl.additional_data[resource_type] = {}
+                                    if id not in self.hcl.additional_data[resource_type]:
+                                        self.hcl.additional_data[resource_type][id] = {}
+                                    self.hcl.additional_data[resource_type][id]["kms_key_alias"] = kms_key_alias
 
                 if "IamInstanceProfile" in instance:
                     attributes["iam_instance_profile"] = instance["IamInstanceProfile"]["Arn"]
@@ -497,6 +376,24 @@ class EC2:
                 self.hcl.process_resource(
                     resource_type, instance_id.replace("-", "_"), attributes)
                 self.hcl.add_stack(resource_type, id, ftstack)
+
+                ec2_get_user_data = self.ec2_get_user_data(instance_id)
+                if ec2_get_user_data:
+                    if resource_type not in self.hcl.additional_data:
+                        self.hcl.additional_data[resource_type] = {}
+                    if id not in self.hcl.additional_data[resource_type]:
+                        self.hcl.additional_data[resource_type][id] = {}
+                    self.hcl.additional_data[resource_type][id]["user_data"] = ec2_get_user_data
+
+                subnet_id = instance.get("SubnetId", "")
+                if subnet_id:
+                    subnet_name = self.get_subnet_name_ec2(subnet_id)
+                    if subnet_name:
+                        if resource_type not in self.hcl.additional_data:
+                            self.hcl.additional_data[resource_type] = {}
+                        if id not in self.hcl.additional_data[resource_type]:
+                            self.hcl.additional_data[resource_type][id] = {}
+                        self.hcl.additional_data[resource_type][id]["subnet_name"] =  subnet_name
 
                 # Process all EIPs associated with the instance
                 eips_associated = self.aws_clients.ec2_client.describe_addresses(Filters=[{
@@ -520,6 +417,13 @@ class EC2:
                         if 'KmsKeyId' in volume:
                             keyArn = volume['KmsKeyId']
                             self.kms_instance.aws_kms_key(keyArn, ftstack)
+                            kms_key_alias = self.get_kms_alias(keyArn)
+                            if kms_key_alias:
+                                if "aws_ebs_volume" not in self.hcl.additional_data:
+                                    self.hcl.additional_data["aws_ebs_volume"] = {}
+                                if volume_id not in self.hcl.additional_data["aws_ebs_volume"]:
+                                    self.hcl.additional_data["aws_ebs_volume"][volume_id] = {}
+                                self.hcl.additional_data["aws_ebs_volume"][volume_id]["kms_key_alias"] = kms_key_alias
 
                 #find the securitu groups and call self.security_group_instance.aws_security_group(sg, ftstack)
                 # print(instance.get("SecurityGroups", []))
@@ -587,6 +491,7 @@ class EC2:
             "aws_iam_role", role_name.replace("-", "_"), attributes)
 
     def aws_ebs_volume(self, volume_id):
+        resource_type ="aws_ebs_volume"
         print(f"Processing EBS Volume: {volume_id}")
 
         volume = self.aws_clients.ec2_client.describe_volumes(VolumeIds=[volume_id])
@@ -596,9 +501,10 @@ class EC2:
             return
 
         vol = volume["Volumes"][0]
+        id = vol["VolumeId"]
 
         attributes = {
-            "id": vol["VolumeId"],
+            "id": id,
             "availability_zone": vol["AvailabilityZone"],
             "size": vol["Size"],
             "state": vol["State"],
@@ -611,7 +517,15 @@ class EC2:
             attributes["snapshot_id"] = vol["SnapshotId"]
 
         self.hcl.process_resource(
-            "aws_ebs_volume", volume_id.replace("-", "_"), attributes)
+            resource_type, volume_id.replace("-", "_"), attributes)
+        
+        device_name = self.ec2_get_device_name(id)
+        if device_name:
+            if resource_type not in self.hcl.additional_data:
+                self.hcl.additional_data[resource_type] = {}
+            if id not in self.hcl.additional_data[resource_type]:
+                self.hcl.additional_data[resource_type][id] = {}
+            self.hcl.additional_data[resource_type][id]["device_name"] =  device_name
 
     def aws_volume_attachment(self, instance_id, block_device):
         device_name = block_device["DeviceName"]
@@ -667,7 +581,7 @@ class EC2:
         self.hcl.process_resource(
             "aws_network_interface", network_interface_id.replace("-", "_"), attributes)
 
-    def aws_network_interface_attachment(self, instance_id, network_interface):
+    def aws_network_interface_attachment(self, instance_id, network_interface):        
         print(
             f"Processing Network Interface Attachment for Network Interface: {network_interface['NetworkInterfaceId']} on Instance: {instance_id}")
 

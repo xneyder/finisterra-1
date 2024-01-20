@@ -1,6 +1,7 @@
 import os
 from utils.hcl import HCL
-
+from providers.aws.security_group import SECURITY_GROUP
+from providers.aws.kms import KMS
 
 class DocDb:
     def __init__(self, aws_clients, script_dir, provider_name, schema_data, region, s3Bucket,
@@ -19,39 +20,30 @@ class DocDb:
                        self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules)
         self.resource_list = {}
 
-        functions = {
-            'build_dict_var': self.build_dict_var,
-            'match_security_group': self.match_security_group,
-            'build_cluster_instances': self.build_cluster_instances,
-            'get_subnet_names': self.get_subnet_names,
-            'get_vpc_name': self.get_vpc_name,
-            'get_security_group_rules': self.get_security_group_rules,
-            'aws_security_group_rule_import_id': self.aws_security_group_rule_import_id,
-        }
+        functions = {}
 
-        self.hcl.functions.update(functions)        
+        self.hcl.functions.update(functions)  
+        self.security_group_instance = SECURITY_GROUP(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)      
+        self.kms_instance = KMS(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
 
-    def build_dict_var(self, attributes, arg):
-        key = attributes[arg]
-        result = {key: {}}
-        for k, v in attributes.items():
-            if v is not None:
-                result[key][k] = v
-        return result
+    def get_vpc_name(self, vpc_id):
+        response = self.aws_clients.ec2_client.describe_vpcs(VpcIds=[vpc_id])
 
-    def build_cluster_instances(self, attributes, arg):
-        key = attributes[arg]
-        result = {key: {}}
-        for k in ['identifier', 'apply_immediately', 'preferred_maintenance_window', 'instance_class', 'engine', 'auto_minor_version_upgrade', 'enable_performance_insights', 'promotion_tier', 'tags']:
-            val = attributes.get(k)
-            if isinstance(val, str):
-                val = val.replace('${', '$${')
-            result[key][k] = val
-        return result
+        if not response or 'Vpcs' not in response or not response['Vpcs']:
+            # Handle this case as required, for example:
+            print(f"No VPC information found for VPC ID: {vpc_id}")
+            return None
 
-    def get_subnet_names(self, attributes, arg):
+        vpc_tags = response['Vpcs'][0].get('Tags', [])
+        vpc_name = next((tag['Value']
+                        for tag in vpc_tags if tag['Key'] == 'Name'), None)
 
-        subnet_ids = attributes.get(arg)
+        if vpc_name is None:
+            print(f"No 'Name' tag found for VPC ID: {vpc_id}")
+
+        return vpc_name
+
+    def get_subnet_names(self, subnet_ids):
         subnet_names = []
         for subnet_id in subnet_ids:
             response = self.aws_clients.ec2_client.describe_subnets(SubnetIds=[subnet_id])
@@ -66,60 +58,10 @@ class DocDb:
 
         return subnet_names
 
-    def aws_security_group_rule_import_id(self, attributes):
-        security_group_id = attributes.get('security_group_id')
-        type = attributes.get('type')
-        protocol = attributes.get('protocol')
-        from_port = attributes.get('from_port')
-        to_port = attributes.get('to_port')
-        cidr_blocks = attributes.get('cidr_blocks')
-        source = "_".join(cidr_blocks)
-        return security_group_id+"_"+type+"_"+protocol+"_"+str(from_port)+"_"+str(to_port)+"_"+source
-
-    def get_vpc_name(self, attributes, arg):
-        vpc_id = attributes.get(arg)
-        response = self.aws_clients.ec2_client.describe_vpcs(VpcIds=[vpc_id])
-        vpc_name = next(
-            (tag['Value'] for tag in response['Vpcs'][0]['Tags'] if tag['Key'] == 'Name'), None)
-        return vpc_name
-
-    def get_security_group_rules(self, attributes, arg):
-        key = attributes[arg]
-        result = {key: {}}
-        for k in ['type', 'description', 'from_port', 'to_port', 'protocol', 'cidr_blocks']:
-            val = attributes.get(k)
-            if isinstance(val, str):
-                val = val.replace('${', '$${')
-            result[key][k] = val
-        return result
-
-    def match_security_group(self, parent_attributes, child_attributes):
-        child_security_group_id = child_attributes.get("id", None)
-        for security_group in parent_attributes.get("vpc_security_group_ids", []):
-            if security_group == child_security_group_id:
-                return True
-        return False
-
     def docdb(self):
         self.hcl.prepare_folder(os.path.join("generated"))
 
-        # aws_docdb_cluster.default
-        # aws_docdb_cluster_instance.default
-        # aws_docdb_cluster_parameter_group.default
-        # aws_docdb_subnet_group.default
-        # aws_security_group.default
-        # aws_security_group_rule.allow_ingress_from_self
-        # aws_security_group_rule.egress
-        # aws_security_group_rule.ingress_cidr_blocks
-        # aws_security_group_rule.ingress_security_groups
-        # random_password.password
-
-        # self.aws_docdb_cluster_snapshot() #disbale because it can be too long and not really needed for modules
-        # self.aws_docdb_event_subscription()
-        # self.aws_docdb_global_cluster()
-
         self.aws_docdb_cluster()
-
 
         self.hcl.refresh_state()
 
@@ -163,11 +105,15 @@ class DocDb:
                     self.aws_docdb_cluster_instance(db_cluster)
 
                     # Call aws_security_group with the list of VpcSecurityGroups
-                    vpc_security_group_ids = [sg["VpcSecurityGroupId"]
-                                            for sg in db_cluster.get("VpcSecurityGroups", [])]
-                    self.aws_security_group(vpc_security_group_ids)
-                    if db_cluster.get("KmsKeyId", None):
-                        self.aws_kms_key(db_cluster.get("KmsKeyId", None))
+
+                    for sg in db_cluster.get("VpcSecurityGroups", []):
+                        self.security_group_instance.aws_security_group(sg["VpcSecurityGroupId"], ftstack)
+                    # vpc_security_group_ids = [sg["VpcSecurityGroupId"]
+                    #                         for sg in db_cluster.get("VpcSecurityGroups", [])]
+                    # self.aws_security_group(vpc_security_group_ids)
+                    KmsKeyId = db_cluster.get("KmsKeyId", None)
+                    if KmsKeyId:
+                        self.kms_instance.aws_kms_key(KmsKeyId, ftstack)
 
     def aws_docdb_cluster_instance(self, db_cluster):
         print("Processing DocumentDB Cluster Instances...")
@@ -228,6 +174,7 @@ class DocDb:
                                                   parameter_group["DBClusterParameterGroupName"].replace("-", "_"), attributes)
 
     def aws_docdb_subnet_group(self, subnet_group_name):
+        resource_type="aws_docdb_subnet_group"
         print("Processing DocumentDB Subnet Groups...")
 
         paginator = self.aws_clients.docdb_client.get_paginator(
@@ -239,72 +186,47 @@ class DocDb:
                     if "DocumentDB" in subnet_group.get("DBSubnetGroupDescription", ""):
                         print(
                             f"  Processing DocumentDB Subnet Group: {subnet_group['DBSubnetGroupName']}")
+                        
+                        subnet_ids = [subnet['SubnetIdentifier'] for subnet in subnet_group.get("Subnets", [])]
+                        id = subnet_group["DBSubnetGroupName"]
+
 
                         attributes = {
                             "id": subnet_group["DBSubnetGroupName"],
                             "name": subnet_group.get("DBSubnetGroupName", None),
                             "description": subnet_group.get("DBSubnetGroupDescription", None),
-                            "subnet_ids": [subnet['SubnetIdentifier'] for subnet in subnet_group.get("Subnets", [])],
+                            "subnet_ids": subnet_ids,
                             "arn": subnet_group.get("DBSubnetGroupArn", None),
                         }
                         self.hcl.process_resource(
-                            "aws_docdb_subnet_group", subnet_group["DBSubnetGroupName"].replace("-", "_"), attributes)
+                            resource_type, subnet_group["DBSubnetGroupName"].replace("-", "_"), attributes)
+                        
+                        subnet_names = self.get_subnet_names(subnet_ids)
+                        if subnet_names:
+                            if resource_type not in self.hcl.additional_data:
+                                self.hcl.additional_data[resource_type] = {}
+                            if id not in self.hcl.additional_data[resource_type]:
+                                self.hcl.additional_data[resource_type][id] = {}
+                            self.hcl.additional_data[resource_type][id]["subnet_names"] = subnet_names
 
-    def aws_security_group(self, security_group_ids):
-        print("Processing Security Groups...")
+                        VpcId = subnet_group.get("VpcId", None)
+                        if VpcId:
+                            if resource_type not in self.hcl.additional_data:
+                                self.hcl.additional_data[resource_type] = {}
+                            if id not in self.hcl.additional_data[resource_type]:
+                                self.hcl.additional_data[resource_type][id] = {}
+                            self.hcl.additional_data[resource_type][id]["vpc_id"] = VpcId
+                            vpc_name = self.get_vpc_name(VpcId)
+                            if vpc_name:
+                                if resource_type not in self.hcl.additional_data:
+                                    self.hcl.additional_data[resource_type] = {}
+                                if id not in self.hcl.additional_data[resource_type]:
+                                    self.hcl.additional_data[resource_type][id] = {}
+                                self.hcl.additional_data[resource_type][id]["vpc_name"] = vpc_name
+                        
 
-        # Create a response dictionary to collect responses for all security groups
-        response = self.aws_clients.ec2_client.describe_security_groups(
-            GroupIds=security_group_ids
-        )
 
-        for security_group in response["SecurityGroups"]:
-            print(
-                f"  Processing Security Group: {security_group['GroupName']}")
 
-            attributes = {
-                "id": security_group["GroupId"],
-                "name": security_group["GroupName"],
-                "description": security_group.get("Description", ""),
-                "vpc_id": security_group.get("VpcId", ""),
-                "owner_id": security_group.get("OwnerId", ""),
-            }
-
-            self.hcl.process_resource(
-                "aws_security_group", security_group["GroupName"].replace("-", "_"), attributes)
-
-            # Process egress rules
-            for rule in security_group.get('IpPermissionsEgress', []):
-                self.aws_security_group_rule(
-                    'egress', security_group, rule)
-
-            # Process ingress rules
-            for rule in security_group.get('IpPermissions', []):
-                self.aws_security_group_rule(
-                    'ingress', security_group, rule)
-
-    def aws_security_group_rule(self, rule_type, security_group, rule):
-        # Rule identifiers are often constructed by combining security group id, rule type, protocol, ports and security group references
-        rule_id = f"{security_group['GroupId']}_{rule_type}_{rule.get('IpProtocol', 'all')}"
-        print(f"Processing Security Groups Rule {rule_id}...")
-        if rule.get('FromPort'):
-            rule_id += f"_{rule['FromPort']}"
-        if rule.get('ToPort'):
-            rule_id += f"_{rule['ToPort']}"
-
-        attributes = {
-            "id": rule_id,
-            "type": rule_type,
-            "security_group_id": security_group['GroupId'],
-            "protocol": rule.get('IpProtocol', '-1'),  # '-1' stands for 'all'
-            "from_port": rule.get('FromPort', 0),
-            "to_port": rule.get('ToPort', 0),
-            "cidr_blocks": [ip_range['CidrIp'] for ip_range in rule.get('IpRanges', [])],
-            "source_security_group_ids": [sg['GroupId'] for sg in rule.get('UserIdGroupPairs', [])]
-        }
-
-        self.hcl.process_resource(
-            "aws_security_group_rule", rule_id.replace("-", "_"), attributes)
 
     def aws_docdb_cluster_snapshot(self):
         print("Processing DocumentDB Cluster Snapshots...")
@@ -373,37 +295,3 @@ class DocDb:
                     self.hcl.process_resource(
                         "aws_docdb_global_cluster", cluster["GlobalClusterIdentifier"].replace("-", "_"), attributes)
 
-    def aws_kms_key(self, key_id):
-        print(f"  Processing KMS Key: {key_id}")
-        key_metadata = self.aws_clients.kms_client.describe_key(KeyId=key_id)[
-            "KeyMetadata"]
-
-        # Skip this key if it is not customer-managed
-        # if key_metadata["KeyManager"] != "CUSTOMER":
-        #     return
-
-        attributes = {
-            "id": key_id,
-            "key_id": key_id,
-            "arn": key_metadata["Arn"],
-            "creation_date": key_metadata["CreationDate"].isoformat(),
-            "enabled": key_metadata["Enabled"],
-            "key_usage": key_metadata["KeyUsage"],
-            "key_state": key_metadata["KeyState"],
-        }
-        self.hcl.process_resource(
-            "aws_kms_key", key_id.replace("-", "_"), attributes)
-        self.aws_kms_key_policy(key_id)
-
-    def aws_kms_key_policy(self, key_id):
-        print(f"  Processing KMS Key Policy for Key: {key_id}")
-        policy = self.aws_clients.kms_client.get_key_policy(
-            KeyId=key_id, PolicyName="default")["Policy"]
-
-        attributes = {
-            "id": key_id,
-            "key_id": key_id,
-            "policy": policy,
-        }
-        self.hcl.process_resource(
-            "aws_kms_key_policy", key_id.replace("-", "_"), attributes)

@@ -20,93 +20,11 @@ class Dynamodb:
         self.resource_list = {}
 
         functions = {
-            'get_field_from_attrs': self.get_field_from_attrs,
-            'get_name_from_arn': self.get_name_from_arn,
-            'aws_appautoscaling_target_name': self.aws_appautoscaling_target_name,
-            'autoscaling_read': self.autoscaling_read,
-            'autoscaling_write': self.autoscaling_write,
-            'aws_appautoscaling_policy_name': self.aws_appautoscaling_policy_name,
-            'table_read_policy_name': self.table_read_policy_name,
-            'table_write_policy_name': self.table_write_policy_name,
-            'index_read_policy_name': self.index_read_policy_name,
-            'index_write_policy_name': self.index_write_policy_name,
-            'autoscaling_read_enabled': self.autoscaling_read_enabled,
-            'autoscaling_write_enabled': self.autoscaling_write_enabled,
-            'aws_dyanmodb_target_name': self.aws_dyanmodb_target_name,
-            'aws_appautoscaling_policy_import_id': self.aws_appautoscaling_policy_import_id,
-            'aws_appautoscaling_target_import_id': self.aws_appautoscaling_target_import_id,
-            'is_not_read_capacity': self.is_not_read_capacity,
-            'is_not_write_capacity': self.is_not_write_capacity,
-            'is_not_read_index_capacity': self.is_not_read_index_capacity,
-            'is_not_write_index_capacity': self.is_not_write_index_capacity,
-            'build_autoscaling': self.build_autoscaling,
-            'build_autoscaling_policy': self.build_autoscaling_policy,
-            'get_autosaling_type': self.get_autosaling_type,
         }
 
         self.hcl.functions.update(functions)        
 
-    def get_field_from_attrs(self, attributes, arg):
-        keys = arg.split(".")
-        result = attributes
-        for key in keys:
-            if isinstance(result, list):
-                result = [sub_result.get(key, None) if isinstance(
-                    sub_result, dict) else None for sub_result in result]
-                if len(result) == 1:
-                    result = result[0]
-            else:
-                result = result.get(key, None)
-            if result is None:
-                return None
-        return result
-
-    def aws_appautoscaling_policy_import_id(self, attributes):
-        return f"{attributes.get('service_namespace')}/{attributes.get('resource_id')}/{attributes.get('scalable_dimension')}/{attributes.get('name')}"
-
-    def aws_appautoscaling_target_import_id(self, attributes):
-        return f"{attributes.get('service_namespace')}/{attributes.get('resource_id')}/{attributes.get('scalable_dimension')}"
-
-    def get_name_from_arn(self, attributes, arg):
-        arn = attributes.get(arg)
-        if arn is not None:
-            # split the string by '/' and take the last part as the cluster_arn
-            return arn.split('/')[-1]
-        return None
-    
-    def is_not_write_capacity(self, attributes, arg):
-        scalable_dimension = attributes.get("scalable_dimension", "")
-        if scalable_dimension != "dynamodb:table:WriteCapacityUnits":
-            return True
-        
-    def is_not_write_index_capacity(self, attributes, arg):
-        scalable_dimension = attributes.get("scalable_dimension", "")
-        if scalable_dimension != "dynamodb:index:WriteCapacityUnits":
-            return True
-        
-    def is_not_read_index_capacity(self, attributes, arg):
-        scalable_dimension = attributes.get("scalable_dimension", "")
-        if scalable_dimension != "dynamodb:index:ReadCapacityUnits":
-            return True
-
-    def is_not_read_capacity(self, attributes, arg):
-        scalable_dimension = attributes.get("scalable_dimension", "")
-        if scalable_dimension != "dynamodb:table:ReadCapacityUnits":
-            return True
-        
-    def aws_appautoscaling_target_name(self, attributes):
-        if attributes.get("scalable_dimension", "") == "dynamodb:table:ReadCapacityUnits":
-            return "table_read"
-        elif attributes.get("scalable_dimension", "") == "dynamodb:table:WriteCapacityUnits":
-            return "table_write"
-        elif attributes.get("scalable_dimension", "") == "dynamodb:index:ReadCapacityUnits":
-            return "index_read"
-        elif attributes.get("scalable_dimension", "") == "dynamodb:index:WriteCapacityUnits":
-            return "index_write"
-        return None
-
-    def aws_dyanmodb_target_name(self, attributes):
-        table_name = attributes.get("name", "")
+    def dynamodb_aws_dynamodb_target_name(self, table_name):
         service_namespace = 'dynamodb'
         resource_id = f'table/{table_name}'
         print(
@@ -125,144 +43,16 @@ class Dynamodb:
         except Exception as e:
             print(f"Error: {e}")
             return "this"
-
-    def autoscaling_read(self, attributes):
-        if attributes.get("scalable_dimension", "") == "dynamodb:table:ReadCapacityUnits":
-            target_tracking_scaling_policy_configuration = attributes.get(
-                "target_tracking_scaling_policy_configuration", [{}])[0]
-            return {
-                key: target_tracking_scaling_policy_configuration.get(key)
-                for key in ["scale_in_cooldown", "scale_out_cooldown", "target_value"]
-                if target_tracking_scaling_policy_configuration.get(key) is not None
-            }
-        return None
-
-    def autoscaling_write(self, attributes):
-        if attributes.get("scalable_dimension", "") == "dynamodb:table:WriteCapacityUnits":
-            target_tracking_scaling_policy_configuration = attributes.get(
-                "target_tracking_scaling_policy_configuration", [{}])[0]
-            return {
-                key: target_tracking_scaling_policy_configuration.get(key)
-                for key in ["scale_in_cooldown", "scale_out_cooldown", "target_value"]
-                if target_tracking_scaling_policy_configuration.get(key) is not None
-            }
-        return None
-
-    def table_read_policy_name(self, attributes):
-        if attributes.get("scalable_dimension", "") == "dynamodb:table:ReadCapacityUnits":
-            return attributes.get("name", "")
-        return None
-
-    def table_write_policy_name(self, attributes):
-        if attributes.get("scalable_dimension", "") == "dynamodb:table:WriteCapacityUnits":
-            return attributes.get("name", "")
-        return None
-
-    def index_read_policy_name(self, attributes):
-        if attributes.get("scalable_dimension", "") == "dynamodb:index:ReadCapacityUnits":
-            return attributes.get("name", "")
-        return None
-
-    def index_write_policy_name(self, attributes):
-        if attributes.get("scalable_dimension", "") == "dynamodb:index:WriteCapacityUnits":
-            return attributes.get("name", "")
-        return None
-
-    def aws_appautoscaling_policy_name(self, attributes):
-        if attributes.get("scalable_dimension", "") == "dynamodb:table:ReadCapacityUnits":
-            return "table_read_policy"
-        elif attributes.get("scalable_dimension", "") == "dynamodb:table:WriteCapacityUnits":
-            return "table_write_policy"
-        elif attributes.get("scalable_dimension", "") == "dynamodb:index:ReadCapacityUnits":
-            return "index_read_policy"
-        elif attributes.get("scalable_dimension", "") == "dynamodb:index:WriteCapacityUnits":
-            return "index_write_policy"
-        return None
-
-    def autoscaling_read_enabled(self, attributes):
-        if attributes.get("scalable_dimension", "") == "dynamodb:table:ReadCapacityUnits":
-            return True
-        return None
-
-    def autoscaling_write_enabled(self, attributes):
-        if attributes.get("scalable_dimension", "") == "dynamodb:table:WriteCapacityUnits":
-            return True
-        return None
-    
-    def build_autoscaling(self, attributes,arg):
-        scalable_dimension = attributes.get("scalable_dimension", "")
-        name = self.get_scalable_dimension(scalable_dimension)
         
-        result = {}
-        result[name] = {}
-        result[name]["max_capacity"] = attributes.get("max_capacity", None)
-        result[name]["min_capacity"] = attributes.get("min_capacity", None)
-        result[name]["scalable_dimension"] = scalable_dimension
-        return result
-    
-    def get_scalable_dimension(self, scalable_dimension):
-        if scalable_dimension == "dynamodb:table:ReadCapacityUnits":
-            name = "table_read_policy"
-        elif scalable_dimension == "dynamodb:table:WriteCapacityUnits":
-            name = "table_write_policy"
-        elif scalable_dimension == "dynamodb:index:ReadCapacityUnits":
-            name = "index_read_policy"
-        elif scalable_dimension == "dynamodb:index:WriteCapacityUnits":
-            name = "index_write_policy"
-
-        return name
-    
-    def get_autosaling_type(self, attributes):
-        scalable_dimension = attributes.get("scalable_dimension", "")
-        return self.get_scalable_dimension(scalable_dimension)
-
-    
-    def build_autoscaling_policy(self, attributes,arg):
-        scalable_dimension = attributes.get("scalable_dimension", "")
-        name = self.get_scalable_dimension(scalable_dimension)
-        result = {}
-        result[name] = {}
-        result[name]["policy_name"] = attributes.get("name", None)
-        tmp = attributes.get("target_tracking_scaling_policy_configuration", [])
-        if tmp:
-            tmp2 = tmp[0].get("predefined_metric_specification", [])
-            if tmp2:
-                result[name]["predefined_metric_type"] = tmp2[0].get("predefined_metric_type", None)
-            result[name]["scale_in_cooldown"] = tmp[0].get("scale_in_cooldown", None)
-            result[name]["scale_out_cooldown"] = tmp[0].get("scale_out_cooldown", None)
-            result[name]["target_value"] = tmp[0].get("target_value", None)
-
-        return result
-
     def dynamodb(self):
         self.hcl.prepare_folder(os.path.join("generated"))
 
-        # aws_appautoscaling_policy.index_read_policy
-        # aws_appautoscaling_policy.index_write_policy
-        # aws_appautoscaling_policy.table_read_policy
-        # aws_appautoscaling_policy.table_write_policy
-        # aws_appautoscaling_target.index_read
-        # aws_appautoscaling_target.index_write
-        # aws_appautoscaling_target.table_read
-        # aws_appautoscaling_target.table_write
-        # aws_dynamodb_table.autoscaled
-        # aws_dynamodb_table.autoscaled_gsi_ignore
-        # aws_dynamodb_table.this
-
-        # self.aws_dynamodb_contributor_insights() #import error
-        # self.aws_dynamodb_kinesis_streaming_destination()
-        # self.aws_dynamodb_global_table()
-        # self.aws_dynamodb_table_replica()
-        # self.aws_dynamodb_tag() #Terraform permissions issue
-
         self.aws_dynamodb_table()
-
 
         self.hcl.refresh_state()
 
         self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id)
 
-        # self.hcl.generate_hcl_file()
         self.json_plan = self.hcl.json_plan
 
     def aws_dynamodb_table(self):
@@ -308,6 +98,13 @@ class Dynamodb:
                 self.hcl.process_resource(
                     resource_type, table_name.replace("-", "_"), attributes)
                 self.hcl.add_stack(resource_type, id, ftstack)
+
+                target_name = self.dynamodb_aws_dynamodb_target_name(table_name)
+                if resource_type not in self.hcl.additional_data:
+                    self.hcl.additional_data[resource_type] = {}
+                if id not in self.hcl.additional_data[resource_type]:
+                    self.hcl.additional_data[resource_type][id] = {}
+                self.hcl.additional_data[resource_type][id]["target_name"] = target_name
 
                 self.aws_appautoscaling_target(table_name)
 

@@ -87,14 +87,14 @@ aws_api_gateway_rest_api:
           field: rest_api_id
       target_resource_name: this
       import_id:
-        function: aws_api_gateway_deployment_import_id
+        function: apigateway_deployment_import_id
       second_index:
         field: id
       # defaults:
       #   create_api_gateway_deployment: true
       fields:
         deployments:
-          function: build_deployments
+          function: apigateway_build_deployments
           type: map
           arg: id
     aws_api_gateway_rest_api_policy:
@@ -115,10 +115,10 @@ aws_api_gateway_rest_api:
       # defaults:
       #   create_api_gateway_stage: true
       second_index:
-        function: get_stage_name_index
+        function: apigateway_get_stage_name_index
       fields:
         deployments:
-          function: build_stages
+          function: apigateway_build_stages
           type: map
           arg: id
 
@@ -128,10 +128,10 @@ aws_api_gateway_rest_api:
           field: rest_api_id
       target_resource_name: all
       second_index:
-        function: get_gateway_method_settings
+        function: apigateway_get_method_settings
       fields:
         api_gateway_method_settings:
-          function: build_api_gateway_method_settings
+          function: apigateway_build_method_settings
           type: map
           arg: id
     aws_api_gateway_resource:

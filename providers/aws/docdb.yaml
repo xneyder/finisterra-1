@@ -3,11 +3,17 @@ aws_docdb_cluster:
   terraform_module_version: "0.20.0"
   target_resource_name: default
   name_field: cluster_identifier
-  defaults:
-    enabled: true
-    create_random_password: false
-    create_kms_key: false
+  # defaults:
+  # enabled: true
+  # create_random_password: false
   # path: "docdb"
+  joined_fields:
+    vpc_security_group_ids:
+      sub_fields:
+        - vpc_security_group_ids
+    kms_key_id:
+      sub_fields:
+        - kms_key_id
   fields:
     cluster_identifier:
       field: cluster_identifier
@@ -42,9 +48,9 @@ aws_docdb_cluster:
     storage_encrypted:
       field: storage_encrypted
       type: bool
-    # kms_key_id:
-    #   field: kms_key_id
-    #   type: string
+    kms_key_id:
+      field: kms_key_id
+      type: string
     db_port:
       field: port
       type: number
@@ -57,6 +63,9 @@ aws_docdb_cluster:
     engine_version:
       field: engine_version
       type: string
+    vpc_security_group_ids:
+      field: vpc_security_group_ids
+      type: list
     enabled_cloudwatch_logs_exports:
       field: enabled_cloudwatch_logs_exports
       type: list
@@ -76,7 +85,7 @@ aws_docdb_cluster:
         field: identifier
       fields:
         cluster_instances:
-          function: build_cluster_instances
+          function: docdb_build_cluster_instances
           arg: identifier
           type: map
 
@@ -88,13 +97,22 @@ aws_docdb_cluster:
         enable_aws_docdb_subnet_group: true
       target_resource_name: default
       fields:
+        vpc_name:
+          function: docdb_get_vpc_name
+          arg: vpc_id
+          type: string
+        vpc_id:
+          function: docdb_get_vpc_id
+          arg: vpc_id
+          type: string
         subnet_names:
-          function: get_subnet_names
+          function: docdb_get_subnet_names
           arg: subnet_ids
           type: list
-        # subnet_ids:
-        #   field: subnet_ids
-        #   type: list
+        subnet_ids:
+          function: docdb_get_subnet_ids
+          arg: subnet_ids
+          type: list
         db_subnet_group_name:
           field: name
           type: string
@@ -125,74 +143,3 @@ aws_docdb_cluster:
         cluster_parameter_group_tags:
           field: tags
           type: map
-
-    aws_security_group:
-      join:
-        id:
-          join_function: match_security_group
-      target_resource_name: default
-      defaults:
-        create_security_group: true
-      fields:
-        security_group_name:
-          field: name
-          type: string
-        vpc_name:
-          function: get_vpc_name
-          arg: vpc_id
-          type: string
-        # vpc_id:
-        #   field: vpc_id
-        #   type: string
-        security_group_description:
-          field: description
-          type: string
-        security_group_tags:
-          field: tags
-          type: map
-      childs:
-        aws_security_group_rule:
-          join:
-            id:
-              field: security_group_id
-          import_id:
-            function: aws_security_group_rule_import_id
-          target_resource_name: default
-          second_index:
-            field: id
-          fields:
-            security_group_rules:
-              function: get_security_group_rules
-              arg: id
-              type: list
-    aws_kms_key:
-      join:
-        kms_key_id:
-          field: id
-      target_resource_name: default
-      fields:
-        create_kms_key:
-          unique: true
-        kms_description:
-          field: description
-          type: string
-        kms_enable_key_rotation:
-          field: enable_key_rotation
-          type: bool
-        kms_deletion_window_in_days:
-          field: deletion_window_in_days
-          type: number
-        kms_tags:
-          field: tags
-          type: map
-      childs:
-        aws_kms_key_policy:
-          join:
-            key_id:
-              field: key_id
-          target_resource_name: default
-          fields:
-            kms_policy:
-              field: policy
-              type: string
-              multiline: true

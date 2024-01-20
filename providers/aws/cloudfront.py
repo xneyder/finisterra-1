@@ -30,16 +30,7 @@ class CloudFront:
         self.aws_account_id = aws_account_id
         self.origin = {}
 
-        functions = {
-            'get_field_from_attrs': self.get_field_from_attrs,
-            'build_origin': self.build_origin,
-            'join_origin_access_identity': self.join_origin_access_identity,
-            'build_origin_access_identities': self.build_origin_access_identities,
-            'build_default_cache_behavior': self.build_default_cache_behavior,
-            'build_viewer_certificate': self.build_viewer_certificate,
-            'build_ordered_cache_behavior': self.build_ordered_cache_behavior,
-            'build_geo_restriction': self.build_geo_restriction,
-        }
+        functions = {}
 
         self.hcl.functions.update(functions)
 
@@ -48,220 +39,16 @@ class CloudFront:
         self.aws_lambda_instance = AwsLambda(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
         self.wafv2_instance = Wafv2(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
 
-    def get_field_from_attrs(self, attributes, arg):
-        try:
-            keys = arg.split(".")
-            result = attributes
-
-            for key in keys:
-                if isinstance(result, list):
-                    result = [sub_result.get(key, None) if isinstance(
-                        sub_result, dict) else None for sub_result in result]
-                    if len(result) == 1:
-                        result = result[0]
-                else:
-                    result = result.get(key, None)
-
-                if result is None:
-                    return None
-            return result
-
-        except Exception as e:
-            return None
-
-    def build_origin(self, attributes):
-        # Create a deep copy of the attributes to avoid modifying the original
-        attributes_copy = copy.deepcopy(attributes)
-        origin_list = attributes_copy.get("origin", [])
-        result = {}
-
-        for origin in origin_list:
-            origin_key = origin['origin_id']
-
-            # Remove empty fields and convert lists to their first item
-            transformed_origin = {}
-            for k, v in origin.items():
-                if v:  # check if the value is not empty
-                    if k in ("custom_header"):
-                        transformed_origin[k] = v
-                    elif isinstance(v, list):
-                        transformed_origin[k] = v[0]
-                    else:
-                        transformed_origin[k] = v
-
-            result[origin_key] = transformed_origin
-
-        self.origin = result
-        return result
-    
-    def get_managed_cache_policy_name(self, cache_policy_id):
+    def get_managed_cache_policies(self):
         managed_cache_policies = self.aws_clients.cloudfront_client.list_cache_policies(
             Type="managed",
             MaxItems="100"
         ).get("CachePolicyList", [])
-
+        result = {}
         for policy in managed_cache_policies['Items']:
             if policy['Type'] != 'managed':
                 continue
-            if policy["CachePolicy"]["Id"] == cache_policy_id:
-                return policy["CachePolicy"]["CachePolicyConfig"]["Name"]
-        return None
-
-    def build_default_cache_behavior(self, attributes):
-        default_cache_behavior = attributes.get("default_cache_behavior", [])
-        result = {}
-        if not default_cache_behavior:
-            return result
-        for k, v in default_cache_behavior[0].items():
-            if v:  # check if the value is not empty
-                if k == "cache_policy_id":
-                    cache_policy_name = self.get_managed_cache_policy_name(v)
-                    if cache_policy_name:
-                        result["cache_policy_name"] = cache_policy_name
-                    else:
-                        result[k] = v
-                    continue
-                if k == "lambda_function_association":
-                    assoc_result = {}
-                    for association in v:
-                        assoc_key = association['event_type']
-                        assoc_result[assoc_key] = {}
-                        assoc_result[assoc_key]['lambda_arn'] = association['lambda_arn']
-                        assoc_result[assoc_key]['include_body'] = association['include_body']
-                    result[k] = assoc_result
-                    continue
-
-                if k == "function_association":
-                    assoc_result = {}
-                    for association in v:
-                        assoc_key = association['event_type']
-                        assoc_result[assoc_key] = {}
-                        assoc_result[assoc_key]['function_arn'] = association['function_arn']
-                    result[k] = assoc_result
-                    continue
-
-                if k == "forwarded_values":
-                    for forwarded_value in v:
-                        assoc_result = {}
-                        assoc_result["headers"] = forwarded_value.get("headers", [])
-                        assoc_result["query_string"] = forwarded_value.get("query_string", False)
-                        assoc_result["cookies_forward"] = forwarded_value.get("cookies", [{}])[0].get("forward", "none")
-                        assoc_result["cookies_whitelisted_names"] = forwarded_value.get("cookies", [{}])[0].get("whitelisted_names", [])
-                        assoc_result["query_string_cache_keys"] = forwarded_value.get("query_string_cache_keys", [])
-                        result[k] = [assoc_result]
-                    continue                
-
-                if isinstance(v, list):
-                    if isinstance(v[0], dict):
-                        result[k] = v[0]
-                    else:
-                        result[k] = v
-                else:
-                    result[k] = v
-        return result
-
-    def build_ordered_cache_behavior(self, attributes):
-        ordered_cache_behavior = attributes.get("ordered_cache_behavior", [])
-        result = []
-        if not ordered_cache_behavior:
-            return result
-        for cache_behavior in ordered_cache_behavior:
-            record = {}
-            for k, v in cache_behavior.items():
-                if v:
-                    if k == "cache_policy_id":
-                        cache_policy_name = self.get_managed_cache_policy_name(v)
-                        if cache_policy_name:
-                            record["cache_policy_name"] = cache_policy_name
-                        else:
-                            record[k] = v
-                        continue
-                    if k == "lambda_function_association":
-                        assoc_result = {}
-                        for association in v:
-                            assoc_key = association['event_type']
-                            assoc_result[assoc_key] = {}
-                            assoc_result[assoc_key]['lambda_arn'] = association['lambda_arn']
-                            assoc_result[assoc_key]['include_body'] = association['include_body']
-                        record[k] = assoc_result
-                        continue
-
-
-                    if k == "function_association":
-                        assoc_result = {}
-                        for association in v:
-                            assoc_key = association['event_type']
-                            assoc_result[assoc_key] = {}
-                            assoc_result[assoc_key]['function_arn'] = association['function_arn']
-                        record[k] = assoc_result
-                        continue
-
-                    if k == "forwarded_values":
-                        for forwarded_value in v:
-                            assoc_result = {}
-                            assoc_result["headers"] = forwarded_value.get("headers", [])
-                            assoc_result["query_string"] = forwarded_value.get("query_string", False)
-                            assoc_result["cookies_forward"] = forwarded_value.get("cookies", [{}])[0].get("forward", "none")
-                            assoc_result["cookies_whitelisted_names"] = forwarded_value.get("cookies", [{}])[0].get("whitelisted_names", [])
-                            assoc_result["query_string_cache_keys"] = forwarded_value.get("query_string_cache_keys", [])
-                            record[k] = [assoc_result]
-                        continue
-
-                    if isinstance(v, list):
-                        if isinstance(v[0], dict):
-                            record[k] = v[0]
-                        else:
-                            record[k] = v
-                    else:
-                        record[k] = v
-            result.append(record)
-        return result
-
-    def build_geo_restriction(self, attributes):
-        restrictions = attributes.get("restrictions", [])
-        result = {}
-        if not restrictions:
-            return result
-        if 'geo_restriction' in restrictions[0]:
-            if restrictions[0]['geo_restriction'][0].get('restriction_type', 'none') != 'none':
-                result = restrictions[0]['geo_restriction'][0]
-        return result
-
-    def build_viewer_certificate(self, attributes):
-        viewer_certificate = attributes.get("viewer_certificate", [])
-        result = {}
-        if not viewer_certificate:
-            return result
-        for k, v in viewer_certificate[0].items():
-            if v:  # check if the value is not empty
-                if isinstance(v, list):
-                    if isinstance(v[0], dict):
-                        result[k] = v[0]
-                    else:
-                        result[k] = v
-                else:
-                    result[k] = v
-        return result
-
-    def join_origin_access_identity(self, parent_attributes, child_attributes):
-        # Get child's identity (assuming it's in 'id' or you can modify as needed)
-        child_identity = child_attributes.get('id')
-        # Iterate over the origins in parent attributes
-        for origin in parent_attributes.get('origin', []):
-            s3_origin_configs = origin.get('s3_origin_config', [])
-            # If the s3_origin_config contains a matching cloudfront_access_identity_path, return True
-            for s3_origin in s3_origin_configs:
-                if s3_origin.get('origin_access_identity', "").split('/')[-1] == child_identity:
-                    return True
-                
-        # If no matches found, return False
-        return False
-
-    def build_origin_access_identities(self, attributes):
-        # key = attributes.get("id")
-        comment = attributes.get("comment")
-        id = attributes.get("id")
-        result = {id: comment}
+            result[policy["CachePolicy"]["Id"]]= policy["CachePolicy"]["CachePolicyConfig"]["Name"]
         return result
 
     def cloudfront(self):
@@ -271,6 +58,13 @@ class CloudFront:
             self.aws_cloudfront_distribution()
 
         self.hcl.refresh_state()
+
+        managed_policies = self.get_managed_cache_policies()
+        if managed_policies:
+            if "aws_cloudfront_distribution" not in self.hcl.additional_data:
+                self.hcl.additional_data["aws_cloudfront_distribution"] = {}
+            self.hcl.additional_data["aws_cloudfront_distribution"]["managed_policies"] = managed_policies
+
         self.hcl.id_key_list.append("cloudfront_access_identity_path")
         self.hcl.id_key_list.append("bucket_domain_name")
         self.hcl.id_key_list.append("qualified_arn")
