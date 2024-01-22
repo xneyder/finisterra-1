@@ -31,40 +31,10 @@ class RDS:
 
         self.resource_list = {}
 
-        functions = {
-            'cloudwatch_log_group_name': self.cloudwatch_log_group_name,
-            'get_log_group_name': self.get_log_group_name,
-            'get_db_name': self.get_db_name,
-            'get_username': self.get_username,
-        }
+        functions = {        }
 
         self.hcl.functions.update(functions)
 
-    def cloudwatch_log_group_name(self, attributes):
-        parts = attributes.get('name').split('/')
-        if len(parts) >= 5 and parts[:4] == ['', 'aws', 'rds', 'instance']:
-            return parts[4]
-        else:
-            return None
-
-    def get_log_group_name(self, attributes):
-        parts = attributes.get('name').split('/')
-        if len(parts) >= 5 and parts[:4] == ['', 'aws', 'rds', 'instance']:
-            return parts[-1]
-        else:
-            return None
-        
-    def get_db_name(self, attributes, arg):
-        replicate_source_db = attributes.get("replicate_source_db", None)
-        if replicate_source_db:
-            return None
-        return attributes.get("db_name", None)
-    
-    def get_username(self, attributes, arg):
-        replicate_source_db = attributes.get("replicate_source_db", None)
-        if replicate_source_db:
-            return None
-        return attributes.get("username", None)
 
     def rds(self):
         self.hcl.prepare_folder(os.path.join("generated"))

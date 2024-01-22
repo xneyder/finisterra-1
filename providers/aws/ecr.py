@@ -24,71 +24,12 @@ class ECR:
             self.hcl = hcl
 
         functions = {
-            'get_field_from_attrs': self.get_field_from_attrs,
-            'build_registry_replication_rules': self.build_registry_replication_rules,
-            'get_registry_scan_rules': self.get_registry_scan_rules,
-            'ecr_get_repository_kms_key': self.ecr_get_repository_kms_key,
-            'ecr_get_repository_kms_key_alias': self.ecr_get_repository_kms_key_alias,
         }
 
         self.hcl.functions.update(functions)
 
         self.resource_list = {}
         self.kms_instance = KMS(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
-
-    def get_field_from_attrs(self, attributes, arg):
-        keys = arg.split(".")
-        result = attributes
-        for key in keys:
-            if isinstance(result, list):
-                result = [sub_result.get(key, None) if isinstance(
-                    sub_result, dict) else None for sub_result in result]
-                if len(result) == 1:
-                    result = result[0]
-            else:
-                result = result.get(key, None)
-            if result is None:
-                return None
-        return result
-    
-    def build_registry_replication_rules(self, attributes):
-        formatted_rules = []
-        replication_configuration = attributes.get("replication_configuration", [])
-        if not replication_configuration:
-            return formatted_rules
-        for replication in replication_configuration:
-            rules = replication.get("rule", [])
-            if not rules:
-                continue
-            for rule in rules:
-                destinations = rule.get("destination", [])
-                records = []
-                for destination in destinations:
-                    records.append({
-                        "region": destination["region"],
-                        "registry_id": destination["registry_id"]
-                    })
-                formatted_rules.append({
-                    "destinations": records
-                })
-        return formatted_rules
-    
-    def get_registry_scan_rules(self, attributes):
-        result = []
-        rules = attributes.get("rule", [])
-        for rule in rules:
-            record={}
-            record["scan_frequency"] = rule.get("scan_frequency", None)
-            repository_filter = rule.get('repository_filter')
-            record["repository_filter"] = []
-            for filter in repository_filter:
-                record2 = {}
-                record2["filter"] = filter.get("filter")
-                record2["filter_type"] = filter.get("filter_type")
-                record["repository_filter"].append(record2)
-
-            result.append(record)
-        return result
     
     def get_kms_alias(self, kms_key_id):
         try:
@@ -108,24 +49,6 @@ class ECR:
                 return ""
             else:
                 raise e    
-
-    def ecr_get_repository_kms_key(self, attributes, arg):
-        kms_key_id = self.get_field_from_attrs(attributes, arg)
-        if kms_key_id:
-            kms_alias = self.get_kms_alias(kms_key_id)
-            if kms_alias:
-                return None
-            return kms_key_id
-        return None
-    
-    def ecr_get_repository_kms_key_alias(self, attributes, arg):
-        kms_key_id = self.get_field_from_attrs(attributes, arg)
-        if kms_key_id:
-            kms_alias = self.get_kms_alias(kms_key_id)
-            if kms_alias:
-                return kms_alias
-            return None
-        return None
 
     def ecr(self):
         self.hcl.prepare_folder(os.path.join("generated"))
@@ -176,12 +99,18 @@ class ECR:
             self.hcl.process_resource(
                 resource_type, repository_name.replace("-", "_"), attributes)
             
-
             emcryption_configuration = repo.get("encryptionConfiguration", {})
             if emcryption_configuration:
                 kmsKey = emcryption_configuration.get("kmsKey", None)
                 if kmsKey:
                     self.kms_instance.aws_kms_key(kmsKey, ftstack)
+                    kms_key_alias = self.get_kms_alias(kmsKey)
+                    if kms_key_alias:
+                        if resource_type not in self.hcl.additional_data:
+                            self.hcl.additional_data[resource_type] = {}
+                        if id not in self.hcl.additional_data[resource_type]:
+                            self.hcl.additional_data[resource_type][id] = {}
+                        self.hcl.additional_data[resource_type][id]["kms_key_alias"] = kms_key_alias
 
             self.hcl.add_stack(resource_type, id, ftstack)
 

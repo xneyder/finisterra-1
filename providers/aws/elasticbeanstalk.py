@@ -32,92 +32,18 @@ class ElasticBeanstalk:
         self.insatce_profiles = {}
         self.security_groups = {}
 
+        functions = {}
+
+        self.hcl.functions.update(functions)
+
         self.security_group_instance = SECURITY_GROUP(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
         self.iam_role_instance = IAM_ROLE(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
 
-    # def init_fields(self, attributes):
-    #     self.service_roles = {}
-    #     self.ec2_roles = {}
-    #     self.insatce_profiles = {}
-    #     return None
-
-    def get_field_from_attrs(self, attributes, arg):
-        keys = arg.split(".")
-        result = attributes
-        for key in keys:
-            if isinstance(result, list):
-                result = [sub_result.get(key, None) if isinstance(
-                    sub_result, dict) else None for sub_result in result]
-                if len(result) == 1:
-                    result = result[0]
-            else:
-                result = result.get(key, None)
-            if result is None:
-                return None
-        return result
-
-    def build_dict_var(self, attributes, arg):
-        key = attributes[arg]
-        result = {key: {}}
-        for k, v in attributes.items():
-            if v is not None:
-                result[key][k] = v
-        return result
-
-    def join_sg(self, parent_attributes, child_attributes):
-        env_id = parent_attributes.get("id")
-        sg_id = child_attributes.get("id")
-        # print(role, env_id, self.ec2_roles)
-        if env_id in self.security_groups:
-            if self.security_groups[env_id] == sg_id:
-                return True
-        return False
-
-    def join_service_iam_role(self, parent_attributes, child_attributes):
-        env_id = parent_attributes.get("id")
-        role = child_attributes.get("name")
-        if env_id in self.service_roles:
-            if self.service_roles[env_id] == role:
-                return True
-        return False
-
-    def join_ec2_iam_role(self, parent_attributes, child_attributes):
-        env_id = parent_attributes.get("id")
-        role = child_attributes.get("name")
-        # print(role, env_id, self.ec2_roles)
-        if env_id in self.ec2_roles:
-            if self.ec2_roles[env_id] == role:
-                return True
-        return False
-
-    def join_ec2_instance_profile(self, parent_attributes, child_attributes):
-        env_id = parent_attributes.get("id")
-        name = child_attributes.get("name")
-        # print(role, env_id, self.ec2_roles)
-        if env_id in self.insatce_profiles:
-            if self.insatce_profiles[env_id] == name:
-                return True
-        return False
-
-    def to_list(self, attributes, arg):
-        return [attributes.get(arg)]
 
     def elasticbeanstalk(self):
         self.hcl.prepare_folder(os.path.join("generated"))
-
         # self.aws_elastic_beanstalk_application()
         self.aws_elastic_beanstalk_environment()
-
-        functions = {
-            # 'init_fields': self.init_fields,
-            'get_field_from_attrs': self.get_field_from_attrs,
-            'to_list': self.to_list,
-            'join_service_iam_role': self.join_service_iam_role,
-            'join_ec2_iam_role': self.join_ec2_iam_role,
-            'join_ec2_instance_profile': self.join_ec2_instance_profile,
-            'join_sg': self.join_sg,
-            'build_dict_var': self.build_dict_var,
-        }
 
         self.hcl.refresh_state()
 
@@ -281,7 +207,8 @@ class ElasticBeanstalk:
             # Process IAM roles
             if service_role:
                 self.service_roles[env_id] = service_role
-                self.iam_role_instance.aws_iam_role(service_role, ftstack)
+                service_role_name = service_role.split('/')[-1]
+                self.iam_role_instance.aws_iam_role(service_role_name, ftstack)
 
             # Process the EC2 Role
             ec2_instance_profile = None
@@ -296,7 +223,8 @@ class ElasticBeanstalk:
                     InstanceProfileName=ec2_instance_profile)
                 ec2_role = instance_profile['InstanceProfile']['Roles'][0]['Arn']
                 self.ec2_roles[env_id] = ec2_role.split('/')[-1]
-                self.iam_role_instance.aws_iam_role(ec2_role, ftstack)
+                ec2_role_name = ec2_role.split('/')[-1]
+                self.iam_role_instance.aws_iam_role(ec2_role_name, ftstack)
                 # self.aws_iam_role(ec2_role)
 
             # Identify the Auto Scaling Group associated with the Elastic Beanstalk environment
@@ -308,21 +236,26 @@ class ElasticBeanstalk:
                     auto_scaling_group = group
                     break
 
+            security_group_ids = []
             # Get the Launch Configuration or Launch Template associated with the Auto Scaling Group
             if 'LaunchConfigurationName' in auto_scaling_group:
                 launch_config_name = auto_scaling_group['LaunchConfigurationName']
                 launch_config = self.aws_clients.autoscaling_client.describe_launch_configurations(
                     LaunchConfigurationNames=[launch_config_name]
                 )['LaunchConfigurations'][0]
-
-                security_group_ids = launch_config['SecurityGroups']
+                security_group_names = launch_config['SecurityGroups']
+                for sg in security_group_names:
+                    #Get the id by the name using boto3
+                    security_group_id = self.aws_clients.ec2_client.describe_security_groups(
+                        GroupNames=[sg]
+                    )['SecurityGroups'][0]
+                    security_group_ids.append(security_group_id['GroupId'])
             elif 'LaunchTemplate' in auto_scaling_group:
                 launch_template_id = auto_scaling_group['LaunchTemplate']['LaunchTemplateId']
                 launch_template_version = self.aws_clients.ec2_client.describe_launch_template_versions(
                     LaunchTemplateId=launch_template_id
                 )['LaunchTemplateVersions'][0]['LaunchTemplateData']
-
-                security_group_ids = launch_template_version['NetworkInterfaces'][0]['Groups']
+                security_group_ids = launch_template_version['SecurityGroupIds']
 
             # Process security groups
             if security_group_ids:

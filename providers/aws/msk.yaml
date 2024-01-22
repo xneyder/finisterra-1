@@ -16,9 +16,8 @@ aws_msk_cluster:
     cluster_name:
       field: cluster_name
       type: string
-    security_group_names:
-      function: get_security_group_names
-      arg: broker_node_group_info.security_groups
+    security_groups:
+      field: broker_node_group_info.security_groups
       type: list
     number_of_broker_nodes:
       field: number_of_broker_nodes
@@ -32,18 +31,20 @@ aws_msk_cluster:
       arg: broker_node_group_info.instance_type
       type: string
     subnet_names:
-      function: get_subnet_names
+      function: msk_get_subnet_names
       arg: subnets
       type: list
     subnet_ids:
-      function: get_subnet_ids
+      function: msk_get_subnet_ids
       arg: subnets
       type: list
     vpc_name:
       function: get_vpc_name_msk
+      arg: id
       type: string
     vpc_id:
       function: get_vpc_id_msk
+      arg: id
       type: string
     broker_volume_size:
       function: get_field_from_attrs
@@ -51,11 +52,11 @@ aws_msk_cluster:
       type: number
       module_default: 1000
     provisioned_throughput:
-      function: get_provisioned_throughput
+      function: msk_get_provisioned_throughput
       arg: id
       type: list
     public_access_enabled:
-      function: get_public_access_enabled
+      function: msk_get_public_access_enabled
       arg: broker_node_group_info.connectivity_info.public_access.type
       type: string
       module_default: false
@@ -149,7 +150,8 @@ aws_msk_cluster:
     aws_msk_configuration:
       join:
         arn:
-          join_function: join_configuration
+          join_function: msk_join_configuration
+          arg: id
       target_resource_name: config
       fields:
         configuration_name:
@@ -159,45 +161,12 @@ aws_msk_cluster:
           field: description
           type: string
         server_properties:
-          function: get_server_properties
+          function: msk_get_server_properties
           arg: server_properties
           type: map
         config_kafka_versions:
           field: kafka_versions
           type: list
-
-    # aws_security_group:
-    #   join:
-    #     id:
-    #       join_function: match_security_group
-    #   target_resource_name: default
-    #   fields:
-    #     create_security_group:
-    #       unique: true
-    #     security_group_name:
-    #       field: name
-    #       type: string
-    #     security_group_description:
-    #       field: description
-    #       type: string
-    #     security_group_tags:
-    #       field: tags
-    #       type: map
-    #   childs:
-    #     aws_security_group_rule:
-    #       join:
-    #         id:
-    #           field: security_group_id
-    #       target_resource_name: default
-    #       second_index:
-    #         field: id
-    #       import_id:
-    #         function: aws_security_group_rule_import_id
-    #       fields:
-    #         security_group_rules:
-    #           function: get_security_group_rules
-    #           arg: id
-    #           type: list
     aws_appautoscaling_target:
       join:
         arn:
@@ -242,58 +211,3 @@ aws_msk_cluster:
         storage_autoscaling_disable_scale_in:
           field: target_tracking_scaling_policy_configuration.disable_scale_in
           type: bool
-
-aws_security_group:
-  terraform_module: "github.com/finisterra-io/terraform-aws-modules.git//security-group?ref=main"
-  terraform_module_version: "5.2.0"
-  target_resource_name: default
-  name_field: security_group_name
-  add_id_hash_to_name: true
-  # path: "security_group"
-  defaults:
-    create_before_destroy: false
-  fields:
-    security_group_name:
-      field: name
-      type: string
-    vpc_name:
-      function: get_vpc_name
-      arg: vpc_id
-      type: string
-    vpc_id:
-      function: get_vpc_id
-      type: string
-      arg: vpc_id
-    security_group_description:
-      field: description
-      type: string
-    tags:
-      field: tags
-      type: map
-  childs:
-    aws_vpc_security_group_ingress_rule:
-      join:
-        id:
-          field: security_group_id
-      import_id:
-        field: security_group_rule_id
-      target_resource_name: dbc
-      second_index:
-        field: id
-      fields:
-        ingress_rules:
-          function: get_security_group_rules
-          type: map
-    aws_vpc_security_group_egress_rule:
-      join:
-        id:
-          field: security_group_id
-      import_id:
-        field: security_group_rule_id
-      target_resource_name: dbc
-      second_index:
-        field: id
-      fields:
-        egress_rules:
-          function: get_security_group_rules
-          type: map

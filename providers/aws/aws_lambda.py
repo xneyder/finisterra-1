@@ -39,82 +39,17 @@ class AwsLambda:
             self.hcl = hcl
         self.resource_list = {}
 
-        functions = {
-            'get_field_from_attrs': self.get_field_from_attrs,
-            'get_role_name': self.get_role_name,
-            'cloudwatch_log_group_name': self.cloudwatch_log_group_name,
-            'get_policy_name': self.get_policy_name,
-            'to_list': self.to_list,
-        }
+        functions = {}
         self.hcl.functions.update(functions)
 
         self.iam_role_instance = IAM_ROLE(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
 
-    def get_field_from_attrs(self, attributes, arg):
-        keys = arg.split(".")
-        result = attributes
-        for key in keys:
-            if isinstance(result, list):
-                result = [sub_result.get(key, None) if isinstance(
-                    sub_result, dict) else None for sub_result in result]
-                if len(result) == 1:
-                    result = result[0]
-            else:
-                result = result.get(key, None)
-            if result is None:
-                return None
-        return result
-
-    def get_role_name(self, attributes, arg):
-        role_arn = attributes.get(arg)
-        role_name = role_arn.split('/')[-1]  # Extract role name from ARN
-        return role_name
-
-    def get_policy_name(self, attributes, arg):
-        policy_arn = attributes.get(arg)
-        policy_name = policy_arn.split('/')[-1]
-        return policy_name
-
-    def cloudwatch_log_group_name(self, attributes):
-        # The name is expected to be in the format /aws/ecs/{cluster_name}
-        name = attributes.get('name')
-        if name is not None:
-            # split the string by '/' and take the last part as the cluster_name
-            parts = name.split('/')
-            if len(parts) > 2:
-                return parts[-1]  # return 'cluster_name'
-        # In case the name doesn't match the expected format, return None or you could return some default value
-        return None
-
-    def to_list(self, attributes, arg):
-        return [attributes.get(arg)]
 
     def aws_lambda(self):
         self.hcl.prepare_folder(os.path.join("generated"))
 
-        # aws_iam_policy.ssm
-        # aws_iam_role.this
-        # aws_iam_role_policy_attachment.cloudwatch_insights
-        # aws_iam_role_policy_attachment.cloudwatch_logs
-        # aws_iam_role_policy_attachment.custom
-        # aws_iam_role_policy_attachment.ssm
-        # aws_iam_role_policy_attachment.vpc_access
-        # aws_iam_role_policy_attachment.xray
-        # aws_lambda_function.this
 
         self.aws_lambda_function()
-
-        # self.aws_lambda_alias()
-        # # self.aws_lambda_code_signing_config()  #Permission error
-        # self.aws_lambda_event_source_mapping()
-        # self.aws_lambda_function_event_invoke_config()
-        # # self.aws_lambda_function_url() #Permission error
-        # self.aws_lambda_layer_version()
-        # self.aws_lambda_layer_version_permission()
-        # self.aws_lambda_permission()
-        # self.aws_lambda_provisioned_concurrency_config()
-
-
 
         self.hcl.refresh_state()
         self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id)

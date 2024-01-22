@@ -2,14 +2,8 @@ aws_lambda_function:
   terraform_module: "github.com/finisterra-io/terraform-aws-modules.git//lambda?ref=main"
   terraform_module_version: "0.20.0"
   target_resource_name: this
-  defaults:
-    enabled: true
-    # create_iam_role: false
   import_id:
     field: function_name
-  # path: "aws_lambda"
-  # dependencies:
-  #   - "../iam_role"
   fields:
     architectures:
       field: architectures
@@ -48,7 +42,7 @@ aws_lambda_function:
       field: reserved_concurrent_executions
       type: number
     iam_role_name:
-      function: get_role_name
+      function: lambda_get_role_name
       arg: role
       type: string
     runtime:
@@ -97,8 +91,8 @@ aws_lambda_function:
     aws_cloudwatch_log_group:
       join:
         function_name:
-          function: cloudwatch_log_group_name
-      # target_submodule: module.cloudwatch_log_group
+          function: lambda_cloudwatch_log_group_name
+          arg: id
       target_resource_name: default
       defaults:
         create_aws_cloudwatch_log_group: true

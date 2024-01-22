@@ -77,8 +77,8 @@ def main(aws_account_id, aws_region, group_code):
         provider.elasticache_redis()
     # elif group_code == 'elasticache_memcached':
     #     provider.elasticache_memcached()
-    elif group_code == 'elasticbeanstalk':
-        provider.elasticbeanstalk()
+    # elif group_code == 'elasticbeanstalk':
+    #     provider.elasticbeanstalk()
     elif group_code == 'es':
         provider.es()
     elif group_code == 'guardduty':

@@ -41,9 +41,6 @@ class Aurora:
             'cloudwatch_log_group_name': self.cloudwatch_log_group_name,
             'get_log_group_name': self.get_log_group_name,
             'build_resource_id': self.build_resource_id,
-            'get_field_from_attrs': self.get_field_from_attrs,
-
-
         }
 
         self.hcl.functions.update(functions)
@@ -103,10 +100,6 @@ class Aurora:
         if not auto_minor_version_upgrade:
             result["auto_minor_version_upgrade"] = auto_minor_version_upgrade
 
-        # availability_zone = attributes.get("availability_zone", None)
-        # if availability_zone:
-        #     result["availability_zone"] = availability_zone
-
         promotion_tier = attributes.get("promotion_tier", None)
         if promotion_tier:
             result["promotion_tier"] = promotion_tier
@@ -158,26 +151,6 @@ class Aurora:
         resource_id = attributes.get("resource_id", None)
         return f"cluster:{resource_id}"
 
-    def get_field_from_attrs(self, attributes, arg):
-        try:
-            keys = arg.split(".")
-            result = attributes
-
-            for key in keys:
-                if isinstance(result, list):
-                    result = [sub_result.get(key, None) if isinstance(
-                        sub_result, dict) else None for sub_result in result]
-                    if len(result) == 1:
-                        result = result[0]
-                else:
-                    result = result.get(key, None)
-
-                if result is None:
-                    return None
-            return result
-
-        except Exception as e:
-            return None
 
     def aurora(self):
         self.hcl.prepare_folder(os.path.join("generated"))

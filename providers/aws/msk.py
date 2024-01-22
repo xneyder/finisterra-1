@@ -27,85 +27,10 @@ class MSK:
 
         self.security_group_instance = SECURITY_GROUP(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
 
-        functions = {
-            'get_field_from_attrs': self.get_field_from_attrs,
-            'get_subnet_names': self.get_subnet_names,
-            'get_subnet_ids': self.get_subnet_ids,
-            'join_configuration': self.join_configuration,
-            'match_security_group': self.match_security_group,
-            'get_server_properties': self.get_server_properties,
-            'get_public_access_enabled': self.get_public_access_enabled,
-            'get_vpc_name_msk': self.get_vpc_name_msk,
-            'get_vpc_id_msk': self.get_vpc_id_msk,
-            'get_security_group_names': self.get_security_group_names,
-            'aws_security_group_rule_import_id': self.aws_security_group_rule_import_id,
-            # 'get_security_group_rules': self.get_security_group_rules,
-            'get_provisioned_throughput': self.get_provisioned_throughput,
-
-        }
-
+        functions = {        }
         self.hcl.functions.update(functions)
-
-
-    def get_field_from_attrs(self, attributes, arg):
-        try:
-            keys = arg.split(".")
-            result = attributes
-
-            for key in keys:
-                if isinstance(result, list):
-                    result = [sub_result.get(key, None) if isinstance(
-                        sub_result, dict) else None for sub_result in result]
-                    if len(result) == 1:
-                        result = result[0]
-                else:
-                    result = result.get(key, None)
-
-                if result is None:
-                    return None
-            return result
-
-        except Exception as e:
-            return None
         
-    def get_provisioned_throughput(self, attributes, arg):
-        record = {}
-        tmp0 = attributes.get("broker_node_group_info", [])
-        if tmp0:
-            tmp = tmp0[0].get("storage_info", [])
-            if tmp:
-                tmp2 = tmp[0].get("ebs_storage_info", [])
-                if tmp2:
-                    tmp3 = tmp2[0].get("provisioned_throughput", [])
-                    if tmp3:
-                        record["enabled"] =  tmp3[0].get("enabled")
-                        tmp4 = tmp3[0].get("volume_throughput", 0)
-                        if tmp4 > 0:
-                            record["volume_throughput"] = tmp4
-        if record:
-            return [record]
-        return None
-
-    def get_server_properties(self, attributes, arg):
-        server_properties_str = attributes.get(arg)
-
-        if not server_properties_str:
-            return None
-
-        properties = {}
-        lines = server_properties_str.split("\n")
-        for line in lines:
-            line = line.strip()  # Removing leading and trailing spaces
-            if "=" in line:
-                # Split only on the first equals sign
-                key, value = line.split("=", 1)
-                properties[key.strip()] = value.strip()
-
-        return properties
-
-    def get_subnet_names(self, attributes, arg):
-        subnet_ids = self.get_field_from_attrs(
-            attributes, 'broker_node_group_info.client_subnets')
+    def get_subnet_names(self, subnet_ids):
         subnet_names = []
         for subnet_id in subnet_ids:
             response = self.aws_clients.ec2_client.describe_subnets(SubnetIds=[subnet_id])
@@ -130,17 +55,7 @@ class MSK:
 
         return subnet_names
 
-    def get_subnet_ids(self, attributes, arg):
-        subnet_names = self.get_subnet_names(attributes, arg)
-        if subnet_names:
-            return ""
-        else:
-            return self.get_field_from_attrs(attributes, 'broker_node_group_info.client_subnets')
-
-    def get_vpc_id_msk_internal(self, attributes):
-        sg_ids = self.get_field_from_attrs(
-            attributes, 'broker_node_group_info.security_groups')
-
+    def get_vpc_id(self, sg_ids):
         if not sg_ids:
             return None
 
@@ -155,8 +70,7 @@ class MSK:
         vpc_id = response["SecurityGroups"][0]["VpcId"]
         return vpc_id
 
-    def get_vpc_name_msk(self, attributes):
-        vpc_id = self.get_vpc_id_msk_internal(attributes)
+    def get_vpc_name(self, vpc_id):
         response = self.aws_clients.ec2_client.describe_vpcs(VpcIds=[vpc_id])
 
         if not response or 'Vpcs' not in response or not response['Vpcs']:
@@ -173,73 +87,6 @@ class MSK:
 
         return vpc_name
 
-    def get_vpc_id_msk(self, attributes):
-        vpc_name = self.get_vpc_name_msk(attributes)
-        if vpc_name is None:
-            return self.get_vpc_id_msk_internal(attributes)
-        else:
-            return ""
-
-    def join_configuration(self, parent_attributes, child_attributes):
-        configuration_arn = child_attributes.get('arn')
-        cluster_configuration = self.get_field_from_attrs(
-            parent_attributes, 'configuration_info.arn')
-        if configuration_arn == cluster_configuration:
-            return True
-        return False
-
-    def match_security_group(self, parent_attributes, child_attributes):
-        child_security_group_id = child_attributes.get("id", None)
-        security_groups = self.get_field_from_attrs(
-            parent_attributes, "broker_node_group_info.security_groups")
-        for security_group in security_groups:
-            if security_group == child_security_group_id:
-                return True
-        return False
-
-    def get_public_access_enabled(self, attributes, arg):
-        public_access_type = self.get_field_from_attrs(attributes, arg)
-        if public_access_type == "SERVICE_PROVIDED_EIPS":
-            return True
-        return False
-
-    def get_security_group_names(self, attributes, arg):
-        security_group_ids = self.get_field_from_attrs(attributes, arg)
-        security_group_names = []
-
-        for security_group_id in security_group_ids:
-            response = self.aws_clients.ec2_client.describe_security_groups(
-                GroupIds=[security_group_id])
-            security_group = response['SecurityGroups'][0]
-
-            security_group_name = security_group.get('GroupName')
-            # Just to be extra safe, if GroupName is somehow missing, fall back to the security group ID
-            if not security_group_name:
-                security_group_name = security_group_id
-
-            security_group_names.append(security_group_name)
-
-        return security_group_names
-
-    def aws_security_group_rule_import_id(self, attributes):
-        security_group_id = attributes.get('security_group_id')
-        type = attributes.get('type')
-        protocol = attributes.get('protocol')
-        from_port = attributes.get('from_port')
-        to_port = attributes.get('to_port')
-        cidr_blocks = attributes.get('cidr_blocks')
-        source = "_".join(cidr_blocks)
-        return security_group_id+"_"+type+"_"+protocol+"_"+str(from_port)+"_"+str(to_port)+"_"+source
-
-    # def get_security_group_rules(self, attributes, arg):
-    #     key = attributes.get(arg)
-    #     result = {key: {}}
-    #     for k in ['type', 'description', 'from_port', 'to_port', 'protocol', 'cidr_blocks']:
-    #         val = attributes.get(k)
-    #         if isinstance(val, str):
-    #             val = val.replace('${', '$${')
-    #         result[key][k] = val
-    #     return result
 
     def msk(self):
         self.hcl.prepare_folder(os.path.join("generated"))
@@ -296,7 +143,17 @@ class MSK:
                 # Calling aws_security_group function with the extracted SG IDs
                 for sg in sg_ids:   
                     self.security_group_instance.aws_security_group(sg, ftstack)
-                # self.aws_security_group(sg_ids)
+                vpc_id = self.get_vpc_id(sg_ids)
+                if vpc_id:
+                    self.hcl.add_additional_data(resource_type, id, "vpc_id", vpc_id)
+                    vpc_name = self.get_vpc_name(vpc_id)
+                    if vpc_name:
+                        self.hcl.add_additional_data(resource_type, id, "vpc_name", vpc_name)
+                subnet_ids = cluster_details["ClusterInfo"]["BrokerNodeGroupInfo"]["ClientSubnets"]
+                if subnet_ids:
+                    subnet_names = self.get_subnet_names(subnet_ids)
+                    if subnet_names:
+                        self.hcl.add_additional_data(resource_type, id, "subnet_names", subnet_names)
 
                 self.aws_msk_configuration(cluster_arn)
                 self.aws_msk_scram_secret_association(cluster_arn)

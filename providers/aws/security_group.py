@@ -110,13 +110,8 @@ class SECURITY_GROUP:
         self.aws_vpc_security_group_egress_rule(security_group["GroupId"], ftstack)
 
         vpc_name = self.get_vpc_name(vpc_id)
-        if 'vpc' not in self.hcl.additional_data:
-            self.hcl.additional_data['vpc'] = {}
-
-        self.hcl.additional_data['vpc'][vpc_id] = {
-            "name": vpc_name,
-        }
-
+        if vpc_name:
+            self.hcl.add_additional_data(resource_type, id, "vpc_name", vpc_name)
 
     def aws_vpc_security_group_ingress_rule(self, security_group_id, ftstack=None):
         # Fetch security group rules

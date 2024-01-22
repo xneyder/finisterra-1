@@ -32,6 +32,7 @@ aws_s3_bucket:
       fields:
         logging:
           function: aws_s3_build_logging
+          arg: id
           type: map
 
     aws_s3_bucket_acl:
@@ -46,8 +47,10 @@ aws_s3_bucket:
           field: expected_bucket_owner
         grant:
           function: aws_s3_bucket_acl_grant
+          arg: id
         owner:
           function: aws_s3_bucket_acl_owner
+          arg: id
 
     aws_s3_bucket_website_configuration:
       join:
@@ -57,6 +60,7 @@ aws_s3_bucket:
       fields:
         website:
           function: aws_s3_bucket_website_configuration_website
+          arg: id
         expected_bucket_owner:
           field: expected_bucket_owner
 
@@ -68,6 +72,7 @@ aws_s3_bucket:
       fields:
         versioning:
           function: aws_s3_bucket_versioning_versioning
+          arg: id
         expected_bucket_owner:
           field: expected_bucket_owner
 
@@ -79,6 +84,7 @@ aws_s3_bucket:
       fields:
         server_side_encryption_configuration:
           function: aws_s3_server_side_encryption_configuration
+          arg: id
         expected_bucket_owner:
           field: expected_bucket_owner
 
@@ -125,6 +131,7 @@ aws_s3_bucket:
           field: expected_bucket_owner
         lifecycle_rule:
           function: aws_s3_bucket_lifecycle_configuration_lifecycle_rule
+          arg: id
 
     aws_s3_bucket_object_lock_configuration:
       join:
@@ -145,6 +152,7 @@ aws_s3_bucket:
           type: string
         object_lock_configuration_rule:
           function: aws_s3_get_object_lock_configuration_rule
+          arg: id
           type: list
 
     aws_s3_bucket_replication_configuration:
@@ -200,6 +208,7 @@ aws_s3_bucket:
       fields:
         object_ownership:
           function: aws_s3_bucket_ownership_controls_object_ownership
+          arg: id
 
     aws_s3_bucket_intelligent_tiering_configuration:
       join:
@@ -211,6 +220,7 @@ aws_s3_bucket:
       fields:
         intelligent_tiering:
           function: s3_build_tiering
+          arg: id
           type: map
 
     aws_s3_bucket_metric: #no tested

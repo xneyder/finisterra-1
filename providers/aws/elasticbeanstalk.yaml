@@ -1,8 +1,7 @@
 aws_elastic_beanstalk_application:
-  terraform_module: "github.com/finisterra-io/terraform-aws-modules.git//beanstalk/application?ref=main"
+  terraform_module: "github.com/finisterra-io/terraform-aws-modules.git//beanstalk/modules/application?ref=main"
   terraform_module_version: "0.20.0"
   target_resource_name: default
-  # path: "beanstalk"
   defaults:
     enabled: true
   fields:
@@ -29,13 +28,9 @@ aws_elastic_beanstalk_application:
       type: bool
 
 aws_elastic_beanstalk_environment:
-  terraform_module: "github.com/finisterra-io/terraform-aws-modules.git//beanstalk/environment?ref=main"
+  terraform_module: "github.com/finisterra-io/terraform-aws-modules.git//beanstalk/modules/environment?ref=main"
   terraform_module_version: "0.20.0"
   target_resource_name: default
-  # path: "beanstalk"
-  # dependencies:
-  #   - "../iam_role"
-  #   - "../security_group"
   defaults:
     enabled: true
   fields:

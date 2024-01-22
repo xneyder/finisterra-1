@@ -24,30 +24,12 @@ class SQS:
 
         functions = {
             'aws_sqs_queue_target_name': self.aws_sqs_queue_target_name,
-            'is_dql': self.is_dql,
-            'get_parent_url': self.get_parent_url,
-
+            'sqs_is_dql': self.sqs_is_dql,
+            'sqs_get_parent_url': self.sqs_get_parent_url,
         }
 
         self.hcl.functions.update(functions)        
 
-    def aws_sqs_queue_target_name(self, attributes, arg):
-        url = attributes.get(arg)
-        if url in self.dlq_list:
-            return "dlq"
-        return "this"
-
-    def is_dql(self, attributes, arg):
-        url = attributes.get(arg)
-        if url in self.dlq_list:
-            return True
-        return False
-
-    def get_parent_url(self, attributes):
-        url = attributes.get("url")
-        if url in self.dlq_list:
-            return self.dlq_list[url]
-        return None
 
     def sqs(self):
         self.hcl.prepare_folder(os.path.join("generated"))

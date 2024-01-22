@@ -21,30 +21,10 @@ class SNS:
         self.resource_list = {}
 
         functions = {
-            'build_subscriptions': self.build_subscriptions,
-            'signature_version': self.signature_version,
-            'get_key_from_arn': self.get_key_from_arn,
         }
 
         self.hcl.functions.update(functions)        
 
-    def build_subscriptions(self, attributes):
-        key = attributes['arn'].split(':')[-1]
-        result = {key: {}}
-        for k, v in attributes.items():
-            if v:
-                result[key][k] = v
-        return result
-
-    def get_key_from_arn(self, attributes):
-        key = attributes['arn'].split(':')[-1]
-        return key
-
-    def signature_version(self, attributes):
-        signature_version = attributes.get("signature_version", None)
-        if signature_version != 0:
-            return signature_version
-        return None
 
     def sns(self):
         self.hcl.prepare_folder(os.path.join("generated"))

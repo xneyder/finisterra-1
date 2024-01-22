@@ -37,6 +37,7 @@ aws_elasticsearch_domain:
     encrypt_at_rest:
       function: es_get_encrypt_at_rest
       type: map
+      arg: id
     domain_endpoint_options:
       field: domain_endpoint_options
       type: map
@@ -49,6 +50,7 @@ aws_elasticsearch_domain:
     vpc_options:
       function: es_get_vpc_options
       type: map
+      arg: id
     node_to_node_encryption_enabled:
       function: get_field_from_attrs
       arg: node_to_node_encryption.enabled
@@ -68,6 +70,8 @@ aws_elasticsearch_domain:
     tags:
       function: es_get_tags
       type: map
+      arg: id
     vpc_name:
       function: es_get_vpc_name
       type: string
+      arg: id

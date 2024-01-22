@@ -1166,3 +1166,11 @@ class HCL:
             if ftstack not in self.ftstacks[resource_name][id]["ftstack_list"]:
                 return False
             return True
+
+    def add_additional_data(self, resource_type, id, key, value):
+        if resource_type not in self.additional_data:
+            self.additional_data[resource_type] = {}
+        if id not in self.additional_data[resource_type]:
+            self.additional_data[resource_type][id] = {}
+        self.additional_data[resource_type][id][key] = value
+        

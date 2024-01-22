@@ -106,7 +106,8 @@ aws_ecs_service:
     create_task_definition: false
     # create_target_group: false
   import_id:
-    function: aws_ecs_service_import_id
+    function: ecs_service_import_id
+    arg: id
   fields:
     name:
       field: name
@@ -144,7 +145,7 @@ aws_ecs_service:
     force_new_deployment:
       field: force_new_deployment
       type: boolean
-      default: null
+      #default: null
     health_check_grace_period_seconds:
       field: health_check_grace_period_seconds
       type: number
@@ -170,7 +171,7 @@ aws_ecs_service:
       field: service_connect_configuration
       type: list
     service_registries:
-      function: build_service_registries
+      function: ecs_build_service_registries
       arg: service_registries
       type: map
     triggers:
@@ -179,7 +180,7 @@ aws_ecs_service:
     wait_for_steady_state:
       field: wait_for_steady_state
       type: boolean
-      default: null
+      #default: null
     propagate_tags:
       field: propagate_tags
       type: string
@@ -189,22 +190,23 @@ aws_ecs_service:
     timeouts:
       field: timeouts
       type: map
-      default: null
+      #default: null
     assign_public_ip:
-      function: get_network_field
+      function: ecs_get_network_field
       arg: assign_public_ip
       type: boolean
     security_group_ids:
-      function: get_network_field
+      function: ecs_get_network_field
       arg: security_group_ids
       type: list
     subnet_ids:
-      function: get_network_field
+      function: ecs_get_network_field
       arg: subnet_ids
       type: list
     vpc_name:
       function: get_vpc_name_ecs
       type: string
+      arg: id
     # create_security_group:
     #   function: check_subnet_ids
     iam_role:
@@ -219,7 +221,8 @@ aws_ecs_service:
     aws_ecs_task_definition:
       join:
         task_definition:
-          function: task_definition_id
+          function: ecs_task_definition_id
+          arg: id
       # root_attribute: services
       # root_attribute_key: name
       # root_attribute_key_parent: true #Take the field from the parent attributes
@@ -231,7 +234,8 @@ aws_ecs_service:
         # create_task_exec_policy: false
         # create_task_exec_iam_role: false
       import_id:
-        function: aws_ecs_task_definition_import_id
+        function: ecs_task_definition_import_id
+        arg: id
       fields:
         task_definition_arn:
           field: arn
@@ -246,7 +250,7 @@ aws_ecs_service:
         cpu:
           field: cpu
           type: number
-          default: null
+          #default: null
         ephemeral_storage:
           field: ephemeral_storage
           type: map
@@ -262,14 +266,14 @@ aws_ecs_service:
         memory:
           field: memory
           type: number
-          default: null
+          #default: null
         proxy_configuration:
           field: proxy_configuration
           type: map
         requires_compatibilities:
           field: requires_compatibilities
           type: list
-          default: null
+          #default: null
         runtime_platform:
           field: runtime_platform
           type: map
@@ -277,10 +281,11 @@ aws_ecs_service:
         skip_destroy:
           field: skip_destroy
           type: boolean
-          default: null
+          #default: null
         volume:
-          function: task_definition_volume
+          function: ecs_task_definition_volume
           type: map
+          arg: id
         task_tags:
           field: tags
           type: map
@@ -303,13 +308,14 @@ aws_ecs_service:
     aws_appautoscaling_target:
       join:
         name:
-          function: get_name_from_arn
+          function: ecs_get_name_from_arn
           arg: resource_id
       target_resource_name: this
       defaults:
         enable_autoscaling: true
       import_id:
-        function: aws_appautoscaling_target_import_id
+        function: ecs_appautoscaling_target_import_id
+        arg: id
       fields:
         autoscaling_min_capacity:
           field: min_capacity
@@ -331,12 +337,14 @@ aws_ecs_service:
               field: scalable_dimension
           target_resource_name: this
           import_id:
-            function: aws_appautoscaling_policy_import_id
+            function: ecs_appautoscaling_policy_import_id
+            arg: id
           second_index:
             field: name
           fields:
             autoscaling_policies:
-              function: autoscaling_policies
+              function: ecs_autoscaling_policies
+              arg: id
               type: list
         aws_appautoscaling_scheduled_action:
           join:
@@ -349,5 +357,6 @@ aws_ecs_service:
           target_resource_name: this
           fields:
             autoscaling_scheduled_actions:
-              function: autoscaling_scheduled_actions
+              function: ecs_autoscaling_scheduled_actions
               type: list
+              arg: id

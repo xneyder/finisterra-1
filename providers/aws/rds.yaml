@@ -36,10 +36,10 @@ aws_db_instance:
     license_model:
       field: license_model
     db_name:
-      function: get_db_name
+      function: rds_get_db_name
       arg: db_name
     username:
-      function: get_username
+      function: rds_get_username
       arg: username
     password:
       field: password

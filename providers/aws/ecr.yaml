@@ -86,8 +86,9 @@ aws_ecr_repository:
           type: string
           module_default: "ENHANCED"
         registry_scan_rules:
-          function: get_registry_scan_rules
+          function: ecr_get_registry_scan_rules
           type: list
+          arg: id
 
 aws_ecr_registry_policy:
   # terraform_module: "terraform-aws-modules/aws/ecr"
@@ -128,5 +129,6 @@ aws_ecr_replication_configuration:
   #   create_repository: false
   fields:
     registry_replication_rules:
-      function: build_registry_replication_rules
+      function: ecr_build_registry_replication_rules
       type: list
+      arg: id

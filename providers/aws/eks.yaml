@@ -47,18 +47,20 @@ aws_eks_cluster:
     #   arg: vpc_config.subnet_ids
     #   type: list
     subnet_names:
-      function: get_subnet_names
+      function: eks_get_subnet_names
       arg: id
       type: list
     subnet_ids:
-      function: get_subnet_ids
+      function: eks_get_subnet_ids
       arg: id
       type: list
     vpc_name:
       function: get_vpc_name_eks
+      arg: id
       type: string
     vpc_id:
       function: get_vpc_id_eks
+      arg: id
       type: string
     cluster_endpoint_private_access:
       function: get_field_from_attrs
@@ -90,7 +92,8 @@ aws_eks_cluster:
     aws_cloudwatch_log_group:
       join:
         name:
-          function: cloudwatch_log_group_name
+          function: eks_cloudwatch_log_group_name
+          arg: id
       target_resource_name: this
       fields:
         cloudwatch_log_group_retention_in_days:
@@ -111,24 +114,28 @@ aws_eks_cluster:
         field: addon_name
       fields:
         cluster_addons:
-          function: build_cluster_addons
+          function: eks_build_cluster_addons
           type: map
+          arg: id
     aws_ec2_tag:
       join:
         resource_id:
-          join_function: join_ec2_tag_resource_id
+          join_function: eks_join_ec2_tag_resource_id
+          arg: id
       target_resource_name: cluster_primary_security_group
       second_index:
         field: key
       fields:
         ec2_tags:
-          function: build_cluster_tags
+          function: eks_build_cluster_tags
+          arg: id
           type: map
 
     aws_iam_openid_connect_provider:
       join:
         arn:
           join_function: join_eks_cluster_and_oidc_provider
+          arg: id
       target_resource_name: oidc_provider
       fields:
         oidc_provider_tags:
@@ -144,34 +151,41 @@ aws_eks_cluster:
       target_resource_name: this
       target_submodule: module.eks_managed_node_group
       first_index:
-        function: get_node_group_name
+        function: eks_get_node_group_name
+        arg: id
       fields:
         eks_managed_node_groups:
-          function: build_managed_node_groups
+          function: eks_build_managed_node_groups
+          arg: id
           type: map
       childs:
         aws_launch_template:
           join:
             name:
-              join_function: join_node_group_launch_template
+              join_function: eks_join_node_group_launch_template
+              arg: id
           target_resource_name: this
           target_submodule: module.eks_managed_node_group
           first_index:
-            function: get_node_group_name
+            function: eks_get_node_group_name
+            arg: id
           fields:
             eks_managed_node_groups:
-              function: build_launch_templates
+              function: eks_build_launch_templates
+              arg: id
               type: map
-
         aws_autoscaling_schedule:
           join:
             name:
-              join_function: join_node_group_autoscaling_schedule
+              join_function: eks_join_node_group_autoscaling_schedule
+              arg: id
           target_resource_name: this
           target_submodule: module.eks_managed_node_group
           first_index:
-            function: get_node_group_name
+            function: eks_get_node_group_name
+            arg: id
           fields:
             eks_managed_node_groups:
-              function: build_node_group_autoscaling_schedules
+              function: eks_build_node_group_autoscaling_schedules
+              arg: id
               type: map

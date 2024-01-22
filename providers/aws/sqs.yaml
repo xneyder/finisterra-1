@@ -8,7 +8,7 @@ aws_sqs_queue:
     create_dlq: false
   # path: "sqs"
   skip_if:
-    function: is_dql
+    function: sqs_is_dql
     arg: url
   fields:
     name:
@@ -93,7 +93,8 @@ aws_sqs_queue:
       target_resource_name: dlq
       join:
         url:
-          function: get_parent_url
+          function: sqs_get_parent_url
+          arg: id
       defaults:
         create_dlq: true
       fields:

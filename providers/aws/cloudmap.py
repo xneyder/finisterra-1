@@ -148,7 +148,6 @@ class Cloudmap:
                             self.hcl.additional_data[resource_type][id] = {}
                         self.hcl.additional_data[resource_type][id]["vpc_name"] = vpc_name
 
-
     def aws_service_discovery_public_dns_namespace(self):
         print("Processing AWS Service Discovery Public DNS Namespaces...")
 

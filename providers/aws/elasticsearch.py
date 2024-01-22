@@ -22,59 +22,19 @@ class Elasticsearch:
         self.resource_list = {}
         self.aws_account_id = aws_account_id
 
-        functions = {
-            'get_field_from_attrs': self.get_field_from_attrs,
-            'es_get_vpc_options': self.es_get_vpc_options,
-            'es_get_tags': self.es_get_tags,
-            'es_get_vpc_name': self.es_get_vpc_name,
-            'es_get_encrypt_at_rest': self.es_get_encrypt_at_rest,
-            # 'es_get_subnet_names': self.es_get_subnet_names,
-            # 'es_get_subnet_ids': self.es_get_subnet_ids,
-        }
-
+        functions = {}
         self.hcl.functions.update(functions)
 
         self.security_group_instance = SECURITY_GROUP(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
         self.kms_instance = KMS(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
         self.acm_instance = ACM(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
         self.logs_instance = Logs(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
-
-    def get_field_from_attrs(self, attributes, arg):
-        keys = arg.split(".")
-        result = attributes
-        for key in keys:
-            if isinstance(result, list):
-                result = [sub_result.get(key, None) if isinstance(
-                    sub_result, dict) else None for sub_result in result]
-                if len(result) == 1:
-                    result = result[0]
-            else:
-                result = result.get(key, None)
-            if result is None:
-                return None
-        return result
-    
-    def es_get_tags(self, attributes):
-        arn = attributes.get("arn", None)
-        if arn:
-            tags_response = self.aws_clients.elasticsearch_client.list_tags(
-                ARN=arn
-            )
-            tags = tags_response.get("TagList", [])
-            result = {}
-            for tag in tags:
-                key = tag["Key"]
-                value = tag["Value"]
-                result[key] = value
-            return result
-        return None
-    
-    def es_get_vpc_name(self, attributes):
+        
+    def get_vpc_name(self, vpc_options):
         vpc_name = None
         vpc_id = None
-        vpc_options = attributes.get('vpc_options', [])
         if vpc_options:
-            subnets = vpc_options[0].get("subnet_ids")
+            subnets = vpc_options.get("SubnetIds")
             if subnets:
                 #get the vpc id for the first subnet
                 subnet_id = subnets[0]
@@ -84,24 +44,9 @@ class Elasticsearch:
             response = self.aws_clients.ec2_client.describe_vpcs(VpcIds=[vpc_id])
             vpc_name = next(
                 (tag['Value'] for tag in response['Vpcs'][0]['Tags'] if tag['Key'] == 'Name'), None)
-            return vpc_name
-    
-
-    def es_get_vpc_options(self, attributes):
-        vpc_options = attributes.get("vpc_options", None)
-        if vpc_options is None:
-            return None
-        result = {}
-        result["security_group_ids"] = vpc_options[0].get(
-            "security_group_ids", None)
-        subnet_ids = result["subnet_ids"] = vpc_options[0].get("subnet_ids", None)
-        subnet_names = self.es_get_subnet_names(subnet_ids)
-        if subnet_names:
-            result["subnet_names"] = subnet_names
-            del result["subnet_ids"]
-        return result
-    
-    def es_get_subnet_names(self, subnet_ids):
+        return vpc_name
+        
+    def get_subnet_names(self, subnet_ids):
         subnet_names = []
         for subnet_id in subnet_ids:
             response = self.aws_clients.ec2_client.describe_subnets(SubnetIds=[subnet_id])
@@ -125,17 +70,7 @@ class Elasticsearch:
                 print(f"No 'Name' tag found for Subnet ID: {subnet_id}")
 
         return subnet_names
-    
-    def es_get_encrypt_at_rest(self, attributes):
-        encrypt_at_rest = attributes.get("encrypt_at_rest", None)
-        if encrypt_at_rest:
-            kms_key_id = encrypt_at_rest[0].get("kms_key_id", None)
-            kms_key_alias =  self.get_kms_alias(kms_key_id)
-            if kms_key_alias:
-                encrypt_at_rest[0]['kms_key_alias'] = kms_key_alias
-                del encrypt_at_rest[0]['kms_key_id']
-        return encrypt_at_rest
-    
+        
     def get_kms_alias(self, kms_key_id):
         try:
             value = ""
@@ -190,6 +125,14 @@ class Elasticsearch:
             )
             tags = tags_response.get("TagList", [])
 
+            formated_tags = {}
+            for tag in tags:
+                key = tag["Key"]
+                value = tag["Value"]
+                formated_tags[key] = value
+            if formated_tags:
+                self.hcl.add_additional_data(resource_type, id, "tags", formated_tags)
+
             ftstack = "elasticsearch"    
             for tag in tags:
                 key = tag["Key"]
@@ -210,11 +153,25 @@ class Elasticsearch:
                 for sg in security_groups:
                     self.security_group_instance.aws_security_group(sg, ftstack)
 
+                vpc_name = self.get_vpc_name(vpc_options)
+                if vpc_name:
+                    self.hcl.add_additional_data(resource_type, id, "vpc_name", vpc_name)
+
+                subnet_ids = vpc_options.get(
+                    'SubnetIds', [])
+                if subnet_ids:
+                    subnet_names = self.get_subnet_names(subnet_ids)
+                    if subnet_names:
+                        self.hcl.add_additional_data(resource_type, id, "subnet_names", subnet_names)
+
             encrypt_at_rest = domain_info.get('EncryptionAtRestOptions', {})
             if encrypt_at_rest:
                 kmsKeyId = encrypt_at_rest.get('KmsKeyId', None)
                 if kmsKeyId:
-                    self.kms_instance.aws_kms_key(kmsKeyId, ftstack)       
+                    self.kms_instance.aws_kms_key(kmsKeyId, ftstack)
+                    kms_key_alias = self.get_kms_alias(kmsKeyId)
+                    if kms_key_alias:
+                        self.hcl.add_additional_data(resource_type, id, "kms_key_alias", kms_key_alias)      
 
             domain_endpoint_options = domain_info.get('DomainEndpointOptions', {})
             if domain_endpoint_options:
@@ -230,6 +187,8 @@ class Elasticsearch:
                 if cloudwatch_log_group_arn:
                     log_group_name = cloudwatch_log_group_arn.split(':')[-1]
                     self.logs_instance.aws_cloudwatch_log_group(log_group_name, ftstack)
+
+            
 
             # self.aws_elasticsearch_domain_policy(domain_name)
 

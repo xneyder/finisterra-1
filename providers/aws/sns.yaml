@@ -25,7 +25,8 @@ aws_sns_topic:
       field: fifo_topic
       type: string
     signature_version:
-      function: signature_version
+      function: sns_signature_version
+      arg: id
       type: number
     tracing_config:
       field: tracing_config
@@ -107,11 +108,13 @@ aws_sns_topic:
       defaults:
         create_subscription: true
       second_index:
-        function: get_key_from_arn
+        function: sns_get_key_from_arn
+        arg: id
       target_resource_name: this
       fields:
         subscriptions:
-          function: build_subscriptions
+          function: sns_build_subscriptions
+          arg: id
 
     aws_sns_topic_data_protection_policy:
       join:

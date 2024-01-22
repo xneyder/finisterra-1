@@ -32,408 +32,15 @@ class ECS:
         self.target_group_instance = TargetGroup(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
 
         functions = {
-            'cloudwatch_log_group_name': self.cloudwatch_log_group_name,
-            'to_map': self.to_map,
-            'aws_ecs_service_cluster_arn': self.aws_ecs_service_cluster_arn,
-            'check_subnet_ids': self.check_subnet_ids,
-            'task_definition_id': self.task_definition_id,
-            'container_definitions': self.container_definitions,
-            'task_definition_volume': self.task_definition_volume,
-            'get_arn': self.get_arn,
-            'get_field_from_attrs': self.get_field_from_attrs,
-            'tasks_iam_role_policies': self.tasks_iam_role_policies,
-            'get_name_from_arn': self.get_name_from_arn,
-            'autoscaling_policies': self.autoscaling_policies,
-            'autoscaling_scheduled_actions': self.autoscaling_scheduled_actions,
-            'load_balancer': self.load_balancer,
-            'join_path_role_name': self.join_path_role_name,
-            'get_iam_role': self.get_iam_role,
-            'build_service_registries': self.build_service_registries,
-            'join_ecs_service_to_aws_lb_target_group': self.join_ecs_service_to_aws_lb_target_group,
-            'get_vpc_name': self.get_vpc_name,
-            'get_lb_name': self.get_lb_name,
-            'get_id_from_arn': self.get_id_from_arn,
-            'get_listener_rule_lb_name': self.get_listener_rule_lb_name,
-            'aws_ecs_service_import_id': self.aws_ecs_service_import_id,
-            'aws_ecs_task_definition_import_id': self.aws_ecs_task_definition_import_id,
-            'aws_appautoscaling_policy_import_id': self.aws_appautoscaling_policy_import_id,
-            'aws_appautoscaling_target_import_id': self.aws_appautoscaling_target_import_id,
-            'get_iam_policy_name': self.get_iam_policy_name,
-            'get_policy_attachment_index': self.get_policy_attachment_index,
-            'get_network_field': self.get_network_field,
-            'ecs_get_cluster_configuration': self.ecs_get_cluster_configuration,
-            'ecs_get_network_configuration': self.ecs_get_network_configuration,
-            'get_vpc_id_ecs': self.get_vpc_id_ecs,
-            'get_vpc_name_ecs': self.get_vpc_name_ecs
         }
 
         self.hcl.functions.update(functions)
 
-    def cloudwatch_log_group_name(self, attributes):
-        # The name is expected to be in the format /aws/ecs/{cluster_name}
-        name = attributes.get('name')
-        if name is not None:
-            # split the string by '/' and take the last part as the cluster_name
-            parts = name.split('/')
-            if len(parts) > 2:
-                return parts[-1]  # return 'cluster_name'
-        # In case the name doesn't match the expected format, return None or you could return some default value
-        return None
 
-    def to_map(self, attributes, arg):
-        if arg in attributes:
-            if len(attributes[arg]) > 0:
-                return attributes[arg][0]
-        return None
-
-    def aws_ecs_service_cluster_arn(self, attributes):
-        return attributes.get('cluster')
-
-    def get_field_from_attrs(self, attributes, arg):
-        return attributes.get(arg)
-
-    def get_arn(self, attributes):
-        return attributes.get('arn')
-
-    def get_network_field(self, attributes, field):
-        tmp = attributes.get('network_configuration')
-        if tmp:
-            network_configuration = attributes['network_configuration'][0]
-            if field in network_configuration:
-                return network_configuration[field]
-        return None
-
-    def check_subnet_ids(self, attributes):
-        if 'network_configuration' in attributes:
-            if len(attributes['network_configuration']) > 0:
-                network_configuration = attributes['network_configuration'][0]
-                if 'subnet_ids' in network_configuration:
-                    return True
-        return False
-    
-    def get_iam_policy_name(self, attributes, field):
-        policy_arn = attributes.get(field, "")
-        if policy_arn:
-            # The policy name is typically the last element in the ARN, after the last colon
-            return policy_arn.split('/')[-1]
-        return None
-
-    def task_definition_id(self, attributes):
-        # The name is expected to be in the format /aws/ecs/{cluster_name}
-        arn = attributes.get('arn')
-        if arn is not None:
-            # split the string by '/' and take the last part as the cluster_arn
-            return arn.split('/')[-1]
-        return None
-
-    def to_snake_case(self, name):
-        s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
-        return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
-
-    def container_definitions(self, attributes):
-        result = {}
-        container_definitions_str = attributes.get(
-            'container_definitions', '[]')
-        try:
-            container_definitions = json.loads(container_definitions_str)
-        except json.JSONDecodeError:
-            print("Error: container_definitions is not a valid JSON string")
-            return result
-
-        for container in container_definitions:
-            updated_container = {}
-            for k, v in container.items():
-                updated_container[self.to_snake_case(k)] = v
-            result[updated_container['name']] = updated_container
-        return result
-
-    def autoscaling_policies(self, attributes):
-        name = attributes.get('name')
-        result = {name: {}}
-
-        if attributes.get('name'):
-            result[name]['name'] = attributes.get('name')
-        if attributes.get('policy_type'):
-            result[name]['policy_type'] = attributes.get('policy_type')
-
-        if attributes.get('step_scaling_policy_configuration'):
-            result[name]['step_scaling_policy_configuration'] = attributes.get(
-                'step_scaling_policy_configuration')
-
-        if attributes.get('target_tracking_scaling_policy_configuration'):
-            result[name]['target_tracking_scaling_policy_configuration'] = attributes.get(
-                'target_tracking_scaling_policy_configuration')[0]
-            if result[name]['target_tracking_scaling_policy_configuration']['predefined_metric_specification']:
-                result[name]['target_tracking_scaling_policy_configuration']['predefined_metric_specification'] = result[
-                    name]['target_tracking_scaling_policy_configuration']['predefined_metric_specification'][0]
-            else:
-                del result[name]['target_tracking_scaling_policy_configuration']['predefined_metric_specification']
-
-            if result[name]['target_tracking_scaling_policy_configuration']['customized_metric_specification']:
-                result[name]['target_tracking_scaling_policy_configuration']['customized_metric_specification'] = result[
-                    name]['target_tracking_scaling_policy_configuration']['customized_metric_specification'][0]
-            else:
-                del result[name]['target_tracking_scaling_policy_configuration']['customized_metric_specification']
-
-        if attributes.get('scaling_adjustment'):
-            result[name]['scaling_adjustment'] = attributes.get(
-                'scaling_adjustment')
-
-        return result
-
-    def autoscaling_scheduled_actions(self, attributes):
-        name = attributes.get('name')
-        result = {name: {}}
-
-        if attributes.get('name'):
-            result[name]['name'] = attributes.get('name')
-        if attributes.get('min_capacity'):
-            result[name]['min_capacity'] = attributes.get('min_capacity')
-        if attributes.get('max_capacity'):
-            result[name]['max_capacity'] = attributes.get('max_capacity')
-        if attributes.get('schedule'):
-            result[name]['schedule'] = attributes.get('schedule')
-        if attributes.get('start_time'):
-            result[name]['start_time'] = attributes.get('start_time')
-        if attributes.get('end_time'):
-            result[name]['end_time'] = attributes.get('end_time')
-        if attributes.get('timezone'):
-            result[name]['timezone'] = attributes.get('timezone')
-
-        return result
-
-    def task_definition_volume(self, attributes):
-        result = {}
-        volumes = attributes.get('volume')
-
-        for volume in volumes:
-            cleaned_volume = {k: v for k, v in volume.items() if v != []}
-            result[cleaned_volume['name']] = cleaned_volume
-
-        return result
-
-    def load_balancer(self, attributes):
-        result = {}
-        load_balancer = attributes.get('load_balancer', [])
-
-        for lb in load_balancer:
-            target_group_arn = lb['target_group_arn']
-            target_groups = self.aws_clients.elbv2_client.describe_target_groups(
-                TargetGroupArns=[target_group_arn]
-            )
-            target_group_name = target_groups['TargetGroups'][0]['TargetGroupName']
-            lb['target_group_name'] = target_group_name
-            del lb['target_group_arn']  # Remove the ARN from the result
-            result[target_group_name] = lb  # Use target_group_name as the key
-        return result
-
-    def tasks_iam_role_policies(self, attributes):
-        result = {}
-        policy_arn = attributes.get('policy_arn', "")
-        if policy_arn != "":
-            name = policy_arn.split('/')[-1]
-            result[name] = policy_arn
-        return result
-
-    def get_name_from_arn(self, attributes, arg):
-        arn = attributes.get(arg)
-        if arn is not None:
-            # split the string by '/' and take the last part as the cluster_arn
-            return arn.split('/')[-1]
-        return None
-
-    def join_path_role_name(self, attributes):
-        path = attributes.get('path')
-        name = attributes.get('name')
-        if path != "/":
-            return f"{path}{name}"
-        return f"{name}"
-
-    def get_iam_role(self, attributes, arg):
-        iam_role = attributes.get(arg)
-        if iam_role:
-            return iam_role.split('/')[-1]
-        return None
-
-    def build_service_registries(self, attributes, arg):
-        result = {}
-        service_registries = attributes.get(arg, [])
-        if service_registries:
-            sg = service_registries[0]
-            # Reading the ARN
-            registry_arn = sg.get('registry_arn')
-
-            # Parsing the ARN to get service_id
-            service_id = registry_arn.split('/')[-1]
-
-            # Fetching service details using service_id
-            service = self.aws_clients.cloudmap_client.get_service(Id=service_id)[
-                'Service']
-
-            # Extracting service name from the service details
-            service_name = service['Name']
-
-            # Fetching namespace details using namespace_id
-            namespace = self.aws_clients.cloudmap_client.get_namespace(
-                Id=service['NamespaceId'])['Namespace']
-
-            # Extracting namespace name from the namespace details
-            namespace_name = namespace['Name']
-
-            # Adding the registry_name, namespace_name, port, container_name, and container_port to the result
-            result['registry_name'] = service_name
-            result['namespace_name'] = namespace_name
-            result['port'] = sg.get('port')
-            result['container_name'] = sg.get('container_name')
-            result['container_port'] = sg.get('container_port')
-
-        return result
-
-    def join_ecs_service_to_aws_lb_target_group(self, parent_attributes, child_attributes):
-        target_group_name = child_attributes.get('name')
-        for lb in parent_attributes.get('load_balancer', []):
-            if lb.get('target_group_name') == target_group_name:
-                return True
-
-        return False
-
-    def join_aws_lb_target_group_to_aws_lb_listener_rule(self, parent_attributes, child_attributes):
-        target_group_arn = parent_attributes.get('arn')
-        for action in child_attributes.get('action', []):
-            if action.get('target_group_arn') == target_group_arn:
-                return True
-        return False
-
-    def join_aws_lb_target_group_to_aws_lb_listener(self, parent_attributes, child_attributes):
-        target_group_arn = parent_attributes.get('arn')
-        for action in child_attributes.get('default_action', []):
-            if action.get('target_group_arn') == target_group_arn:
-                return True
-        return False
-
-    def get_lb_name(self, attributes, arg):
-        lb_arn = attributes.get(arg)
-        response = self.aws_clients.elbv2_client.describe_load_balancers(
-            LoadBalancerArns=[lb_arn])
-        lb_name = response['LoadBalancers'][0]['LoadBalancerName']
-        return lb_name
-
-    def get_listener_port(self, attributes, arg):
-        listener_arn = attributes.get(arg)
-        response = self.aws_clients.elbv2_client.describe_listeners(
-            ListenerArns=[listener_arn])
-        listener_port = response['Listeners'][0]['Port']
-        return listener_port
-    
-    def ecs_get_cluster_configuration(self, attributes, arg):
-        configuration = attributes.get(arg, [])
-        if configuration:
-            execute_command_configuration = configuration[0].get('execute_command_configuration', [])
-            if execute_command_configuration:
-                kms_key_id = execute_command_configuration[0].get('kms_key_id')
-                if kms_key_id:
-                    #using boto3 get the kms arn
-                    response = self.aws_clients.kms_client.describe_key(KeyId=kms_key_id)
-                    kms_arn = response['KeyMetadata']['Arn']
-                    #in configuration set kms_key_id to the kms_arn
-                    configuration[0]['execute_command_configuration'][0]['kms_key_id'] = kms_arn
-                    print(configuration)
-        return configuration[0]
-
-    # def get_listener_rule_lb_name(self, attributes, arg):
-    #     listener_rule_arn = attributes.get(arg)
-    #     print("================")
-    #     print(listener_rule_arn)
-
-    #     response = self.aws_clients.elbv2_client.describe_rules(
-    #         ListenerArn=listener_rule_arn)
-    #     print(response)
-    #     print("================")
-    #     lb_name = response['Rules'][0]['Actions'][0]['TargetGroupArn'].split(
-    #         '/')[-1]
-    #     return lb_name
-
-    def get_listener_rule_lb_name(self, attributes, arg):
-        listener_arn = attributes.get(arg)
-
-        # Describe the listener to get the load balancer ARN
-        response_listener = self.aws_clients.elbv2_client.describe_listeners(ListenerArns=[
-                                                                 listener_arn])
-        lb_arn = response_listener['Listeners'][0]['LoadBalancerArn']
-
-        # Describe the load balancer to get its name
-        response_lb = self.aws_clients.elbv2_client.describe_load_balancers(
-            LoadBalancerArns=[lb_arn])
-        lb_name = response_lb['LoadBalancers'][0]['LoadBalancerName']
-
-        return lb_name
-
-    def get_domain_name(self, certificate_arn):
-
-        # Describe the certificate
-        response = self.aws_clients.acm_client.describe_certificate(
-            CertificateArn=certificate_arn)
-
-        # Extract the certificate name (or domain name)
-        domain_name = response['Certificate']['DomainName']
-
-        return domain_name
-
-    def get_listeners(self, attributes):
-        result = {}
-        key = attributes.get('arn').split('/')[-1]
-        result[key] = {}
-        result[key]['port'] = attributes.get('port')
-        result[key]['protocol'] = attributes.get('protocol')
-
-        certificate_arn = attributes.get('certificate_arn')
-        result[key]['certificate_arn'] = certificate_arn
-        # if certificate_arn:
-        #     result[key]['domain_name'] = self.get_domain_name(
-        #         certificate_arn)
-
-        result[key]['tags'] = attributes.get('tags')
-        return result
-
-    def get_listener_rules(self, attributes):
-        result = {}
-        key = attributes.get('arn').split('/')[-1]
-        result[key] = {}
-        result[key]['listener_id'] = attributes.get('listener_arn').split('/')[-1]
-        result[key]['priority'] = attributes.get('priority')
-        result[key]['conditions'] = attributes.get('condition')
-        result[key]['tags'] = attributes.get('tags')
-        result[key]['port'] = self.get_listener_port(
-            attributes, 'listener_arn')
-        return result
-
-    def get_id_from_arn(self, attributes, arg):
-        arn = attributes.get(arg)
-        return arn.split('/')[-1]
-
-    def aws_ecs_service_import_id(self, attributes):
-        service_arn = attributes.get('id')
-        cluster_arn = attributes.get('cluster')
-        return cluster_arn.split('/')[-1]+"/"+service_arn.split('/')[-1]
-
-    def aws_ecs_task_definition_import_id(self, attributes):
-        return attributes.get('arn')
-
-    def aws_appautoscaling_policy_import_id(self, attributes):
-        return f"{attributes.get('service_namespace')}/{attributes.get('resource_id')}/{attributes.get('scalable_dimension')}/{attributes.get('name')}"
-
-    def aws_appautoscaling_target_import_id(self, attributes):
-        return f"{attributes.get('service_namespace')}/{attributes.get('resource_id')}/{attributes.get('scalable_dimension')}"
-
-    def get_policy_attachment_index(self, attributes):
-        role = attributes.get('role')
-        policy_name = attributes.get('policy_arn').split('/')[-1]
-        return role+"_"+policy_name
-    
-    def ecs_get_network_configuration(self, attributes, arg):
-        network_configuration = attributes.get(arg, [])
+    def get_subnet_names(self, network_configuration):
         if network_configuration:
-            subnets = network_configuration[0].get("subnets")
+            awsvpcConfiguration = network_configuration.get("awsvpcConfiguration")
+            subnets = awsvpcConfiguration.get("subnets")
             subnet_names = []
             for subnet_id in subnets:
                 response = self.aws_clients.ec2_client.describe_subnets(SubnetIds=[subnet_id])
@@ -457,61 +64,34 @@ class ECS:
                     print(f"No 'Name' tag found for Subnet ID: {subnet_id}")
 
             if subnet_names:
-                network_configuration[0]['subnet_names'] = subnet_names
-                del network_configuration[0]['subnets']
-        return network_configuration
-
-    def get_vpc_name(self, attributes, arg):
-        vpc_id = attributes.get(arg)
-        response = self.aws_clients.ec2_client.describe_vpcs(VpcIds=[vpc_id])
-        vpc_name = next(
-            (tag['Value'] for tag in response['Vpcs'][0]['Tags'] if tag['Key'] == 'Name'), None)
-        return vpc_name
-
-    def get_vpc_name_ecs(self, attributes):
+                return subnet_names
+        return ""
+    
+    def get_vpc_name(self, network_configuration):
         vpc_name = None
         vpc_id = None
-        network_configuration = attributes.get('network_configuration', [])
         if network_configuration:
-            subnets = network_configuration[0].get("subnets")
+            awsvpcConfiguration = network_configuration.get("awsvpcConfiguration")
+            subnets = awsvpcConfiguration.get("subnets")
             if subnets:
                 #get the vpc id for the first subnet
                 subnet_id = subnets[0]
                 response = self.aws_clients.ec2_client.describe_subnets(SubnetIds=[subnet_id])
                 vpc_id = response['Subnets'][0]['VpcId']
-        if vpc_id:
-            response = self.aws_clients.ec2_client.describe_vpcs(VpcIds=[vpc_id])
-            vpc_name = next(
-                (tag['Value'] for tag in response['Vpcs'][0]['Tags'] if tag['Key'] == 'Name'), None)
-            return vpc_name
-
-    def get_vpc_id_ecs(self, attributes):
-        vpc_name = self.get_vpc_name_ecs(attributes)
-        if vpc_name is None:
-            return  attributes.get("vpc_id")
-        else:
-            return ""    
+            if vpc_id:
+                response = self.aws_clients.ec2_client.describe_vpcs(VpcIds=[vpc_id])
+                vpc_name = next(
+                    (tag['Value'] for tag in response['Vpcs'][0]['Tags'] if tag['Key'] == 'Name'), None)
+                return vpc_name
+        return ""
 
     def ecs(self):
         self.hcl.prepare_folder(os.path.join("generated"))
 
         self.aws_ecs_cluster()
-
-        # self.aws_ecs_account_setting_default()
-        # self.aws_ecs_capacity_provider()
-        # self.aws_ecs_cluster_capacity_providers()
-        # self.aws_ecs_service()
-        # # self.aws_ecs_tag()
-        # self.aws_ecs_task_definition()
-        # if "gov" not in self.region:
-        #     self.aws_ecs_task_set()
-
         self.hcl.refresh_state()
-
-
         self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id)
 
-        # self.hcl.generate_hcl_file()
         self.json_plan = self.hcl.json_plan
 
     def aws_ecs_cluster(self):
@@ -691,8 +271,8 @@ class ECS:
 
                         # if service_name != "eureka-discovery-service":
                         # if service_name != "eureka-discovery-service" and service_name != "spring-config-server":
-                        # if service_name != "tenant-user-configuration-service":
-                            # continue
+                        # if service_name != "assessment-service":
+                        #     continue
 
                         service_arn = service["serviceArn"]
                         id = cluster_arn.split("/")[1] + "/" + service_name
@@ -708,6 +288,19 @@ class ECS:
                         self.hcl.process_resource(
                             resource_type, service_name.replace("-", "_"), attributes)
                         self.hcl.add_stack(resource_type, service_arn, ftstack)
+
+                        network_configuration = service.get(
+                            'networkConfiguration', {})
+                        if network_configuration:
+                            subnet_names = self.get_subnet_names(
+                                network_configuration)
+                            if subnet_names:
+                                self.hcl.add_additional_data(resource_type, service_arn, "subnet_names", subnet_names)
+                            vpc_name = self.get_vpc_name(network_configuration)
+                            print(vpc_name)
+                            if vpc_name:
+                                self.hcl.add_additional_data(resource_type, service_arn, "vpc_name", vpc_name)
+                            print(self.hcl.additional_data)
 
                         self.aws_appautoscaling_target(
                             cluster_name, service_name)
@@ -748,6 +341,23 @@ class ECS:
                                 print(f"Processing Target Group: {target_group_arn}...")
                                 self.target_group_instance.aws_lb_target_group(target_group_arn, ftstack)
 
+                        #Cloudmap
+                        serviceRegistries = service.get('serviceRegistries', [])
+                        for serviceRegistry in serviceRegistries:
+                            registry_arn = serviceRegistry.get('registryArn')
+                            registry_id = registry_arn.split('/')[-1]
+                            # Fetching service details using registry_id
+                            cloudmap = self.aws_clients.cloudmap_client.get_service(Id=registry_id)[
+                                'Service']
+                            if cloudmap:
+                                registry_name = cloudmap['Name']
+                                if registry_name:
+                                    self.hcl.add_additional_data("aws_service_discovery_service", registry_arn, "registry_name", registry_name)
+                                    namespace = self.aws_clients.cloudmap_client.get_namespace(
+                                        Id=cloudmap['NamespaceId'])['Namespace']
+                                    namespace_name = namespace['Name']
+                                    if namespace_name:
+                                         self.hcl.add_additional_data("aws_service_discovery_service", registry_arn, "namespace_name", namespace_name)
             # else:
             #     print(f"Skipping aws_ecs_service: {cluster['clusterName']}")
 
