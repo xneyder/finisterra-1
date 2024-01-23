@@ -1,6 +1,7 @@
 import os
 from utils.hcl import HCL
-
+from providers.aws.iam_role import IAM_ROLE
+from providers.aws.security_group import SECURITY_GROUP
 
 class StepFunction:
     def __init__(self, aws_clients, script_dir, provider_name, schema_data, region, s3Bucket,
@@ -22,29 +23,11 @@ class StepFunction:
         self.resource_log_groups = {}
 
         functions = {
-            'get_field_from_attrs': self.get_field_from_attrs,
-            'join_role': self.join_role,
-            'join_log_group': self.join_log_group,
             'get_role_name_from_arn': self.get_role_name_from_arn,
             'to_list': self.to_list,
         }
-
+ 
         self.hcl.functions.update(functions)        
-
-    def get_field_from_attrs(self, attributes, arg):
-        keys = arg.split(".")
-        result = attributes
-        for key in keys:
-            if isinstance(result, list):
-                result = [sub_result.get(key, None) if isinstance(
-                    sub_result, dict) else None for sub_result in result]
-                if len(result) == 1:
-                    result = result[0]
-            else:
-                result = result.get(key, None)
-            if result is None:
-                return None
-        return result
 
     def get_role_name_from_arn(self, attributes, arg):
         arn = attributes.get(arg, None)
