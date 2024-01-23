@@ -1,6 +1,7 @@
 import os
 from utils.hcl import HCL
-
+from providers.aws.security_group import SECURITY_GROUP
+from providers.aws.iam_role import IAM_ROLE
 
 class AutoScaling:
     def __init__(self, aws_clients, script_dir, provider_name, schema_data, region, s3Bucket,
@@ -20,128 +21,13 @@ class AutoScaling:
         self.user_data = {}
 
 
-        functions = {
-            'build_autoscaling_policies': self.build_autoscaling_policies,
-            'join_launch_configuration': self.join_launch_configuration,
-            'join_launch_template': self.join_launch_template,
-            'get_field_from_attrs': self.get_field_from_attrs,
-            'build_aws_cloudwatch_metric_alarms': self.build_aws_cloudwatch_metric_alarms,
-            'get_user_data': self.get_user_data,
-            'get_subnet_ids': self.get_subnet_ids,
-            'get_subnet_names': self.get_subnet_names,
-            'get_security_group_names': self.get_security_group_names,
-        }
+        functions = {}
 
         self.hcl.functions.update(functions)
+        self.security_group_instance = SECURITY_GROUP(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)        
+        self.iam_role_instance = IAM_ROLE(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)        
 
-    def get_user_data(self, attributes):
-        name = attributes.get("name")
-        return self.user_data.get(name)
-
-    def get_security_group_names(self, attributes, arg):
-        security_group_ids = attributes.get(arg)
-        security_group_names = []
-
-        for security_group_id in security_group_ids:
-            response = self.aws_clients.ec2_client.describe_security_groups(
-                GroupIds=[security_group_id])
-            security_group = response['SecurityGroups'][0]
-
-            security_group_name = security_group.get('GroupName')
-            # Just to be extra safe, if GroupName is somehow missing, fall back to the security group ID
-            if not security_group_name:
-                security_group_name = security_group_id
-
-            security_group_names.append(security_group_name)
-
-        return security_group_names
-
-    def build_autoscaling_policies(self, attributes):
-        result = {}
-        name = attributes.get("name")
-        if not name:
-            return result
-
-        policy_details = {}
-        attribute_keys = ["policy_type",
-                          "scaling_adjustment", "adjustment_type", "cooldown"]
-
-        for key in attribute_keys:
-            value = attributes.get(key)
-            if value or value == 0:
-                policy_details[key] = value
-
-        if not policy_details:
-            return result
-
-        result[name] = policy_details
-
-        return result
-
-    def build_aws_cloudwatch_metric_alarms(self, attributes):
-        result = {}
-        alarm_name = attributes.get("alarm_name")
-        if not alarm_name:
-            return result
-
-        alarm_details = {}
-
-        attribute_keys = ["comparison_operator", "evaluation_periods", "metric_name", "namespace", "period", "statistic", "extended_statistic",
-                          "threshold", "treat_missing_data", "ok_actions", "insufficient_data_actions", "dimensions", "alarm_description", "alarm_actions", "tags"]
-
-        for key in attribute_keys:
-            value = attributes.get(key)
-            if value or value == 0:
-                alarm_details[key] = value
-
-        if not alarm_details:
-            return result
-
-        result[alarm_name] = alarm_details
-
-        return result
-
-    def join_launch_configuration(self, parent_attributes, child_attributes):
-        name = child_attributes.get('name')
-        launch_configuration = parent_attributes.get('launch_configuration')
-
-        if name == launch_configuration:
-            return True
-
-        return False
-
-    def join_launch_template(self, parent_attributes, child_attributes):
-        name = child_attributes.get('name')
-        launch_template = parent_attributes.get('launch_template')
-
-        if name == launch_template['id']:
-            return True
-
-        return False
-
-    def get_field_from_attrs(self, attributes, arg):
-        try:
-            keys = arg.split(".")
-            result = attributes
-
-            for key in keys:
-                if isinstance(result, list):
-                    result = [sub_result.get(key, None) if isinstance(
-                        sub_result, dict) else None for sub_result in result]
-                    if len(result) == 1:
-                        result = result[0]
-                else:
-                    result = result.get(key, None)
-
-                if result is None:
-                    return None
-            return result
-
-        except Exception as e:
-            return None
-
-    def get_subnet_names(self, attributes, arg):
-        subnet_ids = attributes.get(arg)
+    def get_subnet_names(self, subnet_ids):
         subnet_names = []
         for subnet_id in subnet_ids:
             response = self.aws_clients.ec2_client.describe_subnets(SubnetIds=[subnet_id])
@@ -166,24 +52,10 @@ class AutoScaling:
 
         return subnet_names
 
-    def get_subnet_ids(self, attributes, arg):
-        subnet_names = self.get_subnet_names(attributes, arg)
-        if subnet_names:
-            return ""
-        else:
-            return attributes.get(arg)
-
     def autoscaling(self):
-        self.hcl.prepare_folder(os.path.join("generated", "autoscaling"))
+        self.hcl.prepare_folder(os.path.join("generated"))
 
         self.aws_autoscaling_group()
-        # self.aws_autoscaling_attachment()
-        # self.aws_autoscaling_group_tag()
-        # self.aws_autoscaling_lifecycle_hook()
-        # self.aws_autoscaling_notification()
-        # self.aws_autoscaling_policy()
-        # self.aws_autoscaling_schedule()
-
         self.hcl.refresh_state()
 
         self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id)
@@ -212,6 +84,7 @@ class AutoScaling:
                     "aws_autoscaling_attachment", resource_name.replace("-", "_"), attributes)
 
     def aws_autoscaling_group(self):
+        resource_type = "aws_autoscaling_group"
         print("Processing AutoScaling Groups...")
 
         as_groups = self.aws_clients.autoscaling_client.describe_auto_scaling_groups()[
@@ -233,12 +106,28 @@ class AutoScaling:
 
             print(f"  Processing AutoScaling Group: {as_group_name}")
 
+            id = as_group_name
             attributes = {
-                "id": as_group_name,
+                "id": id,
             }
 
             self.hcl.process_resource(
-                "aws_autoscaling_group", as_group_name.replace("-", "_"), attributes)
+                resource_type, id, attributes)
+            
+            ftstack = "autoscaling"
+            # get the autoscaling tags
+            if "Tags" in as_group:
+                for tag in as_group["Tags"]:
+                    if tag["Key"] == "ftstack":
+                        ftstack = "stack_"+tag["Value"]
+                        break
+            
+            self.hcl.add_stack(resource_type, id, ftstack)
+
+            service_linked_role_arn = as_group.get("ServiceLinkedRoleARN", "")
+            if service_linked_role_arn:
+                service_linked_role_name = service_linked_role_arn.split('/')[-1]
+                self.iam_role_instance.aws_iam_role(service_linked_role_name, ftstack)
 
             # Here we call the policy processing for this specific group
             self.aws_autoscaling_policy(as_group_name)
@@ -247,14 +136,21 @@ class AutoScaling:
             if "LaunchConfigurationName" in as_group:
                 lc_name = as_group["LaunchConfigurationName"]
                 # Call the method for processing Launch Configurations
-                self.aws_launch_configuration(id=lc_name)
+                self.aws_launch_configuration(lc_name, ftstack)
 
             elif "LaunchTemplate" in as_group:
                 lt_info = as_group["LaunchTemplate"]
                 if "LaunchTemplateId" in lt_info:  # It's possible to have 'LaunchTemplateName' instead of 'LaunchTemplateId'
                     lt_id = lt_info["LaunchTemplateId"]
                     # Call the method for processing Launch Templates
-                    self.aws_launch_template(id=lt_id)
+                    self.aws_launch_template(lt_id, ftstack)
+
+            subnet_ids = as_group.get("VPCZoneIdentifier", "").split(",")
+            if subnet_ids:
+                subnet_names = self.get_subnet_names(subnet_ids)
+                if subnet_names:
+                    self.hcl.add_additional_data(
+                        resource_type, as_group_name, "subnet_names", subnet_names)
 
     def aws_autoscaling_group_tag(self):
         print("Processing AutoScaling Group Tags...")
@@ -452,7 +348,7 @@ class AutoScaling:
                 self.hcl.process_resource(
                     "aws_autoscaling_schedule", action_name.replace("-", "_"), attributes)
 
-    def aws_launch_template(self, id):
+    def aws_launch_template(self, id, ftstack):
         print(f"Processing Launch Template: {id}")
 
         try:
@@ -488,7 +384,6 @@ class AutoScaling:
             "id": lt_name,
             "image_id": lt_data.get("ImageId", ""),
             "instance_type": lt_data.get("InstanceType", ""),
-            # continue adding all other relevant details you need from lt_data
         }
 
         # If you have optional data that might not be present in every launch template,
@@ -498,17 +393,22 @@ class AutoScaling:
 
         if "SecurityGroupIds" in lt_data:
             attributes["security_group_ids"] = lt_data["SecurityGroupIds"]
+            for sg in lt_data["SecurityGroupIds"]:
+                self.security_group_instance.aws_security_group(sg, ftstack)
 
         if "UserData" in lt_data:
             attributes["user_data"] = lt_data["UserData"]
+
+            self.hcl.add_additional_data(
+                "aws_launch_template", lt_name, "user_data", attributes["user_data"])
+            
             self.user_data[lt_name] = attributes["user_data"]
 
-        # more conditional attribute assignments...
 
         self.hcl.process_resource(
             "aws_launch_template", lt_name.replace("-", "_"), attributes)
 
-    def aws_launch_configuration(self, id):
+    def aws_launch_configuration(self, id, ftstack):
         print(f"Processing Launch Configuration: {id}")
 
         try:
@@ -541,13 +441,17 @@ class AutoScaling:
 
         if "SecurityGroups" in launch_configuration:
             attributes["security_groups"] = launch_configuration["SecurityGroups"]
+            for sg in launch_configuration["SecurityGroups"]:
+                self.security_group_instance.aws_security_group(sg, ftstack)
 
         if "UserData" in launch_configuration:
             attributes["user_data"] = launch_configuration["UserData"]
 
+            self.hcl.add_additional_data(
+                "aws_launch_configuration", lc_name, "user_data", attributes["user_data"])
+
             self.user_data[lc_name] = attributes["user_data"]
 
-        # more conditional attribute assignments...
 
         self.hcl.process_resource(
             "aws_launch_configuration", lc_name.replace("-", "_"), attributes)

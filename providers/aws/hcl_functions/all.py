@@ -1150,65 +1150,65 @@ def get_vpc_id_ecs(attributes, arg=None, additional_data=None):
 
 
 ### EKS ###
-# def eks_build_cluster_addons(attributes, arg=None, additional_data=None):
-#     addon_name = attributes.get("addon_name")
-#     result = {}
-#     result[addon_name] = {}
-#     result[addon_name]['name'] = addon_name
-#     result[addon_name]['addon_version'] = attributes.get("addon_version")
-#     result[addon_name]['configuration_values'] = attributes.get(
-#         "configuration_values")
-#     result[addon_name]['preserve'] = attributes.get("preserve")
-#     result[addon_name]['resolve_conflicts'] = attributes.get(
-#         "resolve_conflicts")
-#     result[addon_name]['service_account_role_arn'] = attributes.get(
-#         "service_account_role_arn")
-#     result[addon_name]['tags'] = attributes.get("tags")
+def eks_build_cluster_addons(attributes, arg=None, additional_data=None):
+    addon_name = attributes.get("addon_name")
+    result = {}
+    result[addon_name] = {}
+    result[addon_name]['name'] = addon_name
+    result[addon_name]['addon_version'] = attributes.get("addon_version")
+    result[addon_name]['configuration_values'] = attributes.get(
+        "configuration_values")
+    result[addon_name]['preserve'] = attributes.get("preserve")
+    result[addon_name]['resolve_conflicts'] = attributes.get(
+        "resolve_conflicts")
+    result[addon_name]['service_account_role_arn'] = attributes.get(
+        "service_account_role_arn")
+    result[addon_name]['tags'] = attributes.get("tags")
 
-#     # Remove the keys that are empty
-#     result[addon_name] = {k: v for k,
-#                             v in result[addon_name].items() if v is not None}
-#     return result
+    # Remove the keys that are empty
+    result[addon_name] = {k: v for k,
+                            v in result[addon_name].items() if v is not None}
+    return result
 
-# def eks_cloudwatch_log_group_name(attributes, arg=None, additional_data=None):
-#     # The name is expected to be in the format /aws/ecs/{cluster_name}
-#     name = attributes.get('name')
-#     if name is not None:
-#         # split the string by '/' and take the last part as the cluster_name
-#         parts = name.split('/')
-#         if len(parts) > 3:
-#             return parts[3]  # return 'cluster_name'
-#     # In case the name doesn't match the expected format, return None or you could return some default value
-#     return None
+def eks_cloudwatch_log_group_name(attributes, arg=None, additional_data=None):
+    # The name is expected to be in the format /aws/ecs/{cluster_name}
+    name = attributes.get('name')
+    if name is not None:
+        # split the string by '/' and take the last part as the cluster_name
+        parts = name.split('/')
+        if len(parts) > 3:
+            return parts[3]  # return 'cluster_name'
+    # In case the name doesn't match the expected format, return None or you could return some default value
+    return None
 
-# def eks_build_cluster_tags(attributes, arg=None, additional_data=None):
-#     key = attributes.get("key")
-#     value = attributes.get("value")
-#     return {key: value}
+def eks_build_cluster_tags(attributes, arg=None, additional_data=None):
+    key = attributes.get("key")
+    value = attributes.get("value")
+    return {key: value}
 
-# def eks_join_ec2_tag_resource_id(parent_attributes, child_attributes):
-#     vpc_config = parent_attributes.get("vpc_config")
-#     if vpc_config:
-#         cluster_security_group_id = vpc_config[0].get(
-#             "cluster_security_group_id")
-#     resource_id = child_attributes.get("resource_id")
-#     if cluster_security_group_id == resource_id:
-#         return True
-#     return False
+def eks_join_ec2_tag_resource_id(parent_attributes, child_attributes):
+    vpc_config = parent_attributes.get("vpc_config")
+    if vpc_config:
+        cluster_security_group_id = vpc_config[0].get(
+            "cluster_security_group_id")
+    resource_id = child_attributes.get("resource_id")
+    if cluster_security_group_id == resource_id:
+        return True
+    return False
 
-# def join_eks_cluster_and_oidc_provider(parent_attributes, child_attributes):
-#     # Extract the expected OIDC issuer URL from the EKS cluster's attributes
-#     identity = parent_attributes.get("identity", [])
-#     if len(identity) == 0:
-#         return False
+def join_eks_cluster_and_oidc_provider(parent_attributes, child_attributes):
+    # Extract the expected OIDC issuer URL from the EKS cluster's attributes
+    identity = parent_attributes.get("identity", [])
+    if len(identity) == 0:
+        return False
 
-#     expected_oidc_url = identity[0].get("oidc", [{}])[0].get("issuer", "")
+    expected_oidc_url = identity[0].get("oidc", [{}])[0].get("issuer", "")
 
-#     # Extract the URL for the OIDC provider from its attributes
-#     provider_url = child_attributes.get("url", "")
+    # Extract the URL for the OIDC provider from its attributes
+    provider_url = child_attributes.get("url", "")
 
-#     # Check if the OIDC provider URL matches the one from the EKS cluster
-#     return provider_url == expected_oidc_url.replace("https://", "")
+    # Check if the OIDC provider URL matches the one from the EKS cluster
+    return provider_url == expected_oidc_url.replace("https://", "")
 
 # def eks_join_node_group_launch_template(parent_attributes, child_attributes):
 #     node_launch_template_id=""
@@ -1218,89 +1218,102 @@ def get_vpc_id_ecs(attributes, arg=None, additional_data=None):
 #     launch_template_id = child_attributes.get("id", "")
 #     return node_launch_template_id == launch_template_id
 
-# def eks_join_node_group_autoscaling_schedule(parent_attributes, child_attributes):
-#     # Assuming parent_attributes contains a list of associated ASG names for the EKS node group.
-#     node_asg_names = parent_attributes.get("resources", {}).get(
-#         "autoScalingGroups", [{}])[0].get("name", "")
+def eks_join_node_group_autoscaling_schedule(parent_attributes, child_attributes):
+    # Assuming parent_attributes contains a list of associated ASG names for the EKS node group.
+    node_asg_names = parent_attributes.get("resources", {}).get(
+        "autoScalingGroups", [{}])[0].get("name", "")
 
-#     # Assuming child_attributes contains the name of the ASG the schedule applies to.
-#     schedule_asg_name = child_attributes.get("autoscaling_group_name", "")
+    # Assuming child_attributes contains the name of the ASG the schedule applies to.
+    schedule_asg_name = child_attributes.get("autoscaling_group_name", "")
 
-#     return node_asg_names == schedule_asg_name
+    return node_asg_names == schedule_asg_name
 
-# def eks_build_managed_node_groups(attributes, arg=None, additional_data=None):
-#     use_name_prefix = False
-#     node_group_name_prefix = attributes.get("node_group_name_prefix")
-#     node_group_name = ""
-#     if node_group_name_prefix:
-#         use_name_prefix = True
-#         if "-" in node_group_name_prefix:
-#             node_group_name = node_group_name_prefix.rsplit("-", 1)[0]
-#         else:
-#             node_group_name = node_group_name_prefix
-#     else:
-#         node_group_name = attributes.get("node_group_name")
+def get_node_group_name(attributes, arg=None, additional_data=None):
+    node_group_name_prefix = attributes.get("node_group_name_prefix")
+    node_group_name = ""
+    if node_group_name_prefix:
+        if "-" in node_group_name_prefix:
+            node_group_name = node_group_name_prefix.rsplit("-", 1)[0]
+        else:
+            node_group_name = node_group_name_prefix
+    else:
+        node_group_name = attributes.get("node_group_name")
+    return node_group_name
 
-#     result = {node_group_name: {}}
-#     result[node_group_name]['use_name_prefix'] = use_name_prefix
+def eks_build_managed_node_groups(attributes, arg=None, additional_data=None):
+    use_name_prefix = False
+    node_group_name_prefix = attributes.get("node_group_name_prefix")
+    node_group_name = ""
+    if node_group_name_prefix:
+        use_name_prefix = True
+        if "-" in node_group_name_prefix:
+            node_group_name = node_group_name_prefix.rsplit("-", 1)[0]
+        else:
+            node_group_name = node_group_name_prefix
+    else:
+        node_group_name = attributes.get("node_group_name")
 
-#     subnet_ids = attributes.get(
-#         "subnet_ids")
+    result = {node_group_name: {}}
+    result[node_group_name]['use_name_prefix'] = use_name_prefix
+
+    subnet_ids = attributes.get(
+        "subnet_ids")
     
-#     cluster_name = attributes.get("cluster_name")
-#     instance_data = get_module_additional_data("aws_eks_node_group", cluster_name + ":" + node_group_name, additional_data)
-#     subnet_names = instance_data.get("subnet_names", [])
-#     if subnet_names:
-#         result[node_group_name]['subnet_names'] = subnet_names
-#     else:
-#         result[node_group_name]['subnet_ids'] = subnet_ids
+    cluster_name = attributes.get("cluster_name")
+    instance_data = get_module_additional_data("aws_eks_node_group", cluster_name + ":" + node_group_name, additional_data)
+    subnet_names = instance_data.get("subnet_names", [])
+    if subnet_names:
+        result[node_group_name]['subnet_names'] = subnet_names
+    else:
+        result[node_group_name]['subnet_ids'] = subnet_ids
 
-#     scaling_config = attributes.get("scaling_config")
-#     if scaling_config:
-#         result[node_group_name]['min_size'] = scaling_config[0].get("min_size")
-#         result[node_group_name]['max_size'] = scaling_config[0].get("max_size")
-#         result[node_group_name]['desired_size'] = scaling_config[0].get(
-#         "desired_size")        
-#     result[node_group_name]['ami_type'] = attributes.get("ami_type")
-#     result[node_group_name]['ami_release_version'] = attributes.get(
-#         "ami_release_version")
-#     result[node_group_name]['capacity_type'] = attributes.get(
-#         "capacity_type")
-#     result[node_group_name]['disk_size'] = attributes.get("disk_size")
-#     result[node_group_name]['force_update_version'] = attributes.get(
-#         "force_update_version")
-#     result[node_group_name]['instance_types'] = attributes.get(
-#         "instance_types")
-#     result[node_group_name]['labels'] = attributes.get("labels")
-#     tmp = attributes.get("remote_access")
-#     if tmp:
-#         result[node_group_name]['remote_access'] = attributes.get(
-#             "remote_access")[0]
-#     result[node_group_name]['taints'] = attributes.get("taint")
-#     result[node_group_name]['iam_role_arn'] = attributes.get("node_role_arn")
+    scaling_config = attributes.get("scaling_config")
+    if scaling_config:
+        result[node_group_name]['min_size'] = scaling_config[0].get("min_size")
+        result[node_group_name]['max_size'] = scaling_config[0].get("max_size")
+        result[node_group_name]['desired_size'] = scaling_config[0].get(
+        "desired_size")        
+    result[node_group_name]['ami_type'] = attributes.get("ami_type")
+    result[node_group_name]['ami_release_version'] = attributes.get(
+        "ami_release_version")
+    result[node_group_name]['capacity_type'] = attributes.get(
+        "capacity_type")
+    result[node_group_name]['disk_size'] = attributes.get("disk_size")
+    result[node_group_name]['force_update_version'] = attributes.get(
+        "force_update_version")
+    result[node_group_name]['instance_types'] = attributes.get(
+        "instance_types")
+    result[node_group_name]['labels'] = attributes.get("labels")
+    tmp = attributes.get("remote_access")
+    if tmp:
+        result[node_group_name]['remote_access'] = attributes.get(
+            "remote_access")[0]
+    result[node_group_name]['taints'] = attributes.get("taint")
+    result[node_group_name]['iam_role_arn'] = attributes.get("node_role_arn")
 
-#     if attributes.get("tags", {}) != {}:
-#         result[node_group_name]['tags'] = attributes.get("tags")
-#     tmp = attributes.get("update_config")
-#     if tmp:
-#         result[node_group_name]['update_config'] = attributes.get(
-#             "update_config")[0]
-#         # Remove the keys that are empty or 0
-#         result[node_group_name]['update_config'] = {k: v for k,
-#                                                             v in result[node_group_name]['update_config'].items() if v is not None and v != 0}
-#     result[node_group_name]['timeouts'] = attributes.get("timeouts")
+    if attributes.get("tags", {}) != {}:
+        result[node_group_name]['tags'] = attributes.get("tags")
+    tmp = attributes.get("update_config")
+    if tmp:
+        result[node_group_name]['update_config'] = attributes.get(
+            "update_config")[0]
+        # Remove the keys that are empty or 0
+        result[node_group_name]['update_config'] = {k: v for k,
+                                                            v in result[node_group_name]['update_config'].items() if v is not None and v != 0}
+    result[node_group_name]['timeouts'] = attributes.get("timeouts")
 
-#     # Remove the keys that are empty
-#     result[node_group_name] = {k: v for k,
-#                                     v in result[node_group_name].items() if v is not None}
-    
-#     #Get launch_template_version
-#     launch_template = attributes.get("launch_template")
-#     if launch_template:
-#         launch_template_version = launch_template[0].get("version")
-#         result[node_group_name]["launch_template_version"] = launch_template_version
+    # Remove the keys that are empty
+    result[node_group_name] = {k: v for k,
+                                    v in result[node_group_name].items() if v is not None}
+    #Get launch_template_version
+    launch_template = attributes.get("launch_template")
+    if launch_template:
+        launch_template_version = launch_template[0].get("version")
+        result[node_group_name]["launch_template_version"] = launch_template_version
+        launch_template_id = launch_template[0].get("id")
+        result[node_group_name]["launch_template_id"] = launch_template_id
 
-#     return result
+    return result
 
 # def build_block_device_mappings(block_device_mappings):
 #     result = {}
@@ -1440,92 +1453,64 @@ def get_vpc_id_ecs(attributes, arg=None, additional_data=None):
 #                                     v in result[self.node_group_name].items() if v}
 #     return result
 
-# def eks_build_node_group_autoscaling_schedules(attributes, arg=None, additional_data=None):
-#     result = {}
-#     result[self.node_group_name] = {}
-#     result[self.node_group_name]['schedules'] = {}
-#     result[self.node_group_name]['schedules']["min_size"] = attributes.get(
-#         "min_size")
-#     result[self.node_group_name]['schedules']["max_size"] = attributes.get(
-#         "max_size")
-#     result[self.node_group_name]['schedules']["desired_capacity"] = attributes.get(
-#         "desired_capacity")
-#     result[self.node_group_name]['schedules']["start_time"] = attributes.get(
-#         "start_time")
-#     result[self.node_group_name]['schedules']["end_time"] = attributes.get(
-#         "end_time")
-#     result[self.node_group_name]['schedules']["time_zone"] = attributes.get(
-#         "time_zone")
+def eks_asg_get_node_group_name(attributes, arg=None, additional_data=None):
+    id = attributes.get("id")
+    instance_data = get_module_additional_data("aws_autoscaling_schedule", id, additional_data)
+    node_group_name = instance_data.get("node_group_name", "")
+    return node_group_name
 
-#     # Remove the keys that are empty
-#     result[self.node_group_name]['schedules'] = {k: v for k,
-#                                                     v in result[self.node_group_name]['schedules'].items() if v is not None}
-#     return result
+def eks_build_node_group_autoscaling_schedules(attributes, arg=None, additional_data=None):
+    node_group_name = eks_asg_get_node_group_name(attributes, arg, additional_data)
+    result = {}
+    result[node_group_name] = {}
+    result[node_group_name]['schedules'] = {}
+    result[node_group_name]['schedules']["min_size"] = attributes.get(
+        "min_size")
+    result[node_group_name]['schedules']["max_size"] = attributes.get(
+        "max_size")
+    result[node_group_name]['schedules']["desired_capacity"] = attributes.get(
+        "desired_capacity")
+    result[node_group_name]['schedules']["start_time"] = attributes.get(
+        "start_time")
+    result[node_group_name]['schedules']["end_time"] = attributes.get(
+        "end_time")
+    result[node_group_name]['schedules']["time_zone"] = attributes.get(
+        "time_zone")
+
+    # Remove the keys that are empty
+    result[node_group_name]['schedules'] = {k: v for k,
+                                                    v in result[node_group_name]['schedules'].items() if v is not None}
+    return result
 
 # def eks_get_node_group_name(attributes, arg=None, additional_data=None):
 #     return self.node_group_name
 
-# def eks_get_subnet_names(attributes, arg=None, additional_data=None):
-#     subnet_ids = get_field_from_attrs(
-#         attributes, 'vpc_config.subnet_ids')
-#     subnet_names = []
-#     for subnet_id in subnet_ids:
-#         response = aws_clients.ec2_client.describe_subnets(SubnetIds=[subnet_id])
+def eks_get_subnet_names(attributes, arg=None, additional_data=None):
+    id = attributes.get("id")
+    instance_data = get_module_additional_data("aws_eks_cluster", id, additional_data)
+    subnet_names = instance_data.get("subnet_names", [])
+    return subnet_names
 
-#         # Check if 'Subnets' key exists and it's not empty
-#         if not response or 'Subnets' not in response or not response['Subnets']:
-#             print(
-#                 f"No subnet information found for Subnet ID: {subnet_id}")
-#             continue
-
-#         # Extract the 'Tags' key safely using get
-#         subnet_tags = response['Subnets'][0].get('Tags', [])
-
-#         # Extract the subnet name from the tags
-#         subnet_name = next(
-#             (tag['Value'] for tag in subnet_tags if tag['Key'] == 'Name'), None)
-
-#         if subnet_name:
-#             subnet_names.append(subnet_name)
-#         else:
-#             print(f"No 'Name' tag found for Subnet ID: {subnet_id}")
-
-#     return subnet_names
-
-# def eks_get_subnet_ids(attributes, arg=None, additional_data=None):
-#     subnet_names = self.eks_get_subnet_names(attributes, arg)
-#     if subnet_names:
-#         return ""
-#     else:
-#         return get_field_from_attrs(attributes, 'vpc_config.subnet_ids')
+def eks_get_subnet_ids(attributes, arg=None, additional_data=None):
+    subnet_names = eks_get_subnet_names(attributes, arg, additional_data)
+    if subnet_names:
+        return ""
+    else:
+        return get_field_from_attrs(attributes, 'vpc_config.subnet_ids')
     
-# def get_vpc_name_eks(attributes, arg=None, additional_data=None):
-#     vpc_id = get_field_from_attrs(
-#         attributes, 'vpc_config.vpc_id')
-#     response = aws_clients.ec2_client.describe_vpcs(VpcIds=[vpc_id])
+def get_vpc_name_eks(attributes, arg=None, additional_data=None):
+    id = attributes.get("id")
+    instance_data = get_module_additional_data("aws_eks_cluster", id, additional_data)
+    vpc_name = instance_data.get("vpc_name", "")
+    return vpc_name
 
-#     if not response or 'Vpcs' not in response or not response['Vpcs']:
-#         # Handle this case as required, for example:
-#         print(f"No VPC information found for VPC ID: {vpc_id}")
-#         return None
-
-#     vpc_tags = response['Vpcs'][0].get('Tags', [])
-#     vpc_name = next((tag['Value']
-#                     for tag in vpc_tags if tag['Key'] == 'Name'), None)
-
-#     if vpc_name is None:
-#         print(f"No 'Name' tag found for VPC ID: {vpc_id}")
-
-#     return vpc_name
-
-# def get_vpc_id_eks(attributes, arg=None, additional_data=None):
-#     vpc_name = self.get_vpc_name_eks(attributes)
-#     if vpc_name is None:
-#         return  get_field_from_attrs(
-#         attributes, 'vpc_config.vpc_id')
-#     else:
-#         return ""
-
+def get_vpc_id_eks(attributes, arg=None, additional_data=None):
+    vpc_name = get_vpc_name_eks(attributes, arg, additional_data)
+    if vpc_name is None:
+        return  get_field_from_attrs(
+        attributes, 'vpc_config.vpc_id')
+    else:
+        return ""
 
 ### ELASTICCACHE REDIS ###
 def ec_redis_get_subnet_names(attributes, arg=None, additional_data=None):
@@ -2039,26 +2024,25 @@ def aws_s3_bucket_policy_policy(state, arg=None, additional_data=None):
 
 
 # ### SQS ###
-# def aws_sqs_queue_target_name(attributes, arg=None, additional_data=None):
-#     url = attributes.get(arg)
-#     if url in self.dlq_list:
-#         return "dlq"
-#     return "this"
+def sqs_queue_target_name(attributes, arg=None, additional_data=None):
+    id = attributes.get("id")
+    instance_data = get_module_additional_data("aws_sqs_queue", id, additional_data)
+    is_dlq = instance_data.get("is_dlq", False)
+    if is_dlq:
+        return "dlq"
+    return "this"
 
-# def sqs_is_dql(attributes, arg=None, additional_data=None):
-#     url = attributes.get(arg)
-#     if url in self.dlq_list:
-#         return True
-#     return False
+def sqs_is_dql(attributes, arg=None, additional_data=None):
+    id = attributes.get("id")
+    instance_data = get_module_additional_data("aws_sqs_queue", id, additional_data)
+    is_dlq = instance_data.get("is_dlq", False)
+    return is_dlq
 
-# def get_parent_url(attributes, arg=None, additional_data=None):
-#     url = attributes.get("url")
-#     if url in self.dlq_list:
-#         return self.dlq_list[url]
-#     return None
-
-
-
+def sqs_get_parent_url(attributes, arg=None, additional_data=None):
+    id = attributes.get("id")
+    instance_data = get_module_additional_data("aws_sqs_queue", id, additional_data)
+    parent_url = instance_data.get("parent_url", "")
+    return parent_url
 
 ### ELASTICSEARCH ###
 def es_get_tags(attributes, arg=None, additional_data=None):
@@ -2100,3 +2084,190 @@ def es_get_encrypt_at_rest(attributes, arg=None, additional_data=None):
             del encrypt_at_rest[0]['kms_key_id']
     return encrypt_at_rest
 
+
+### WAFV2 ###
+def wafv2_get_rules(attributes, arg=None, additional_data=None):
+    rules = attributes.get("rule", [])
+    return rules
+
+def wafv2_web_acl_import_id(attributes, arg=None, additional_data=None):
+    id = attributes.get('id')
+    name = attributes.get('name')
+    scope = attributes.get('scope')
+    return f"{id}/{name}/{scope}"
+
+
+### VPC Endpoint ###
+def get_subnet_names_vpce(attributes, arg=None, additional_data=None):
+    id = attributes.get("id")
+    instance_data = get_module_additional_data("aws_vpc_endpoint", id, additional_data)
+    subnet_names = instance_data.get("subnet_names", [])
+    return subnet_names
+
+def get_subnet_ids_vpce(attributes, arg=None, additional_data=None):
+    subnet_names = get_subnet_names_vpce(attributes, arg, additional_data)
+    if subnet_names:
+        return ""
+    else:
+        return attributes.get("subnet_ids", [])
+    
+def get_vpc_name_vpce(attributes, arg=None, additional_data=None):
+    id = attributes.get("id")
+    instance_data = get_module_additional_data("aws_vpc_endpoint", id, additional_data)
+    vpc_name = instance_data.get("vpc_name", "")
+    return vpc_name
+
+def get_vpc_id_vpce(attributes, arg=None, additional_data=None):
+    vpc_name = get_vpc_name_vpce(attributes, arg, additional_data)
+    if vpc_name is None:
+        return  attributes.get("vpc_id")
+    else:
+        return ""
+
+
+### TARGET GROUP ###
+def tg_join_aws_lb_target_group_to_aws_lb_listener_rule(parent_attributes, child_attributes):
+    target_group_arn = parent_attributes.get('arn')
+    for action in child_attributes.get('action', []):
+        if action.get('target_group_arn') == target_group_arn:
+            return True
+    return False
+
+def tg_get_id_from_arn(attributes, arg=None, additional_data=None):
+    arn = attributes.get(arg)
+    return arn.split('/')[-1]    
+
+def tg_get_listener_rules(attributes, arg=None, additional_data=None):
+    result = {}
+    key = attributes.get('arn').split('/')[-1]
+    result[key] = {}
+    result[key]['priority'] = attributes.get('priority')
+    result[key]['conditions'] = attributes.get('condition')
+    result[key]['tags'] = attributes.get('tags')
+    result[key]['listener_arn'] = attributes.get('listener_arn')
+    return result
+
+def get_vpc_name_tg(attributes, arg=None, additional_data=None):
+    id = attributes.get("id")
+    instance_data = get_module_additional_data("aws_lb_target_group", id, additional_data)
+    vpc_name = instance_data.get("vpc_name", "")
+    return vpc_name
+
+def get_vpc_id_tg(attributes, arg=None, additional_data=None):
+    vpc_name = get_vpc_name_tg(attributes, arg, additional_data)
+    if vpc_name is None:
+        return  attributes.get("vpc_id")
+    else:
+        return ""
+
+### AUTOSCALING ###
+def asg_get_user_data_configuration(attributes, arg=None, additional_data=None):
+    id = attributes.get("id")
+    instance_data = get_module_additional_data("aws_launch_configuration", id, additional_data)
+    user_data = instance_data.get("user_data", "")
+    return user_data
+
+def asg_get_user_data_template(attributes, arg=None, additional_data=None):
+    id = attributes.get("id")
+    instance_data = get_module_additional_data("aws_launch_template", id, additional_data)
+    user_data = instance_data.get("user_data", "")
+    return user_data
+
+def asg_build_autoscaling_policies(attributes, arg=None, additional_data=None):
+    result = {}
+    name = attributes.get("name")
+    if not name:
+        return result
+
+    policy_details = {}
+    attribute_keys = ["policy_type",
+                        "scaling_adjustment", "adjustment_type", "cooldown"]
+
+    for key in attribute_keys:
+        value = attributes.get(key)
+        if value or value == 0:
+            policy_details[key] = value
+
+    if not policy_details:
+        return result
+
+    result[name] = policy_details
+
+    return result
+
+def asg_build_aws_cloudwatch_metric_alarms(attributes, arg=None, additional_data=None):
+    result = {}
+    alarm_name = attributes.get("alarm_name")
+    if not alarm_name:
+        return result
+
+    alarm_details = {}
+
+    attribute_keys = ["comparison_operator", "evaluation_periods", "metric_name", "namespace", "period", "statistic", "extended_statistic",
+                        "threshold", "treat_missing_data", "ok_actions", "insufficient_data_actions", "dimensions", "alarm_description", "alarm_actions", "tags"]
+
+    for key in attribute_keys:
+        value = attributes.get(key)
+        if value or value == 0:
+            alarm_details[key] = value
+
+    if not alarm_details:
+        return result
+
+    result[alarm_name] = alarm_details
+
+    return result
+
+def asg_join_launch_configuration(parent_attributes, child_attributes):
+    name = child_attributes.get('name')
+    launch_configuration = parent_attributes.get('launch_configuration')
+
+    if name == launch_configuration:
+        return True
+
+    return False
+
+def asg_join_launch_template(parent_attributes, child_attributes):
+    name = child_attributes.get('name')
+    launch_template = parent_attributes.get('launch_template')
+
+    if name == launch_template['id']:
+        return True
+
+    return False
+
+def asg_get_subnet_names(attributes, arg=None, additional_data=None):
+    id = attributes.get("id")
+    instance_data = get_module_additional_data("aws_autoscaling_group", id, additional_data)
+    subnet_names = instance_data.get("subnet_names", [])
+    return subnet_names
+
+def asg_get_subnet_ids(attributes, arg=None, additional_data=None):
+    subnet_names = asg_get_subnet_names(attributes, arg, additional_data)
+    if subnet_names:
+        return ""
+    else:
+        return attributes.get(arg)
+
+
+### LAUNCHTEMPLATE ###
+def launchtemplate_get_block_device_mappings(attributes, arg=None, additional_data=None):
+    block_device_mappings = attributes.get("block_device_mappings", [])
+    result = []
+
+    for block_device_mapping in block_device_mappings:
+        # Create a copy of the items for safe iteration
+        items = list(block_device_mapping.items())
+
+        for key, val in items:
+            if key == "ebs":
+                ebs_items = list(val[0].items())  # Assuming 'ebs' is a list of dictionaries
+                for ebs_key, ebs_val in ebs_items:
+                    if ebs_key in ["iops", "throughput"] and ebs_val == 0:
+                        val[0].pop(ebs_key)
+            if not val:
+                block_device_mapping.pop(key)
+        
+        result.append(block_device_mapping)
+
+    return result

@@ -27,18 +27,13 @@ class VPCEndPoint:
         self.resource_list = {}
 
         functions = {
-            "get_subnet_names_vpce": self.get_subnet_names_vpce,
-            "get_subnet_ids_vpce": self.get_subnet_ids_vpce,
-            "get_vpc_name_vpce": self.get_vpc_name_vpce,
-            "get_vpc_id_vpce": self.get_vpc_id_vpce,
         }
         self.hcl.functions.update(functions)
 
         self.security_group_instance = SECURITY_GROUP(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
 
 
-    def get_subnet_names_vpce(self, attributes, arg):
-        subnet_ids = attributes.get("subnet_ids", [])
+    def get_subnet_names(self, subnet_ids):
         subnet_names = []
         for subnet_id in subnet_ids:
             response = self.aws_clients.ec2_client.describe_subnets(SubnetIds=[subnet_id])
@@ -63,15 +58,8 @@ class VPCEndPoint:
 
         return subnet_names
 
-    def get_subnet_ids_vpce(self, attributes, arg):
-        subnet_names = self.get_subnet_names_vpce(attributes, arg)
-        if subnet_names:
-            return ""
-        else:
-            return attributes.get("subnet_ids", [])
         
-    def get_vpc_name_vpce(self, attributes):
-        vpc_id = attributes.get("vpc_id")
+    def get_vpc_name(self, vpc_id):
         response = self.aws_clients.ec2_client.describe_vpcs(VpcIds=[vpc_id])
 
         if not response or 'Vpcs' not in response or not response['Vpcs']:
@@ -87,13 +75,6 @@ class VPCEndPoint:
             print(f"No 'Name' tag found for VPC ID: {vpc_id}")
 
         return vpc_name
-
-    def get_vpc_id_vpce(self, attributes):
-        vpc_name = self.get_vpc_name_vpce(attributes)
-        if vpc_name is None:
-            return  attributes.get("vpc_id")
-        else:
-            return ""
 
     def vpc_endpoint(self):        
         self.hcl.prepare_folder(os.path.join("generated"))
@@ -143,6 +124,18 @@ class VPCEndPoint:
                 for security_group in security_groups:
                     security_group_id = security_group["GroupId"]
                     self.security_group_instance.aws_security_group(security_group_id, ftstack)
+                
+                vpc_id = endpoint["VpcId"]
+                if vpc_id:
+                    vpc_name=self.get_vpc_name(vpc_id)
+                    if vpc_name:
+                        self.hcl.add_additional_data(resource_type, endpoint_id, "vpc_name", vpc_name)
+
+                subnet_ids = endpoint.get("SubnetIds", [])
+                if subnet_ids:
+                    subnet_names = self.get_subnet_names(subnet_ids)
+                    if subnet_names:
+                        self.hcl.add_additional_data(resource_type, endpoint_id, "subnet_names", subnet_names)
 
             if not endpoints:
                 print("No VPC Endpoints found.")

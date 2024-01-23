@@ -1,7 +1,7 @@
 import os
 from utils.hcl import HCL
 from providers.aws.iam_role import IAM_ROLE
-from providers.aws.security_group import SECURITY_GROUP
+from providers.aws.logs import Logs
 
 class StepFunction:
     def __init__(self, aws_clients, script_dir, provider_name, schema_data, region, s3Bucket,
@@ -19,35 +19,13 @@ class StepFunction:
         self.hcl = HCL(self.schema_data, self.provider_name,
                        self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules)
         self.resource_list = {}
-        self.resource_roles = {}
-        self.resource_log_groups = {}
 
-        functions = {
-            'get_role_name_from_arn': self.get_role_name_from_arn,
-            'to_list': self.to_list,
-        }
+        functions = {}
  
-        self.hcl.functions.update(functions)        
+        self.hcl.functions.update(functions)
+        self.iam_role_instance = IAM_ROLE(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)        
+        self.logs_instance = Logs(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
 
-    def get_role_name_from_arn(self, attributes, arg):
-        arn = attributes.get(arg, None)
-        return arn.split('/')[-1] if arn else None
-
-    def join_role(self, parent_attributes, child_attributes):
-        id = parent_attributes.get("id")
-        role = child_attributes.get("arn")
-        if id in self.resource_roles:
-            if self.resource_roles[id] == role:
-                return True
-        return False
-
-    def join_log_group(self, parent_attributes, child_attributes):
-        id = parent_attributes.get("id")
-        log_group = child_attributes.get("name")
-        if id in self.resource_log_groups:
-            if self.resource_log_groups[id] == log_group:
-                return True
-        return False
 
     def to_list(self, attributes, arg):
         return [attributes.get(arg)]
@@ -72,7 +50,7 @@ class StepFunction:
             for state_machine_summary in page["stateMachines"]:
                 print(f"  Processing State Machine: {state_machine_summary['name']}")
 
-                # if state_machine_summary['name'] != 'FormSubmission':
+                # if state_machine_summary['name'] != 'dev-fpm-3431_backfill-email-verified':
                 #     continue
 
                 # Call describe_state_machine to get detailed info, including roleArn
@@ -111,119 +89,18 @@ class StepFunction:
                 # Check if roleArn exists before proceeding
                 if role_arn:
                     # Call aws_iam_role with state_machine as an argument
-                    self.resource_roles[state_machine["stateMachineArn"]] = role_arn
-                    self.aws_iam_role(role_arn)
+                    role_name = role_arn.split('/')[-1]
+                    self.iam_role_instance.aws_iam_role(role_name, ftstack)
                 else:
                     print(
                         f"No IAM role associated with State Machine: {state_machine['name']}")
 
                 # Process CloudWatch Log Group
-                log_group = "/aws/vendedlogs/states/"+state_machine["name"]
-                self.resource_log_groups[state_machine["stateMachineArn"]] = log_group
-
-                self.aws_cloudwatch_log_group(log_group)
-
-    def aws_iam_role(self, role_arn, aws_iam_policy=False):
-        print(f"Processing IAM Role: {role_arn}...")
-
-        role_name = role_arn.split('/')[-1]  # Extract role name from ARN
-
-        try:
-            role = self.aws_clients.iam_client.get_role(RoleName=role_name)['Role']
-
-            print(f"  Processing IAM Role: {role['Arn']}")
-
-            attributes = {
-                "id": role['RoleName'],
-            }
-            self.hcl.process_resource(
-                "aws_iam_role", role['RoleName'], attributes)
-            # Process IAM role policy attachments for the role
-            self.aws_iam_role_policy_attachment(
-                role['RoleName'], aws_iam_policy)
-        except Exception as e:
-            print(f"Error processing IAM role: {role_name}: {str(e)}")
-
-    def aws_iam_role_policy_attachment(self, role_name, aws_iam_policy=False):
-        print(
-            f"Processing IAM Role Policy Attachments for role: {role_name}...")
-
-        try:
-            paginator = self.aws_clients.iam_client.get_paginator(
-                'list_attached_role_policies')
-            for page in paginator.paginate(RoleName=role_name):
-                for policy in page['AttachedPolicies']:
-                    print(
-                        f"  Processing IAM Role Policy Attachment: {policy['PolicyName']} for role: {role_name}")
-
-                    resource_name = f"{role_name}-{policy['PolicyName']}"
-                    attributes = {
-                        "id": f"{role_name}/{policy['PolicyArn']}",
-                        "role": role_name,
-                        "policy_arn": policy['PolicyArn']
-                    }
-                    self.hcl.process_resource(
-                        "aws_iam_role_policy_attachment", resource_name, attributes)
-
-                    if aws_iam_policy:
-                        self.aws_iam_policy(policy['PolicyArn'])
-
-        except Exception as e:
-            print(
-                f"Error processing IAM role policy attachments for role: {role_name}: {str(e)}")
-
-    def aws_iam_policy(self, role_arn):
-        print(f"Processing IAM Policy for Role {role_arn}...")
-        role_name = role_arn.split("/")[-1]
-
-        list_policies = self.aws_clients.iam_client.list_role_policies(
-            RoleName=role_name)
-        for policy_name in list_policies["PolicyNames"]:
-            policy_document = self.aws_clients.iam_client.get_role_policy(
-                RoleName=role_name, PolicyName=policy_name)
-
-            attributes = {
-                "id": f"{role_name}:{policy_name}",
-                "name": policy_name,
-                "path": "/",
-                "description": "Policy for " + role_name,
-                "policy": policy_document["PolicyDocument"],
-            }
-
-            self.hcl.process_resource(
-                "aws_iam_policy", policy_name.replace("-", "_"), attributes)
-
-    # def aws_iam_policy_attachment(self, role_arn):
-    #     print(f"Processing IAM Policy Attachment for Role {role_arn}...")
-    #     role_name = role_arn.split("/")[-1]
-
-    #     list_attached_policies = self.aws_clients.iam_client.list_attached_role_policies(
-    #         RoleName=role_name)
-    #     for policy in list_attached_policies["AttachedPolicies"]:
-    #         attributes = {
-    #             "id": f"{role_name}:{policy['PolicyName']}",
-    #             "name": policy["PolicyName"],
-    #             "roles": [role_name],
-    #             "policy_arn": policy["PolicyArn"],
-    #         }
-
-    #         self.hcl.process_resource(
-    #             "aws_iam_policy_attachment", policy["PolicyName"].replace("-", "_"), attributes)
-    #         #  self.aws_iam_policy(policy["PolicyArn"])
-
-    def aws_cloudwatch_log_group(self, log_group_name):
-        print(f"Processing CloudWatch Log Group {log_group_name}...")
-
-        log_groups = self.aws_clients.logs_client.describe_log_groups(
-            logGroupNamePrefix=log_group_name)
-        for log_group in log_groups["logGroups"]:
-            if log_group["logGroupName"] == log_group_name:
-                attributes = {
-                    "id": log_group["logGroupName"],
-                    # "name": log_group["logGroupName"],
-                    # "retention_in_days": log_group["retentionInDays"],
-                    # "arn": log_group["arn"],
-                }
-
-                self.hcl.process_resource(
-                    "aws_cloudwatch_log_group", log_group["logGroupName"].replace("-", "_"), attributes)
+                logging_configuration = state_machine.get('loggingConfiguration', {})
+                if logging_configuration:
+                    destinations = logging_configuration.get('destinations', [])
+                    for destination in destinations:
+                        if destination['cloudWatchLogsLogGroup']:
+                            logGroupArn = destination['cloudWatchLogsLogGroup']['logGroupArn']
+                            log_group = logGroupArn.split(':')[-2]
+                            self.logs_instance.aws_cloudwatch_log_group(log_group, ftstack)

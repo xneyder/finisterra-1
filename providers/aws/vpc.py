@@ -45,7 +45,6 @@ class VPC:
         self.logs_instance = Logs(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
 
         functions = {
-            'get_field_from_attrs': self.get_field_from_attrs,
             'is_subnet_public': self.is_subnet_public,
             'is_subnet_private': self.is_subnet_private,
             'to_array': self.to_array,
@@ -92,21 +91,6 @@ class VPC:
         }
         self.hcl.functions.update(functions)
 
-    def get_field_from_attrs(self, attributes, arg):
-        keys = arg.split(".")
-        result = attributes
-        for key in keys:
-            if isinstance(result, list):
-                result = [sub_result.get(key, None) if isinstance(
-                    sub_result, dict) else None for sub_result in result]
-                if len(result) == 1:
-                    result = result[0]
-            else:
-                result = result.get(key, None)
-            if result is None:
-                return None
-        return result
-
     def get_dhcp_options_domain_name(self, attributes):
         assoc_id = attributes.get('id')
         return self.dhcp_options_domain_name[assoc_id]
@@ -143,8 +127,6 @@ class VPC:
         self.private_route_tables = {}
         self.network_acl_ids = {}
         self.network_acls = {}
-        # self.default_routes = {}
-        # self.dhcp_options_domain_name = {}
 
         return None
 
@@ -275,37 +257,6 @@ class VPC:
             filtered_routes.append(filtered_route)
 
         return filtered_routes
-
-    ### in the function above it misses the gatewyid and eni routes, this is an approach but then it shows a drift in the terraform plan
-    # def default_route_table_routes(self, attributes):
-    #     id = attributes.get('id')
-
-    #     key_transform = {
-    #         'DestinationCidrBlock' : 'cidr_block',
-    #         'DestinationIpv6CidrBlock' : 'ipv6_cidr_block',
-    #         'DestinationPrefixListId' : 'destination_prefix_list_id',
-    #         'EgressOnlyInternetGatewayId' : 'egress_only_gateway_id',
-    #         'GatewayId' : 'gateway_id',
-    #         'InstanceId' : 'instance_id',
-    #         'NatGatewayId' : 'nat_gateway_id',
-    #         'NetworkInterfaceId' : 'network_interface_id',
-    #         'TransitGatewayId' : 'transit_gateway_id',
-    #         'VpcPeeringConnectionId' : 'vpc_peering_connection_id',
-
-    #     }
-
-    #     # Filter out entries with empty string values
-    #     filtered_routes = []
-    #     for route in self.default_routes[id]:
-    #         filtered_route={}
-    #         for k, v in route.items():                
-    #             # if not v:
-    #             #     continue
-    #             if k in key_transform:
-    #                 filtered_route[key_transform[k]] = v
-    #         filtered_routes.append(filtered_route)
-
-    #     return filtered_routes
 
     def add_eip(self, attributes):
         allocation_id = attributes.get('allocation_id')
@@ -584,19 +535,6 @@ class VPC:
 
     def vpc(self):        
         self.hcl.prepare_folder(os.path.join("generated"))
-
-        # aws_customer_gateway.this
-        # aws_default_vpc.this
-        # aws_egress_only_internet_gateway.this
-        # aws_route.private_dns64_nat_gateway
-        # aws_route.private_ipv6_egress
-        # aws_route.public_internet_gateway_ipv6
-        # aws_vpc_ipv4_cidr_block_association.this
-        # aws_vpn_gateway.this
-        # aws_vpn_gateway_attachment.this
-        # aws_vpn_gateway_route_propagation.private
-        # aws_vpn_gateway_route_propagation.public
-
         self.aws_vpc()
 
         self.hcl.refresh_state()

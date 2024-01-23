@@ -23,7 +23,8 @@ aws_eks_cluster:
     eks_managed_node_groups:
       sub_fields:
         - iam_role_arn
-        - vpc_security_group_ids
+        # - vpc_security_group_ids
+        - launch_template_id
 
   fields:
     cluster_name:
@@ -151,7 +152,7 @@ aws_eks_cluster:
       target_resource_name: this
       target_submodule: module.eks_managed_node_group
       first_index:
-        function: eks_get_node_group_name
+        function: get_node_group_name
         arg: id
       fields:
         eks_managed_node_groups:
@@ -159,21 +160,6 @@ aws_eks_cluster:
           arg: id
           type: map
       childs:
-        aws_launch_template:
-          join:
-            name:
-              join_function: eks_join_node_group_launch_template
-              arg: id
-          target_resource_name: this
-          target_submodule: module.eks_managed_node_group
-          first_index:
-            function: eks_get_node_group_name
-            arg: id
-          fields:
-            eks_managed_node_groups:
-              function: eks_build_launch_templates
-              arg: id
-              type: map
         aws_autoscaling_schedule:
           join:
             name:
@@ -182,7 +168,7 @@ aws_eks_cluster:
           target_resource_name: this
           target_submodule: module.eks_managed_node_group
           first_index:
-            function: eks_get_node_group_name
+            function: eks_asg_get_node_group_name
             arg: id
           fields:
             eks_managed_node_groups:

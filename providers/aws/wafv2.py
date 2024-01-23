@@ -25,30 +25,9 @@ class Wafv2:
         self.s3_instance = S3(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
         self.logs_instance = Logs(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
 
-        functions = {
-            "wafv2_get_rules": self.wafv2_get_rules,
-            "wafv2_web_acl_import_id": self.wafv2_web_acl_import_id,
-        }
+        functions = {}
         self.hcl.functions.update(functions)
-    
-    # def remove_empty_keys(self, data):
-        # if isinstance(data, dict):
-        #     return {k: self.remove_empty_keys(v) for k, v in data.items() if v != "" and v != {} and v != []}
-        # elif isinstance(data, list):
-        #     return [self.remove_empty_keys(item) if isinstance(item, dict) else item for item in data if item != "" and item != {} and item != []]
-        # else:
-        #     return data
-    
-    def wafv2_get_rules(self, attributes, arg):
-        rules = attributes.get("rule", [])
-        # rules = self.remove_empty_keys(rules)
-        return rules
-
-    def wafv2_web_acl_import_id(self, attributes):
-        id = attributes.get('id')
-        name = attributes.get('name')
-        scope = attributes.get('scope')
-        return f"{id}/{name}/{scope}"
+        
 
     def wafv2(self):
         self.hcl.prepare_folder(os.path.join("generated"))
@@ -64,10 +43,6 @@ class Wafv2:
     def aws_wafv2_ip_set(self, waf_id, ip_set_name, scope):
         print(f"Processing WAFv2 IP Set:  {ip_set_name}")
 
-        # scope = 'REGIONAL'
-        # ip_set_info = self.aws_clients.wafv2_client.get_ip_set(
-            # Id=ip_set_id, Name=ip_set_name, Scope=scope)["IPSet"]
-        # build the if = ipsetid/name/scope from the ar example: arn:aws:wafv2:us-east-1:130964665983:global/ipset/cf-test/3eddbd94-f198-421b-bd23-69dfee001aa4
         attributes = {
             "id": waf_id,
             "name": ip_set_name,

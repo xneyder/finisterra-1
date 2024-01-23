@@ -3,6 +3,8 @@ from utils.hcl import HCL
 from providers.aws.iam_role import IAM_ROLE
 from providers.aws.kms import KMS
 from providers.aws.security_group import SECURITY_GROUP
+from providers.aws.logs import Logs
+from providers.aws.launchtemplate import LaunchTemplate
 
 class EKS:
     def __init__(self, aws_clients, script_dir, provider_name, schema_data, region, s3Bucket,
@@ -26,6 +28,8 @@ class EKS:
         self.iam_role_instance = IAM_ROLE(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
         self.kms_instance = KMS(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
         self.security_group_instance = SECURITY_GROUP(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
+        self.logs_instance = Logs(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
+        self.launchtemplate_instance = LaunchTemplate(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
 
         functions = {}
         self.hcl.functions.update(functions)
@@ -52,7 +56,24 @@ class EKS:
                 subnet_names.append(subnet_name)
             else:
                 print(f"No 'Name' tag found for Subnet ID: {subnet_id}")      
-        return subnet_names  
+        return subnet_names
+    
+    def get_vpc_name(self, vpc_id):
+        response = self.aws_clients.ec2_client.describe_vpcs(VpcIds=[vpc_id])
+
+        if not response or 'Vpcs' not in response or not response['Vpcs']:
+            # Handle this case as required, for example:
+            print(f"No VPC information found for VPC ID: {vpc_id}")
+            return None
+
+        vpc_tags = response['Vpcs'][0].get('Tags', [])
+        vpc_name = next((tag['Value']
+                        for tag in vpc_tags if tag['Key'] == 'Name'), None)
+
+        if vpc_name is None:
+            print(f"No 'Name' tag found for VPC ID: {vpc_id}")
+
+        return vpc_name    
 
     def eks(self):
         self.hcl.prepare_folder(os.path.join("generated"))
@@ -64,7 +85,7 @@ class EKS:
         self.json_plan = self.hcl.json_plan
 
     def aws_eks_cluster(self):
-        resource_name = 'aws_eks_cluster'
+        resource_type = 'aws_eks_cluster'
         print("Processing EKS Clusters...")
 
         clusters = self.aws_clients.eks_client.list_clusters()["clusters"]
@@ -87,9 +108,15 @@ class EKS:
                 "id": id,
             }
             self.hcl.process_resource(
-                resource_name, cluster_name.replace("-", "_"), attributes)
+                resource_type, cluster_name.replace("-", "_"), attributes)
             
-            self.hcl.add_stack(resource_name, id, ftstack)
+            self.hcl.add_stack(resource_type, id, ftstack)
+
+            vpc_id = cluster["resourcesVpcConfig"]["vpcId"]
+            if vpc_id:
+                vpc_name = self.get_vpc_name(vpc_id)
+                if vpc_name:
+                    self.hcl.add_additional_data(resource_type, id, "vpc_name", vpc_name)
 
             # Call aws_iam_role for the cluster's associated IAM role
             role_name = cluster["roleArn"].split('/')[-1]
@@ -114,7 +141,8 @@ class EKS:
             log_group_name = f"/aws/eks/{cluster_name}/cluster"
 
             # Call aws_cloudwatch_log_group for each cluster's associated log group
-            self.aws_cloudwatch_log_group(log_group_name)
+            self.logs_instance.aws_cloudwatch_log_group(log_group_name, ftstack)
+            # self.aws_cloudwatch_log_group(log_group_name)
 
             # Extract the security group ID
             security_group_id = cluster["resourcesVpcConfig"]["clusterSecurityGroupId"]
@@ -128,7 +156,7 @@ class EKS:
 
 
     def aws_eks_addon(self, cluster_name, ftstack=None):
-        resource_name = 'aws_eks_addon'
+        resource_type = 'aws_eks_addon'
         print(f"Processing EKS Add-ons for Cluster: {cluster_name}...")
 
         addons = self.aws_clients.eks_client.list_addons(
@@ -147,7 +175,7 @@ class EKS:
                 "cluster_name": cluster_name,
             }
             self.hcl.process_resource(
-                resource_name, f"{cluster_name}-{addon_name}".replace("-", "_"), attributes)
+                resource_type, f"{cluster_name}-{addon_name}".replace("-", "_"), attributes)
             
             service_account_role_arn = addon.get("serviceAccountRoleArn", "")
             if service_account_role_arn:
@@ -199,11 +227,11 @@ class EKS:
             }
 
             # Convert the provider ARN to a more suitable format for your naming convention if necessary
-            resource_name = provider_arn.split(
+            resource_type = provider_arn.split(
                 ":")[-1].replace(":", "_").replace("-", "_")
 
             self.hcl.process_resource(
-                "aws_iam_openid_connect_provider", resource_name, attributes
+                "aws_iam_openid_connect_provider", resource_type, attributes
             )
 
     def aws_eks_fargate_profile(self):
@@ -249,31 +277,6 @@ class EKS:
             }
             self.hcl.process_resource(f"aws_eks_{config_type.lower()}_identity_provider_config",
                                       f"{cluster_name}-{config_name}".replace("-", "_"), attributes)
-
-    def aws_cloudwatch_log_group(self, log_group_name):
-        print(f"Processing CloudWatch Log Group...")
-
-        paginator = self.aws_clients.logs_client.get_paginator('describe_log_groups')
-
-        for page in paginator.paginate():
-            for log_group in page['logGroups']:
-                if log_group['logGroupName'] == log_group_name:
-                    print(
-                        f"  Processing CloudWatch Log Group: {log_group_name}")
-
-                    # Prepare the attributes
-                    attributes = {
-                        "id": log_group_name,
-                        "name": log_group_name,
-                    }
-
-                    # Process the resource
-                    self.hcl.process_resource(
-                        "aws_cloudwatch_log_group", log_group_name.replace("/", "_"), attributes)
-                    return  # End the function once we've found the matching log group
-
-        print(
-            f"  Warning: No matching CloudWatch Log Group found: {log_group_name}")
 
     def aws_ec2_tag(self, resource_id):
         print(f"Processing EC2 Tags for Resource ID: {resource_id}")
@@ -350,7 +353,8 @@ class EKS:
 
             # If the node group has a launch template, process it
             if 'launchTemplate' in node_group and 'id' in node_group['launchTemplate']:
-                self.aws_launch_template(node_group['launchTemplate']['id'], ftstack)
+                self.launchtemplate_instance.aws_launch_template(node_group['launchTemplate']['id'], ftstack)
+                # self.aws_launch_template(node_group['launchTemplate']['id'], ftstack)
 
             # Process IAM role associated with the EKS node group
             if 'nodeRole' in node_group:
@@ -359,106 +363,54 @@ class EKS:
 
             # Process Auto Scaling schedules for the node group's associated Auto Scaling group
             for asg in node_group.get('resources', {}).get('autoScalingGroups', []):
-                self.aws_autoscaling_schedule(asg['name'])
+                self.aws_autoscaling_schedule(node_group_name, asg['name'])
 
-    def aws_launch_template(self, launch_template_id, ftstack):
-        print("Processing AWS Launch Template...")
+    # def aws_launch_template(self, launch_template_id, ftstack):
+    #     print("Processing AWS Launch Template...")
 
-        # Describe the latest version of the launch template using the provided ID
-        response = self.aws_clients.ec2_client.describe_launch_template_versions(
-            LaunchTemplateId=launch_template_id,
-            Versions=['$Latest']
-        )
+    #     # Describe the latest version of the launch template using the provided ID
+    #     response = self.aws_clients.ec2_client.describe_launch_template_versions(
+    #         LaunchTemplateId=launch_template_id,
+    #         Versions=['$Latest']
+    #     )
 
-        # Check if we have the launch template versions in the response
-        if 'LaunchTemplateVersions' not in response or not response['LaunchTemplateVersions']:
-            print(f"Launch template with ID '{launch_template_id}' not found!")
-            return
+    #     # Check if we have the launch template versions in the response
+    #     if 'LaunchTemplateVersions' not in response or not response['LaunchTemplateVersions']:
+    #         print(f"Launch template with ID '{launch_template_id}' not found!")
+    #         return
 
-        latest_version = response['LaunchTemplateVersions'][0]
-        launch_template_data = latest_version['LaunchTemplateData']
+    #     latest_version = response['LaunchTemplateVersions'][0]
+    #     launch_template_data = latest_version['LaunchTemplateData']
 
-        print(f"  Processing Launch Template: {latest_version['LaunchTemplateName']} with ID: {launch_template_id}")
+    #     print(f"  Processing Launch Template: {latest_version['LaunchTemplateName']} with ID: {launch_template_id}")
 
-        attributes = {
-            "id": launch_template_id,
-            "name": latest_version['LaunchTemplateName'],
-            "version": latest_version['VersionNumber'],
-            # You can add other attributes from the launch_template as needed
-        }
+    #     attributes = {
+    #         "id": launch_template_id,
+    #         "name": latest_version['LaunchTemplateName'],
+    #         "version": latest_version['VersionNumber'],
+    #         # You can add other attributes from the launch_template as needed
+    #     }
 
-        self.hcl.process_resource(
-            "aws_launch_template", f"{latest_version['LaunchTemplateName']}".replace("-", "_"), attributes)
+    #     self.hcl.process_resource(
+    #         "aws_launch_template", f"{latest_version['LaunchTemplateName']}".replace("-", "_"), attributes)
         
-        #security_groups
-        security_group_ids = launch_template_data.get("SecurityGroupIds", [])
-        for security_group_id in security_group_ids:
-            self.security_group_instance.aws_security_group(security_group_id, ftstack)
+    #     #security_groups
+    #     security_group_ids = launch_template_data.get("SecurityGroupIds", [])
+    #     for security_group_id in security_group_ids:
+    #         self.security_group_instance.aws_security_group(security_group_id, ftstack)
         
-        # Process KMS Key for EBS Volume
-        if 'BlockDeviceMappings' in launch_template_data:
-            for mapping in launch_template_data['BlockDeviceMappings']:
-                if 'Ebs' in mapping and 'KmsKeyId' in mapping['Ebs']:
-                    kms_key_id = mapping['Ebs']['KmsKeyId']
-                    print(f"Found KMS Key ID for EBS: {kms_key_id}")
-                    self.kms_instance.aws_kms_key(kms_key_id, ftstack)
-                    break  # Assuming we need the first KMS Key ID found
-        else:
-            print("No Block Device Mappings with EBS found in the Launch Template.")
+    #     # Process KMS Key for EBS Volume
+    #     if 'BlockDeviceMappings' in launch_template_data:
+    #         for mapping in launch_template_data['BlockDeviceMappings']:
+    #             if 'Ebs' in mapping and 'KmsKeyId' in mapping['Ebs']:
+    #                 kms_key_id = mapping['Ebs']['KmsKeyId']
+    #                 print(f"Found KMS Key ID for EBS: {kms_key_id}")
+    #                 self.kms_instance.aws_kms_key(kms_key_id, ftstack)
+    #                 break  # Assuming we need the first KMS Key ID found
+    #     else:
+    #         print("No Block Device Mappings with EBS found in the Launch Template.")
 
-    def aws_iam_role(self, role_arn):
-        print(f"Processing IAM Role: {role_arn}...")
-
-        role_name = role_arn.split('/')[-1]  # Extract role name from ARN
-
-        # Ignore AWS service-linked roles
-        if '/aws-service-role/' in role_arn:
-            print(f"Ignoring service-linked role: {role_name}")
-            return
-
-        try:
-            role = self.aws_clients.iam_client.get_role(RoleName=role_name)['Role']
-
-            print(f"  Processing IAM Role: {role['Arn']}")
-
-            attributes = {
-                "id": role['RoleName'],
-            }
-            self.hcl.process_resource(
-                "aws_iam_role", role['RoleName'], attributes)
-
-            # Process IAM role policy attachments for the role
-            self.aws_iam_role_policy_attachment(
-                role['RoleName'])
-        except Exception as e:
-            print(f"Error processing IAM role: {role_name}: {str(e)}")
-
-    def aws_iam_role_policy_attachment(self, role_name):
-        print(
-            f"Processing IAM Role Policy Attachments for role: {role_name}...")
-
-        try:
-            paginator = self.aws_clients.iam_client.get_paginator(
-                'list_attached_role_policies')
-            for page in paginator.paginate(RoleName=role_name):
-                for policy in page['AttachedPolicies']:
-                    print(
-                        f"  Processing IAM Role Policy Attachment: {policy['PolicyName']} for role: {role_name}")
-
-                    resource_name = f"{role_name}-{policy['PolicyName']}"
-                    attributes = {
-                        "id": f"{role_name}/{policy['PolicyArn']}",
-                        "role": role_name,
-                        "policy_arn": policy['PolicyArn']
-                    }
-                    self.hcl.process_resource(
-                        "aws_iam_role_policy_attachment", resource_name, attributes)
-
-        except Exception as e:
-            print(
-                f"Error processing IAM role policy attachments for role: {role_name}: {str(e)}")
-
-    def aws_autoscaling_schedule(self, autoscaling_group_name):
+    def aws_autoscaling_schedule(self, node_group_name, autoscaling_group_name):
         print(
             f"Processing Auto Scaling Schedules for Group: {autoscaling_group_name}...")
 
@@ -466,19 +418,22 @@ class EKS:
             # List all scheduled actions for the specified Auto Scaling group
             scheduled_actions = self.aws_clients.autoscaling_client.describe_scheduled_actions(
                 AutoScalingGroupName=autoscaling_group_name)['ScheduledUpdateGroupActions']
-
+            
             for action in scheduled_actions:
+                id = action['ScheduledActionName']
                 print(
-                    f"  Processing Auto Scaling Schedule: {action['ScheduledActionName']} for Group: {autoscaling_group_name}")
+                    f"  Processing Auto Scaling Schedule: {id} for Group: {autoscaling_group_name}")
 
                 attributes = {
-                    "id": action['ScheduledActionName'],
+                    "id": id,
                     "start_time": action.get('StartTime', ''),
                     "end_time": action.get('EndTime', ''),
                     # You can add more attributes as needed
                 }
                 self.hcl.process_resource(
-                    "aws_autoscaling_schedule", action['ScheduledActionName'].replace("-", "_"), attributes)
+                    "aws_autoscaling_schedule",id, attributes)
+                
+                self.hcl.add_additional_data("aws_autoscaling_schedule", id, "node_group_name", node_group_name)
         except Exception as e:
             print(
                 f"Error processing Auto Scaling schedule for group {autoscaling_group_name}: {str(e)}")

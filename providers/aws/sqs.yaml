@@ -59,7 +59,7 @@ aws_sqs_queue:
         url:
           field: queue_url
       target_resource_name:
-        function: aws_sqs_queue_target_name
+        function: sqs_queue_target_name
         arg: queue_url
       defaults:
         create_queue_policy: true

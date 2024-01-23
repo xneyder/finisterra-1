@@ -4,6 +4,7 @@ aws_wafv2_web_acl:
   target_resource_name: default
   import_id:
     function: wafv2_web_acl_import_id
+    arg: id
   joined_fields:
     log_destination_configs:
       sub_fields:

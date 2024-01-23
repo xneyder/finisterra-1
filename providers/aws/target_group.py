@@ -29,68 +29,15 @@ class TargetGroup:
         self.load_balancers = None
         self.listeners = {}
 
-        functions = {
-            'join_aws_lb_target_group_to_aws_lb_listener_rule': self.join_aws_lb_target_group_to_aws_lb_listener_rule,
-            'join_aws_lb_target_group_to_aws_lb_listener': self.join_aws_lb_target_group_to_aws_lb_listener,
-            'get_listener_rules': self.get_listener_rules,
-            'get_vpc_id_tg': self.get_vpc_id_tg,
-            'get_vpc_name_tg': self.get_vpc_name_tg,
-            'get_id_from_arn': self.get_id_from_arn,
-        }        
+        functions = {}
 
         self.hcl.functions.update(functions)
 
-    def join_aws_lb_target_group_to_aws_lb_listener_rule(self, parent_attributes, child_attributes):
-        target_group_arn = parent_attributes.get('arn')
-        for action in child_attributes.get('action', []):
-            if action.get('target_group_arn') == target_group_arn:
-                return True
-        return False
-
-    def join_aws_lb_target_group_to_aws_lb_listener(self, parent_attributes, child_attributes):
-        target_group_arn = parent_attributes.get('arn')
-        for action in child_attributes.get('default_action', []):
-            if action.get('target_group_arn') == target_group_arn:
-                return True
-        return False
-
-    def get_listener_port(self, attributes, arg):
-        listener_arn = attributes.get(arg)
-        response = self.aws_clients.elbv2_client.describe_listeners(
-            ListenerArns=[listener_arn])
-        listener_port = response['Listeners'][0]['Port']
-        return listener_port
-
-    def get_id_from_arn(self, attributes, arg):
-        arn = attributes.get(arg)
-        return arn.split('/')[-1]    
-    
-    def get_listener_rules(self, attributes):
-        result = {}
-        key = attributes.get('arn').split('/')[-1]
-        result[key] = {}
-        # result[key]['listener_id'] = attributes.get('listener_arn').split('/')[-1]
-        result[key]['priority'] = attributes.get('priority')
-        result[key]['conditions'] = attributes.get('condition')
-        result[key]['tags'] = attributes.get('tags')
-        # result[key]['port'] = self.get_listener_port(
-        #     attributes, 'listener_arn')
-        result[key]['listener_arn'] = attributes.get('listener_arn')
-        return result
-
-    def get_vpc_name_tg(self, attributes):
-        vpc_id = attributes.get("vpc_id")
+    def get_vpc_name(self, vpc_id):
         response = self.aws_clients.ec2_client.describe_vpcs(VpcIds=[vpc_id])
         vpc_name = next(
             (tag['Value'] for tag in response['Vpcs'][0]['Tags'] if tag['Key'] == 'Name'), None)
         return vpc_name
-
-    def get_vpc_id_tg(self, attributes):
-        vpc_name = self.get_vpc_name_tg(attributes)
-        if vpc_name is None:
-            return  attributes.get("vpc_id")
-        else:
-            return ""    
 
     def target_group(self):
         self.hcl.prepare_folder(os.path.join("generated"))
@@ -143,7 +90,14 @@ class TargetGroup:
                 self.hcl.process_resource(
                     resource_type, id, attributes)
 
-                self.hcl.add_stack(resource_type, id, ftstack)      
+                self.hcl.add_stack(resource_type, id, ftstack)
+
+                vpc_id = target_group["VpcId"]
+                if vpc_id:
+                    vpc_name = self.get_vpc_name(vpc_id)
+                    if vpc_name:
+                        self.hcl.add_additional_data(
+                            resource_type, id, "vpc_name", vpc_name)
 
                 # Call the aws_lb_listener_rule function with the target_group_arn
                 self.aws_lb_listener_rule(tg_arn, ftstack)

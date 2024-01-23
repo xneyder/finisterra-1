@@ -22,11 +22,7 @@ class SQS:
         self.resource_list = {}
         self.dlq_list = {}
 
-        functions = {
-            'aws_sqs_queue_target_name': self.aws_sqs_queue_target_name,
-            'sqs_is_dql': self.sqs_is_dql,
-            'sqs_get_parent_url': self.sqs_get_parent_url,
-        }
+        functions = {}
 
         self.hcl.functions.update(functions)        
 
@@ -93,6 +89,10 @@ class SQS:
                         try:
                             dlq_url = self.aws_clients.sqs_client.get_queue_url(
                                 QueueName=redrive_policy['deadLetterTargetArn'].split(":")[-1])
+                            self.hcl.add_additional_data(
+                                resource_type, dlq_url['QueueUrl'], "parent_url", queue_url)
+                            self.hcl.add_additional_data(
+                                resource_type, dlq_url['QueueUrl'], "is_dlq", True)
                             self.dlq_list[dlq_url['QueueUrl']] = queue_url
                         except Exception as e:
                             print("Error occurred: ", e)

@@ -132,6 +132,10 @@ class Logs:
 
     def process_single_log_group(self, log_group_name, ftstack=None):
         resource_type = "aws_cloudwatch_log_group"
+        log_group = self.aws_clients.logs_client.describe_log_groups(logGroupNamePrefix=log_group_name)['logGroups']
+        if not log_group:
+            return
+        log_group= log_group[0]
         print(f"  Processing CloudWatch Log Group: {log_group_name}")
         id = log_group_name
         attributes = {

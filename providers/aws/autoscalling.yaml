@@ -3,17 +3,24 @@ aws_autoscaling_group:
   terraform_module_version: "6.1.0"
   target_resource_name: default
   name_field: asg_name
+  joined_fields:
+    security_group_ids:
+      sub_fields:
+        - security_group_ids
+    service_linked_role_arn:
+      sub_fields:
+        - service_linked_role_arn
   fields:
     asg_name:
       field: name
       type: string
 
     subnet_ids:
-      function: get_subnet_ids
+      function: asg_get_subnet_ids
       arg: vpc_zone_identifier
       type: list
     subnet_names:
-      function: get_subnet_names
+      function: asg_get_subnet_names
       arg: vpc_zone_identifier
       type: list
     max_size:
@@ -102,7 +109,8 @@ aws_autoscaling_group:
       target_resource_name: this
       fields:
         autoscaling_policies:
-          function: build_autoscaling_policies
+          function: asg_build_autoscaling_policies
+          arg: id
           type: map
       childs:
         aws_cloudwatch_metric_alarm:
@@ -112,13 +120,14 @@ aws_autoscaling_group:
           target_resource_name: this
           fields:
             aws_cloudwatch_metric_alarms:
-              function: build_aws_cloudwatch_metric_alarms
+              function: asg_build_aws_cloudwatch_metric_alarms
+              arg: id
               type: map
 
     aws_launch_configuration:
       join:
         id:
-          join_function: join_launch_configuration
+          join_function: asg_join_launch_configuration
       target_resource_name: default
       defaults:
         create_aws_launch_configuration: true
@@ -136,7 +145,8 @@ aws_autoscaling_group:
           field: key_name
           type: string
         user_data_base64:
-          function: get_user_data
+          function: asg_get_user_data_configuration
+          arg: id
           type: string
         enable_monitoring:
           field: enable_monitoring
@@ -144,13 +154,13 @@ aws_autoscaling_group:
         ebs_optimized:
           field: ebs_optimized
           type: bool
-        # security_group_ids:
-        #   field: security_groups
-        #   type: list
-        security_group_names:
-          function: get_security_group_names
-          arg: security_groups
+        security_group_ids:
+          field: security_groups
           type: list
+        # security_group_names:
+        #   function: asg_get_security_group_names
+        #   arg: security_groups
+        #   type: list
         root_block_device:
           field: root_block_device
           type: map
@@ -172,7 +182,7 @@ aws_autoscaling_group:
     aws_launch_template:
       join:
         id:
-          join_function: join_launch_template
+          join_function: asg_join_launch_template
       target_resource_name: default
       defaults:
         create_aws_launch_template: true
@@ -217,7 +227,8 @@ aws_autoscaling_group:
           field: placement
           type: map
         user_data_base64:
-          function: get_user_data
+          function: asg_get_user_data_template
+          arg: id
           type: string
         iam_instance_profile:
           field: iam_instance_profile

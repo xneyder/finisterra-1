@@ -58,6 +58,7 @@ from providers.aws.target_group import TargetGroup
 from providers.aws.elasticsearch import Elasticsearch
 from providers.aws.aws_clients import AwsClients
 from providers.aws.codeartifact import CodeArtifact
+from providers.aws.launchtemplate import LaunchTemplate
 
 
 class Aws:
@@ -745,3 +746,11 @@ class Aws:
         instance.codeartifact()
         self.json_plan = instance.json_plan
         self.resource_list['codeartifact'] = instance.resource_list
+
+    def launchtemplate(self):
+        instance = LaunchTemplate(self.aws_clients_instance, self.script_dir, self.provider_name,
+                       self.schema_data, self.aws_region, self.s3Bucket,
+                       self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
+        instance.launchtemplate()
+        self.json_plan = instance.json_plan
+        self.resource_list['launchtemplate'] = instance.resource_list

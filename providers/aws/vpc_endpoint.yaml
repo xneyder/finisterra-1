@@ -9,9 +9,11 @@ aws_vpc_endpoint:
   fields:
     vpc_name:
       function: get_vpc_name_vpce
+      arg: id
       type: string
     vpc_id:
       function: get_vpc_id_vpce
+      arg: id
       type: string
     subnet_names:
       function: get_subnet_names_vpce

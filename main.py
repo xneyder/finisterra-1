@@ -126,6 +126,8 @@ def main(aws_account_id, aws_region, group_code):
         provider.elasticsearch()
     elif group_code == 'codeartifact':
         provider.codeartifact()
+    elif group_code == 'launchtemplate':
+        provider.launchtemplate()
 
     else:
         print(f"Group code {group_code} not found.")

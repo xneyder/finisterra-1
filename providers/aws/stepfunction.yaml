@@ -2,19 +2,19 @@ aws_sfn_state_machine:
   terraform_module: "github.com/finisterra-io/terraform-aws-modules.git//step-functions?ref=main"
   terraform_module_version: "5.1.0"
   target_resource_name: this
-  defaults:
-    create: true
-    create_role: false
-    # use_existing_role: false
-    create_cloudwatch_log_group: false
-  # path: "stepfunction"
+  joined_fields:
+    role_arn:
+      sub_fields:
+        - role_arn
+    logging_configuration:
+      sub_fields:
+        - log_destination
   fields:
     name:
       field: name
       type: string
-    role_name:
-      function: get_role_name_from_arn
-      arg: role_arn
+    role_arn:
+      field: role_arn
       type: string
     definition:
       field: definition
