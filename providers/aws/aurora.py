@@ -1,6 +1,7 @@
 import os
 from utils.hcl import HCL
 from providers.aws.iam_role import IAM_ROLE
+from providers.aws.logs import Logs
 
 class Aurora:
     def __init__(self, aws_clients, script_dir, provider_name, schema_data, region, s3Bucket,
@@ -28,138 +29,19 @@ class Aurora:
             self.hcl = hcl
 
         self.iam_role_instance = IAM_ROLE(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
+        self.logs_instance = Logs(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
 
         self.resource_list = {}
         self.aws_rds_cluster_attrs = {}
 
-        functions = {
-            'init_cluster_attributes': self.init_cluster_attributes,
-            'build_instances': self.build_instances,
-            'get_instance_identifier': self.get_instance_identifier,
-            'build_cluster_endpoint': self.build_cluster_endpoint,
-            'build_cluster_role_association': self.build_cluster_role_association,
-            'cloudwatch_log_group_name': self.cloudwatch_log_group_name,
-            'get_log_group_name': self.get_log_group_name,
-            'build_resource_id': self.build_resource_id,
-        }
+        functions = {}
 
         self.hcl.functions.update(functions)
-
-    def init_cluster_attributes(self, attributes):
-        self.aws_rds_cluster_attrs = attributes
-        return None
-
-    def get_instance_identifier(self, attributes):
-        return attributes.get("identifier", None)
-
-    def build_instances(self, attributes):
-        result = {}
-        identifier = attributes.get("identifier", None)
-        result['identifier'] = identifier
-        attrs_list = [
-            "copy_tags_to_snapshot",
-            "preferred_maintenance_window",
-            "tags",
-        ]
-        for attr in attrs_list:
-            child_value = attributes.get(attr, None)
-            parent_value = self.aws_rds_cluster_attrs.get(attr, None)
-            if child_value != parent_value:
-                result[attr] = child_value
-
-        instance_class = attributes.get("instance_class", None)
-        if instance_class:
-            result["instance_class"] = instance_class
-
-        performance_insights_enabled = attributes.get(
-            "performance_insights_enabled", False)
-        if performance_insights_enabled:
-            result["performance_insights_enabled"] = performance_insights_enabled
-            performance_insights_kms_key_id = attributes.get(
-                "performance_insights_kms_key_id", None)
-            if performance_insights_kms_key_id:
-                result["performance_insights_kms_key_id"] = performance_insights_kms_key_id
-            performance_insights_retention_period = attributes.get(
-                "performance_insights_retention_period", None)
-            if performance_insights_retention_period:
-                result["performance_insights_retention_period"] = performance_insights_retention_period
-        publicly_accessible = attributes.get("publicly_accessible", False)
-        if publicly_accessible:
-            result["publicly_accessible"] = publicly_accessible
-
-        monitoring_interval = attributes.get("monitoring_interval", 0)
-        if monitoring_interval != 0:
-            result["monitoring_interval"] = monitoring_interval
-
-        apply_immediately = attributes.get("apply_immediately", False)
-        if apply_immediately:
-            result["apply_immediately"] = apply_immediately
-
-        auto_minor_version_upgrade = attributes.get(
-            "auto_minor_version_upgrade", True)
-        if not auto_minor_version_upgrade:
-            result["auto_minor_version_upgrade"] = auto_minor_version_upgrade
-
-        promotion_tier = attributes.get("promotion_tier", None)
-        if promotion_tier:
-            result["promotion_tier"] = promotion_tier
-        return {identifier: result}
-
-    def build_cluster_endpoint(self, attributes):
-        result = {}
-        identifier = attributes.get("cluster_endpoint_identifier", None)
-        type = attributes.get("custom_endpoint_type", None)
-        if type:
-            result["type"] = type
-        excluded_members = attributes.get('excluded_members', [])
-        if excluded_members:
-            result['excluded_members'] = excluded_members
-        static_members = attributes.get('static_members', [])
-        if static_members:
-            result['static_members'] = static_members
-        tags = attributes.get('tags', {})
-        if tags:
-            result['tags'] = tags
-
-        return {identifier: result}
-
-    def build_cluster_role_association(self, attributes):
-        result = {}
-
-        role_arn = attributes.get("role_arn", None)
-        feature_name = attributes.get("feature_name", None)
-        if feature_name:
-            result["feature_name"] = feature_name
-
-        return {role_arn: result}
-
-    def cloudwatch_log_group_name(self, attributes):
-        parts = attributes.get('name').split('/')
-        if len(parts) >= 5 and parts[:4] == ['', 'aws', 'rds', 'instance']:
-            return parts[4]
-        else:
-            return None
-
-    def get_log_group_name(self, attributes):
-        parts = attributes.get('name').split('/')
-        if len(parts) >= 5 and parts[:4] == ['', 'aws', 'rds', 'instance']:
-            return parts[-1]
-        else:
-            return None
-
-    def build_resource_id(self, attributes):
-        resource_id = attributes.get("resource_id", None)
-        return f"cluster:{resource_id}"
-
 
     def aurora(self):
         self.hcl.prepare_folder(os.path.join("generated"))
 
         self.aws_rds_cluster()
-
-        # self.aws_security_group()
-        # self.aws_security_group_rule()
-
         self.hcl.refresh_state()
         self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id)
         self.json_plan = self.hcl.json_plan
@@ -575,7 +457,7 @@ class Aurora:
 
                 parameter_group_name = rds_cluster.get(
                     "DBClusterParameterGroupName", "")
-                self.aws_rds_cluster_instance(rds_cluster_id, ftstack)
+                self.aws_rds_cluster_instance(rds_cluster_id, ftstack, rds_cluster)
                 self.aws_rds_cluster_parameter_group(parameter_group_name)
                 self.aws_rds_cluster_endpoint(rds_cluster_id)
                 self.aws_rds_cluster_role_association(rds_cluster_id)
@@ -630,7 +512,7 @@ class Aurora:
                     self.hcl.process_resource(
                         "aws_rds_cluster_endpoint", endpoint_id.replace("-", "_"), attributes)
 
-    def aws_rds_cluster_instance(self, cluster_id, ftstack):
+    def aws_rds_cluster_instance(self, cluster_id, ftstack, rds_cluster_data):
         print("Processing RDS Cluster Instances...")
 
         paginator = self.aws_clients.rds_client.get_paginator("describe_db_instances")
@@ -671,8 +553,17 @@ class Aurora:
 
                     # call aws_cloudwatch_log_group function with instance_id and each log export name as parameters
                     for log_export_name in rds_instance.get("EnabledCloudwatchLogsExports", []):
-                        self.aws_cloudwatch_log_group(
-                            instance_id, log_export_name)
+                        self.logs_instance.aws_cloudwatch_log_group(f"/aws/rds/instance/{instance_id}/{log_export_name}", ftstack)
+
+                    copy_tags_to_snapshot = rds_cluster_data.get("CopyTagsToSnapshot", False)
+                    if copy_tags_to_snapshot:
+                        self.hcl.add_additional_data("aws_rds_cluster_instance", instance_id, "copy_tags_to_snapshot", copy_tags_to_snapshot)
+                    preferred_maintenance_window = rds_cluster_data.get("PreferredMaintenanceWindow", "")
+                    if preferred_maintenance_window:
+                        self.hcl.add_additional_data("aws_rds_cluster_instance", instance_id, "preferred_maintenance_window", preferred_maintenance_window)
+                    tags = rds_cluster_data.get("Tags", [])
+                    if tags:
+                        self.hcl.add_additional_data("aws_rds_cluster_instance", instance_id, "tags", tags)
 
     def aws_rds_cluster_parameter_group(self, parameter_group_name):
         print("Processing RDS Cluster Parameter Groups...")
@@ -881,35 +772,35 @@ class Aurora:
             self.hcl.process_resource(
                 "aws_iam_role_policy_attachment", resource_name.replace("-", "_"), attributes)
 
-    def aws_cloudwatch_log_group(self, instance_id, log_export_name):
-        print(
-            f"Processing CloudWatch Log Group: {log_export_name} for DB Instance: {instance_id}")
+    # def aws_cloudwatch_log_group(self, instance_id, log_export_name):
+    #     print(
+    #         f"Processing CloudWatch Log Group: {log_export_name} for DB Instance: {instance_id}")
 
-        # assuming the log group name has prefix /aws/rds/instance/{instance_id}/{log_export_name}
-        log_group_name_prefix = f"/aws/rds/instance/{instance_id}/{log_export_name}"
+    #     # assuming the log group name has prefix /aws/rds/instance/{instance_id}/{log_export_name}
+    #     log_group_name_prefix = f"/aws/rds/instance/{instance_id}/{log_export_name}"
 
-        response = self.aws_clients.logs_client.describe_log_groups(
-            logGroupNamePrefix=log_group_name_prefix)
+    #     response = self.aws_clients.logs_client.describe_log_groups(
+    #         logGroupNamePrefix=log_group_name_prefix)
 
-        while True:
-            for log_group in response.get('logGroups', []):
-                log_group_name = log_group.get('logGroupName')
-                if log_group_name.startswith(log_group_name_prefix):
-                    print(f"  Processing Log Group: {log_group_name}")
-                    attributes = {
-                        "id": log_group_name,
-                        "name": log_group_name,
-                        "retention_in_days": log_group.get('retentionInDays'),
-                        "arn": log_group.get('arn'),
-                    }
-                    self.hcl.process_resource(
-                        "aws_cloudwatch_log_group", log_group_name.replace("-", "_"), attributes)
+    #     while True:
+    #         for log_group in response.get('logGroups', []):
+    #             log_group_name = log_group.get('logGroupName')
+    #             if log_group_name.startswith(log_group_name_prefix):
+    #                 print(f"  Processing Log Group: {log_group_name}")
+    #                 attributes = {
+    #                     "id": log_group_name,
+    #                     "name": log_group_name,
+    #                     "retention_in_days": log_group.get('retentionInDays'),
+    #                     "arn": log_group.get('arn'),
+    #                 }
+    #                 self.hcl.process_resource(
+    #                     "aws_cloudwatch_log_group", log_group_name.replace("-", "_"), attributes)
 
-            if 'nextToken' in response:
-                response = self.aws_clients.logs_client.describe_log_groups(
-                    logGroupNamePrefix=log_group_name_prefix, nextToken=response['nextToken'])
-            else:
-                break
+    #         if 'nextToken' in response:
+    #             response = self.aws_clients.logs_client.describe_log_groups(
+    #                 logGroupNamePrefix=log_group_name_prefix, nextToken=response['nextToken'])
+    #         else:
+    #             break
 
     def aws_appautoscaling_target(self, cluster_identifier):
         cluster_identifier = f"cluster:{cluster_identifier}"

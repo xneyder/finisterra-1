@@ -3,16 +3,11 @@ aws_rds_cluster:
   terraform_module_version: "6.1.0"
   target_resource_name: this
   name_field: cluster_identifier
-  # path: "aurora"
-  # dependencies:
-  #   - "../iam_role"
   defaults:
     create_db_subnet_group: false
     manage_master_user_password: false
     create_security_group: false
   fields:
-    init:
-      function: init_cluster_attributes
     allocated_storage:
       field: allocated_storage
       type: number
@@ -28,9 +23,6 @@ aws_rds_cluster:
     cluster_identifier:
       field: cluster_identifier
       type: string
-    # cluster_identifier_prefix:
-    #   field: identifier_prefix
-    #   type: string
     cluster_members:
       field: cluster_members
       type: list
@@ -148,14 +140,12 @@ aws_rds_cluster:
     vpc_security_group_ids:
       field: vpc_security_group_ids
       type: list
-    auto_minor_version_upgrade:
-      field: auto_minor_version_upgrade
-      type: bool
   childs:
     aws_appautoscaling_target:
       join:
         arn:
-          function: build_resource_id
+          function: aurora_build_resource_id
+          arg: id
       target_resource_name: this
       defaults:
         autoscaling_enabled: true
@@ -176,6 +166,7 @@ aws_rds_cluster:
       join:
         arn:
           function: build_resource_id
+          arg: id
       target_resource_name: this
       defaults:
         autoscaling_enabled: true
@@ -215,7 +206,8 @@ aws_rds_cluster:
         field: cluster_endpoint_identifier
       fields:
         cluster_endpoint:
-          function: build_cluster_endpoint
+          function: aurora_build_cluster_endpoint
+          arg: id
           type: map
     aws_rds_cluster_role_association:
       join:
@@ -226,7 +218,8 @@ aws_rds_cluster:
         field: cluster_endpoint_identifier
       fields:
         cluster_endpoint:
-          function: build_cluster_role_association
+          function: aurora_build_cluster_role_association
+          arg: id
           type: map
     aws_rds_cluster_instance:
       join:
@@ -234,29 +227,13 @@ aws_rds_cluster:
           field: cluster_identifier
       target_resource_name: this
       second_index:
-        function: get_instance_identifier
+        field: identifier
       fields:
         instances:
-          function: build_instances
+          function: aurora_build_instances
+          arg: id
           type: map
       childs:
-        aws_cloudwatch_log_group:
-          join:
-            identifier:
-              function: cloudwatch_log_group_name
-          target_resource_name: this
-          defaults:
-            create_cloudwatch_log_group: true
-          second_index:
-            function: get_log_group_name
-          fields:
-            cloudwatch_log_group_retention_in_days:
-              field: retention_in_days
-              type: number
-              module_default: 7
-            cloudwatch_log_group_kms_key_id:
-              field: kms_key_id
-              type: string
         aws_db_subnet_group:
           join:
             db_subnet_group_name:
@@ -279,6 +256,9 @@ aws_rds_cluster:
             db_subnet_group_description:
               field: description
               type: string
+            auto_minor_version_upgrade:
+              field: auto_minor_version_upgrade
+              type: bool
         aws_db_parameter_group:
           join:
             parameter_group_name:

@@ -1210,14 +1210,6 @@ def join_eks_cluster_and_oidc_provider(parent_attributes, child_attributes):
     # Check if the OIDC provider URL matches the one from the EKS cluster
     return provider_url == expected_oidc_url.replace("https://", "")
 
-# def eks_join_node_group_launch_template(parent_attributes, child_attributes):
-#     node_launch_template_id=""
-#     launch_template =  parent_attributes.get("launch_template")
-#     if launch_template:
-#         node_launch_template_id = launch_template[0].get("id", "")
-#     launch_template_id = child_attributes.get("id", "")
-#     return node_launch_template_id == launch_template_id
-
 def eks_join_node_group_autoscaling_schedule(parent_attributes, child_attributes):
     # Assuming parent_attributes contains a list of associated ASG names for the EKS node group.
     node_asg_names = parent_attributes.get("resources", {}).get(
@@ -1315,144 +1307,6 @@ def eks_build_managed_node_groups(attributes, arg=None, additional_data=None):
 
     return result
 
-# def build_block_device_mappings(block_device_mappings):
-#     result = {}
-#     for block_device in block_device_mappings:
-#         name = block_device.get("device_name")
-#         new_ebs={}
-        
-#         for ebs in block_device.get("ebs", []):
-#             #remove any empty or null key
-#             for k,v in ebs.items():
-#                 if not v:
-#                     continue
-#                 elif k == "throughput":
-#                     if v == 0:
-#                         continue
-#                 elif k == "iops":
-#                     if v == 0:
-#                         continue
-#                 new_ebs[k] = v
-#         block_device["ebs"] = [new_ebs]
-#         #Remove the keys that are empty or null
-#         block_device = {k: v for k,
-#                         v in block_device.items() if v}
-#         result[name] = block_device
-#     return result
-
-# def eks_build_launch_templates(attributes, arg=None, additional_data=None):
-#     result = {self.node_group_name: {}}
-#     block_device_mappings = attributes.get("block_device_mappings")
-#     result[self.node_group_name]["block_device_mappings"] = build_block_device_mappings(
-#         block_device_mappings)
-#     result[self.node_group_name]["launch_template_tags"] = attributes.get(
-#         "tags")
-#     result[self.node_group_name]["tag_specifications"] = attributes.get("tag_specifications")
-#     tmp = attributes.get("name")
-#     if tmp:
-#         result[self.node_group_name]["launch_template_name"] = tmp
-#     tmp = attributes.get("ebs_optimized")
-#     if tmp:
-#         result[self.node_group_name]["ebs_optimized"] = tmp
-#     result[self.node_group_name]["key_name"] = attributes.get("key_name")
-#     result[self.node_group_name]["disable_api_termination"] = attributes.get(
-#         "disable_api_termination")
-#     result[self.node_group_name]["kernel_id"] = attributes.get("kernel_id")
-#     result[self.node_group_name]["ram_disk_id"] = attributes.get(
-#         "ram_disk_id")
-#     tmp = attributes.get("capacity_reservation_specification")
-#     if tmp:
-#         result[self.node_group_name]["capacity_reservation_specification"] = attributes.get(
-#             "capacity_reservation_specification")[0]
-#     tmp = attributes.get("cpu_options")
-#     if tmp:
-#         result[self.node_group_name]["cpu_options"] = attributes.get(
-#             "cpu_options")[0]
-#     tmp = attributes.get("credit_specification")
-#     if tmp:
-#         result[self.node_group_name]["credit_specification"] = attributes.get(
-#             "credit_specification")[0]
-#     tmp = attributes.get("elastic_gpu_specifications")
-#     if tmp:
-#         result[self.node_group_name]["elastic_gpu_specifications"] = attributes.get(
-#             "elastic_gpu_specifications")[0]
-#     tmp = attributes.get("elastic_inference_accelerator")
-#     if tmp:
-#         result[self.node_group_name]["elastic_inference_accelerator"] = attributes.get(
-#             "elastic_inference_accelerator")[0]
-#     tmp = attributes.get("enclave_options")
-#     if tmp:
-#         result[self.node_group_name]["enclave_options"] = attributes.get(
-#             "enclave_options")[0]
-#     tmp = attributes.get("instance_market_options")
-#     if tmp:
-#         result[self.node_group_name]["instance_market_options"] = attributes.get(
-#             "instance_market_options")[0]
-#     result[self.node_group_name]["license_specifications"] = attributes.get(
-#         "license_specifications")
-#     tmp = attributes.get("metadata_options")
-#     if tmp:
-#         #remove any empty or null keys
-#         result[self.node_group_name]["metadata_options"] = {k: v for k,
-#                                                             v in attributes.get("metadata_options")[0].items() if v}
-#     tmp = attributes.get("monitoring")
-#     if tmp:
-#         result[self.node_group_name]["enable_monitoring"] = tmp[0].get("enabled")
-#     tmp = attributes.get("network_interfaces")
-#     if tmp:
-#         new_val={}
-#         for k,v in tmp[0].items():
-#             if k == "interface_type" and not v:
-#                 continue
-#             if k == "private_ip_address" and not v:
-#                 continue
-#             new_val[k] = v
-#         result[self.node_group_name]["network_interfaces"] = [new_val]
-        
-#     tmp = attributes.get("placement")
-#     if tmp:
-#         result[self.node_group_name]["placement"] = attributes.get("placement")[
-#             0]
-#     tmp = attributes.get("maintenance_options")
-#     if tmp:
-#         result[self.node_group_name]["maintenance_options"] = attributes.get(
-#             "maintenance_options")[0]
-#     tmp = attributes.get("private_dns_name_options")
-#     if tmp:
-#         result[self.node_group_name]["private_dns_name_options"] = attributes.get(
-#             "private_dns_name_options")[0]
-#     tmp = attributes.get("update_default_version")
-#     if tmp:
-#         result[self.node_group_name]["update_launch_template_default_version"] = tmp
-
-#     tmp = attributes.get("description")
-#     if tmp:
-#         result[self.node_group_name]["launch_template_description"] = tmp
-
-#     tmp = attributes.get("instance_type")
-#     if tmp:
-#         result[self.node_group_name]["instance_type"] = tmp
-    
-#     tmp = attributes.get("user_data")
-#     if tmp:
-#         result[self.node_group_name]["user_data"] = tmp
-
-#     tmp = attributes.get("image_id")
-#     if tmp:
-#         result[self.node_group_name]["ami_id"] = tmp
-
-#     tmp = attributes.get("vpc_security_group_ids")
-#     if tmp:
-#         result[self.node_group_name]['vpc_security_group_ids'] = attributes.get(
-#             "vpc_security_group_ids")
-
-#     result[self.node_group_name]["use_custom_launch_template"] = True 
-    
-#     # Remove the keys that are empty
-#     result[self.node_group_name] = {k: v for k,
-#                                     v in result[self.node_group_name].items() if v}
-#     return result
-
 def eks_asg_get_node_group_name(attributes, arg=None, additional_data=None):
     id = attributes.get("id")
     instance_data = get_module_additional_data("aws_autoscaling_schedule", id, additional_data)
@@ -1481,9 +1335,6 @@ def eks_build_node_group_autoscaling_schedules(attributes, arg=None, additional_
     result[node_group_name]['schedules'] = {k: v for k,
                                                     v in result[node_group_name]['schedules'].items() if v is not None}
     return result
-
-# def eks_get_node_group_name(attributes, arg=None, additional_data=None):
-#     return self.node_group_name
 
 def eks_get_subnet_names(attributes, arg=None, additional_data=None):
     id = attributes.get("id")
@@ -2023,7 +1874,7 @@ def aws_s3_bucket_policy_policy(state, arg=None, additional_data=None):
 #     return None
 
 
-# ### SQS ###
+### SQS ###
 def sqs_queue_target_name(attributes, arg=None, additional_data=None):
     id = attributes.get("id")
     instance_data = get_module_additional_data("aws_sqs_queue", id, additional_data)
@@ -2271,3 +2122,91 @@ def launchtemplate_get_block_device_mappings(attributes, arg=None, additional_da
         result.append(block_device_mapping)
 
     return result
+
+### AURORA ###
+def aurora_build_instances(attributes, arg=None, additional_data=None):
+    result = {}
+    identifier = attributes.get("identifier", None)
+    result['identifier'] = identifier
+    attrs_list = [
+        "copy_tags_to_snapshot",
+        "preferred_maintenance_window",
+        "tags",
+    ]
+    id = attributes.get("id")
+    instance_data = get_module_additional_data("aws_rds_cluster_instance", id, additional_data)
+    for attr in attrs_list:
+        child_value = attributes.get(attr, None)
+        parent_value = instance_data.get(attr, None)
+        if child_value != parent_value:
+            result[attr] = child_value
+
+    instance_class = attributes.get("instance_class", None)
+    if instance_class:
+        result["instance_class"] = instance_class
+
+    performance_insights_enabled = attributes.get(
+        "performance_insights_enabled", False)
+    if performance_insights_enabled:
+        result["performance_insights_enabled"] = performance_insights_enabled
+        performance_insights_kms_key_id = attributes.get(
+            "performance_insights_kms_key_id", None)
+        if performance_insights_kms_key_id:
+            result["performance_insights_kms_key_id"] = performance_insights_kms_key_id
+        performance_insights_retention_period = attributes.get(
+            "performance_insights_retention_period", None)
+        if performance_insights_retention_period:
+            result["performance_insights_retention_period"] = performance_insights_retention_period
+    publicly_accessible = attributes.get("publicly_accessible", False)
+    if publicly_accessible:
+        result["publicly_accessible"] = publicly_accessible
+
+    monitoring_interval = attributes.get("monitoring_interval", 0)
+    if monitoring_interval != 0:
+        result["monitoring_interval"] = monitoring_interval
+
+    apply_immediately = attributes.get("apply_immediately", False)
+    if apply_immediately:
+        result["apply_immediately"] = apply_immediately
+
+    auto_minor_version_upgrade = attributes.get(
+        "auto_minor_version_upgrade", True)
+    if not auto_minor_version_upgrade:
+        result["auto_minor_version_upgrade"] = auto_minor_version_upgrade
+
+    promotion_tier = attributes.get("promotion_tier", None)
+    if promotion_tier:
+        result["promotion_tier"] = promotion_tier
+    return {identifier: result}
+
+def aurora_build_cluster_endpoint(attributes, arg=None, additional_data=None):
+    result = {}
+    identifier = attributes.get("cluster_endpoint_identifier", None)
+    type = attributes.get("custom_endpoint_type", None)
+    if type:
+        result["type"] = type
+    excluded_members = attributes.get('excluded_members', [])
+    if excluded_members:
+        result['excluded_members'] = excluded_members
+    static_members = attributes.get('static_members', [])
+    if static_members:
+        result['static_members'] = static_members
+    tags = attributes.get('tags', {})
+    if tags:
+        result['tags'] = tags
+
+    return {identifier: result}
+
+def aurora_build_cluster_role_association(attributes, arg=None, additional_data=None):
+    result = {}
+    role_arn = attributes.get("role_arn", None)
+    feature_name = attributes.get("feature_name", None)
+    if feature_name:
+        result["feature_name"] = feature_name
+
+    return {role_arn: result}
+
+def aurora_build_resource_id(attributes):
+    resource_id = attributes.get("resource_id", None)
+    return f"cluster:{resource_id}"
+
