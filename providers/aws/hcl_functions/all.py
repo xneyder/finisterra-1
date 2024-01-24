@@ -2293,7 +2293,7 @@ def vpc_add_nat_gateway(attributes, arg=None, additional_data=None):
         nat_gateway_id = attributes.get('id')
         nat_gateway_name = nat_gateway_id
 
-    id = attributes.get('subnet_id')
+    id = attributes.get('id')
     instance_data = get_module_additional_data("aws_nat_gateway", id, additional_data)
     subnet_cidr = instance_data.get("subnet_cidr", "")
 

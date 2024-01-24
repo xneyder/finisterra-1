@@ -292,7 +292,7 @@ aws_vpc:
                 function: vpc_get_eip_index
                 arg: id
               fields:
-                public_subnets:
+                nat_gateways:
                   function: vpc_add_eip
                   arg: id
                   type: map
