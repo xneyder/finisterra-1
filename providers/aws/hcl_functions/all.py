@@ -10,6 +10,12 @@ def get_module_additional_data(module_name, id, additional_data):
         return {}
     return additional_data[module_name][id]
 
+def bigger_than_zero(attributes, arg=None, additional_data=None):
+    value = attributes.get(arg, None)
+    if value > 0:
+        return value
+    return None
+
 
 #### IAM ####
 
@@ -2210,3 +2216,474 @@ def aurora_build_resource_id(attributes):
     resource_id = attributes.get("resource_id", None)
     return f"cluster:{resource_id}"
 
+
+### VPC ###
+# def vpc_get_dhcp_options_domain_name(attributes, arg=None, additional_data=None):
+#     assoc_id = attributes.get('id')
+#     return self.dhcp_options_domain_name[assoc_id]
+
+def vpc_is_subnet_public(attributes, arg=None, additional_data=None):
+    id = attributes.get("id")
+    instance_data = get_module_additional_data("aws_subnet", id, additional_data)
+    is_public = instance_data.get("is_public", False)
+    return is_public
+
+def vpc_is_subnet_private(attributes, arg=None, additional_data=None):
+    id = attributes.get("id")
+    instance_data = get_module_additional_data("aws_subnet", id, additional_data)
+    is_private = instance_data.get("is_private", False)
+    return is_private
+
+# def vpc_init_fields(attributes):
+#     self.private_subnets = {}
+#     self.public_subnets = {}
+#     self.public_route_table_ids = {}
+#     self.private_route_table_ids = {}
+#     self.public_nat_gateway_ids = {}
+#     self.private_route_tables = {}
+#     self.network_acl_ids = {}
+#     self.network_acls = {}
+
+#     return None
+
+def vpc_add_public_subnet(attributes, arg=None, additional_data=None):
+    # subnet_id = attributes.get('id')
+    cidr_block = attributes.get('cidr_block')
+    availability_zone = attributes.get('availability_zone')
+    tags = attributes.get('tags', {})
+    ipv6_cidr_block = attributes.get('ipv6_cidr_block')
+    assign_ipv6_address_on_creation = attributes.get(
+        'assign_ipv6_address_on_creation')
+    enable_dns64 = attributes.get('enable_dns64')
+    enable_resource_name_dns_aaaa_record_on_launch = attributes.get(
+        'enable_resource_name_dns_aaaa_record_on_launch')
+    enable_resource_name_dns_a_record_on_launch = attributes.get(
+        'enable_resource_name_dns_a_record_on_launch')
+    ipv6_native = attributes.get('ipv6_native')
+    map_public_ip_on_launch = attributes.get('map_public_ip_on_launch')
+    private_dns_hostname_type_on_launch = attributes.get(
+        'private_dns_hostname_type_on_launch')
+    # self.public_subnets[subnet_id] = {
+    result = {
+        cidr_block: {
+            'az': availability_zone,
+            'ipv6_cidr_block': ipv6_cidr_block,
+            'tags': tags,
+            'route_tables': [],
+            'nat_gateway': {},
+            'assign_ipv6_address_on_creation': assign_ipv6_address_on_creation,
+            'enable_dns64': enable_dns64,
+            'enable_resource_name_dns_aaaa_record_on_launch': enable_resource_name_dns_aaaa_record_on_launch,
+            'enable_resource_name_dns_a_record_on_launch': enable_resource_name_dns_a_record_on_launch,
+            'ipv6_native': ipv6_native,
+            'map_public_ip_on_launch': map_public_ip_on_launch,
+            'private_dns_hostname_type_on_launch': private_dns_hostname_type_on_launch,
+        }
+    }
+    return result
+
+# def vpc_add_nat_gateway(attributes, arg=None, additional_data=None):
+#     nat_gateway_id = attributes.get('id')
+#     if nat_gateway_id not in self.public_nat_gateway_ids:
+#         nat_gateway_name = 'nat_gateway_' + \
+#             str(len(self.public_nat_gateway_ids))
+#         self.public_nat_gateway_ids[nat_gateway_id] = nat_gateway_name
+#     else:
+#         nat_gateway_name = self.public_nat_gateway_ids[nat_gateway_id]
+
+#     subnet_id = attributes.get('subnet_id')
+#     allocation_id = attributes.get('allocation_id')
+#     if 'allocations' not in self.public_subnets:
+#         self.public_subnets['allocations'] = {}
+#     self.public_subnets['allocations'][allocation_id] = [
+#         subnet_id, nat_gateway_name]
+
+#     for key in self.public_subnets[subnet_id].keys():
+#         self.public_subnets[subnet_id][key]['nat_gateway'][nat_gateway_name] = {'tags': attributes.get(
+#             'tags', {}), 'eip_tags': {}}
+#     return self.public_subnets[subnet_id]
+
+# def vpc_add_network_acl(attributes, arg=None, additional_data=None):
+#     nacl_id = attributes.get('id')
+#     if nacl_id not in self.network_acl_ids:
+#         nacl_name = 'network_acl_' + \
+#             str(len(self.network_acl_ids))
+#         self.network_acl_ids[nacl_id] = nacl_name
+#     else:
+#         nacl_name = self.network_acl_ids[nacl_id]
+
+#     subnet_ids_ = attributes.get('subnet_ids')
+#     subnet_list_name = []
+#     for subnet_id in subnet_ids_:
+#         if subnet_id in self.public_subnets:
+#             for key in self.public_subnets[subnet_id].keys():
+#                 subnet_list_name.append(key)
+#         elif subnet_id in self.private_subnets:
+#             for key in self.private_subnets[subnet_id].keys():
+#                 subnet_list_name.append(key)
+#     self.network_acls[nacl_name] = {
+#         'subnet_ids': subnet_list_name, 'tags': attributes.get('tags', {}), 'ingress_rules': {}, 'egress_rules': {}}
+#     return {nacl_name: self.network_acls[nacl_name]}
+
+# def vpc_get_network_acl_id(attributes, arg=None, additional_data=None):
+#     nacl_id = attributes.get(arg)
+#     nacl_name = self.network_acl_ids[nacl_id]
+#     return nacl_name
+
+# def vpc_get_network_acl_rule_id(attributes, arg=None, additional_data=None):
+#     nacl_id = attributes.get(arg)
+#     nacl_name = self.network_acl_ids[nacl_id]
+#     return nacl_name+'_'+str(attributes.get('rule_number'))
+
+# def vpc_add_network_acl_ingress_rule(attributes, arg=None, additional_data=None):
+#     nacl_id = attributes.get('network_acl_id')
+#     nacl_name = self.network_acl_ids[nacl_id]
+#     rule = {}
+#     # Rulenumber must be in range 1..32766
+#     if attributes.get('rule_number') < 32767:
+#         for k in ['rule_number', 'protocol', 'rule_action', 'cidr_block',
+#                     'icmp_code', 'icmp_type', 'ipv6_cidr_block', 'from_port', 'to_port']:
+#             val = attributes.get(k)
+#             if val not in [None, "", [], {}]:
+#                 rule[k] = val
+#         self.network_acls[nacl_name]['ingress_rules'][rule['rule_number']] = rule
+#     return {nacl_name: self.network_acls[nacl_name]}
+
+# def vpc_add_network_acl_egress_rule(attributes, arg=None, additional_data=None):
+#     nacl_id = attributes.get('network_acl_id')
+#     nacl_name = self.network_acl_ids[nacl_id]
+#     rule = {}
+
+#     # Rulenumber must be in range 1..32766
+#     if attributes.get('rule_number') < 32767:
+#         for k in ['rule_number', 'protocol', 'rule_action', 'cidr_block',
+#                     'icmp_code', 'icmp_type', 'ipv6_cidr_block', 'from_port', 'to_port']:
+#             val = attributes.get(k)
+#             if val not in [None, "", [], {}]:
+#                 rule[k] = val
+#         self.network_acls[nacl_name]['egress_rules'][rule['rule_number']] = rule
+#     return {nacl_name: self.network_acls[nacl_name]}
+
+def vpc_default_route_table_routes(attributes, arg=None, additional_data=None):
+    input_routes = attributes.get('route', [])
+
+    # Filter out entries with empty string values
+    filtered_routes = []
+    for route in input_routes:
+        filtered_route = {k: v for k, v in route.items() if v != ""}
+        filtered_routes.append(filtered_route)
+
+    return filtered_routes
+
+# def vpc_add_eip(attributes, arg=None, additional_data=None):
+#     allocation_id = attributes.get('allocation_id')
+#     subnet_id, nat_gateway_name = self.public_subnets['allocations'][allocation_id]
+#     for key in self.public_subnets[subnet_id].keys():
+#         self.public_subnets[subnet_id][key]["nat_gateway"][nat_gateway_name]['eip_tags'] = attributes.get(
+#             'tags', {})
+#     return self.public_subnets[subnet_id]
+
+# def get_public_route_table_name(route_table_id):
+#     if route_table_id not in self.public_route_table_ids:
+#         route_table_name = 'public_route_table_' + \
+#             str(len(self.public_route_table_ids))
+#         self.public_route_table_ids[route_table_id] = route_table_name
+#     else:
+#         route_table_name = self.public_route_table_ids[route_table_id]
+
+#     return route_table_name
+
+def vpc_add_route_table_association(attributes, arg=None, additional_data=None):
+    route_table_id = attributes.get('route_table_id')
+    id = attributes.get("id")
+    instance_data = get_module_additional_data("aws_route_table_association", id, additional_data)
+    route_table_name = instance_data.get("route_table_name", "")
+    if not route_table_name:
+        route_table_name = route_table_id
+    subnet_cidr = instance_data.get("subnet_cidr", "")
+    result = {}
+    result[route_table_name] = {"associations": {subnet_cidr: True}}
+    return result
+
+def vpc_add_route_table(attributes, arg=None, additional_data=None):
+    route_table_name=''
+    tags = attributes.get('tags', {})
+    for key, value in tags.items():
+        if key == 'Name':
+            route_table_name = value
+            break
+    if not route_table_name:
+        route_table_id = attributes.get('id')
+        route_table_name = route_table_id
+
+    tags = escape_dict_contents(tags)
+    return {route_table_name: {"tags": tags}}
+
+def vpc_get_route_table_name(attributes, arg=None, additional_data=None):
+    route_table_name=''
+    tags = attributes.get('tags', {})
+    for key, value in tags.items():
+        if key == 'Name':
+            route_table_name = value
+            break
+    if not route_table_name:
+        route_table_id = attributes.get('id')
+        route_table_name = route_table_id
+    return route_table_name
+
+# def vpc_get_route_table_route_id(attributes, arg=None, additional_data=None):
+#     id = attributes.get("id")
+#     instance_data = get_module_additional_data("aws_route", id, additional_data)
+#     route_table_name = instance_data.get("route_table_name", "")
+#     if not route_table_name:
+#         route_table_id = attributes.get('route_table_id')
+#         route_table_name = route_table_id
+#     return route_table_name+'_'+str(attributes.get('rule_number'))
+
+def vpc_add_public_route(attributes, arg=None, additional_data=None):
+    id = attributes.get("id")
+    instance_data = get_module_additional_data("aws_route", id, additional_data)
+    route_table_name = instance_data.get("route_table_name", "")
+    if not route_table_name:
+        route_table_id = attributes.get('route_table_id')
+        route_table_name = route_table_id
+    tags = attributes.get('tags', {})
+    tags = escape_dict_contents(tags)
+    result = {}
+    result[route_table_name] = {}
+    result[route_table_name]['routes'] = {}
+    result[route_table_name]['routes'][id] = {}
+    destination_cidr_block = attributes.get('destination_cidr_block', "")
+    if destination_cidr_block:
+        result[route_table_name]['routes'][id]["destination_cidr_block"] = destination_cidr_block
+    destination_ipv6_cidr_block = attributes.get('destination_ipv6_cidr_block', "")
+    if destination_ipv6_cidr_block:
+        result[route_table_name]['routes'][id]["destination_ipv6_cidr_block"] = destination_ipv6_cidr_block
+    gateway_id = attributes.get('gateway_id')
+    if gateway_id:
+        result[route_table_name]['routes'][id]["igw"] = True
+    nat_gateway_name = instance_data.get("nat_gateway_name", "")
+    if nat_gateway_name:
+        result[route_table_name]['routes'][id]["nat_gateway_name"] = nat_gateway_name
+    return result
+
+def vpc_get_route_import_id(attributes, arg=None, additional_data=None):
+    route_table_id = attributes.get('route_table_id')
+    destination_cidr_block = attributes.get('destination_cidr_block', "")
+    if destination_cidr_block:
+        return route_table_id+'_'+destination_cidr_block
+    destination_ipv6_cidr_block = attributes.get('destination_ipv6_cidr_block', "")
+    if destination_ipv6_cidr_block:
+        return route_table_id+'_'+destination_ipv6_cidr_block
+
+# def vpc_get_aws_route_import_id(attributes, arg=None, additional_data=None):
+#     id = attributes.get("id")
+#     instance_data = get_module_additional_data("aws_route", id, additional_data)
+#     route_table_name = instance_data.get("route_table_name", "")
+#     if not route_table_name:
+#         route_table_id = attributes.get('route_table_id')
+#         route_table_name = route_table_id
+
+# def vpc_get_nat_gateway_index(attributes, arg=None, additional_data=None):
+#     nat_gateway_id = attributes.get('id')
+#     return self.public_nat_gateway_ids[nat_gateway_id]
+
+# def vpc_get_eip_index(attributes, arg=None, additional_data=None):
+#     allocation_id = attributes.get('allocation_id')
+#     _, nat_gateway_name = self.public_subnets['allocations'][allocation_id]
+#     return nat_gateway_name
+
+def vpc_get_route_table_association_index(attributes, arg=None, additional_data=None):
+    route_table_id = attributes.get('route_table_id')
+    id = attributes.get("id")
+    instance_data = get_module_additional_data("aws_route_table_association", id, additional_data)
+    route_table_name = instance_data.get("route_table_name", "")
+    if not route_table_name:
+        route_table_name = route_table_id
+    subnet_cidr = instance_data.get("subnet_cidr", "")
+    return subnet_cidr+"-"+route_table_name
+    
+# def vpc_join_igw_route_table_id(parent_attributes, child_attributes):
+#     gateway_id = parent_attributes.get('id')
+#     route = child_attributes.get('route')
+#     if route:
+#         if route[0].get('gateway_id', None) == gateway_id:
+#             return True
+#     return False
+
+# def vpc_get_public_route_table_id(attributes, arg=None, additional_data=None):
+#     route_table_id = attributes.get(arg)
+#     route_table_name = self.get_public_route_table_name(route_table_id)
+#     return route_table_name
+
+def vpc_add_private_subnet(attributes, arg=None, additional_data=None):
+    cidr_block = attributes.get('cidr_block')
+    availability_zone = attributes.get('availability_zone')
+    tags = attributes.get('tags', {})
+    ipv6_cidr_block = attributes.get('ipv6_cidr_block')
+    assign_ipv6_address_on_creation = attributes.get(
+        'assign_ipv6_address_on_creation')
+    enable_dns64 = attributes.get('enable_dns64')
+    enable_resource_name_dns_aaaa_record_on_launch = attributes.get(
+        'enable_resource_name_dns_aaaa_record_on_launch')
+    enable_resource_name_dns_a_record_on_launch = attributes.get(
+        'enable_resource_name_dns_a_record_on_launch')
+    ipv6_native = attributes.get('ipv6_native')
+    private_dns_hostname_type_on_launch = attributes.get(
+        'private_dns_hostname_type_on_launch')
+    map_public_ip_on_launch = attributes.get('map_public_ip_on_launch')
+    
+    result = {
+        cidr_block: {
+            'az': availability_zone,
+            'ipv6_cidr_block': ipv6_cidr_block,
+            'tags': tags,
+            'route_tables': [],
+            'assign_ipv6_address_on_creation': assign_ipv6_address_on_creation,
+            'enable_dns64': enable_dns64,
+            'enable_resource_name_dns_aaaa_record_on_launch': enable_resource_name_dns_aaaa_record_on_launch,
+            'enable_resource_name_dns_a_record_on_launch': enable_resource_name_dns_a_record_on_launch,
+            'ipv6_native': ipv6_native,
+            'private_dns_hostname_type_on_launch': private_dns_hostname_type_on_launch,
+            'map_public_ip_on_launch': map_public_ip_on_launch,
+        }
+    }
+    return result
+
+# def vpc_add_private_route_table_association(attributes, arg=None, additional_data=None):
+#     route_table_id = attributes.get('route_table_id')
+#     if route_table_id not in self.private_route_table_ids:
+#         route_table_name = 'private_route_table_' + \
+#             str(len(self.private_route_table_ids))
+#         self.private_route_table_ids[route_table_id] = route_table_name
+#     else:
+#         route_table_name = self.private_route_table_ids[route_table_id]
+
+#     subnet_id = attributes.get('subnet_id')
+#     if 'association' not in self.private_subnets:
+#         self.private_subnets['association'] = {}
+#     for key in self.private_subnets[subnet_id].keys():
+#         self.private_subnets[subnet_id][key]['route_tables'].append(
+#             route_table_name)
+#     return self.private_subnets[subnet_id]
+
+# def vpc_add_private_route_table(attributes, arg=None, additional_data=None):
+#     route_table_id = attributes.get('id')
+#     route_table_name = self.private_route_table_ids[route_table_id]
+#     tags = attributes.get('tags', {})
+    # tags = self.escape_dict_contents(tags)
+    # self.private_route_tables[route_table_name] = {
+    #     "tags": tags, "nat_gateway_attached": ""}
+    # return {route_table_name: self.private_route_tables[route_table_name]}
+
+# def vpc_add_nat_gateway_private_route(attributes, arg=None, additional_data=None):
+#     route_table_id = attributes.get('route_table_id')
+#     # print("nat_gateway_id", attributes.get('nat_gateway_id'))
+#     if route_table_id in self.private_route_table_ids:
+#         route_table_name = self.private_route_table_ids[route_table_id]
+#         nat_gateway_id = attributes.get('nat_gateway_id')
+#         nat_gateway_name = self.public_nat_gateway_ids[nat_gateway_id]
+
+#         self.private_route_tables[route_table_name]["nat_gateway_attached"] = nat_gateway_name
+#         return {route_table_name: self.private_route_tables[route_table_name]}
+#     return {}
+
+# def vpc_get_nat_gateway_private_route_id(attributes, arg=None, additional_data=None):
+#     route_table_id = attributes.get('route_table_id')
+#     if route_table_id in self.private_route_table_ids:
+#         route_table_name = self.private_route_table_ids[route_table_id]
+#         return route_table_name+"-0.0.0.0/0"
+#     return ""
+
+# def vpc_get_private_route_table_association_index(attributes, arg=None, additional_data=None):
+#     route_table_id = attributes.get('route_table_id')
+#     route_table_name = self.private_route_table_ids[route_table_id]
+#     subnet_id = attributes.get('subnet_id')
+#     for key in self.private_subnets[subnet_id].keys():
+#         return key+"-"+route_table_name
+
+def vpc_get_route_table_association_import_id(attributes, arg=None, additional_data=None):
+    route_table_id = attributes.get('route_table_id')
+    subnet_id = attributes.get('subnet_id')
+    return subnet_id+"/"+route_table_id
+
+
+# def vpc_get_private_route_table_id(attributes, arg=None, additional_data=None):
+#     route_table_id = attributes.get(arg)
+#     route_table_name = self.private_route_table_ids[route_table_id]
+#     return route_table_name
+
+def vpc_build_aws_flow_logs(attributes, arg=None, additional_data=None):
+    key = attributes[arg]
+    result = {key: {}}
+    for k in ['log_destination', 'log_destination_type', 'log_format',
+                'iam_role_arn', 'traffic_type', 'max_aggregation_interval',
+                'destination_options',  'log_group_name', 'tags']:
+        val = attributes.get(k)
+        # if k == "log_destination" and "s3" in val:
+        #     val = val.split(":")[-1]
+        if isinstance(val, str):
+            val = val.replace('${', '$${')
+        result[key][k] = val
+    return result
+
+def escape_dict_contents(data_dict):
+    # convert data_dict to str
+    data_str = json.dumps(data_dict)
+    data_str = data_str.replace('${', '$${')
+    # convert data_str back to dict
+    result = json.loads(data_str)
+    return result
+
+
+def vpc_format_ingress_rules(attributes, arg=None, additional_data=None):
+    ingress_dict = attributes.get('ingress', [])
+    formatted_ingress = []
+    for ingress_rule in ingress_dict:
+        ingress_rule['cidr_blocks'] = ','.join(ingress_rule['cidr_blocks'])
+        ingress_rule['ipv6_cidr_blocks'] = ','.join(
+            ingress_rule['ipv6_cidr_blocks'])
+        ingress_rule['prefix_list_ids'] = ','.join(
+            ingress_rule['prefix_list_ids'])
+        ingress_rule['security_groups'] = ','.join(
+            ingress_rule['security_groups'])
+        formatted_ingress.append(ingress_rule)
+    return formatted_ingress
+
+def vpc_format_egress_rules(attributes, arg=None, additional_data=None):
+    egress_dict = attributes.get('egress', [])
+    formatted_egress = []
+    for egress_rule in egress_dict:
+        egress_rule['cidr_blocks'] = ','.join(egress_rule['cidr_blocks'])
+        egress_rule['ipv6_cidr_blocks'] = ','.join(
+            egress_rule['ipv6_cidr_blocks'])
+        egress_rule['prefix_list_ids'] = ','.join(
+            egress_rule['prefix_list_ids'])
+        egress_rule['security_groups'] = ','.join(
+            egress_rule['security_groups'])
+        formatted_egress.append(egress_rule)
+    return formatted_egress
+
+def vpc_format_network_acl_rules(attributes, arg=None, additional_data=None):
+    input_dict = attributes.get(arg, [])
+    formatted_input = []
+    for input_rule in input_dict:
+        # create a copy so as not to mutate the original rule
+        input_rule = input_rule.copy()
+        for key in ['cidr_block', 'ipv6_cidr_block', 'icmp_code', 'icmp_type']:
+            if key in input_rule and input_rule[key] == "":
+                # remove the key-value pair from the dictionary
+                del input_rule[key]
+            elif key in input_rule:
+                input_rule[key] = str(input_rule[key])
+        formatted_input.append(input_rule)
+    return formatted_input
+
+# def vpc_is_network_acl_rule_egress(attributes, arg=None, additional_data=None):
+#     return attributes.get('egress', False)
+
+# def vpc_is_network_acl_rule_ingress(attributes, arg=None, additional_data=None):
+#     return not attributes.get('egress', False)
+
+# def vpc_aws_network_acl_rule_import_id(attributes, arg=None, additional_data=None):
+#     return attributes.get('network_acl_id') + ":" + str(attributes.get('rule_number')) + ":" + str(attributes.get('protocol')) + ":" + str(attributes.get('egress'))
