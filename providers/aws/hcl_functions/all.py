@@ -34,7 +34,6 @@ def clean_empty_values_list(attributes, arg=None, additional_data=None):
     for value in values:
         value = clean_empty_values_single_dict(value)
         result.append(value)
-    print(result)
     return result
 
 #### IAM ####
@@ -1161,9 +1160,7 @@ def ecs_get_network_configuration(attributes, arg=None, additional_data=None):
 
 def get_vpc_name_ecs(attributes, arg=None, additional_data=None):
     service_arn = attributes.get('id')
-    print("aws_ecs_service", service_arn, additional_data)
     instance_data = get_module_additional_data("aws_ecs_service", service_arn, additional_data)
-    print(instance_data)
     vpc_name = instance_data.get("vpc_name", "")
     return vpc_name
 

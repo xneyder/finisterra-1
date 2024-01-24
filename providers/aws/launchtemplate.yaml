@@ -74,10 +74,10 @@ aws_launch_template:
       type: map
     metadata_options:
       field: metadata_options
-      type: map
+      type: list
     enable_monitoring:
       function: get_field_from_attrs
-      field: monitoring.enabled
+      arg: monitoring.enabled
       type: bool
     network_interfaces:
       function: clean_empty_values_list
@@ -101,3 +101,7 @@ aws_launch_template:
     user_data:
       field: user_data
       type: string
+    iam_instance_profile:
+      function: clean_empty_values_list
+      arg: iam_instance_profile
+      type: list
