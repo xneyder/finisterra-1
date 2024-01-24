@@ -81,8 +81,8 @@ class VPC:
             is_default = vpc.get("IsDefault", False)
             if not is_default:
                 vpc_id = vpc["VpcId"]
-                if vpc_id != "vpc-0d4f801cafb8943b1":
-                    continue
+                # if vpc_id != "vpc-0d4f801cafb8943b1":
+                #     continue
                 print(f"  Processing VPC: {vpc_id}")
                 id = vpc_id
 
