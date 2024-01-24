@@ -2466,6 +2466,7 @@ def vpc_add_route(attributes, arg=None, additional_data=None):
     if gateway_id:
         result[route_table_name]['routes'][id]["igw"] = True
     nat_gateway_id = attributes.get('nat_gateway_id')
+    nat_gateway_name = None
     if nat_gateway_id:
         nat_gateway_name = instance_data.get("nat_gateway_name", "")
         if not nat_gateway_name:
@@ -2492,6 +2493,7 @@ def vpc_get_route_import_id(attributes, arg=None, additional_data=None):
 
 def vpc_get_nat_gateway_index(attributes, arg=None, additional_data=None):
     tags = attributes.get('tags', {})
+    nat_gateway_name = None
     for key, value in tags.items():
         if key == 'Name':
             nat_gateway_name = value
