@@ -177,37 +177,6 @@ aws_vpc:
                       arg: id
                       type: map
 
-      # childs:
-      #   aws_route_table_association:
-      #     join:
-      #       id:
-      #         field: subnet_id
-      #     target_resource_name: private
-      #     second_index:
-      #       function: vpc_get_private_route_table_association_index
-      #       arg: id
-      #     import_id:
-      #       function: vpc_get_route_table_association_import_id
-      #       arg: id
-      #     fields:
-      #       private_subnets:
-      #         function: vpc_add_private_route_table_association
-      #         arg: id
-      #     childs:
-      #       aws_route_table:
-      #         join:
-      #           route_table_id:
-      #             field: id
-      #         target_resource_name: private
-      #         second_index:
-      #           function: vpc_get_private_route_table_id
-      #           arg: id
-      #         fields:
-      #           private_route_tables:
-      #             function: vpc_add_private_route_table
-      #             arg: id
-      #             type: map
-
     aws_subnet_public:
       resource_type: aws_subnet
       join:
@@ -298,51 +267,35 @@ aws_vpc:
                       arg: id
                       type: map
 
-      #   aws_nat_gateway:
-      #     join:
-      #       id:
-      #         field: subnet_id
-      #     target_resource_name: this
-      #     defaults:
-      #       enable_nat_gateway: true
-      #     second_index:
-      #       function: vpc_get_nat_gateway_index
-      #       arg: id
-      #     fields:
-      #       public_subnets:
-      #         function: vpc_add_nat_gateway
-      #         arg: id
-      #         type: map
-      #     childs:
-      #       aws_eip:
-      #         join:
-      #           allocation_id:
-      #             field: allocation_id
-      #         target_resource_name: nat
-      #         second_index:
-      #           function: vpc_get_eip_index
-      #           arg: id
-      #         fields:
-      #           public_subnets:
-      #             function: vpc_add_eip
-      #             arg: id
-      #             type: map
-      #       aws_route:
-      #         join:
-      #           id:
-      #             field: nat_gateway_id
-      #         target_resource_name: private_nat_gateway
-      #         second_index:
-      #           function: vpc_get_nat_gateway_private_route_id
-      #           arg: id
-      #         import_id:
-      #           function: vpc_get_aws_route_import_id
-      #           arg: id
-      #         fields:
-      #           private_route_tables:
-      #             function: vpc_add_nat_gateway_private_route
-      #             arg: id
-      #             type: map
+        aws_nat_gateway:
+          join:
+            id:
+              field: subnet_id
+          target_resource_name: this
+          defaults:
+            enable_nat_gateway: true
+          second_index:
+            function: vpc_get_nat_gateway_index
+            arg: id
+          fields:
+            nat_gateways:
+              function: vpc_add_nat_gateway
+              arg: id
+              type: map
+          childs:
+            aws_eip:
+              join:
+                allocation_id:
+                  field: allocation_id
+              target_resource_name: nat
+              second_index:
+                function: vpc_get_eip_index
+                arg: id
+              fields:
+                public_subnets:
+                  function: vpc_add_eip
+                  arg: id
+                  type: map
 
     aws_internet_gateway:
       join:

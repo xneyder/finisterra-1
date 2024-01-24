@@ -2282,26 +2282,28 @@ def vpc_add_public_subnet(attributes, arg=None, additional_data=None):
     }
     return result
 
-# def vpc_add_nat_gateway(attributes, arg=None, additional_data=None):
-#     nat_gateway_id = attributes.get('id')
-#     if nat_gateway_id not in self.public_nat_gateway_ids:
-#         nat_gateway_name = 'nat_gateway_' + \
-#             str(len(self.public_nat_gateway_ids))
-#         self.public_nat_gateway_ids[nat_gateway_id] = nat_gateway_name
-#     else:
-#         nat_gateway_name = self.public_nat_gateway_ids[nat_gateway_id]
+def vpc_add_nat_gateway(attributes, arg=None, additional_data=None):
+    tags = attributes.get('tags', {})
+    nat_gateway_name = None
+    for key, value in tags.items():
+        if key == 'Name':
+            nat_gateway_name = value
+            break
+    if not nat_gateway_name:
+        nat_gateway_id = attributes.get('id')
+        nat_gateway_name = nat_gateway_id
 
-#     subnet_id = attributes.get('subnet_id')
-#     allocation_id = attributes.get('allocation_id')
-#     if 'allocations' not in self.public_subnets:
-#         self.public_subnets['allocations'] = {}
-#     self.public_subnets['allocations'][allocation_id] = [
-#         subnet_id, nat_gateway_name]
+    id = attributes.get('subnet_id')
+    instance_data = get_module_additional_data("aws_nat_gateway", id, additional_data)
+    subnet_cidr = instance_data.get("subnet_cidr", "")
 
-#     for key in self.public_subnets[subnet_id].keys():
-#         self.public_subnets[subnet_id][key]['nat_gateway'][nat_gateway_name] = {'tags': attributes.get(
-#             'tags', {}), 'eip_tags': {}}
-#     return self.public_subnets[subnet_id]
+    result = {}
+    result[nat_gateway_name] ={}
+    result[nat_gateway_name]['subnet_cidr'] = subnet_cidr
+    result[nat_gateway_name]['tags'] = tags
+
+    return result
+
 
 # def vpc_add_network_acl(attributes, arg=None, additional_data=None):
 #     nacl_id = attributes.get('id')
@@ -2375,13 +2377,14 @@ def vpc_default_route_table_routes(attributes, arg=None, additional_data=None):
 
     return filtered_routes
 
-# def vpc_add_eip(attributes, arg=None, additional_data=None):
-#     allocation_id = attributes.get('allocation_id')
-#     subnet_id, nat_gateway_name = self.public_subnets['allocations'][allocation_id]
-#     for key in self.public_subnets[subnet_id].keys():
-#         self.public_subnets[subnet_id][key]["nat_gateway"][nat_gateway_name]['eip_tags'] = attributes.get(
-#             'tags', {})
-#     return self.public_subnets[subnet_id]
+def vpc_add_eip(attributes, arg=None, additional_data=None):
+    id = attributes.get("id")
+    instance_data = get_module_additional_data("aws_eip", id, additional_data)
+    nat_gateway_name = instance_data.get("nat_gateway_name", "")
+    result = {}
+    result[nat_gateway_name] = {}
+    result[nat_gateway_name]['eip_tags'] = attributes.get('tags', {})
+    return result
 
 # def get_public_route_table_name(route_table_id):
 #     if route_table_id not in self.public_route_table_ids:
@@ -2440,7 +2443,7 @@ def vpc_get_route_table_name(attributes, arg=None, additional_data=None):
 #         route_table_name = route_table_id
 #     return route_table_name+'_'+str(attributes.get('rule_number'))
 
-def vpc_add_public_route(attributes, arg=None, additional_data=None):
+def vpc_add_route(attributes, arg=None, additional_data=None):
     id = attributes.get("id")
     instance_data = get_module_additional_data("aws_route", id, additional_data)
     route_table_name = instance_data.get("route_table_name", "")
@@ -2462,8 +2465,11 @@ def vpc_add_public_route(attributes, arg=None, additional_data=None):
     gateway_id = attributes.get('gateway_id')
     if gateway_id:
         result[route_table_name]['routes'][id]["igw"] = True
-    nat_gateway_name = instance_data.get("nat_gateway_name", "")
-    if nat_gateway_name:
+    nat_gateway_id = attributes.get('nat_gateway_id')
+    if nat_gateway_id:
+        nat_gateway_name = instance_data.get("nat_gateway_name", "")
+        if not nat_gateway_name:
+            nat_gateway_name = nat_gateway_id
         result[route_table_name]['routes'][id]["nat_gateway_name"] = nat_gateway_name
     return result
 
@@ -2484,14 +2490,22 @@ def vpc_get_route_import_id(attributes, arg=None, additional_data=None):
 #         route_table_id = attributes.get('route_table_id')
 #         route_table_name = route_table_id
 
-# def vpc_get_nat_gateway_index(attributes, arg=None, additional_data=None):
-#     nat_gateway_id = attributes.get('id')
-#     return self.public_nat_gateway_ids[nat_gateway_id]
+def vpc_get_nat_gateway_index(attributes, arg=None, additional_data=None):
+    tags = attributes.get('tags', {})
+    for key, value in tags.items():
+        if key == 'Name':
+            nat_gateway_name = value
+            break
+    if not nat_gateway_name:
+        nat_gateway_id = attributes.get('id')
+        nat_gateway_name = nat_gateway_id
+    return nat_gateway_name
 
-# def vpc_get_eip_index(attributes, arg=None, additional_data=None):
-#     allocation_id = attributes.get('allocation_id')
-#     _, nat_gateway_name = self.public_subnets['allocations'][allocation_id]
-#     return nat_gateway_name
+def vpc_get_eip_index(attributes, arg=None, additional_data=None):
+    id = attributes.get("id")
+    instance_data = get_module_additional_data("aws_eip", id, additional_data)
+    nat_gateway_name = instance_data.get("nat_gateway_name", "")
+    return nat_gateway_name
 
 def vpc_get_route_table_association_index(attributes, arg=None, additional_data=None):
     route_table_id = attributes.get('route_table_id')

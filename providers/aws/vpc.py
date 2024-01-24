@@ -806,6 +806,12 @@ class VPC:
                                 # pass the route_table_id and the route
                                 self.aws_route(rt["RouteTableId"], route)
 
+                    subnet_cidr = self.aws_clients.ec2_client.describe_subnets(
+                        SubnetIds=[nat_gw["SubnetId"]])['Subnets'][0]['CidrBlock']
+                    if subnet_cidr:
+                        self.hcl.add_additional_data(
+                            "aws_nat_gateway", nat_gw_id, "subnet_cidr", subnet_cidr)
+
     def aws_eip(self, allocation_id):
         print("Processing Elastic IPs associated with NAT Gateway: ", allocation_id)
 
@@ -821,16 +827,32 @@ class VPC:
         if "InstanceId" in eip:
             attributes["instance"] = eip["InstanceId"]
 
-        # if "NetworkInterfaceId" in eip:
-        #     attributes["network_interface"] = eip["NetworkInterfaceId"]
-        #     # call aws_network_interface method for the associated network interface
-        #     self.aws_network_interface(eip["NetworkInterfaceId"])
-
         if "PrivateIpAddress" in eip:
             attributes["private_ip"] = eip["PrivateIpAddress"]
 
         self.hcl.process_resource(
             "aws_eip", allocation_id.replace("-", "_"), attributes)
+
+        # Get the natgateway using this EIP
+        ngs = self.aws_clients.ec2_client.describe_nat_gateways()
+        nat_gateway = None
+
+        for ng in ngs["NatGateways"]:
+            for address in ng["NatGatewayAddresses"]:
+                if address["AllocationId"] == allocation_id:
+                    nat_gateway = ng
+                    break
+        if nat_gateway:
+            # Get the name from the tags
+            nat_gateway_name = ""
+            for tag in nat_gateway["Tags"]:
+                if tag["Key"] == "Name":
+                    nat_gateway_name = tag["Value"]
+                    break
+            if not nat_gateway_name:
+                nat_gateway_name = nat_gateway["NatGatewayId"]
+            self.hcl.add_additional_data(
+                "aws_eip", allocation_id, "nat_gateway_name", nat_gateway_name)
 
     def aws_network_acl(self, vpc_id):
         print("Processing Network ACLs...")
