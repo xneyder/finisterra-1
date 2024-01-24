@@ -272,8 +272,8 @@ aws_vpc:
             id:
               field: subnet_id
           target_resource_name: this
-          defaults:
-            enable_nat_gateway: true
+          # defaults:
+          #   enable_nat_gateway: true
           second_index:
             function: vpc_get_nat_gateway_index
             arg: id
