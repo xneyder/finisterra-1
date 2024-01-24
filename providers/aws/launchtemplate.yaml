@@ -80,7 +80,8 @@ aws_launch_template:
       field: monitoring.enabled
       type: bool
     network_interfaces:
-      field: network_interfaces
+      function: clean_empty_values_list
+      arg: network_interfaces
       type: list
     placement:
       field: placement

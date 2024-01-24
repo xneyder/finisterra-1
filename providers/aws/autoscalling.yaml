@@ -10,11 +10,13 @@ aws_autoscaling_group:
     service_linked_role_arn:
       sub_fields:
         - service_linked_role_arn
+    launch_template:
+      sub_fields:
+        - id
   fields:
     asg_name:
       field: name
       type: string
-
     subnet_ids:
       function: asg_get_subnet_ids
       arg: vpc_zone_identifier
@@ -43,7 +45,7 @@ aws_autoscaling_group:
       type: number
     wait_for_elb_capacity:
       field: wait_for_elb_capacity
-      type: bool
+      type: string
     target_group_arns:
       field: target_group_arns
       type: list
@@ -52,7 +54,7 @@ aws_autoscaling_group:
       type: number
     force_delete:
       field: force_delete
-      type: bool
+      type: string
     termination_policies:
       field: termination_policies
       type: list
@@ -73,7 +75,7 @@ aws_autoscaling_group:
       type: string
     protect_from_scale_in:
       field: protect_from_scale_in
-      type: bool
+      type: string
     service_linked_role_arn:
       field: service_linked_role_arn
       type: string
@@ -85,7 +87,7 @@ aws_autoscaling_group:
       type: number
     capacity_rebalance:
       field: capacity_rebalance
-      type: bool
+      type: string
     instance_refresh:
       field: instance_refresh
       type: list
@@ -107,6 +109,8 @@ aws_autoscaling_group:
         name:
           field: autoscaling_group_name
       target_resource_name: this
+      second_index:
+        field: name
       fields:
         autoscaling_policies:
           function: asg_build_autoscaling_policies
@@ -150,10 +154,10 @@ aws_autoscaling_group:
           type: string
         enable_monitoring:
           field: enable_monitoring
-          type: bool
+          type: string
         ebs_optimized:
           field: ebs_optimized
-          type: bool
+          type: string
         security_group_ids:
           field: security_groups
           type: list
@@ -179,72 +183,72 @@ aws_autoscaling_group:
         placement_tenancy:
           field: placement_tenancy
           type: string
-    aws_launch_template:
-      join:
-        id:
-          join_function: asg_join_launch_template
-      target_resource_name: default
-      defaults:
-        create_aws_launch_template: true
-      fields:
-        launch_template_name:
-          field: name
-          type: string
-        block_device_mappings:
-          field: block_device_mappings
-          type: list
-        credit_specification:
-          field: credit_specification
-          type: map
-        disable_api_termination:
-          field: disable_api_termination
-          type: bool
-        ebs_optimized:
-          field: ebs_optimized
-          type: bool
-        update_default_version:
-          field: update_default_version
-          type: bool
-        elastic_gpu_specifications:
-          field: elastic_gpu_specifications
-          type: map
-        image_id:
-          field: image_id
-          type: string
-        instance_initiated_shutdown_behavior:
-          field: instance_initiated_shutdown_behavior
-          type: string
-        instance_market_options:
-          field: instance_market_options
-          type: map
-        instance_type:
-          field: instance_type
-          type: string
-        key_name:
-          field: key_name
-          type: string
-        placement:
-          field: placement
-          type: map
-        user_data_base64:
-          function: asg_get_user_data_template
-          arg: id
-          type: string
-        iam_instance_profile:
-          field: iam_instance_profile
-          type: map
-        enable_monitoring:
-          function: get_field_from_attrs
-          arg: monitoring.enabled
-        network_interfaces:
-          field: network_interfaces
-          type: list
-        metadata_options:
-          field: metadata_options
-          type: map
-        tag_specifications:
-          field: tag_specifications
-          type: list
-        aws_launch_template_tags:
-          field: tags
-          type: map
+    # aws_launch_template:
+    #   join:
+    #     id:
+    #       join_function: asg_join_launch_template
+    #   target_resource_name: default
+    #   defaults:
+    #     create_aws_launch_template: true
+    #   fields:
+    #     launch_template_name:
+    #       field: name
+    #       type: string
+    #     block_device_mappings:
+    #       field: block_device_mappings
+    #       type: list
+    #     credit_specification:
+    #       field: credit_specification
+    #       type: map
+    #     disable_api_termination:
+    #       field: disable_api_termination
+    #       type: string
+    #     ebs_optimized:
+    #       field: ebs_optimized
+    #       type: string
+    #     update_default_version:
+    #       field: update_default_version
+    #       type: string
+    #     elastic_gpu_specifications:
+    #       field: elastic_gpu_specifications
+    #       type: map
+    #     image_id:
+    #       field: image_id
+    #       type: string
+    #     instance_initiated_shutdown_behavior:
+    #       field: instance_initiated_shutdown_behavior
+    #       type: string
+    #     instance_market_options:
+    #       field: instance_market_options
+    #       type: map
+    #     instance_type:
+    #       field: instance_type
+    #       type: string
+    #     key_name:
+    #       field: key_name
+    #       type: string
+    #     placement:
+    #       field: placement
+    #       type: map
+    #     user_data_base64:
+    #       function: asg_get_user_data_template
+    #       arg: id
+    #       type: string
+    #     iam_instance_profile:
+    #       field: iam_instance_profile
+    #       type: map
+    #     enable_monitoring:
+    #       function: get_field_from_attrs
+    #       arg: monitoring.enabled
+    #     network_interfaces:
+    #       field: network_interfaces
+    #       type: list
+    #     metadata_options:
+    #       field: metadata_options
+    #       type: map
+    #     tag_specifications:
+    #       field: tag_specifications
+    #       type: list
+    #     aws_launch_template_tags:
+    #       field: tags
+    #       type: map

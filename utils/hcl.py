@@ -255,7 +255,11 @@ class HCL:
                     f"Warning: field '{'.'.join(keys)}' not found in state file.")
             return None
 
-    def string_repr(self, value, field_type=None):
+    def string_repr(self, value, field_type=None, field_name=None):
+        # if field_name == "ebs_optimized":
+        #     print("=================", field_name)
+        #     print(value, field_type)          
+        #     print(type(value))
         if field_type == "string" and isinstance(value, str):
             value = value.replace('\n', '')
             value = value.replace('"', '\\"')
@@ -561,13 +565,13 @@ class HCL:
                             attributes[root_attribute][root_attribute_key_value][field] = value
                         else:
                             attributes[root_attribute][root_attribute_key_value][field] = self.string_repr(
-                                value, field_type)
+                                value, field_type, field)
                     else:
                         if multiline or jsonencode:
                             attributes[field] = value
                         else:                            
                             attributes[field] = self.string_repr(
-                                value, field_type)
+                                value, field_type, field)
 
             if created:
                 first_index = resource_config.get('first_index', "")
@@ -844,8 +848,10 @@ class HCL:
     #         value[:] = [item for item in value if item not in ["", None, [], {}]]  # Remove unwanted items after recursion
     #     return value
 
-    def replace_hcl_values(self, instance, value, name_value, name_field, aws_account_id, aws_region):
+    def replace_hcl_values(self, instance, index, value, name_value, name_field, aws_account_id, aws_region):
         try:
+            if isinstance(value, bool):
+                value = str(value).lower()
             # Split the value into lines
             lines = value.split('\n')
 
@@ -899,7 +905,7 @@ class HCL:
 
         except Exception as e:
             print(f"Error processing: {e}")
-            print(value)
+            print(index, value)
 
         return value
 
@@ -1053,7 +1059,8 @@ class HCL:
                                     pass
 
 
-                                value=self.replace_hcl_values(instance, value, name_value, name_field, aws_account_id, aws_region)
+                                value=self.replace_hcl_values(instance, index, value, name_value, name_field, aws_account_id, aws_region)
+                                
 
                             except Exception as e:
                                 print(f"Error processing index {index}: {e}")

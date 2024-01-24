@@ -2,6 +2,7 @@ import os
 from utils.hcl import HCL
 from providers.aws.security_group import SECURITY_GROUP
 from providers.aws.iam_role import IAM_ROLE
+from providers.aws.launchtemplate import LaunchTemplate
 
 class AutoScaling:
     def __init__(self, aws_clients, script_dir, provider_name, schema_data, region, s3Bucket,
@@ -26,6 +27,7 @@ class AutoScaling:
         self.hcl.functions.update(functions)
         self.security_group_instance = SECURITY_GROUP(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)        
         self.iam_role_instance = IAM_ROLE(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)        
+        self.launchtemplate_instance = LaunchTemplate(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
 
     def get_subnet_names(self, subnet_ids):
         subnet_names = []
@@ -93,6 +95,9 @@ class AutoScaling:
         for as_group in as_groups:
             as_group_name = as_group["AutoScalingGroupName"]
 
+            if as_group_name != "production-spark-worker-AutoScalingGroup-1E2GTU6CKIEXU":
+                continue
+
             # Check tags to determine if this group is controlled by Elastic Beanstalk or EKS
             is_elasticbeanstalk = any(tag['Key'].startswith(
                 'elasticbeanstalk:') for tag in as_group.get('Tags', []))
@@ -143,7 +148,8 @@ class AutoScaling:
                 if "LaunchTemplateId" in lt_info:  # It's possible to have 'LaunchTemplateName' instead of 'LaunchTemplateId'
                     lt_id = lt_info["LaunchTemplateId"]
                     # Call the method for processing Launch Templates
-                    self.aws_launch_template(lt_id, ftstack)
+                    # self.aws_launch_template(lt_id, ftstack)
+                    self.launchtemplate_instance.aws_launch_template(lt_id, ftstack)
 
             subnet_ids = as_group.get("VPCZoneIdentifier", "").split(",")
             if subnet_ids:
@@ -348,65 +354,65 @@ class AutoScaling:
                 self.hcl.process_resource(
                     "aws_autoscaling_schedule", action_name.replace("-", "_"), attributes)
 
-    def aws_launch_template(self, id, ftstack):
-        print(f"Processing Launch Template: {id}")
+    # def aws_launch_template(self, id, ftstack):
+    #     print(f"Processing Launch Template: {id}")
 
-        try:
-            response = self.aws_clients.ec2_client.describe_launch_templates(
-                LaunchTemplateIds=[id])
-        except Exception as e:
-            print(f"Error retrieving Launch Template {id}: {str(e)}")
-            return
+    #     try:
+    #         response = self.aws_clients.ec2_client.describe_launch_templates(
+    #             LaunchTemplateIds=[id])
+    #     except Exception as e:
+    #         print(f"Error retrieving Launch Template {id}: {str(e)}")
+    #         return
 
-        launch_templates = response.get("LaunchTemplates", [])
-        if not launch_templates:
-            print(f"No launch template found with ID: {id}")
-            return
+    #     launch_templates = response.get("LaunchTemplates", [])
+    #     if not launch_templates:
+    #         print(f"No launch template found with ID: {id}")
+    #         return
 
-        launch_template = launch_templates[0]
-        lt_name = launch_template["LaunchTemplateName"]
-        print(f"  Processing specific Launch Template: {lt_name}")
+    #     launch_template = launch_templates[0]
+    #     lt_name = launch_template["LaunchTemplateName"]
+    #     print(f"  Processing specific Launch Template: {lt_name}")
 
-        default_version = launch_template.get("DefaultVersionNumber")
-        try:
-            response_version = self.aws_clients.ec2_client.describe_launch_template_versions(
-                LaunchTemplateId=id,
-                Versions=[str(default_version)]
-            )
-        except Exception as e:
-            print(
-                f"Error retrieving version details for Launch Template {lt_name}: {str(e)}")
-            return
+    #     default_version = launch_template.get("DefaultVersionNumber")
+    #     try:
+    #         response_version = self.aws_clients.ec2_client.describe_launch_template_versions(
+    #             LaunchTemplateId=id,
+    #             Versions=[str(default_version)]
+    #         )
+    #     except Exception as e:
+    #         print(
+    #             f"Error retrieving version details for Launch Template {lt_name}: {str(e)}")
+    #         return
 
-        lt_data = response_version["LaunchTemplateVersions"][0]["LaunchTemplateData"]
+    #     lt_data = response_version["LaunchTemplateVersions"][0]["LaunchTemplateData"]
 
-        attributes = {
-            "id": lt_name,
-            "image_id": lt_data.get("ImageId", ""),
-            "instance_type": lt_data.get("InstanceType", ""),
-        }
+    #     attributes = {
+    #         "id": lt_name,
+    #         "image_id": lt_data.get("ImageId", ""),
+    #         "instance_type": lt_data.get("InstanceType", ""),
+    #     }
 
-        # If you have optional data that might not be present in every launch template,
-        # you can add checks before including them in the 'attributes' dictionary.
-        if "KeyName" in lt_data:
-            attributes["key_name"] = lt_data["KeyName"]
+    #     # If you have optional data that might not be present in every launch template,
+    #     # you can add checks before including them in the 'attributes' dictionary.
+    #     if "KeyName" in lt_data:
+    #         attributes["key_name"] = lt_data["KeyName"]
 
-        if "SecurityGroupIds" in lt_data:
-            attributes["security_group_ids"] = lt_data["SecurityGroupIds"]
-            for sg in lt_data["SecurityGroupIds"]:
-                self.security_group_instance.aws_security_group(sg, ftstack)
+    #     if "SecurityGroupIds" in lt_data:
+    #         attributes["security_group_ids"] = lt_data["SecurityGroupIds"]
+    #         for sg in lt_data["SecurityGroupIds"]:
+    #             self.security_group_instance.aws_security_group(sg, ftstack)
 
-        if "UserData" in lt_data:
-            attributes["user_data"] = lt_data["UserData"]
+    #     if "UserData" in lt_data:
+    #         attributes["user_data"] = lt_data["UserData"]
 
-            self.hcl.add_additional_data(
-                "aws_launch_template", lt_name, "user_data", attributes["user_data"])
+    #         self.hcl.add_additional_data(
+    #             "aws_launch_template", lt_name, "user_data", attributes["user_data"])
             
-            self.user_data[lt_name] = attributes["user_data"]
+    #         self.user_data[lt_name] = attributes["user_data"]
 
 
-        self.hcl.process_resource(
-            "aws_launch_template", lt_name.replace("-", "_"), attributes)
+    #     self.hcl.process_resource(
+    #         "aws_launch_template", lt_name.replace("-", "_"), attributes)
 
     def aws_launch_configuration(self, id, ftstack):
         print(f"Processing Launch Configuration: {id}")

@@ -90,22 +90,6 @@ aws_eks_cluster:
       arg: kubernetes_network_config.service_ipv4_cidr
       type: string
   childs:
-    aws_cloudwatch_log_group:
-      join:
-        name:
-          function: eks_cloudwatch_log_group_name
-          arg: id
-      target_resource_name: this
-      fields:
-        cloudwatch_log_group_retention_in_days:
-          field: retention_in_days
-          type: number
-        cloudwatch_log_group_kms_key_id:
-          field: kms_key_id
-          type: string
-        cloudwatch_log_group_tags:
-          field: tags
-          type: map
     aws_eks_addon:
       join:
         id:

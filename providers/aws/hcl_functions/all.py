@@ -16,6 +16,26 @@ def bigger_than_zero(attributes, arg=None, additional_data=None):
         return value
     return None
 
+def clean_empty_values_single_dict(value):
+    result = {}
+    for k, v in value.items():
+        if v or v == 0:
+            result[k] = v
+    return result
+
+def clean_empty_values_dict(attributes, arg=None, additional_data=None):
+    value = attributes.get(arg, None)
+    value = clean_empty_values_single_dict(value)
+    return value
+
+def clean_empty_values_list(attributes, arg=None, additional_data=None):
+    values = attributes.get(arg, None)
+    result = []
+    for value in values:
+        value = clean_empty_values_single_dict(value)
+        result.append(value)
+    print(result)
+    return result
 
 #### IAM ####
 
@@ -2117,10 +2137,11 @@ def launchtemplate_get_block_device_mappings(attributes, arg=None, additional_da
 
         for key, val in items:
             if key == "ebs":
-                ebs_items = list(val[0].items())  # Assuming 'ebs' is a list of dictionaries
-                for ebs_key, ebs_val in ebs_items:
-                    if ebs_key in ["iops", "throughput"] and ebs_val == 0:
-                        val[0].pop(ebs_key)
+                if val:
+                    ebs_items = list(val[0].items())  # Assuming 'ebs' is a list of dictionaries
+                    for ebs_key, ebs_val in ebs_items:
+                        if ebs_key in ["iops", "throughput"] and ebs_val == 0:
+                            val[0].pop(ebs_key)
             if not val:
                 block_device_mapping.pop(key)
         
