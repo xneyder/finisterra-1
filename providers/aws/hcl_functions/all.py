@@ -1861,24 +1861,23 @@ def aws_s3_bucket_policy_policy(state, arg=None, additional_data=None):
 
 
 ### SNS ###
-# def sns_build_subscriptions(attributes, arg=None, additional_data=None):
-#     key = attributes['arn'].split(':')[-1]
-#     result = {key: {}}
-#     for k, v in attributes.items():
-#         if v:
-#             result[key][k] = v
-#     return result
+def sns_build_subscriptions(attributes, arg=None, additional_data=None):
+    key = attributes['arn'].split(':')[-1]
+    result = {key: {}}
+    for k, v in attributes.items():
+        if v:
+            result[key][k] = v
+    return result
 
-# def sns_get_key_from_arn(attributes, arg=None, additional_data=None):
-#     key = attributes['arn'].split(':')[-1]
-#     return key
+def sns_get_key_from_arn(attributes, arg=None, additional_data=None):
+    key = attributes['arn'].split(':')[-1]
+    return key
 
-# def sns_signature_version(attributes, arg=None, additional_data=None):
-#     signature_version = attributes.get("signature_version", None)
-#     if signature_version != 0:
-#         return signature_version
-#     return None
-
+def sns_signature_version(attributes, arg=None, additional_data=None):
+    signature_version = attributes.get("signature_version", None)
+    if signature_version != 0:
+        return signature_version
+    return None
 
 ### SQS ###
 def sqs_queue_target_name(attributes, arg=None, additional_data=None):
