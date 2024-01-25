@@ -215,7 +215,9 @@ class KMS:
                 grantee_principal = grant.get("GranteePrincipal", "")
 
                 # Check if the GranteePrincipal is an IAM role
-                if ':' in grantee_principal:
+                if ':' in grantee_principal and 'assumed-role' not in grantee_principal:
+                    print("====",grantee_principal)
+
                     role_name = grantee_principal.split(':')[-1]
                     if not self.check_iam_role_exists(role_name):
                         print(f"  Skipping Grant ID: {grant_id} due to non-existent IAM role: {role_name}")

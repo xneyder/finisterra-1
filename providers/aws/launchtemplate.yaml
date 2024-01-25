@@ -73,7 +73,8 @@ aws_launch_template:
       field: license_specification
       type: map
     metadata_options:
-      field: metadata_options
+      function: clean_empty_values_list
+      arg: metadata_options
       type: list
     enable_monitoring:
       function: get_field_from_attrs
