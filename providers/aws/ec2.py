@@ -320,8 +320,8 @@ class EC2:
                     continue
 
                 # if instance_id != "i-054c8a833bfb263b0" and instance_id != 'i-0beb80c7c8c16ca96':
-                if instance_id != "i-054c8a833bfb263b0":
-                    continue
+                # if instance_id != "i-054c8a833bfb263b0":
+                #     continue
 
                 print(f"  Processing EC2 Instance: {instance_id}")
                 id = instance_id
