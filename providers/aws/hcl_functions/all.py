@@ -2318,8 +2318,8 @@ def vpc_add_public_subnet(attributes, arg=None, additional_data=None):
             'az': availability_zone,
             'ipv6_cidr_block': ipv6_cidr_block,
             'tags': tags,
-            'route_tables': [],
-            'nat_gateway': {},
+            # 'route_tables': [],
+            # 'nat_gateway': {},
             'assign_ipv6_address_on_creation': assign_ipv6_address_on_creation,
             'enable_dns64': enable_dns64,
             'enable_resource_name_dns_aaaa_record_on_launch': enable_resource_name_dns_aaaa_record_on_launch,
@@ -2447,40 +2447,43 @@ def vpc_add_eip(attributes, arg=None, additional_data=None):
 
 def vpc_add_route_table_association(attributes, arg=None, additional_data=None):
     route_table_id = attributes.get('route_table_id')
+    route_table_name = route_table_id
     id = attributes.get("id")
     instance_data = get_module_additional_data("aws_route_table_association", id, additional_data)
-    route_table_name = instance_data.get("route_table_name", "")
-    if not route_table_name:
-        route_table_name = route_table_id
+    # route_table_name = instance_data.get("route_table_name", "")
+    # if not route_table_name:
+    #     route_table_name = route_table_id
     subnet_cidr = instance_data.get("subnet_cidr", "")
     result = {}
     result[route_table_name] = {"associations": {subnet_cidr: True}}
     return result
 
 def vpc_add_route_table(attributes, arg=None, additional_data=None):
-    route_table_name=''
+    route_table_id = attributes.get('id')
+    route_table_name= route_table_id
     tags = attributes.get('tags', {})
-    for key, value in tags.items():
-        if key == 'Name':
-            route_table_name = value
-            break
-    if not route_table_name:
-        route_table_id = attributes.get('id')
-        route_table_name = route_table_id
+    # for key, value in tags.items():
+    #     if key == 'Name':
+    #         route_table_name = value
+    #         break
+    # if not route_table_name:
+    #     route_table_id = attributes.get('id')
+    #     route_table_name = route_table_id
 
     tags = escape_dict_contents(tags)
     return {route_table_name: {"tags": tags}}
 
 def vpc_get_route_table_name(attributes, arg=None, additional_data=None):
-    route_table_name=''
-    tags = attributes.get('tags', {})
-    for key, value in tags.items():
-        if key == 'Name':
-            route_table_name = value
-            break
-    if not route_table_name:
-        route_table_id = attributes.get('id')
-        route_table_name = route_table_id
+    route_table_id = attributes.get('id')
+    route_table_name=route_table_id
+    # tags = attributes.get('tags', {})
+    # for key, value in tags.items():
+    #     if key == 'Name':
+    #         route_table_name = value
+    #         break
+    # if not route_table_name:
+    #     route_table_id = attributes.get('id')
+    #     route_table_name = route_table_id
     return route_table_name
 
 # def vpc_get_route_table_route_id(attributes, arg=None, additional_data=None):
@@ -2495,10 +2498,12 @@ def vpc_get_route_table_name(attributes, arg=None, additional_data=None):
 def vpc_add_route(attributes, arg=None, additional_data=None):
     id = attributes.get("id")
     instance_data = get_module_additional_data("aws_route", id, additional_data)
-    route_table_name = instance_data.get("route_table_name", "")
-    if not route_table_name:
-        route_table_id = attributes.get('route_table_id')
-        route_table_name = route_table_id
+    route_table_id = attributes.get('route_table_id')
+    route_table_name = route_table_id
+    # route_table_name = instance_data.get("route_table_name", "")
+    # if not route_table_name:
+    #     route_table_id = attributes.get('route_table_id')
+    #     route_table_name = route_table_id
     tags = attributes.get('tags', {})
     tags = escape_dict_contents(tags)
     result = {}
@@ -2560,11 +2565,12 @@ def vpc_get_eip_index(attributes, arg=None, additional_data=None):
 
 def vpc_get_route_table_association_index(attributes, arg=None, additional_data=None):
     route_table_id = attributes.get('route_table_id')
+    route_table_name = route_table_id
     id = attributes.get("id")
     instance_data = get_module_additional_data("aws_route_table_association", id, additional_data)
-    route_table_name = instance_data.get("route_table_name", "")
-    if not route_table_name:
-        route_table_name = route_table_id
+    # route_table_name = instance_data.get("route_table_name", "")
+    # if not route_table_name:
+    #     route_table_name = route_table_id
     subnet_cidr = instance_data.get("subnet_cidr", "")
     return subnet_cidr+"-"+route_table_name
     
