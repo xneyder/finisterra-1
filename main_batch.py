@@ -30,11 +30,12 @@ if region_name is None:
 sts = session.client('sts')
 account_id = sts.get_caller_identity()['Account']
 
-module_list = ["launchtemplate",
-"codeartifact",
-"vpc",
-"apigateway",
-"autoscaling",
+module_list = [
+# "launchtemplate",
+# "codeartifact",
+# "vpc",
+# "apigateway",
+# "autoscaling",
 "cloudmap",
 "cloudfront",
 "docdb",
@@ -54,7 +55,8 @@ module_list = ["launchtemplate",
 "stepfunction",
 "msk",
 "aurora",
-"elasticsearch"]
+"elasticsearch",
+]
 
 for module in module_list:
     print(f"========================== {module} ==========================")

@@ -101,6 +101,9 @@ aws_launch_template:
     user_data:
       field: user_data
       type: string
+    instance_initiated_shutdown_behavior:
+      field: instance_initiated_shutdown_behavior
+      type: string
     iam_instance_profile:
       function: clean_empty_values_list
       arg: iam_instance_profile
