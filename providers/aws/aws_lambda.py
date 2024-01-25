@@ -77,8 +77,8 @@ class AwsLambda:
     def process_single_lambda_function(self, function_name, ftstack=None):
         resource_type = "aws_lambda_function"
 
-        if function_name != 'st-image-classfication-dev':
-            return
+        # if function_name != 'st-image-classfication-dev':
+        #     return
         
         print(f"  Processing Lambda Function: {function_name}")
 
