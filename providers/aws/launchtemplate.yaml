@@ -19,7 +19,7 @@ aws_launch_template:
       type: string
     ebs_optimized:
       field: ebs_optimized
-      type: bool
+      type: string
     ami_id:
       field: image_id
       type: string
@@ -34,7 +34,7 @@ aws_launch_template:
       type: string
     disable_api_termination:
       field: disable_api_termination
-      type: bool
+      type: string
     kernel_id:
       field: kernel_id
       type: string
