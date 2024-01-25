@@ -1743,6 +1743,7 @@ def aws_s3_build_replication_configuration(state, arg=None, additional_data=None
                 record["filter"]["delimiter"] = tmp2
             if not record["filter"]:
                 del record["filter"]
+        record = clean_json_values(record)
         result["rule"].append(record)
             
     return result

@@ -74,7 +74,7 @@ class S3:
         print(f"  Processing S3 Bucket: {bucket_name}")
         resource_type = "aws_s3_bucket"
 
-        # if bucket_name != "kh-data-deepintent-import-backup":
+        # if bucket_name != "ncm-transactions":
         #     return
 
         # Retrieve the region of the bucket
