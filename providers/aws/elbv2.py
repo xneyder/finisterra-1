@@ -119,8 +119,8 @@ class ELBV2:
         lb = lb_response["LoadBalancers"][0]
         lb_name = lb["LoadBalancerName"]
 
-        if lb_name != "a2279fadf4d074581a4f67afec193962":
-            return
+        # if lb_name != "a2279fadf4d074581a4f67afec193962":
+        #     return
 
         # Check tags of the load balancer
         tags_response = self.aws_clients.elbv2_client.describe_tags(ResourceArns=[lb_arn])
