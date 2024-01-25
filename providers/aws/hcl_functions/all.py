@@ -23,16 +23,31 @@ def clean_empty_values_single_dict(value):
             result[k] = v
     return result
 
+def clean_json_values(value):
+    if isinstance(value, dict):
+        keys_to_delete = []
+        for key, val in value.items():
+            if val in ["", None, [], {}]:
+                keys_to_delete.append(key)
+            else:
+                value[key] = clean_json_values(val)  # Recurse into nested dictionaries or lists
+        for key in keys_to_delete:
+            del value[key]
+    elif isinstance(value, list):
+        value[:] = [clean_json_values(item) for item in value if item not in ["", None, [], {}]]
+        value[:] = [item for item in value if item not in ["", None, [], {}]]  # Remove unwanted items after recursion
+    return value
+
 def clean_empty_values_dict(attributes, arg=None, additional_data=None):
     value = attributes.get(arg, None)
-    value = clean_empty_values_single_dict(value)
+    value = clean_json_values(value)
     return value
 
 def clean_empty_values_list(attributes, arg=None, additional_data=None):
     values = attributes.get(arg, None)
     result = []
     for value in values:
-        value = clean_empty_values_single_dict(value)
+        value = clean_json_values(value)
         result.append(value)
     return result
 
@@ -2053,8 +2068,7 @@ def asg_build_autoscaling_policies(attributes, arg=None, additional_data=None):
         return result
 
     policy_details = {}
-    attribute_keys = ["policy_type",
-                        "scaling_adjustment", "adjustment_type", "cooldown"]
+    attribute_keys = ["policy_type", "scaling_adjustment", "adjustment_type", "cooldown", "enabled"]
 
     for key in attribute_keys:
         value = attributes.get(key)
@@ -2122,6 +2136,10 @@ def asg_get_subnet_ids(attributes, arg=None, additional_data=None):
     else:
         return attributes.get(arg)
 
+def asg_get_policy_import_id(attributes, arg=None, additional_data=None):
+    autoscaling_group_name = attributes.get("autoscaling_group_name")
+    name = attributes.get("name")
+    return f"{autoscaling_group_name}/{name}"
 
 ### LAUNCHTEMPLATE ###
 def launchtemplate_get_block_device_mappings(attributes, arg=None, additional_data=None):

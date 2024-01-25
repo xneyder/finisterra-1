@@ -95,7 +95,8 @@ aws_autoscaling_group:
       field: launch_template
       type: list
     mixed_instances_policy:
-      field: mixed_instances_policy
+      function: clean_empty_values_list
+      arg: mixed_instances_policy
       type: list
     warm_pool:
       field: warm_pool
@@ -111,6 +112,9 @@ aws_autoscaling_group:
       target_resource_name: this
       second_index:
         field: name
+      import_id:
+        function: asg_get_policy_import_id
+        arg: id
       fields:
         autoscaling_policies:
           function: asg_build_autoscaling_policies

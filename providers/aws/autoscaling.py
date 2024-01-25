@@ -95,8 +95,8 @@ class AutoScaling:
         for as_group in as_groups:
             as_group_name = as_group["AutoScalingGroupName"]
 
-            if as_group_name != "production-spark-worker-AutoScalingGroup-1E2GTU6CKIEXU":
-                continue
+            # if as_group_name != "production-noovie-web-AutoScalingGroup-1MZ5FBASQRUJL":
+            #     continue
 
             # Check tags to determine if this group is controlled by Elastic Beanstalk or EKS
             is_elasticbeanstalk = any(tag['Key'].startswith(
