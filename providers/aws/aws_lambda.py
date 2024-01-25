@@ -5,6 +5,7 @@ import json
 import http.client
 from urllib.parse import urlparse
 from providers.aws.iam_role import IAM_ROLE
+from providers.aws.logs import Logs
 
 def convert_to_terraform_format(env_variables_dict):
     # Format the dictionary to Terraform format
@@ -43,6 +44,7 @@ class AwsLambda:
         self.hcl.functions.update(functions)
 
         self.iam_role_instance = IAM_ROLE(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
+        self.logs_instance = Logs(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
 
 
     def aws_lambda(self):
@@ -137,7 +139,8 @@ class AwsLambda:
         self.iam_role_instance.aws_iam_role(role_name, ftstack)
 
         log_group_name = f"/aws/lambda/{function_name}"
-        self.aws_cloudwatch_log_group(log_group_name)
+        self.logs_instance.aws_cloudwatch_log_group(log_group_name, ftstack)
+        # self.aws_cloudwatch_log_group(log_group_name)
 
 
     # def aws_iam_role(self, role_arn, aws_iam_policy=False):

@@ -2,6 +2,11 @@ aws_lambda_function:
   terraform_module: "github.com/finisterra-io/terraform-aws-modules.git//lambda?ref=main"
   terraform_module_version: "0.20.0"
   target_resource_name: this
+  name_field: function_name
+  joined_fields:
+    iam_role_name:
+      sub_fields:
+        - iam_role_name
   import_id:
     field: function_name
   fields:
@@ -87,22 +92,22 @@ aws_lambda_function:
       function: get_field_from_attrs
       arg: ephemeral_storage.size
       type: number
-  childs:
-    aws_cloudwatch_log_group:
-      join:
-        function_name:
-          function: lambda_cloudwatch_log_group_name
-          arg: id
-      target_resource_name: default
-      defaults:
-        create_aws_cloudwatch_log_group: true
-      fields:
-        cloudwatch_logs_kms_key_arn:
-          field: kms_key_id
-          type: string
-        cloudwatch_logs_retention_in_days:
-          field: retention_in_days
-          type: number
-        cloudwatch_logs_tags:
-          field: tags
-          type: map
+  # childs:
+  #   aws_cloudwatch_log_group:
+  #     join:
+  #       function_name:
+  #         function: lambda_cloudwatch_log_group_name
+  #         arg: id
+  #     target_resource_name: default
+  #     defaults:
+  #       create_aws_cloudwatch_log_group: true
+  #     fields:
+  #       cloudwatch_logs_kms_key_arn:
+  #         field: kms_key_id
+  #         type: string
+  #       cloudwatch_logs_retention_in_days:
+  #         field: retention_in_days
+  #         type: number
+  #       cloudwatch_logs_tags:
+  #         field: tags
+  #         type: map
