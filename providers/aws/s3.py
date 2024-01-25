@@ -54,7 +54,14 @@ class S3:
             if self.hcl.id_resource_processed(resource_name, selected_s3_bucket, ftstack):
                 print(f"  Skipping S3 Bucket: {selected_s3_bucket} - already processed")
                 return
-            self.process_single_s3_bucket(selected_s3_bucket, ftstack)
+            try:
+                self.process_single_s3_bucket(selected_s3_bucket, ftstack)
+            except ClientError as e:
+                if e.response['Error']['Code'] == 'AccessDenied':
+                    print(f"  Access Denied: {e.response['Error']['Message']}")
+                    pass
+                else:
+                    raise e
             return
 
         response = self.aws_clients.s3_client.list_buckets()
@@ -62,13 +69,17 @@ class S3:
 
         for bucket in all_buckets:
             bucket_name = bucket["Name"]
-            bucket_location_response = self.aws_clients.s3_client.get_bucket_location(Bucket=bucket_name)
-            bucket_region = bucket_location_response['LocationConstraint']
-            if bucket_region is None:
-                bucket_region = 'us-east-1'
+            try:
+                bucket_location_response = self.aws_clients.s3_client.get_bucket_location(Bucket=bucket_name)
+                bucket_region = bucket_location_response['LocationConstraint']
+                if bucket_region is None:
+                    bucket_region = 'us-east-1'
 
-            if bucket_region == self.region:
-                self.process_single_s3_bucket(bucket_name, ftstack)
+                if bucket_region == self.region:
+                    self.process_single_s3_bucket(bucket_name, ftstack)
+            except ClientError as e:
+                print(f"  Access Denied: {e.response['Error']['Message']}")
+                pass
                 
     def process_single_s3_bucket(self, bucket_name, ftstack=None):
         print(f"  Processing S3 Bucket: {bucket_name}")
