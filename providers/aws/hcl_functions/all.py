@@ -23,19 +23,23 @@ def clean_empty_values_single_dict(value):
             result[k] = v
     return result
 
-def clean_json_values(value):
+def clean_json_values(value, remove_zero=False):
+    if remove_zero:
+        empty_values  = ["", None, [], {}, 0]
+    else:
+        empty_values  = ["", None, [], {}]
     if isinstance(value, dict):
         keys_to_delete = []
         for key, val in value.items():
-            if val in ["", None, [], {}]:
+            if val in empty_values:
                 keys_to_delete.append(key)
             else:
-                value[key] = clean_json_values(val)  # Recurse into nested dictionaries or lists
+                value[key] = clean_json_values(val, remove_zero)
         for key in keys_to_delete:
             del value[key]
     elif isinstance(value, list):
-        value[:] = [clean_json_values(item) for item in value if item not in ["", None, [], {}]]
-        value[:] = [item for item in value if item not in ["", None, [], {}]]  # Remove unwanted items after recursion
+        value[:] = [clean_json_values(item, remove_zero) for item in value if item not in empty_values]
+        value[:] = [item for item in value if item not in empty_values]
     return value
 
 def clean_empty_values_dict(attributes, arg=None, additional_data=None):
@@ -229,14 +233,23 @@ def acm_get_validation_method(attributes, arg=None, additional_data=None):
 ### ELBV2 ###
 def get_listeners_elbv2(attributes, arg=None, additional_data=None):
     port=attributes.get('port')
+    default_actions = attributes.get('default_action')
+    for default_action in default_actions:
+        # if default_action.order is 0 remove corder key
+        if default_action.get('order') == 0:
+            del default_action['order']
+
     listener = {
         'port': port,
         'protocol': attributes.get('protocol'),
         'ssl_policy': attributes.get('ssl_policy'),
         'certificate_arn': attributes.get('certificate_arn'),
-        'default_action': attributes.get('default_action'),
+        'default_action': default_actions,
         'tags': attributes.get('tags'),
     }
+
+    listener = clean_json_values(value=listener)
+
 
     return {port: listener}
 

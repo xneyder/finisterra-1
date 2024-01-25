@@ -30,18 +30,7 @@ class ELBV2:
         self.resource_list = {}
         self.listeners = {}
 
-        functions = {
-            # 'get_vpc_name_elbv2': self.get_vpc_name_elbv2,
-            # 'get_security_group_names_elbv2': self.get_security_group_names_elbv2,
-            # 'get_subnet_names_elbv2': self.get_subnet_names_elbv2,
-            # 'get_listeners_elbv2': self.get_listeners_elbv2,
-            # 'get_listener_certificate_elbv2': self.get_listener_certificate_elbv2,
-            # 'get_port_domain_name_elbv2': self.get_port_domain_name_elbv2,
-            # 'get_port_elbv2': self.get_port_elbv2,
-            # 'get_vpc_id_elbv2': self.get_vpc_id_elbv2,
-            # 'get_subnet_ids_elbv2': self.get_subnet_ids_elbv2,
-            # 'init_fields_elbv2': self.init_fields_elbv2,
-        }
+        functions = {}
 
         self.hcl.functions.update(functions)
 
@@ -49,11 +38,6 @@ class ELBV2:
         self.acm_instance = ACM(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
         self.s3_instance = S3(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
         # self.target_group_instance = TargetGroup(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
-
-    # def init_fields_elbv2(self, attributes):
-    #     self.listeners = {}
-
-    #     return None
         
     def get_subnet_names(self, subnet_ids):
         subnets_info = []
@@ -134,6 +118,9 @@ class ELBV2:
 
         lb = lb_response["LoadBalancers"][0]
         lb_name = lb["LoadBalancerName"]
+
+        if lb_name != "a2279fadf4d074581a4f67afec193962":
+            return
 
         # Check tags of the load balancer
         tags_response = self.aws_clients.elbv2_client.describe_tags(ResourceArns=[lb_arn])
