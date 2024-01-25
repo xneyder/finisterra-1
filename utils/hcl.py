@@ -849,6 +849,8 @@ class HCL:
     #     return value
 
     def replace_hcl_values(self, instance, index, value, name_value, name_field, aws_account_id, aws_region):
+        if not value or not name_field or not name_value:
+            return value
         try:
             if isinstance(value, bool):
                 value = str(value).lower()
