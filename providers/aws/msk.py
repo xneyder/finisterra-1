@@ -112,7 +112,7 @@ class MSK:
                 cluster_arn = cluster_info["ClusterArn"]
                 cluster_name = cluster_info["ClusterName"]
                 print(f"  Processing MSK Cluster: {cluster_name}")
-                id = cluster_name
+                id = cluster_arn
 
                 ftstack = "msk"
                 try:
@@ -125,8 +125,8 @@ class MSK:
 
                 attributes = {
                     "id": id,
-                    "arn": cluster_arn,
-                    "name": cluster_name,
+                    # "arn": cluster_arn,
+                    # "name": cluster_name,
                 }
 
                 self.hcl.process_resource(
@@ -156,7 +156,7 @@ class MSK:
                         self.hcl.add_additional_data(resource_type, id, "subnet_names", subnet_names)
 
                 self.aws_msk_configuration(cluster_arn)
-                self.aws_msk_scram_secret_association(cluster_arn)
+                # self.aws_msk_scram_secret_association(cluster_arn)
                 self.aws_appautoscaling_target(cluster_arn)
                 self.aws_appautoscaling_policy(cluster_arn)
 

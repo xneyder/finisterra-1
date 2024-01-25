@@ -17,7 +17,8 @@ aws_msk_cluster:
       field: cluster_name
       type: string
     security_groups:
-      field: broker_node_group_info.security_groups
+      function: get_field_from_attrs
+      arg: broker_node_group_info.security_groups
       type: list
     number_of_broker_nodes:
       field: number_of_broker_nodes

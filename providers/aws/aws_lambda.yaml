@@ -3,10 +3,10 @@ aws_lambda_function:
   terraform_module_version: "0.20.0"
   target_resource_name: this
   name_field: function_name
-  joined_fields:
-    iam_role_name:
-      sub_fields:
-        - iam_role_name
+  # joined_fields:
+  #   iam_role_name:
+  #     sub_fields:
+  #       - iam_role_name
   import_id:
     field: function_name
   fields:

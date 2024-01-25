@@ -76,6 +76,10 @@ class AwsLambda:
 
     def process_single_lambda_function(self, function_name, ftstack=None):
         resource_type = "aws_lambda_function"
+
+        if function_name != 'st-image-classfication-dev':
+            return
+        
         print(f"  Processing Lambda Function: {function_name}")
 
         function_details = self.aws_clients.lambda_client.get_function(FunctionName=function_name)
@@ -138,8 +142,8 @@ class AwsLambda:
         role_name = function_details["Configuration"]["Role"].split('/')[-1]
         self.iam_role_instance.aws_iam_role(role_name, ftstack)
 
-        log_group_name = f"/aws/lambda/{function_name}"
-        self.logs_instance.aws_cloudwatch_log_group(log_group_name, ftstack)
+        # log_group_name = f"/aws/lambda/{function_name}"
+        # self.logs_instance.aws_cloudwatch_log_group(log_group_name, ftstack)
         # self.aws_cloudwatch_log_group(log_group_name)
 
 
