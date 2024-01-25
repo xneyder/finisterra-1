@@ -882,6 +882,9 @@ class HCL:
                 if f'"{name_value}": ' in line:
                     continue
 
+                if f': "{name_value}"' in line:
+                    line = line.replace(f'"{name_value}"', f'"${{local.{name_field}}}"')
+
                 if instance["replace_name"] and "<<EOF" not in line:
                     line = re.sub(r'\"' + re.escape(name_value) + r'\"', "local." + name_field, line)
 

@@ -103,7 +103,7 @@ aws_autoscaling_group:
       type: map
     autoscaling_group_tags:
       field: tag
-      type: map
+      type: list
   childs:
     aws_autoscaling_policy:
       join:

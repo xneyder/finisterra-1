@@ -118,9 +118,7 @@ aws_cloudfront_origin_access_identity:
   terraform_module: "github.com/finisterra-io/terraform-aws-modules.git//cloudfront/modules/origin_access_identity?ref=main"
   terraform_module_version: "6.1.0"
   target_resource_name: this
-  # path: "origin_access_identity"
-  # second_index:
-  #   field: id
+  add_id_hash_to_name: true
   fields:
     comment:
       field: comment
@@ -130,6 +128,7 @@ aws_cloudfront_cache_policy:
   terraform_module: "github.com/finisterra-io/terraform-aws-modules.git//cloudfront/modules/cache_policy?ref=main"
   terraform_module_version: "6.1.0"
   target_resource_name: this
+  add_id_hash_to_name: true
   fields:
     name:
       field: name
@@ -183,6 +182,7 @@ aws_cloudfront_response_headers_policy:
   terraform_module: "github.com/finisterra-io/terraform-aws-modules.git//cloudfront/modules/response_headers_policy?ref=main"
   terraform_module_version: "6.1.0"
   target_resource_name: this
+  add_id_hash_to_name: true
   fields:
     name:
       field: name
@@ -210,6 +210,7 @@ aws_cloudfront_origin_request_policy:
   terraform_module: "github.com/finisterra-io/terraform-aws-modules.git//cloudfront/modules/origin_request_policy?ref=main"
   terraform_module_version: "6.1.0"
   target_resource_name: this
+  add_id_hash_to_name: true
   fields:
     name:
       field: name
@@ -246,6 +247,7 @@ aws_cloudfront_function:
   terraform_module: "github.com/finisterra-io/terraform-aws-modules.git//cloudfront/modules/function?ref=main"
   terraform_module_version: "6.1.0"
   target_resource_name: this
+  add_id_hash_to_name: true
   fields:
     name:
       field: name

@@ -97,6 +97,9 @@ class AwsLambda:
             if 'S3Key' in function_details['Code']:
                 s3_key = function_details['Code']['S3Key']
 
+        if 'Location' not in function_details['Code']:
+            print(f"  Warning: No function code found for Lambda Function: {function_name}")
+            return
         code_url = function_details['Code']['Location']
         url_parts = urlparse(code_url)
 
