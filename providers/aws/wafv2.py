@@ -20,12 +20,9 @@ class Wafv2:
             self.hcl = HCL(self.schema_data, self.provider_name)
         else:
             self.hcl = hcl
-        self.resource_list = {}
         self.s3_instance = S3(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
         self.logs_instance = Logs(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
 
-        functions = {}
-        self.hcl.functions.update(functions)
         
 
     def wafv2(self):

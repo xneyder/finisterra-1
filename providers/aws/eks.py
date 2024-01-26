@@ -21,7 +21,6 @@ class EKS:
             self.hcl = HCL(self.schema_data, self.provider_name)
         else:
             self.hcl = hcl
-        self.resource_list = {}
         self.aws_account_id = aws_account_id
 
         self.iam_role_instance = IAM_ROLE(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
@@ -30,8 +29,6 @@ class EKS:
         self.logs_instance = Logs(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
         self.launchtemplate_instance = LaunchTemplate(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
 
-        functions = {}
-        self.hcl.functions.update(functions)
 
     def get_subnet_names(self, subnet_ids):
         subnet_names = []

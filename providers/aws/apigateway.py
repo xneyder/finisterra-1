@@ -22,62 +22,11 @@ class Apigateway:
         else:
             self.hcl = hcl
         
-        self.resource_list = {}
         self.api_gateway_resource_list = {}
-
-        functions = {
-            # # 'get_field_from_attrs': self.get_field_from_attrs,
-            # 'apigateway_deployment_import_id': self.apigateway_deployment_import_id,
-            # 'apigateway_build_stages': self.apigateway_build_stages,
-            # # 'apigateway_get_stage_name': self.apigateway_get_stage_name,
-            # 'apigateway_build_deployments': self.apigateway_build_deployments,
-            # 'apigateway_get_stage_name_index': self.apigateway_get_stage_name_index,
-            # 'apigateway_get_method_settings': self.apigateway_get_method_settings,
-            # 'apigateway_build_method_settings': self.apigateway_build_method_settings,
-            # "apigateway_build_resources": self.apigateway_build_resources,
-            # "apigateway_target_resource_name": self.apigateway_target_resource_name,
-            # "apigateway_resource_import_id": self.apigateway_resource_import_id,
-            # "apigateway_build_methods": self.apigateway_build_methods,
-            # "apigateway_method_index": self.apigateway_method_index,
-            # "apigateway_target_method_name": self.apigateway_target_method_name,
-            # "apigateway_method_import_id": self.apigateway_method_import_id,
-            # "apigateway_integration_index": self.apigateway_integration_index,
-            # "apigateway_target_integration_name": self.apigateway_target_integration_name,
-            # "apigateway_integration_import_id": self.apigateway_integration_import_id,
-            # "apigateway_build_integrations": self.apigateway_build_integrations,
-            # "apigateway_build_method_responses": self.apigateway_build_method_responses,
-            # "apigateway_method_response_import_id": self.apigateway_method_response_import_id,
-            # "apigateway_method_response_index": self.apigateway_method_response_index,
-            # "apigateway_integration_response_index": self.apigateway_integration_response_index,
-            # "apigateway_build_integration_responses": self.apigateway_build_integration_responses,
-            # "apigateway_integration_response_import_id": self.apigateway_integration_response_import_id,
-            # "apigateway_build_gateway_responses": self.apigateway_build_gateway_responses,
-            # "apigateway_gateway_response_import_id": self.apigateway_gateway_response_import_id,
-            # "apigateway_model_import_id": self.apigateway_model_import_id,
-            # "apigateway_build_models": self.apigateway_build_models,
-        }
-
-        self.hcl.functions.update(functions)
 
         self.vpc_endpoint_instance = VPCEndPoint(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
         self.elbv2_instance = ELBV2(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
         self.logs_instance = Logs(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
-
-    # def get_field_from_attrs(self, attributes, arg):
-    #     keys = arg.split(".")
-    #     result = attributes
-    #     for key in keys:
-    #         if isinstance(result, list):
-    #             result = [sub_result.get(key, None) if isinstance(
-    #                 sub_result, dict) else None for sub_result in result]
-    #             if len(result) == 1:
-    #                 result = result[0]
-    #         else:
-    #             result = result.get(key, None)
-    #         if result is None:
-    #             return None
-    #     return result
-    
 
 
     def apigateway(self):

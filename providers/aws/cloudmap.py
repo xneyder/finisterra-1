@@ -20,11 +20,7 @@ class Cloudmap:
         self.workspace_id = workspace_id
         self.modules = modules
         self.hcl = HCL(self.schema_data, self.provider_name)
-        self.resource_list = {}
 
-        functions = {}
-
-        self.hcl.functions.update(functions)
 
     def get_vpc_name(self, vpc_id):
         response = self.aws_clients.ec2_client.describe_vpcs(VpcIds=[vpc_id])

@@ -28,7 +28,6 @@ class VPC:
         else:
             self.hcl = hcl
         
-        self.resource_list = {}
         self.public_subnets = {}
         self.private_subnets = {}
         self.public_route_table_ids = {}
@@ -44,8 +43,6 @@ class VPC:
         self.s3_instance = S3(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
         self.logs_instance = Logs(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
 
-        functions = {}
-        self.hcl.functions.update(functions)
 
     def is_subnet_public(self, subnet_id):
         route_tables = self.aws_clients.ec2_client.describe_route_tables(
@@ -74,7 +71,6 @@ class VPC:
     def aws_vpc(self):
         resource_type = "aws_vpc"
         print("Processing VPCs...")
-        self.resource_list['aws_vpc'] = {}
         vpcs = self.aws_clients.ec2_client.describe_vpcs()["Vpcs"]
         for vpc in vpcs:
             is_default = vpc.get("IsDefault", False)
@@ -107,8 +103,6 @@ class VPC:
                 
                 self.hcl.add_stack(resource_type, id, ftstack)                
 
-                self.resource_list['aws_vpc'][vpc_id.replace(
-                    "-", "_")] = attributes
 
                 self.aws_subnet(vpc)  # pass the vpc
                 self.aws_internet_gateway(vpc_id)  # pass the vpc_id
@@ -130,7 +124,6 @@ class VPC:
 
     def aws_subnet(self, vpc):
         print("Processing Subnets...")
-        self.resource_list['aws_subnet'] = {}
 
         vpc_id = vpc["VpcId"]
 
@@ -147,8 +140,6 @@ class VPC:
                 }
                 self.hcl.process_resource(
                     "aws_subnet", subnet_id.replace("-", "_"), attributes)
-                self.resource_list['aws_subnet'][subnet_id.replace(
-                    "-", "_")] = attributes
 
                 self.aws_route_table_association(subnet_id)
                 is_public = self.is_subnet_public(subnet_id)
@@ -161,7 +152,6 @@ class VPC:
 
     def aws_internet_gateway(self, vpc_id):
         print("Processing Internet Gateways...")
-        self.resource_list['aws_internet_gateway'] = {}
         internet_gateways = self.aws_clients.ec2_client.describe_internet_gateways()[
             "InternetGateways"]
 
@@ -178,8 +168,6 @@ class VPC:
                 }
                 self.hcl.process_resource(
                     "aws_internet_gateway", igw_id.replace("-", "_"), attributes)
-                self.resource_list['aws_internet_gateway'][igw_id.replace(
-                    "-", "_")] = attributes
 
                 route_tables = self.aws_clients.ec2_client.describe_route_tables()[
                     "RouteTables"]
@@ -192,7 +180,6 @@ class VPC:
 
     def aws_default_route_table(self, vpc_id):
         print("Processing Default Route Tables...")
-        self.resource_list['aws_default_route_table'] = {}
         route_tables = self.aws_clients.ec2_client.describe_route_tables(
             Filters=[{"Name": "association.main", "Values": ["true"]},
                      {"Name": "vpc-id", "Values": [vpc_id]}]  # Filter for the given vpc_id
@@ -215,12 +202,9 @@ class VPC:
             }
             self.hcl.process_resource(
                 "aws_default_route_table", route_table_id.replace("-", "_"), attributes)
-            self.resource_list['aws_default_route_table'][route_table_id.replace(
-                "-", "_")] = attributes
 
     def aws_default_network_acl(self, vpc_id):
         print("Processing Default Network ACLs...")
-        self.resource_list['aws_default_network_acl'] = {}
         network_acls = self.aws_clients.ec2_client.describe_network_acls(
             Filters=[{"Name": "default", "Values": ["true"]},
                      {"Name": "vpc-id", "Values": [vpc_id]}]  # Filter for the given vpc_id
@@ -238,12 +222,9 @@ class VPC:
             }
             self.hcl.process_resource(
                 "aws_default_network_acl", network_acl_id.replace("-", "_"), attributes)
-            self.resource_list['aws_default_network_acl'][network_acl_id.replace(
-                "-", "_")] = attributes
 
     def aws_default_security_group(self, vpc_id):
         print("Processing Default Security Groups...")
-        self.resource_list['aws_default_security_group'] = {}
         security_groups = self.aws_clients.ec2_client.describe_security_groups(
             Filters=[{"Name": "group-name", "Values": ["default"]},
                      {"Name": "vpc-id", "Values": [vpc_id]}]  # Filter for the given vpc_id
@@ -260,12 +241,9 @@ class VPC:
             }
             self.hcl.process_resource(
                 "aws_default_security_group", security_group_id.replace("-", "_"), attributes)
-            self.resource_list['aws_default_security_group'][security_group_id.replace(
-                "-", "_")] = attributes
 
     def aws_default_subnet(self):
         print("Processing Default Subnets...")
-        self.resource_list['aws_default_subnet'] = {}
         subnets = self.aws_clients.ec2_client.describe_subnets(
             Filters=[{"Name": "default-for-az", "Values": ["true"]}]
         )["Subnets"]
@@ -284,12 +262,9 @@ class VPC:
             }
             self.hcl.process_resource(
                 "aws_default_subnet", subnet_id.replace("-", "_"), attributes)
-            self.resource_list['aws_default_subnet'][subnet_id.replace(
-                "-", "_")] = attributes
 
     def aws_default_vpc(self):
         print("Processing Default VPCs...")
-        self.resource_list['aws_default_vpc'] = {}
         vpcs = self.aws_clients.ec2_client.describe_vpcs(
             Filters=[{"Name": "isDefault", "Values": ["true"]}]
         )["Vpcs"]
@@ -303,12 +278,9 @@ class VPC:
             }
             self.hcl.process_resource(
                 "aws_default_vpc", vpc_id.replace("-", "_"), attributes)
-            self.resource_list['aws_default_vpc'][vpc_id.replace(
-                "-", "_")] = attributes
 
     def aws_default_vpc_dhcp_options(self):
         print("Processing Default VPC DHCP Options...")
-        self.resource_list['aws_default_vpc_dhcp_options'] = {}
         dhcp_options = self.aws_clients.ec2_client.describe_dhcp_options(
             Filters=[{"Name": "default", "Values": ["true"]}]
         )["DhcpOptions"]
@@ -322,12 +294,9 @@ class VPC:
             }
             self.hcl.process_resource(
                 "aws_default_vpc_dhcp_options", dhcp_options_id.replace("-", "_"), attributes)
-            self.resource_list['aws_default_vpc_dhcp_options'][dhcp_options_id.replace(
-                "-", "_")] = attributes
 
     def aws_ec2_managed_prefix_list(self):
         print("Processing EC2 Managed Prefix Lists...")
-        self.resource_list['aws_ec2_managed_prefix_list'] = {}
         prefix_lists = self.aws_clients.ec2_client.describe_managed_prefix_lists()[
             "PrefixLists"]
 
@@ -354,12 +323,9 @@ class VPC:
             }
             self.hcl.process_resource(
                 "aws_ec2_managed_prefix_list", prefix_list_id.replace("-", "_"), attributes)
-            self.resource_list['aws_ec2_managed_prefix_list'][prefix_list_id.replace(
-                "-", "_")] = attributes
 
     def aws_ec2_network_insights_analysis(self):
         print("Processing EC2 Network Insights Analysis...")
-        self.resource_list['aws_ec2_network_insights_analysis'] = {}
         network_insights_analyses = self.aws_clients.ec2_client.describe_network_insights_analyses()[
             "NetworkInsightsAnalyses"]
 
@@ -375,12 +341,9 @@ class VPC:
             }
             self.hcl.process_resource(
                 "aws_ec2_network_insights_analysis", analysis_id.replace("-", "_"), attributes)
-            self.resource_list['aws_ec2_network_insights_analysis'][analysis_id.replace(
-                "-", "_")] = attributes
 
     def aws_ec2_network_insights_path(self):
         print("Processing EC2 Network Insights Paths...")
-        self.resource_list['aws_ec2_network_insights_path'] = {}
         network_insights_paths = self.aws_clients.ec2_client.describe_network_insights_paths()[
             "NetworkInsightsPaths"]
 
@@ -396,12 +359,9 @@ class VPC:
             }
             self.hcl.process_resource(
                 "aws_ec2_network_insights_path", path_id.replace("-", "_"), attributes)
-            self.resource_list['aws_ec2_network_insights_path'][path_id.replace(
-                "-", "_")] = attributes
 
     def aws_ec2_subnet_cidr_reservation(self):
         print("Processing Subnet CIDR Reservations...")
-        self.resource_list['aws_ec2_subnet_cidr_reservation'] = {}
         subnets = self.aws_clients.ec2_client.describe_subnets()["Subnets"]
 
         for subnet in subnets:
@@ -423,8 +383,6 @@ class VPC:
                 }
                 self.hcl.process_resource(
                     "aws_ec2_subnet_cidr_reservation", reservation_id.replace("-", "_"), attributes)
-                self.resource_list['aws_ec2_subnet_cidr_reservation'][reservation_id.replace(
-                    "-", "_")] = attributes
 
             # Process IPv6 CIDR reservations
             ipv6_cidr_reservations = cidr_reservations_response["SubnetIpv6CidrReservations"]
@@ -440,12 +398,9 @@ class VPC:
                 }
                 self.hcl.process_resource(
                     "aws_ec2_subnet_cidr_reservation", reservation_id.replace("-", "_"), attributes)
-                self.resource_list['aws_ec2_subnet_cidr_reservation'][reservation_id.replace(
-                    "-", "_")] = attributes
 
     def aws_ec2_traffic_mirror_filter(self):
         print("Processing EC2 Traffic Mirror Filters...")
-        self.resource_list['aws_ec2_traffic_mirror_filter'] = {}
         traffic_mirror_filters = self.aws_clients.ec2_client.describe_traffic_mirror_filters()[
             "TrafficMirrorFilters"]
 
@@ -459,12 +414,9 @@ class VPC:
             }
             self.hcl.process_resource(
                 "aws_ec2_traffic_mirror_filter", tm_filter_id.replace("-", "_"), attributes)
-            self.resource_list['aws_ec2_traffic_mirror_filter'][tm_filter_id.replace(
-                "-", "_")] = attributes
 
     def aws_ec2_traffic_mirror_filter_rule(self):
         print("Processing EC2 Traffic Mirror Filter Rules...")
-        self.resource_list['aws_ec2_traffic_mirror_filter_rule'] = {}
         traffic_mirror_filters = self.aws_clients.ec2_client.describe_traffic_mirror_filters()[
             "TrafficMirrorFilters"]
 
@@ -505,12 +457,9 @@ class VPC:
                 }
                 self.hcl.process_resource(
                     "aws_ec2_traffic_mirror_filter_rule", rule_id.replace("-", "_"), attributes)
-                self.resource_list['aws_ec2_traffic_mirror_filter_rule'][rule_id.replace(
-                    "-", "_")] = attributes
 
     def aws_ec2_traffic_mirror_session(self):
         print("Processing EC2 Traffic Mirror Sessions...")
-        self.resource_list['aws_ec2_traffic_mirror_session'] = {}
         traffic_mirror_sessions = self.aws_clients.ec2_client.describe_traffic_mirror_sessions()[
             "TrafficMirrorSessions"]
 
@@ -529,12 +478,9 @@ class VPC:
             }
             self.hcl.process_resource(
                 "aws_ec2_traffic_mirror_session", tm_session_id.replace("-", "_"), attributes)
-            self.resource_list['aws_ec2_traffic_mirror_session'][tm_session_id.replace(
-                "-", "_")] = attributes
 
     def aws_ec2_traffic_mirror_target(self):
         print("Processing EC2 Traffic Mirror Targets...")
-        self.resource_list['aws_ec2_traffic_mirror_target'] = {}
         traffic_mirror_targets = self.aws_clients.ec2_client.describe_traffic_mirror_targets()[
             "TrafficMirrorTargets"]
 
@@ -550,12 +496,9 @@ class VPC:
             }
             self.hcl.process_resource(
                 "aws_ec2_traffic_mirror_target", tm_target_id.replace("-", "_"), attributes)
-            self.resource_list['aws_ec2_traffic_mirror_target'][tm_target_id.replace(
-                "-", "_")] = attributes
 
     def aws_egress_only_internet_gateway(self):
         print("Processing Egress Only Internet Gateways...")
-        self.resource_list['aws_egress_only_internet_gateway'] = {}
         egress_only_igws = self.aws_clients.ec2_client.describe_egress_only_internet_gateways()[
             "EgressOnlyInternetGateways"]
 
@@ -573,12 +516,9 @@ class VPC:
             }
             self.hcl.process_resource(
                 "aws_egress_only_internet_gateway", egress_only_igw_id.replace("-", "_"), attributes)
-            self.resource_list['aws_egress_only_internet_gateway'][egress_only_igw_id.replace(
-                "-", "_")] = attributes
 
     def aws_flow_log(self, vpc_id, ftstack):
         print("Processing Flow Logs...")
-        self.resource_list['aws_flow_log'] = {}
         flow_logs = self.aws_clients.ec2_client.describe_flow_logs()["FlowLogs"]
 
         for flow_log in flow_logs:
@@ -599,8 +539,6 @@ class VPC:
                 }
                 self.hcl.process_resource(
                     "aws_flow_log", flow_log_id.replace("-", "_"), attributes)
-                self.resource_list['aws_flow_log'][flow_log_id.replace(
-                    "-", "_")] = attributes
                 # Check if the log destination type is 'cloudwatch-logs'
                 if attributes["log_destination_type"] == "cloud-watch-logs":
                     # If so, process a CloudWatch Log Group
@@ -661,7 +599,6 @@ class VPC:
 
     # def aws_iam_policy(self, policy_arn):
     #     print(f"Processing IAM Policy: {policy_arn}...")
-    #     self.resource_list['aws_iam_policy'] = {}
 
     #     try:
     #         policy = self.aws_clients.iam_client.get_policy(PolicyArn=policy_arn)
@@ -674,14 +611,11 @@ class VPC:
 
     #         self.hcl.process_resource(
     #             "aws_iam_policy", policy['Policy']['PolicyName'].replace("-", "_"), attributes)
-    #         self.resource_list['aws_iam_policy'][policy['Policy']['PolicyName'].replace(
-    #             "-", "_")] = attributes
     #     except self.aws_clients.iam_client.exceptions.NoSuchEntityException:
     #         print(f"  Policy: {policy_arn} does not exist.")
 
     def aws_cloudwatch_log_group(self, log_group_name):
         print(f"Processing CloudWatch Log Group: {log_group_name}...")
-        self.resource_list['aws_cloudwatch_log_group'] = {}
 
         paginator = self.aws_clients.logs_client.get_paginator("describe_log_groups")
         for page in paginator.paginate(logGroupNamePrefix=log_group_name):
@@ -697,15 +631,12 @@ class VPC:
 
                     self.hcl.process_resource(
                         "aws_cloudwatch_log_group", log_group_name.replace("-", "_"), attributes)
-                    self.resource_list['aws_cloudwatch_log_group'][log_group_name.replace(
-                        "-", "_")] = attributes
                     return
 
         print(f"  Log group: {log_group_name} does not exist.")
 
     def aws_internet_gateway_attachment(self):
         print("Processing Internet Gateway Attachments...")
-        self.resource_list['aws_internet_gateway_attachment'] = {}
         internet_gateways = self.aws_clients.ec2_client.describe_internet_gateways()[
             "InternetGateways"]
 
@@ -724,12 +655,9 @@ class VPC:
                 }
                 self.hcl.process_resource(
                     "aws_internet_gateway_attachment", f"{igw_id.replace('-', '_')}-{vpc_id.replace('-', '_')}", attributes)
-                self.resource_list['aws_internet_gateway_attachment'][
-                    f"{igw_id.replace('-', '_')}-{vpc_id.replace('-', '_')}"] = attributes
 
     def aws_main_route_table_association(self):
         print("Processing Main Route Table Associations...")
-        self.resource_list['aws_main_route_table_association'] = {}
         route_tables = self.aws_clients.ec2_client.describe_route_tables()["RouteTables"]
 
         for rt in route_tables:
@@ -749,12 +677,9 @@ class VPC:
                     }
                     self.hcl.process_resource(
                         "aws_main_route_table_association", assoc_id.replace("-", "_"), attributes)
-                    self.resource_list['aws_main_route_table_association'][assoc_id.replace(
-                        "-", "_")] = attributes
 
     def aws_nat_gateway(self, vpc_id):
         print("Processing NAT Gateways for VPC: ", vpc_id)
-        self.resource_list['aws_nat_gateway'] = {}
 
         # Describe all subnets for the given VPC
         subnets = self.aws_clients.ec2_client.describe_subnets(
@@ -788,8 +713,6 @@ class VPC:
 
                     self.hcl.process_resource(
                         "aws_nat_gateway", nat_gw_id.replace("-", "_"), attributes)
-                    self.resource_list['aws_nat_gateway'][nat_gw_id.replace(
-                        "-", "_")] = attributes
 
                     # Process associated EIPs
                     for address in nat_gw["NatGatewayAddresses"]:
@@ -855,7 +778,6 @@ class VPC:
 
     def aws_network_acl(self, vpc_id):
         print("Processing Network ACLs...")
-        self.resource_list['aws_network_acl'] = {}
         network_acls = self.aws_clients.ec2_client.describe_network_acls()["NetworkAcls"]
 
         for network_acl in network_acls:
@@ -870,8 +792,6 @@ class VPC:
                 }
                 self.hcl.process_resource(
                     "aws_network_acl", network_acl_id.replace("-", "_"), attributes)
-                self.resource_list['aws_network_acl'][network_acl_id.replace(
-                    "-", "_")] = attributes
 
                 # call aws_network_acl_association with network_acl_id
                 # self.aws_network_acl_association(network_acl_id)
@@ -879,7 +799,6 @@ class VPC:
 
     def aws_network_acl_association(self, network_acl_id):
         print("Processing Network ACL Associations...")
-        self.resource_list['aws_network_acl_association'] = {}
         network_acls = self.aws_clients.ec2_client.describe_network_acls()["NetworkAcls"]
 
         for network_acl in network_acls:
@@ -897,14 +816,11 @@ class VPC:
                     }
                     self.hcl.process_resource(
                         "aws_network_acl_association", assoc_id.replace("-", "_"), attributes)
-                    self.resource_list['aws_network_acl_association'][assoc_id.replace(
-                        "-", "_")] = attributes
 
                 # call aws_network_acl_rule with network_acl_id
 
     def aws_network_acl_rule(self, network_acl_id):
         print("Processing Network ACL Rules...")
-        self.resource_list['aws_network_acl_rule'] = {}
         network_acls = self.aws_clients.ec2_client.describe_network_acls()["NetworkAcls"]
 
         for network_acl in network_acls:
@@ -933,12 +849,9 @@ class VPC:
                         type = "ingress"
                     self.hcl.process_resource(
                         "aws_network_acl_rule", f"{network_acl_id.replace('-', '_')}-{rule_number}-{type}", attributes)
-                    self.resource_list['aws_network_acl_rule'][
-                        f"{network_acl_id.replace('-', '_')}-{rule_number}"] = attributes
 
     def aws_network_interface(self, network_interface_id):
         print("Processing Network Interface: ", network_interface_id)
-        self.resource_list['aws_network_interface'] = {}
         network_interfaces = self.aws_clients.ec2_client.describe_network_interfaces(NetworkInterfaceIds=[network_interface_id])[
             "NetworkInterfaces"]
 
@@ -959,12 +872,9 @@ class VPC:
 
             self.hcl.process_resource(
                 "aws_network_interface", eni_id.replace("-", "_"), attributes)
-            self.resource_list['aws_network_interface'][eni_id.replace(
-                "-", "_")] = attributes
 
     def aws_network_interface_attachment(self, network_interfaces):
         print("Processing Network Interface Attachments...")
-        self.resource_list['aws_network_interface_attachment'] = {}
 
         for eni in network_interfaces:
             eni_id = eni["NetworkInterfaceId"]
@@ -984,12 +894,9 @@ class VPC:
                 }
                 self.hcl.process_resource(
                     "aws_network_interface_attachment", attachment_id.replace("-", "_"), attributes)
-                self.resource_list['aws_network_interface_attachment'][attachment_id.replace(
-                    "-", "_")] = attributes
 
     def aws_network_interface_sg_attachment(self, network_interfaces):
         print("Processing Network Interface Security Group Attachments...")
-        self.resource_list['aws_network_interface_sg_attachment'] = {}
 
         for eni in network_interfaces:
             eni_id = eni["NetworkInterfaceId"]
@@ -1006,11 +913,9 @@ class VPC:
                 }
                 self.hcl.process_resource("aws_network_interface_sg_attachment",
                                           f"{eni_id.replace('-', '_')}-{sg_id.replace('-', '_')}", attributes)
-                self.resource_list
 
     def aws_route_table(self, vpc_id):
         print("Processing Route Tables...")
-        self.resource_list['aws_route_table'] = {}
         route_tables = self.aws_clients.ec2_client.describe_route_tables()["RouteTables"]
 
         # Sort the route_tables list based on CreationTime
@@ -1033,13 +938,10 @@ class VPC:
                 }
                 self.hcl.process_resource(
                     "aws_route_table", route_table_id.replace("-", "_"), attributes)
-                self.resource_list['aws_route_table'][route_table_id.replace(
-                    "-", "_")] = attributes
 
                 # self.aws_route(route_table_id)  # pass the route_table_id
 
     def aws_route(self, route_table_id, route):
-        self.resource_list['aws_route'] = {}
         # Describe the route table
         response = self.aws_clients.ec2_client.describe_route_tables(
             RouteTableIds=[route_table_id])
@@ -1108,7 +1010,6 @@ class VPC:
 
     def aws_route_table_association(self, subnet_id):
         print("Processing Route Table Associations...")
-        self.resource_list['aws_route_table_association'] = {}
         route_tables = self.aws_clients.ec2_client.describe_route_tables()["RouteTables"]
 
         for rt in route_tables:
@@ -1132,8 +1033,6 @@ class VPC:
                     }
                     self.hcl.process_resource(
                         "aws_route_table_association", assoc_id.replace("-", "_"), attributes)
-                    self.resource_list['aws_route_table_association'][assoc_id.replace(
-                        "-", "_")] = attributes
                     
                     # get the Name tag for the route table
                     route_table_name = ""
@@ -1153,7 +1052,6 @@ class VPC:
 
     def aws_security_group(self):
         print("Processing Security Groups...")
-        self.resource_list['aws_security_group'] = {}
         security_groups = self.aws_clients.ec2_client.describe_security_groups()[
             "SecurityGroups"]
 
@@ -1178,12 +1076,9 @@ class VPC:
             }
             self.hcl.process_resource(
                 "aws_security_group", sg_id.replace("-", "_"), attributes)
-            self.resource_list['aws_security_group'][sg_id.replace(
-                "-", "_")] = attributes
 
     def aws_vpc_dhcp_options(self, dhcp_options_id):
         print("Processing VPC DHCP Options...")
-        self.resource_list['aws_vpc_dhcp_options'] = {}
         dhcp_options = self.aws_clients.ec2_client.describe_dhcp_options(
             DhcpOptionsIds=[dhcp_options_id])["DhcpOptions"][0]
 
@@ -1200,12 +1095,9 @@ class VPC:
 
         self.hcl.process_resource(
             "aws_vpc_dhcp_options", dhcp_options_id.replace("-", "_"), attributes)
-        self.resource_list['aws_vpc_dhcp_options'][dhcp_options_id.replace(
-            "-", "_")] = attributes
 
     def aws_vpc_dhcp_options_association(self, vpc_id):
         print("Processing VPC DHCP Options Associations...")
-        self.resource_list['aws_vpc_dhcp_options_association'] = {}
         vpc = self.aws_clients.ec2_client.describe_vpcs(VpcIds=[vpc_id])["Vpcs"][0]
         dhcp_options_id = vpc["DhcpOptionsId"]
         if dhcp_options_id != "default":
@@ -1220,8 +1112,6 @@ class VPC:
             }
             self.hcl.process_resource(
                 "aws_vpc_dhcp_options_association", assoc_id.replace("-", "_"), attributes)
-            self.resource_list['aws_vpc_dhcp_options_association'][assoc_id.replace(
-                "-", "_")] = attributes
 
             # Get the DHCP options details
             dhcp_options = self.aws_clients.ec2_client.describe_dhcp_options(
@@ -1237,7 +1127,6 @@ class VPC:
 
     def aws_vpc_endpoint(self):
         print("Processing VPC Endpoints...")
-        self.resource_list['aws_vpc_endpoint'] = {}
         vpc_endpoints = self.aws_clients.ec2_client.describe_vpc_endpoints()[
             "VpcEndpoints"]
 
@@ -1258,12 +1147,9 @@ class VPC:
             }
             self.hcl.process_resource(
                 "aws_vpc_endpoint", endpoint_id.replace("-", "_"), attributes)
-            self.resource_list['aws_vpc_endpoint'][endpoint_id.replace(
-                "-", "_")] = attributes
 
     def aws_vpc_endpoint_connection_accepter(self):
         print("Processing VPC Endpoint Connection Accepters...")
-        self.resource_list['aws_vpc_endpoint_connection_accepter'] = {}
         vpc_endpoints = self.aws_clients.ec2_client.describe_vpc_endpoints()[
             "VpcEndpoints"]
 
@@ -1284,12 +1170,9 @@ class VPC:
                 }
                 self.hcl.process_resource(
                     "aws_vpc_endpoint_connection_accepter", accepter_id.replace("-", "_"), attributes)
-                self.resource_list['aws_vpc_endpoint_connection_accepter'][accepter_id.replace(
-                    "-", "_")] = attributes
 
     def aws_vpc_endpoint_connection_notification(self):
         print("Processing VPC Endpoint Connection Notifications...")
-        self.resource_list['aws_vpc_endpoint_connection_notification'] = {}
         connection_notifications = self.aws_clients.ec2_client.describe_vpc_endpoint_connection_notifications()[
             "ConnectionNotificationSet"]
 
@@ -1311,12 +1194,9 @@ class VPC:
             }
             self.hcl.process_resource(
                 "aws_vpc_endpoint_connection_notification", notification_id.replace("-", "_"), attributes)
-            self.resource_list['aws_vpc_endpoint_connection_notification'][notification_id.replace(
-                "-", "_")] = attributes
 
     def aws_vpc_endpoint_policy(self):
         print("Processing VPC Endpoint Policies...")
-        self.resource_list['aws_vpc_endpoint_policy'] = {}
         vpc_endpoints = self.aws_clients.ec2_client.describe_vpc_endpoints()[
             "VpcEndpoints"]
 
@@ -1335,12 +1215,9 @@ class VPC:
             }
             self.hcl.process_resource(
                 "aws_vpc_endpoint_policy", endpoint_id.replace("-", "_"), attributes)
-            self.resource_list['aws_vpc_endpoint_policy'][endpoint_id.replace(
-                "-", "_")] = attributes
 
     def aws_vpc_endpoint_route_table_association(self):
         print("Processing VPC Endpoint Route Table Associations...")
-        self.resource_list['aws_vpc_endpoint_route_table_association'] = {}
         vpc_endpoints = self.aws_clients.ec2_client.describe_vpc_endpoints()[
             "VpcEndpoints"]
 
@@ -1360,12 +1237,9 @@ class VPC:
                 }
                 self.hcl.process_resource(
                     "aws_vpc_endpoint_route_table_association", assoc_id.replace("-", "_"), attributes)
-                self.resource_list['aws_vpc_endpoint_route_table_association'][assoc_id.replace(
-                    "-", "_")] = attributes
 
     def aws_vpc_endpoint_security_group_association(self):
         print("Processing VPC Endpoint Security Group Associations...")
-        self.resource_list['aws_vpc_endpoint_security_group_association'] = {}
         vpc_endpoints = self.aws_clients.ec2_client.describe_vpc_endpoints()[
             "VpcEndpoints"]
 
@@ -1386,12 +1260,9 @@ class VPC:
                 }
                 self.hcl.process_resource(
                     "aws_vpc_endpoint_security_group_association", assoc_id.replace("-", "_"), attributes)
-                self.resource_list['aws_vpc_endpoint_security_group_association'][assoc_id.replace(
-                    "-", "_")] = attributes
 
     def aws_vpc_endpoint_service(self):
         print("Processing VPC Endpoint Services...")
-        self.resource_list['aws_vpc_endpoint_service'] = {}
         vpc_endpoint_services = self.aws_clients.ec2_client.describe_vpc_endpoint_services()[
             "ServiceDetails"]
 
@@ -1416,12 +1287,9 @@ class VPC:
             }
             self.hcl.process_resource(
                 "aws_vpc_endpoint_service", service_id.replace("-", "_"), attributes)
-            self.resource_list['aws_vpc_endpoint_service'][service_id.replace(
-                "-", "_")] = attributes
 
     def aws_vpc_endpoint_service_allowed_principal(self):
         print("Processing VPC Endpoint Service Allowed Principals...")
-        self.resource_list['aws_vpc_endpoint_service_allowed_principal'] = {}
         vpc_endpoint_services = self.aws_clients.ec2_client.describe_vpc_endpoint_service_configurations()[
             "ServiceConfigurations"]
 
@@ -1441,12 +1309,9 @@ class VPC:
                 }
                 self.hcl.process_resource(
                     "aws_vpc_endpoint_service_allowed_principal", assoc_id.replace("-", "_"), attributes)
-                self.resource_list['aws_vpc_endpoint_service_allowed_principal'][assoc_id.replace(
-                    "-", "_")] = attributes
 
     def aws_vpc_endpoint_subnet_association(self):
         print("Processing VPC Endpoint Subnet Associations...")
-        self.resource_list['aws_vpc_endpoint_subnet_association'] = {}
         vpc_endpoints = self.aws_clients.ec2_client.describe_vpc_endpoints()[
             "VpcEndpoints"]
 
@@ -1466,12 +1331,9 @@ class VPC:
                 }
                 self.hcl.process_resource(
                     "aws_vpc_endpoint_subnet_association", assoc_id.replace("-", "_"), attributes)
-                self.resource_list['aws_vpc_endpoint_subnet_association'][assoc_id.replace(
-                    "-", "_")] = attributes
 
     def aws_vpc_ipv4_cidr_block_association(self):
         print("Processing VPC IPv4 CIDR Block Associations...")
-        self.resource_list['aws_vpc_ipv4_cidr_block_association'] = {}
         vpcs = self.aws_clients.ec2_client.describe_vpcs()["Vpcs"]
 
         for vpc in vpcs:
@@ -1490,12 +1352,9 @@ class VPC:
                 }
                 self.hcl.process_resource(
                     "aws_vpc_ipv4_cidr_block_association", assoc_id.replace("-", "_"), attributes)
-                self.resource_list['aws_vpc_ipv4_cidr_block_association'][assoc_id.replace(
-                    "-", "_")] = attributes
 
     def aws_vpc_ipv6_cidr_block_association(self):
         print("Processing VPC IPv6 CIDR Block Associations...")
-        self.resource_list['aws_vpc_ipv6_cidr_block_association'] = {}
         vpcs = self.aws_clients.ec2_client.describe_vpcs()["Vpcs"]
 
         for vpc in vpcs:
@@ -1518,12 +1377,9 @@ class VPC:
 
                 self.hcl.process_resource(
                     "aws_vpc_ipv6_cidr_block_association", assoc_id.replace("-", "_"), attributes)
-                self.resource_list['aws_vpc_ipv6_cidr_block_association'][assoc_id.replace(
-                    "-", "_")] = attributes
 
     def aws_vpc_peering_connection(self):
         print("Processing VPC Peering Connections...")
-        self.resource_list['aws_vpc_peering_connection'] = {}
         vpc_peering_connections = self.aws_clients.ec2_client.describe_vpc_peering_connections()[
             "VpcPeeringConnections"]
 
@@ -1541,12 +1397,9 @@ class VPC:
             }
             self.hcl.process_resource(
                 "aws_vpc_peering_connection", peering_connection_id.replace("-", "_"), attributes)
-            self.resource_list['aws_vpc_peering_connection'][peering_connection_id.replace(
-                "-", "_")] = attributes
 
     def aws_vpc_peering_connection_accepter(self):
         print("Processing VPC Peering Connection Accepters...")
-        self.resource_list['aws_vpc_peering_connection_accepter'] = {}
         vpc_peering_connections = self.aws_clients.ec2_client.describe_vpc_peering_connections()[
             "VpcPeeringConnections"]
 
@@ -1565,12 +1418,9 @@ class VPC:
             }
             self.hcl.process_resource(
                 "aws_vpc_peering_connection_accepter", peering_connection_id.replace("-", "_"), attributes)
-            self.resource_list['aws_vpc_peering_connection_accepter'][peering_connection_id.replace(
-                "-", "_")] = attributes
 
     def aws_vpc_peering_connection_options(self):
         print("Processing VPC Peering Connection Options...")
-        self.resource_list['aws_vpc_peering_connection_options'] = {}
         vpc_peering_connections = self.aws_clients.ec2_client.describe_vpc_peering_connections()[
             "VpcPeeringConnections"]
 
@@ -1584,12 +1434,9 @@ class VPC:
             }
             self.hcl.process_resource(
                 "aws_vpc_peering_connection_options", peering_connection_id.replace("-", "_"), attributes)
-            self.resource_list['aws_vpc_peering_connection_options'][peering_connection_id.replace(
-                "-", "_")] = attributes
 
     def aws_vpc_security_group_egress_rule(self):
         print("Processing VPC Security Group Egress Rules...")
-        self.resource_list['aws_vpc_security_group_egress_rule'] = {}
         security_group_rules = self.aws_clients.ec2_client.describe_security_group_rules()[
             "SecurityGroupRules"]
 
@@ -1602,12 +1449,9 @@ class VPC:
                 }
                 self.hcl.process_resource(
                     "aws_vpc_security_group_egress_rule", rule_id.replace("-", "_"), attributes)
-                self.resource_list['aws_vpc_security_group_egress_rule'][rule_id.replace(
-                    "-", "_")] = attributes
 
     def aws_vpc_security_group_ingress_rule(self):
         print("Processing VPC Security Group Ingress Rules...")
-        self.resource_list['aws_vpc_security_group_ingress_rule'] = {}
         security_group_rules = self.aws_clients.ec2_client.describe_security_group_rules()[
             "SecurityGroupRules"]
 
@@ -1620,5 +1464,3 @@ class VPC:
                 }
                 self.hcl.process_resource(
                     "aws_vpc_security_group_ingress_rule", rule_id.replace("-", "_"), attributes)
-                self.resource_list['aws_vpc_security_group_ingress_rule'][rule_id.replace(
-                    "-", "_")] = attributes

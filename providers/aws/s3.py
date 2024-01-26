@@ -26,11 +26,7 @@ class S3:
         else:
             self.hcl = hcl
 
-        self.resource_list = {}
 
-        functions = {}
-        self.hcl.functions.update(functions)
-        self.processed_resources = {}
         # self.kms_instance = KMS(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
 
     def s3(self):
@@ -39,10 +35,9 @@ class S3:
         self.aws_s3_bucket()
 
         self.hcl.refresh_state()
+        
 
         self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id)
-
-
 
     def aws_s3_bucket(self, selected_s3_bucket=None, ftstack=None):
         resource_name = "aws_s3_bucket"

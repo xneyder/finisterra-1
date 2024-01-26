@@ -37,10 +37,7 @@ class AwsLambda:
             self.hcl = HCL(self.schema_data, self.provider_name)
         else:
             self.hcl = hcl
-        self.resource_list = {}
 
-        functions = {}
-        self.hcl.functions.update(functions)
 
         self.iam_role_instance = IAM_ROLE(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
         self.logs_instance = Logs(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)

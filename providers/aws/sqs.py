@@ -18,12 +18,8 @@ class SQS:
         self.workspace_id = workspace_id
         self.modules = modules
         self.hcl = HCL(self.schema_data, self.provider_name)
-        self.resource_list = {}
         self.dlq_list = {}
 
-        functions = {}
-
-        self.hcl.functions.update(functions)        
 
 
     def sqs(self):

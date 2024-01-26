@@ -25,8 +25,6 @@ class SECURITY_GROUP:
 
         self.processed_security_groups = {}
 
-        functions = {}
-        self.hcl.functions.update(functions)
 
         # self.hcl.additional_data = {}
 

@@ -26,12 +26,8 @@ class ELBV2:
             self.hcl = HCL(self.schema_data, self.provider_name)
         else:
             self.hcl = hcl
-        self.resource_list = {}
         self.listeners = {}
 
-        functions = {}
-
-        self.hcl.functions.update(functions)
 
         self.security_group_instance = SECURITY_GROUP(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
         self.acm_instance = ACM(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)

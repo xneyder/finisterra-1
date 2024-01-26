@@ -14,7 +14,6 @@ class VpnClient:
         self.workspace_id = workspace_id
         self.modules = modules
         self.hcl = HCL(self.schema_data, self.provider_name)
-        self.resource_list = {}
 
     def vpn_client(self):
         self.hcl.prepare_folder(os.path.join("generated", "vpn_client"))

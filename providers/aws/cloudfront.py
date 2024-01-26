@@ -25,13 +25,9 @@ class CloudFront:
         self.hcl = HCL(self.schema_data, self.provider_name)
         
         
-        self.resource_list = {}
         self.aws_account_id = aws_account_id
         self.origin = {}
 
-        functions = {}
-
-        self.hcl.functions.update(functions)
 
         self.acm_instance = ACM(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
         self.s3_instance = S3(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)

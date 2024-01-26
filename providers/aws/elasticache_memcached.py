@@ -17,19 +17,11 @@ class Elasticache:
         self.workspace_id = workspace_id
         self.modules = modules
         self.hcl = HCL(self.schema_data, self.provider_name)
-        self.resource_list = {}
 
-        functions = {}
-        self.hcl.functions.update(functions)
 
     def elasticache(self):
         self.hcl.prepare_folder(os.path.join("generated", "elasticache"))
 
-        # aws_cloudwatch_metric_alarm.cache_cpu
-        # aws_cloudwatch_metric_alarm.cache_memory
-        # aws_elasticache_parameter_group.default
-        # aws_elasticache_replication_group.default
-        # aws_elasticache_subnet_group.default
 
         self.aws_elasticache_cluster()
         self.aws_elasticache_global_replication_group()

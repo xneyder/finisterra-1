@@ -17,7 +17,6 @@ class ElasticacheRedis:
         self.workspace_id = workspace_id
         self.modules = modules
         self.hcl = HCL(self.schema_data, self.provider_name)
-        self.resource_list = {}
 
         self.processed_subnet_groups = set()
         self.processed_parameter_groups = set()
@@ -25,9 +24,6 @@ class ElasticacheRedis:
 
         self.security_group_instance = SECURITY_GROUP(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
 
-        functions = {}
-
-        self.hcl.functions.update(functions)        
 
     def get_subnet_names(self, subnet_ids):
         subnet_names = []

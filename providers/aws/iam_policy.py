@@ -16,28 +16,8 @@ class IAM_POLICY:
         self.schema_data = schema_data
         self.region = region
         self.hcl = HCL(self.schema_data, self.provider_name)
-        self.resource_list = {}
-
-        functions = {'get_policy_documents': self.get_policy_documents,}
-
-        self.hcl.functions.update(functions)
 
 
-    def get_policy_documents(self, attributes):
-        # convert data_dict to str
-        policy_documents = attributes.get("policy")
-        policy_documents_dict = json.loads(policy_documents)
-        #check if policy_documents_dict["Statement"] is a list
-        if not isinstance(policy_documents_dict["Statement"], list):
-            policy_documents_dict["Statement"] = [policy_documents_dict["Statement"]]
-        #use policy_documents_dict for result
-        result = json.dumps(policy_documents_dict)
-        result = result.replace('${', '$${')
-        # convert data_str back to dict
-        # result = json.loads(result)
-        # print(result)
-        # exit()
-        return result
 
     def iam(self):
         self.hcl.prepare_folder(os.path.join("generated"))

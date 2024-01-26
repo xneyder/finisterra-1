@@ -22,11 +22,8 @@ class Logs:
             self.hcl = HCL(self.schema_data, self.provider_name)
         else:
             self.hcl = hcl
-        self.resource_list = {}
         self.kms_instance = KMS(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
 
-        functions = {}
-        self.hcl.functions.update(functions)
 
     def logs(self):
         self.hcl.prepare_folder(os.path.join("generated"))

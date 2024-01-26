@@ -28,11 +28,8 @@ class KMS:
         else:
             self.hcl = hcl
 
-        self.resource_list = {}
         self.additional_data = {}
 
-        functions = {}
-        self.hcl.functions.update(functions)
 
     def kms(self):
         self.hcl.prepare_folder(os.path.join("generated"))

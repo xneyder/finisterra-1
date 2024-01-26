@@ -10,18 +10,13 @@ class Dynamodb:
         self.provider_name = provider_name
         self.script_dir = script_dir
         self.schema_data = schema_data
-        self.region = region
-        self.aws_account_id = aws_account_id
 
         self.workspace_id = workspace_id
         self.modules = modules
         self.hcl = HCL(self.schema_data, self.provider_name)
-        self.resource_list = {}
+        self.hcl.region = region
+        self.hcl.account_id = aws_account_id
 
-        functions = {
-        }
-
-        self.hcl.functions.update(functions)        
 
     def dynamodb_aws_dynamodb_target_name(self, table_name):
         service_namespace = 'dynamodb'
@@ -49,6 +44,8 @@ class Dynamodb:
         self.aws_dynamodb_table()
 
         self.hcl.refresh_state()
+        self.hcl.request_tf_code()
+        exit()
 
         self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id)
 

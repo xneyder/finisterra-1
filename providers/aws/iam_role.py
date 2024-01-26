@@ -15,7 +15,6 @@ class IAM_ROLE:
         self.script_dir = script_dir
         self.schema_data = schema_data
         self.region = region
-        self.resource_list = {}
         self.s3Bucket = s3Bucket
         self.dynamoDBTable = dynamoDBTable
         self.state_key = state_key
@@ -23,9 +22,6 @@ class IAM_ROLE:
             self.hcl = HCL(self.schema_data, self.provider_name)
         else:
             self.hcl = hcl
-        functions = {}
-
-        self.hcl.functions.update(functions)
 
     def iam(self):        
         self.hcl.prepare_folder(os.path.join("generated"))

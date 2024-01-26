@@ -1,16 +1,16 @@
-import json
 import subprocess
 import os
 import re
 import shutil
 from utils.filesystem import create_version_file
 import yaml
-import re
 import hashlib
 import importlib
 from utils.filesystem import create_tmp_terragrunt
 import glob
 import tempfile
+import json
+import http.client
 
 class HCL:
     def __init__(self, schema_data, provider_name):
@@ -20,13 +20,14 @@ class HCL:
         self.script_dir = tempfile.mkdtemp()
         self.global_deployed_resources = []
         self.module_data = {}
-        short_provider_name = self.provider_name.split("/")[-1]
-        functions_module_name = f'providers.{short_provider_name}.hcl_functions.all'
-        self.functions_module = importlib.import_module(functions_module_name)
+        # short_provider_name = self.provider_name.split("/")[-1]
+        # functions_module_name = f'providers.{short_provider_name}.hcl_functions.all'
+        # self.functions_module = importlib.import_module(functions_module_name)
+        self.functions_module = None
         self.ftstacks = {}
         self.additional_data = {}
-        self.functions = {}
         self.id_key_list = ["id", "arn"]
+        self.functions = {}
 
     def search_state_file(self, resource_type, resource_name, resource_id):
         # Load the state file
@@ -1154,3 +1155,48 @@ class HCL:
             self.additional_data[resource_type][id] = {}
         self.additional_data[resource_type][id][key] = value
         
+
+    def request_tf_code(self):
+        tfstate = None
+        with open(self.terraform_state_file, 'r') as f:
+            tfstate = json.load(f)
+
+        # Convert tfstate to JSON string
+        tfstate_json = json.dumps(tfstate)
+
+        # Define the API endpoint
+        api_host = 'localhost'
+        api_port = 8000
+        api_path = '/api/hcl/'
+
+        # Create a connection to the API server
+        conn = http.client.HTTPConnection(api_host, api_port)
+
+        # Define the request headers
+        headers = {'Content-Type': 'application/json'}
+
+        # Define the request payload
+        payload = {
+            'tfstate': tfstate_json,
+            'provider_name': self.provider_name,
+            'ftstacks': self.ftstacks,
+            'additional_data': self.additional_data,
+            'id_key_list': self.id_key_list,
+            'region': self.region,
+            'account_id': self.account_id,
+        }
+
+        # Convert the payload to JSON string
+        payload_json = json.dumps(payload, default=list)
+
+        # Send the POST request
+        conn.request('POST', api_path, body=payload_json, headers=headers)
+
+        # Get the response from the server
+        response = conn.getresponse()
+
+        # Print the response status code
+        print('Response Status:', response.status)
+
+        # Close the connection
+        conn.close()

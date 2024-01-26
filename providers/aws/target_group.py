@@ -20,7 +20,6 @@ class TargetGroup:
             self.hcl = hcl
         else:
             self.hcl = HCL(self.schema_data, self.provider_name)
-        self.resource_list = {}
 
         self.acm_instance = ACM(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
         self.elbv2_instance = ELBV2(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
@@ -28,9 +27,6 @@ class TargetGroup:
         self.load_balancers = None
         self.listeners = {}
 
-        functions = {}
-
-        self.hcl.functions.update(functions)
 
     def get_vpc_name(self, vpc_id):
         response = self.aws_clients.ec2_client.describe_vpcs(VpcIds=[vpc_id])

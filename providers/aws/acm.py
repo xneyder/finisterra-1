@@ -20,11 +20,6 @@ class ACM:
             self.hcl = HCL(self.schema_data, self.provider_name)
         else:
             self.hcl = hcl
-        self.resource_list = {}
-
-        functions = {}
-
-        self.hcl.functions.update(functions)
 
     def acm(self):
         self.hcl.prepare_folder(os.path.join("generated"))

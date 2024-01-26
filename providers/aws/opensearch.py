@@ -15,7 +15,6 @@ class Opensearch:
         self.workspace_id = workspace_id
         self.modules = modules
         self.hcl = HCL(self.schema_data, self.provider_name)
-        self.resource_list = {}
         self.aws_account_id = aws_account_id
 
     def opensearch(self):
@@ -40,7 +39,6 @@ class Opensearch:
 
         exit()
 
-        functions = {}
         self.hcl.module_hcl_code("terraform.tfstate", os.path.join(
             os.path.dirname(os.path.abspath(__file__)), "opensearch.yaml"), functions, self.region, self.aws_account_id)
 

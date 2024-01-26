@@ -24,11 +24,7 @@ class VPCEndPoint:
         else:
             self.hcl = hcl
         
-        self.resource_list = {}
 
-        functions = {
-        }
-        self.hcl.functions.update(functions)
 
         self.security_group_instance = SECURITY_GROUP(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
 
@@ -87,7 +83,6 @@ class VPCEndPoint:
     def aws_vpc_endpoint(self, vpce_id=None, ftstack=None):
         resource_type = "aws_vpc_endpoint"
         print(f"Processing VPC Endpoint: {vpce_id}...")
-        self.resource_list['aws_vpc_endpoint'] = {}        
         try:
             if vpce_id is None:
                 endpoints = self.aws_clients.ec2_client.describe_vpc_endpoints()["VpcEndpoints"]
@@ -144,7 +139,6 @@ class VPCEndPoint:
 
     def aws_vpc_endpoint_connection_accepter(self):
         print("Processing VPC Endpoint Connection Accepters...")
-        self.resource_list['aws_vpc_endpoint_connection_accepter'] = {}
         vpc_endpoints = self.aws_clients.ec2_client.describe_vpc_endpoints()[
             "VpcEndpoints"]
 
@@ -165,12 +159,9 @@ class VPCEndPoint:
                 }
                 self.hcl.process_resource(
                     "aws_vpc_endpoint_connection_accepter", accepter_id.replace("-", "_"), attributes)
-                self.resource_list['aws_vpc_endpoint_connection_accepter'][accepter_id.replace(
-                    "-", "_")] = attributes
 
     def aws_vpc_endpoint_connection_notification(self):
         print("Processing VPC Endpoint Connection Notifications...")
-        self.resource_list['aws_vpc_endpoint_connection_notification'] = {}
         connection_notifications = self.aws_clients.ec2_client.describe_vpc_endpoint_connection_notifications()[
             "ConnectionNotificationSet"]
 
@@ -192,12 +183,9 @@ class VPCEndPoint:
             }
             self.hcl.process_resource(
                 "aws_vpc_endpoint_connection_notification", notification_id.replace("-", "_"), attributes)
-            self.resource_list['aws_vpc_endpoint_connection_notification'][notification_id.replace(
-                "-", "_")] = attributes
 
     def aws_vpc_endpoint_policy(self):
         print("Processing VPC Endpoint Policies...")
-        self.resource_list['aws_vpc_endpoint_policy'] = {}
         vpc_endpoints = self.aws_clients.ec2_client.describe_vpc_endpoints()[
             "VpcEndpoints"]
 
@@ -216,12 +204,9 @@ class VPCEndPoint:
             }
             self.hcl.process_resource(
                 "aws_vpc_endpoint_policy", endpoint_id.replace("-", "_"), attributes)
-            self.resource_list['aws_vpc_endpoint_policy'][endpoint_id.replace(
-                "-", "_")] = attributes
 
     def aws_vpc_endpoint_route_table_association(self):
         print("Processing VPC Endpoint Route Table Associations...")
-        self.resource_list['aws_vpc_endpoint_route_table_association'] = {}
         vpc_endpoints = self.aws_clients.ec2_client.describe_vpc_endpoints()[
             "VpcEndpoints"]
 
@@ -241,12 +226,9 @@ class VPCEndPoint:
                 }
                 self.hcl.process_resource(
                     "aws_vpc_endpoint_route_table_association", assoc_id.replace("-", "_"), attributes)
-                self.resource_list['aws_vpc_endpoint_route_table_association'][assoc_id.replace(
-                    "-", "_")] = attributes
 
     def aws_vpc_endpoint_security_group_association(self):
         print("Processing VPC Endpoint Security Group Associations...")
-        self.resource_list['aws_vpc_endpoint_security_group_association'] = {}
         vpc_endpoints = self.aws_clients.ec2_client.describe_vpc_endpoints()[
             "VpcEndpoints"]
 
@@ -267,12 +249,9 @@ class VPCEndPoint:
                 }
                 self.hcl.process_resource(
                     "aws_vpc_endpoint_security_group_association", assoc_id.replace("-", "_"), attributes)
-                self.resource_list['aws_vpc_endpoint_security_group_association'][assoc_id.replace(
-                    "-", "_")] = attributes
 
     def aws_vpc_endpoint_service(self):
         print("Processing VPC Endpoint Services...")
-        self.resource_list['aws_vpc_endpoint_service'] = {}
         vpc_endpoint_services = self.aws_clients.ec2_client.describe_vpc_endpoint_services()[
             "ServiceDetails"]
 
@@ -297,12 +276,9 @@ class VPCEndPoint:
             }
             self.hcl.process_resource(
                 "aws_vpc_endpoint_service", service_id.replace("-", "_"), attributes)
-            self.resource_list['aws_vpc_endpoint_service'][service_id.replace(
-                "-", "_")] = attributes
 
     def aws_vpc_endpoint_service_allowed_principal(self):
         print("Processing VPC Endpoint Service Allowed Principals...")
-        self.resource_list['aws_vpc_endpoint_service_allowed_principal'] = {}
         vpc_endpoint_services = self.aws_clients.ec2_client.describe_vpc_endpoint_service_configurations()[
             "ServiceConfigurations"]
 
@@ -322,12 +298,9 @@ class VPCEndPoint:
                 }
                 self.hcl.process_resource(
                     "aws_vpc_endpoint_service_allowed_principal", assoc_id.replace("-", "_"), attributes)
-                self.resource_list['aws_vpc_endpoint_service_allowed_principal'][assoc_id.replace(
-                    "-", "_")] = attributes
 
     def aws_vpc_endpoint_subnet_association(self):
         print("Processing VPC Endpoint Subnet Associations...")
-        self.resource_list['aws_vpc_endpoint_subnet_association'] = {}
         vpc_endpoints = self.aws_clients.ec2_client.describe_vpc_endpoints()[
             "VpcEndpoints"]
 
@@ -347,6 +320,4 @@ class VPCEndPoint:
                 }
                 self.hcl.process_resource(
                     "aws_vpc_endpoint_subnet_association", assoc_id.replace("-", "_"), attributes)
-                self.resource_list['aws_vpc_endpoint_subnet_association'][assoc_id.replace(
-                    "-", "_")] = attributes
 

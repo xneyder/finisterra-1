@@ -3,7 +3,6 @@ import boto3
 import os
 import re
 import subprocess
-import shutil
 import json
 
 
@@ -67,7 +66,6 @@ class Aws:
         self.provider_name = "registry.terraform.io/hashicorp/aws"
         self.script_dir = script_dir
         self.schema_data = self.load_provider_schema()
-        self.resource_list = {}
         self.s3Bucket = s3Bucket
         self.dynamoDBTable = dynamoDBTable
         self.state_key = state_key
@@ -353,14 +351,12 @@ class Aws:
                            self.schema_data, self.aws_region, self.s3Bucket,
                            self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.route53()
-        self.resource_list['route53'] = instance.resource_list
 
     def vpc(self):
         instance = VPC(self.aws_clients_instance, self.script_dir, self.provider_name,
                        self.schema_data, self.aws_region, self.s3Bucket,
                        self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.vpc()
-        self.resource_list['vpc'] = instance.resource_list
         # ec2_client = self.session.client('ec2',
         #                                   aws_session_token=self.MFA_validated_token[
         #                                       'Credentials']['SessionToken'],
@@ -376,70 +372,60 @@ class Aws:
                        self.schema_data, self.aws_region, self.s3Bucket,
                        self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.vpc_endpoint()
-        self.resource_list['vpc_endpoint'] = instance.resource_list
 
     def s3(self):
         instance = S3(self.aws_clients_instance, self.script_dir, self.provider_name,
                       self.schema_data, self.aws_region, self.s3Bucket,
                       self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.s3()
-        self.resource_list['s3'] = instance.resource_list
 
     def iam_policy(self):
         instance = IAM_POLICY(self.aws_clients_instance, self.script_dir, self.provider_name,
                               self.schema_data, self.aws_region, self.s3Bucket,
                               self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.iam()
-        self.resource_list['iam'] = instance.resource_list
 
     def iam_role(self):
         instance = IAM_ROLE(self.aws_clients_instance, self.script_dir, self.provider_name,
                             self.schema_data, self.aws_region, self.s3Bucket,
                             self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.iam()
-        self.resource_list['iam'] = instance.resource_list
 
     def acm(self):
         instance = ACM(self.aws_clients_instance, self.script_dir, self.provider_name,
                        self.schema_data, self.aws_region, self.s3Bucket,
                        self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.acm()
-        self.resource_list['acm'] = instance.resource_list
 
     def cloudfront(self):
         instance = CloudFront(self.aws_clients_instance, self.script_dir, self.provider_name,
                               self.schema_data, self.aws_region, self.s3Bucket,
                               self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.cloudfront()
-        self.resource_list['cloudfront'] = instance.resource_list
 
     def ec2(self):
         instance = EC2(self.aws_clients_instance, self.script_dir, self.provider_name,
                        self.schema_data, self.aws_region, self.s3Bucket,
                        self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.ec2()
-        self.resource_list['ec2'] = instance.resource_list
 
     def ebs(self):
         instance = EBS(self.aws_clients_instance, self.script_dir, self.provider_name,
                        self.schema_data, self.aws_region, self.s3Bucket,
                        self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.ebs()
-        self.resource_list['ebs'] = instance.resource_list
 
     def ecr(self):
         instance = ECR(self.aws_clients_instance, self.script_dir, self.provider_name,
                        self.schema_data, self.aws_region, self.s3Bucket,
                        self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.ecr()
-        self.resource_list['ecr'] = instance.resource_list
 
     def ecr_public(self):
         instance = ECR_PUBLIC(self.aws_clients_instance, self.script_dir, self.provider_name,
                               self.schema_data, self.aws_region, self.s3Bucket,
                               self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.ecr_public()
-        self.resource_list['ecr_public'] = instance.resource_list
 
     def ecs(self):
 
@@ -447,196 +433,168 @@ class Aws:
                        self.schema_data, self.aws_region, self.s3Bucket,
                        self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.ecs()
-        self.resource_list['ecs'] = instance.resource_list
 
     def efs(self):
         instance = EFS(self.aws_clients_instance, self.script_dir, self.provider_name,
                        self.schema_data, self.aws_region, self.s3Bucket,
                        self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.efs()
-        self.resource_list['efs'] = instance.resource_list
 
     def eks(self):
         instance = EKS(self.aws_clients_instance, self.script_dir, self.provider_name,
                        self.schema_data, self.aws_region, self.s3Bucket,
                        self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.eks()
-        self.resource_list['eks'] = instance.resource_list
 
     def autoscaling(self):
         instance = AutoScaling(self.aws_clients_instance, self.script_dir, self.provider_name,
                                self.schema_data, self.aws_region, self.s3Bucket,
                                self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.autoscaling()
-        self.resource_list['autoscaling'] = instance.resource_list
 
     def vpn_client(self):
         instance = VpnClient(self.aws_clients_instance, self.script_dir, self.provider_name,
                              self.schema_data, self.aws_region, self.s3Bucket,
                              self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.vpn_client()
-        self.resource_list['vpn_client'] = instance.resource_list
 
     def docdb(self):
         instance = DocDb(self.aws_clients_instance, self.script_dir, self.provider_name,
                          self.schema_data, self.aws_region, self.s3Bucket,
                          self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.docdb()
-        self.resource_list['docdb'] = instance.resource_list
 
     def opensearch(self):
         instance = Opensearch(self.aws_clients_instance, self.script_dir, self.provider_name,
                               self.schema_data, self.aws_region, self.s3Bucket,
                               self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.opensearch()
-        self.resource_list['opensearch'] = instance.resource_list
 
     def elasticache_redis(self):
         instance = ElasticacheRedis(self.aws_clients_instance, self.script_dir, self.provider_name,
                                     self.schema_data, self.aws_region, self.s3Bucket,
                                     self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.elasticache_redis()
-        self.resource_list['elasticache'] = instance.resource_list
 
     def dynamodb(self):
         instance = Dynamodb(self.aws_clients_instance, self.script_dir, self.provider_name,
                             self.schema_data, self.aws_region, self.s3Bucket,
                             self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.dynamodb()
-        self.resource_list['dynamodb'] = instance.resource_list
 
     def cognito_identity(self):
         instance = CognitoIdentity(self.aws_clients_instance, self.script_dir, self.provider_name,
                                    self.schema_data, self.aws_region, self.s3Bucket,
                                    self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.cognito_identity()
-        self.resource_list['cognito_identity'] = instance.resource_list
 
     def cognito_idp(self):
         instance = CognitoIDP(self.aws_clients_instance, self.script_dir, self.provider_name,
                               self.schema_data, self.aws_region, self.s3Bucket,
                               self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.cognito_idp()
-        self.resource_list['cognito_idp'] = instance.resource_list
 
     def logs(self):
         instance = Logs(self.aws_clients_instance, self.script_dir, self.provider_name,
                         self.schema_data, self.aws_region, self.s3Bucket,
                         self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.logs()
-        self.resource_list['logs'] = instance.resource_list
 
     def cloudwatch(self):
         instance = Cloudwatch(self.aws_clients_instance, self.script_dir, self.provider_name,
                               self.schema_data, self.aws_region, self.s3Bucket,
                               self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.cloudwatch()
-        self.resource_list['cloudwatch'] = instance.resource_list
 
     def cloudtrail(self):
         instance = Cloudtrail(self.aws_clients_instance, self.script_dir, self.provider_name,
                               self.schema_data, self.aws_region, self.s3Bucket,
                               self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.cloudtrail()
-        self.resource_list['cloudtrail'] = instance.resource_list
 
     def cloudmap(self):
         instance = Cloudmap(self.aws_clients_instance, self.script_dir, self.provider_name,
                             self.schema_data, self.aws_region, self.s3Bucket,
                             self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.cloudmap()
-        self.resource_list['cloudmap'] = instance.resource_list
 
     def backup(self):
         instance = Backup(self.aws_clients_instance, self.script_dir, self.provider_name,
                           self.schema_data, self.aws_region, self.s3Bucket,
                           self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.backup()
-        self.resource_list['backup'] = instance.resource_list
 
     def guardduty(self):
         instance = Guardduty(self.aws_clients_instance, self.script_dir, self.provider_name,
                              self.schema_data, self.aws_region, self.s3Bucket,
                              self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.guardduty()
-        self.resource_list['guardduty'] = instance.resource_list
 
     def apigateway(self):
         instance = Apigateway( self.aws_clients_instance, self.script_dir, self.provider_name,
                               self.schema_data, self.aws_region, self.s3Bucket,
                               self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.apigateway()
-        self.resource_list['apigateway'] = instance.resource_list
 
     def apigatewayv2(self):
         instance = Apigatewayv2(self.aws_clients_instance, self.script_dir, self.provider_name,
                                 self.schema_data, self.aws_region, self.s3Bucket,
                                 self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.apigatewayv2()
-        self.resource_list['apigatewayv2'] = instance.resource_list
 
     def wafv2(self):
         instance = Wafv2(self.aws_clients_instance, self.script_dir, self.provider_name,
                          self.schema_data, self.aws_region, self.s3Bucket,
                          self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.wafv2()
-        self.resource_list['wafv2'] = instance.resource_list
 
     def secretsmanager(self):
         instance = Secretsmanager(self.aws_clients_instance, self.script_dir, self.provider_name,
                                   self.schema_data, self.aws_region, self.s3Bucket,
                                   self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.secretsmanager()
-        self.resource_list['secretsmanager'] = instance.resource_list
 
     def ssm(self):
         instance = SSM(self.aws_clients_instance, self.script_dir, self.provider_name,
                        self.schema_data, self.aws_region, self.s3Bucket,
                        self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.ssm()
-        self.resource_list['ssm'] = instance.resource_list
 
     def sqs(self):
         instance = SQS(self.aws_clients_instance, self.script_dir, self.provider_name,
                        self.schema_data, self.aws_region, self.s3Bucket,
                        self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.sqs()
-        self.resource_list['sqs'] = instance.resource_list
 
     def sns(self):
         instance = SNS(self.aws_clients_instance, self.script_dir, self.provider_name,
                        self.schema_data, self.aws_region, self.s3Bucket,
                        self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.sns()
-        self.resource_list['sns'] = instance.resource_list
 
     def rds(self):
         instance = RDS(self.aws_clients_instance, self.script_dir, self.provider_name,
                        self.schema_data, self.aws_region, self.s3Bucket,
                        self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.rds()
-        self.resource_list['rds'] = instance.resource_list
 
     def aurora(self):
         instance = Aurora(self.aws_clients_instance, self.script_dir, self.provider_name,
                           self.schema_data, self.aws_region, self.s3Bucket,
                           self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.aurora()
-        self.resource_list['aurora'] = instance.resource_list
 
     def aws_lambda(self):
         instance = AwsLambda(self.aws_clients_instance, self.script_dir, self.provider_name,
                              self.schema_data, self.aws_region, self.s3Bucket,
                              self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.aws_lambda()
-        self.resource_list['aws_lambda'] = instance.resource_list
 
     def kms(self):
         instance = KMS(self.aws_clients_instance, self.script_dir, self.provider_name,
                        self.schema_data, self.aws_region, self.s3Bucket,
                        self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.kms()
-        self.resource_list['kms'] = instance.resource_list
 
     def elasticbeanstalk(self):
 
@@ -644,28 +602,24 @@ class Aws:
                                     self.schema_data, self.aws_region, self.s3Bucket,
                                     self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.elasticbeanstalk()
-        self.resource_list['elasticbeanstalk'] = instance.resource_list
 
     def elbv2(self):
         instance = ELBV2(self.aws_clients_instance, self.script_dir, self.provider_name,
                          self.schema_data, self.aws_region, self.s3Bucket,
                          self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.elbv2()
-        self.resource_list['elbv2'] = instance.resource_list
 
     def stepfunction(self):
         instance = StepFunction(self.aws_clients_instance, self.script_dir, self.provider_name,
                                 self.schema_data, self.aws_region, self.s3Bucket,
                                 self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.stepfunction()
-        self.resource_list['stepfunction'] = instance.resource_list
 
     def msk(self):
         instance = MSK(self.aws_clients_instance, self.script_dir, self.provider_name,
                        self.schema_data, self.aws_region, self.s3Bucket,
                        self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.msk()
-        self.resource_list['msk'] = instance.resource_list
 
     def security_group(self):
 
@@ -681,7 +635,6 @@ class Aws:
                        self.schema_data, self.aws_region, self.s3Bucket,
                        self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.target_group()
-        self.resource_list['target_group'] = instance.resource_list
 
 
     def elasticsearch(self):
@@ -689,7 +642,6 @@ class Aws:
                        self.schema_data, self.aws_region, self.s3Bucket,
                        self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.elasticsearch()
-        self.resource_list['elasticsearch'] = instance.resource_list
 
 
     def codeartifact(self):
@@ -697,11 +649,9 @@ class Aws:
                        self.schema_data, self.aws_region, self.s3Bucket,
                        self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.codeartifact()
-        self.resource_list['codeartifact'] = instance.resource_list
 
     def launchtemplate(self):
         instance = LaunchTemplate(self.aws_clients_instance, self.script_dir, self.provider_name,
                        self.schema_data, self.aws_region, self.s3Bucket,
                        self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.launchtemplate()
-        self.resource_list['launchtemplate'] = instance.resource_list

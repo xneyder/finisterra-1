@@ -20,10 +20,7 @@ class CodeArtifact:
             self.hcl = hcl
         else:
             self.hcl = HCL(self.schema_data, self.provider_name)
-        self.resource_list = {}
 
-        functions = {}
-        self.hcl.functions.update(functions)
         self.kms_instance = KMS(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
 
     def code_artifact_get_kms_alias(self, kms_key_id):

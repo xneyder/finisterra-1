@@ -21,11 +21,7 @@ class EC2:
         else:
             self.hcl = hcl
 
-        functions = {}
 
-        self.hcl.functions.update(functions)
-
-        self.resource_list = {}
         self.aws_account_id = aws_account_id
         self.additional_ips_count = 0
         self.security_group_instance = SECURITY_GROUP(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)

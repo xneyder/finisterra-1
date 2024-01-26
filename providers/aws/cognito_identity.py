@@ -14,7 +14,6 @@ class CognitoIdentity:
         self.workspace_id = workspace_id
         self.modules = modules
         self.hcl = HCL(self.schema_data, self.provider_name)
-        self.resource_list = {}
 
     def cognito_identity(self):
         self.hcl.prepare_folder(os.path.join("generated", "cognito_identity"))
