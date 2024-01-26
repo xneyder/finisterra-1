@@ -353,7 +353,6 @@ class Aws:
                            self.schema_data, self.aws_region, self.s3Bucket,
                            self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.route53()
-        self.json_plan = instance.json_plan
         self.resource_list['route53'] = instance.resource_list
 
     def vpc(self):
@@ -361,7 +360,6 @@ class Aws:
                        self.schema_data, self.aws_region, self.s3Bucket,
                        self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.vpc()
-        self.json_plan = instance.json_plan
         self.resource_list['vpc'] = instance.resource_list
         # ec2_client = self.session.client('ec2',
         #                                   aws_session_token=self.MFA_validated_token[
@@ -378,7 +376,6 @@ class Aws:
                        self.schema_data, self.aws_region, self.s3Bucket,
                        self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.vpc_endpoint()
-        self.json_plan = instance.json_plan
         self.resource_list['vpc_endpoint'] = instance.resource_list
 
     def s3(self):
@@ -386,7 +383,6 @@ class Aws:
                       self.schema_data, self.aws_region, self.s3Bucket,
                       self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.s3()
-        self.json_plan = instance.json_plan
         self.resource_list['s3'] = instance.resource_list
 
     def iam_policy(self):
@@ -394,7 +390,6 @@ class Aws:
                               self.schema_data, self.aws_region, self.s3Bucket,
                               self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.iam()
-        self.json_plan = instance.json_plan
         self.resource_list['iam'] = instance.resource_list
 
     def iam_role(self):
@@ -402,7 +397,6 @@ class Aws:
                             self.schema_data, self.aws_region, self.s3Bucket,
                             self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.iam()
-        self.json_plan = instance.json_plan
         self.resource_list['iam'] = instance.resource_list
 
     def acm(self):
@@ -410,7 +404,6 @@ class Aws:
                        self.schema_data, self.aws_region, self.s3Bucket,
                        self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.acm()
-        self.json_plan = instance.json_plan
         self.resource_list['acm'] = instance.resource_list
 
     def cloudfront(self):
@@ -418,7 +411,6 @@ class Aws:
                               self.schema_data, self.aws_region, self.s3Bucket,
                               self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.cloudfront()
-        self.json_plan = instance.json_plan
         self.resource_list['cloudfront'] = instance.resource_list
 
     def ec2(self):
@@ -426,7 +418,6 @@ class Aws:
                        self.schema_data, self.aws_region, self.s3Bucket,
                        self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.ec2()
-        self.json_plan = instance.json_plan
         self.resource_list['ec2'] = instance.resource_list
 
     def ebs(self):
@@ -434,7 +425,6 @@ class Aws:
                        self.schema_data, self.aws_region, self.s3Bucket,
                        self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.ebs()
-        self.json_plan = instance.json_plan
         self.resource_list['ebs'] = instance.resource_list
 
     def ecr(self):
@@ -442,7 +432,6 @@ class Aws:
                        self.schema_data, self.aws_region, self.s3Bucket,
                        self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.ecr()
-        self.json_plan = instance.json_plan
         self.resource_list['ecr'] = instance.resource_list
 
     def ecr_public(self):
@@ -450,7 +439,6 @@ class Aws:
                               self.schema_data, self.aws_region, self.s3Bucket,
                               self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.ecr_public()
-        self.json_plan = instance.json_plan
         self.resource_list['ecr_public'] = instance.resource_list
 
     def ecs(self):
@@ -459,7 +447,6 @@ class Aws:
                        self.schema_data, self.aws_region, self.s3Bucket,
                        self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.ecs()
-        self.json_plan = instance.json_plan
         self.resource_list['ecs'] = instance.resource_list
 
     def efs(self):
@@ -467,7 +454,6 @@ class Aws:
                        self.schema_data, self.aws_region, self.s3Bucket,
                        self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.efs()
-        self.json_plan = instance.json_plan
         self.resource_list['efs'] = instance.resource_list
 
     def eks(self):
@@ -475,7 +461,6 @@ class Aws:
                        self.schema_data, self.aws_region, self.s3Bucket,
                        self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.eks()
-        self.json_plan = instance.json_plan
         self.resource_list['eks'] = instance.resource_list
 
     def autoscaling(self):
@@ -483,7 +468,6 @@ class Aws:
                                self.schema_data, self.aws_region, self.s3Bucket,
                                self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.autoscaling()
-        self.json_plan = instance.json_plan
         self.resource_list['autoscaling'] = instance.resource_list
 
     def vpn_client(self):
@@ -491,7 +475,6 @@ class Aws:
                              self.schema_data, self.aws_region, self.s3Bucket,
                              self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.vpn_client()
-        self.json_plan = instance.json_plan
         self.resource_list['vpn_client'] = instance.resource_list
 
     def docdb(self):
@@ -499,7 +482,6 @@ class Aws:
                          self.schema_data, self.aws_region, self.s3Bucket,
                          self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.docdb()
-        self.json_plan = instance.json_plan
         self.resource_list['docdb'] = instance.resource_list
 
     def opensearch(self):
@@ -507,7 +489,6 @@ class Aws:
                               self.schema_data, self.aws_region, self.s3Bucket,
                               self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.opensearch()
-        self.json_plan = instance.json_plan
         self.resource_list['opensearch'] = instance.resource_list
 
     def elasticache_redis(self):
@@ -515,7 +496,6 @@ class Aws:
                                     self.schema_data, self.aws_region, self.s3Bucket,
                                     self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.elasticache_redis()
-        self.json_plan = instance.json_plan
         self.resource_list['elasticache'] = instance.resource_list
 
     def dynamodb(self):
@@ -523,7 +503,6 @@ class Aws:
                             self.schema_data, self.aws_region, self.s3Bucket,
                             self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.dynamodb()
-        self.json_plan = instance.json_plan
         self.resource_list['dynamodb'] = instance.resource_list
 
     def cognito_identity(self):
@@ -531,7 +510,6 @@ class Aws:
                                    self.schema_data, self.aws_region, self.s3Bucket,
                                    self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.cognito_identity()
-        self.json_plan = instance.json_plan
         self.resource_list['cognito_identity'] = instance.resource_list
 
     def cognito_idp(self):
@@ -539,7 +517,6 @@ class Aws:
                               self.schema_data, self.aws_region, self.s3Bucket,
                               self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.cognito_idp()
-        self.json_plan = instance.json_plan
         self.resource_list['cognito_idp'] = instance.resource_list
 
     def logs(self):
@@ -547,7 +524,6 @@ class Aws:
                         self.schema_data, self.aws_region, self.s3Bucket,
                         self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.logs()
-        self.json_plan = instance.json_plan
         self.resource_list['logs'] = instance.resource_list
 
     def cloudwatch(self):
@@ -555,7 +531,6 @@ class Aws:
                               self.schema_data, self.aws_region, self.s3Bucket,
                               self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.cloudwatch()
-        self.json_plan = instance.json_plan
         self.resource_list['cloudwatch'] = instance.resource_list
 
     def cloudtrail(self):
@@ -563,7 +538,6 @@ class Aws:
                               self.schema_data, self.aws_region, self.s3Bucket,
                               self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.cloudtrail()
-        self.json_plan = instance.json_plan
         self.resource_list['cloudtrail'] = instance.resource_list
 
     def cloudmap(self):
@@ -571,7 +545,6 @@ class Aws:
                             self.schema_data, self.aws_region, self.s3Bucket,
                             self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.cloudmap()
-        self.json_plan = instance.json_plan
         self.resource_list['cloudmap'] = instance.resource_list
 
     def backup(self):
@@ -579,7 +552,6 @@ class Aws:
                           self.schema_data, self.aws_region, self.s3Bucket,
                           self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.backup()
-        self.json_plan = instance.json_plan
         self.resource_list['backup'] = instance.resource_list
 
     def guardduty(self):
@@ -587,7 +559,6 @@ class Aws:
                              self.schema_data, self.aws_region, self.s3Bucket,
                              self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.guardduty()
-        self.json_plan = instance.json_plan
         self.resource_list['guardduty'] = instance.resource_list
 
     def apigateway(self):
@@ -595,7 +566,6 @@ class Aws:
                               self.schema_data, self.aws_region, self.s3Bucket,
                               self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.apigateway()
-        self.json_plan = instance.json_plan
         self.resource_list['apigateway'] = instance.resource_list
 
     def apigatewayv2(self):
@@ -603,7 +573,6 @@ class Aws:
                                 self.schema_data, self.aws_region, self.s3Bucket,
                                 self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.apigatewayv2()
-        self.json_plan = instance.json_plan
         self.resource_list['apigatewayv2'] = instance.resource_list
 
     def wafv2(self):
@@ -611,7 +580,6 @@ class Aws:
                          self.schema_data, self.aws_region, self.s3Bucket,
                          self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.wafv2()
-        self.json_plan = instance.json_plan
         self.resource_list['wafv2'] = instance.resource_list
 
     def secretsmanager(self):
@@ -619,7 +587,6 @@ class Aws:
                                   self.schema_data, self.aws_region, self.s3Bucket,
                                   self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.secretsmanager()
-        self.json_plan = instance.json_plan
         self.resource_list['secretsmanager'] = instance.resource_list
 
     def ssm(self):
@@ -627,7 +594,6 @@ class Aws:
                        self.schema_data, self.aws_region, self.s3Bucket,
                        self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.ssm()
-        self.json_plan = instance.json_plan
         self.resource_list['ssm'] = instance.resource_list
 
     def sqs(self):
@@ -635,7 +601,6 @@ class Aws:
                        self.schema_data, self.aws_region, self.s3Bucket,
                        self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.sqs()
-        self.json_plan = instance.json_plan
         self.resource_list['sqs'] = instance.resource_list
 
     def sns(self):
@@ -643,7 +608,6 @@ class Aws:
                        self.schema_data, self.aws_region, self.s3Bucket,
                        self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.sns()
-        self.json_plan = instance.json_plan
         self.resource_list['sns'] = instance.resource_list
 
     def rds(self):
@@ -651,7 +615,6 @@ class Aws:
                        self.schema_data, self.aws_region, self.s3Bucket,
                        self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.rds()
-        self.json_plan = instance.json_plan
         self.resource_list['rds'] = instance.resource_list
 
     def aurora(self):
@@ -659,7 +622,6 @@ class Aws:
                           self.schema_data, self.aws_region, self.s3Bucket,
                           self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.aurora()
-        self.json_plan = instance.json_plan
         self.resource_list['aurora'] = instance.resource_list
 
     def aws_lambda(self):
@@ -667,7 +629,6 @@ class Aws:
                              self.schema_data, self.aws_region, self.s3Bucket,
                              self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.aws_lambda()
-        self.json_plan = instance.json_plan
         self.resource_list['aws_lambda'] = instance.resource_list
 
     def kms(self):
@@ -675,7 +636,6 @@ class Aws:
                        self.schema_data, self.aws_region, self.s3Bucket,
                        self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.kms()
-        self.json_plan = instance.json_plan
         self.resource_list['kms'] = instance.resource_list
 
     def elasticbeanstalk(self):
@@ -684,7 +644,6 @@ class Aws:
                                     self.schema_data, self.aws_region, self.s3Bucket,
                                     self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.elasticbeanstalk()
-        self.json_plan = instance.json_plan
         self.resource_list['elasticbeanstalk'] = instance.resource_list
 
     def elbv2(self):
@@ -692,7 +651,6 @@ class Aws:
                          self.schema_data, self.aws_region, self.s3Bucket,
                          self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.elbv2()
-        self.json_plan = instance.json_plan
         self.resource_list['elbv2'] = instance.resource_list
 
     def stepfunction(self):
@@ -700,7 +658,6 @@ class Aws:
                                 self.schema_data, self.aws_region, self.s3Bucket,
                                 self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.stepfunction()
-        self.json_plan = instance.json_plan
         self.resource_list['stepfunction'] = instance.resource_list
 
     def msk(self):
@@ -708,7 +665,6 @@ class Aws:
                        self.schema_data, self.aws_region, self.s3Bucket,
                        self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.msk()
-        self.json_plan = instance.json_plan
         self.resource_list['msk'] = instance.resource_list
 
     def security_group(self):
@@ -717,7 +673,6 @@ class Aws:
                                   self.schema_data, self.aws_region, self.s3Bucket,
                                   self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.security_group()
-        self.json_plan = instance.json_plan
 
 
     def target_group(self):
@@ -726,7 +681,6 @@ class Aws:
                        self.schema_data, self.aws_region, self.s3Bucket,
                        self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.target_group()
-        self.json_plan = instance.json_plan
         self.resource_list['target_group'] = instance.resource_list
 
 
@@ -735,7 +689,6 @@ class Aws:
                        self.schema_data, self.aws_region, self.s3Bucket,
                        self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.elasticsearch()
-        self.json_plan = instance.json_plan
         self.resource_list['elasticsearch'] = instance.resource_list
 
 
@@ -744,7 +697,6 @@ class Aws:
                        self.schema_data, self.aws_region, self.s3Bucket,
                        self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.codeartifact()
-        self.json_plan = instance.json_plan
         self.resource_list['codeartifact'] = instance.resource_list
 
     def launchtemplate(self):
@@ -752,5 +704,4 @@ class Aws:
                        self.schema_data, self.aws_region, self.s3Bucket,
                        self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.launchtemplate()
-        self.json_plan = instance.json_plan
         self.resource_list['launchtemplate'] = instance.resource_list

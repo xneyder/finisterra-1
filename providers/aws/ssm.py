@@ -13,8 +13,7 @@ class SSM:
         self.region = region
         self.workspace_id = workspace_id
         self.modules = modules
-        self.hcl = HCL(self.schema_data, self.provider_name,
-                       self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules)
+        self.hcl = HCL(self.schema_data, self.provider_name)
         self.resource_list = {}
 
     def ssm(self):
@@ -35,7 +34,6 @@ class SSM:
 
         self.hcl.refresh_state()
         self.hcl.generate_hcl_file()
-        self.json_plan = self.hcl.json_plan
 
     def aws_ssm_activation(self):
         print("Processing SSM Activations...")

@@ -3,46 +3,30 @@ import subprocess
 import os
 import re
 import shutil
-from utils.filesystem import create_version_file, create_backend_file, create_data_file, create_locals_file
-from utils.terraform import Terraform
+from utils.filesystem import create_version_file
 import yaml
 import re
 import hashlib
 import importlib
 from utils.filesystem import create_tmp_terragrunt
-import traceback
 import glob
+import tempfile
 
 class HCL:
-    def __init__(self, schema_data, provider_name, script_dir, transform_rules, region, bucket, dynamodb_table, state_key, workspace_id, modules):
+    def __init__(self, schema_data, provider_name):
         self.terraform_state_file = "terraform.tfstate"
         self.schema_data = schema_data
         self.provider_name = provider_name
-        self.script_dir = script_dir
-        self.transform_rules = transform_rules
-        self.region = region
-        self.bucket = bucket
-        self.dynamodb_table = dynamodb_table
-        self.state_key = state_key
-        self.workspace_id = workspace_id
-        self.modules = modules
-        self.json_plan = {}
+        self.script_dir = tempfile.mkdtemp()
         self.global_deployed_resources = []
-
-        # self.module_data = get_module_data(self.workspace_id)
         self.module_data = {}
-
-        functions_module_name = 'providers.aws.hcl_functions.all'
+        short_provider_name = self.provider_name.split("/")[-1]
+        functions_module_name = f'providers.{short_provider_name}.hcl_functions.all'
         self.functions_module = importlib.import_module(functions_module_name)
-
         self.ftstacks = {}
         self.additional_data = {}
-
         self.functions = {}
-
         self.id_key_list = ["id", "arn"]
-
-
 
     def search_state_file(self, resource_type, resource_name, resource_id):
         # Load the state file
@@ -832,21 +816,6 @@ class HCL:
 
         collect_values(value, parent_key)
         return collected_values
-    
-    # def clean_json_values(self, value):
-    #     if isinstance(value, dict):
-    #         keys_to_delete = []
-    #         for key, val in value.items():
-    #             if val in ["", None, [], {}]:
-    #                 keys_to_delete.append(key)
-    #             else:
-    #                 value[key] = self.clean_json_values(val)  # Recurse into nested dictionaries or lists
-    #         for key in keys_to_delete:
-    #             del value[key]
-    #     elif isinstance(value, list):
-    #         value[:] = [self.clean_json_values(item) for item in value if item not in ["", None, [], {}]]
-    #         value[:] = [item for item in value if item not in ["", None, [], {}]]  # Remove unwanted items after recursion
-    #     return value
 
     def replace_hcl_values(self, instance, index, value, name_value, name_field, aws_account_id, aws_region):
         if not value or not name_field or not name_value:

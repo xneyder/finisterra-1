@@ -8,11 +8,32 @@ from utils.filesystem import create_root_terragrunt, create_gitignore_file
 
 
 @click.command()
-@click.argument('aws_account_id')
-@click.argument('aws_region')
 @click.argument('group_code')
-def main(aws_account_id, aws_region, group_code):
+def main(group_code):
     """Fetches AWS resources using boto3."""
+    # Get AWS credentials from environment variables
+    aws_access_key_id = os.getenv('AWS_ACCESS_KEY_ID')
+    aws_secret_access_key = os.getenv('AWS_SECRET_ACCESS_KEY')
+    aws_session_token = os.getenv('AWS_SESSION_TOKEN')
+    aws_profile = os.getenv('AWS_PROFILE')
+    aws_region = os.getenv('AWS_REGION')
+
+    # Check if AWS_PROFILE is defined
+    if aws_profile:
+        # Create a session using the profile
+        session = boto3.Session(profile_name=aws_profile)
+    else:
+        # Create a session using the credentials
+        session = boto3.Session(
+            aws_access_key_id=aws_access_key_id,
+            aws_secret_access_key=aws_secret_access_key,
+            aws_session_token=aws_session_token
+        )
+
+    # Get the account ID
+    sts = session.client('sts')
+    aws_account_id = sts.get_caller_identity()['Account']
+
     print("Fetching AWS resources using boto3...")
 
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -21,9 +42,6 @@ def main(aws_account_id, aws_region, group_code):
     stateKey = f'finisterra/generated/aws/{aws_account_id}/{aws_region}/{group_code}'
 
     provider = Aws(script_dir, s3Bucket, dynamoDBTable, stateKey, aws_account_id, aws_region)
-    # provider.aws_account_id = aws_account_id
-    # provider.aws_region = aws_region
-    # provider.session = boto3.Session()
 
     if group_code == 'vpc':
         provider.vpc()
@@ -31,58 +49,32 @@ def main(aws_account_id, aws_region, group_code):
         provider.acm()
     elif group_code == 'apigateway':
         provider.apigateway()
-    elif group_code == 'apigatewayv2':
-        provider.apigatewayv2()
     elif group_code == 'autoscaling':
         provider.autoscaling()
-    elif group_code == 'backup':
-        provider.backup()
     elif group_code == 'cloudmap':
         provider.cloudmap()
-    elif group_code == 'cloudfront':  # no in gov cloud
+    elif group_code == 'cloudfront':
         provider.cloudfront()
-    elif group_code == 'cloudtrail':
-        provider.cloudtrail()
-    elif group_code == 'cloudwatch':
-        provider.cloudwatch()
     elif group_code == 'logs':
         provider.logs()
-    elif group_code == 'cognito_idp':
-        provider.cognito_idp()
-    elif group_code == 'cognito_identity':
-        provider.cognito_identity()
     elif group_code == 'docdb':
         provider.docdb()
     elif group_code == 'dynamodb':
         provider.dynamodb()
-    elif group_code == 'ebs':
-        provider.ebs()
     elif group_code == 'ec2':
         provider.ec2()
     elif group_code == 'ecr':
         provider.ecr()
-    elif group_code == 'ecr_public':
-        provider.ecr_public()
     elif group_code == 'ecs':
         provider.ecs()
-    elif group_code == 'efs':
-        provider.efs()
     elif group_code == 'eks':
         provider.eks()
     elif group_code == 'elbv2':
         provider.elbv2()
-    elif group_code == 'elb':
-        provider.elb()
     elif group_code == 'elasticache_redis':
         provider.elasticache_redis()
-    # elif group_code == 'elasticache_memcached':
-    #     provider.elasticache_memcached()
-    # elif group_code == 'elasticbeanstalk':
-    #     provider.elasticbeanstalk()
-    elif group_code == 'es':
-        provider.es()
-    elif group_code == 'guardduty':
-        provider.guardduty()
+    elif group_code == 'elasticbeanstalk':
+        provider.elasticbeanstalk()
     elif group_code == 'iam':
         aws_region = "global"
         provider.iam_role()
@@ -90,8 +82,6 @@ def main(aws_account_id, aws_region, group_code):
         provider.kms()
     elif group_code == 'aws_lambda':
         provider.aws_lambda()
-    elif group_code == 'opensearch':
-        provider.opensearch()
     elif group_code == 'rds':
         provider.rds()
     elif group_code == 's3':
@@ -100,16 +90,8 @@ def main(aws_account_id, aws_region, group_code):
         provider.sns()
     elif group_code == 'sqs':
         provider.sqs()
-    elif group_code == 'ssm':  # FIXME: Check how to handle the insecure values
-        provider.ssm()
-    elif group_code == 'secretsmanager':  # FIXME: Check how to handle the insecure values
-        provider.secretsmanager()
-    elif group_code == 'vpn_client':
-        provider.vpn_client()
     elif group_code == 'wafv2':
         provider.wafv2()
-    elif group_code == 'route53':
-        provider.route53()
     elif group_code == 'stepfunction':
         provider.stepfunction()
     elif group_code == 'msk':
@@ -128,7 +110,6 @@ def main(aws_account_id, aws_region, group_code):
         provider.codeartifact()
     elif group_code == 'launchtemplate':
         provider.launchtemplate()
-
     else:
         print(f"Group code {group_code} not found.")
         exit()

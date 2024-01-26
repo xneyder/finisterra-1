@@ -13,8 +13,7 @@ class VpnClient:
         self.region = region
         self.workspace_id = workspace_id
         self.modules = modules
-        self.hcl = HCL(self.schema_data, self.provider_name,
-                       self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules)
+        self.hcl = HCL(self.schema_data, self.provider_name)
         self.resource_list = {}
 
     def vpn_client(self):
@@ -26,7 +25,6 @@ class VpnClient:
         self.aws_ec2_client_vpn_route()
 
         self.hcl.refresh_state()
-        self.json_plan = self.hcl.json_plan
 
     def aws_ec2_client_vpn_authorization_rule(self):
         print("Processing EC2 Client VPN Authorization Rules...")

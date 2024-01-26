@@ -19,8 +19,7 @@ class TargetGroup:
         if hcl:
             self.hcl = hcl
         else:
-            self.hcl = HCL(self.schema_data, self.provider_name,
-                       self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules)
+            self.hcl = HCL(self.schema_data, self.provider_name)
         self.resource_list = {}
 
         self.acm_instance = ACM(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
@@ -49,7 +48,6 @@ class TargetGroup:
 
         self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id)
 
-        self.json_plan = self.hcl.json_plan
 
 
     def aws_lb_target_group(self, target_group_arn=None, ftstack=None):

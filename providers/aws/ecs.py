@@ -22,8 +22,7 @@ class ECS:
 
         self.workspace_id = workspace_id
         self.modules = modules
-        self.hcl = HCL(self.schema_data, self.provider_name,
-                       self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules)
+        self.hcl = HCL(self.schema_data, self.provider_name)
         self.resource_list = {}
         self.iam_role_instance = IAM_ROLE(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)        
         self.logs_instance = Logs(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
@@ -91,8 +90,6 @@ class ECS:
         self.aws_ecs_cluster()
         self.hcl.refresh_state()
         self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id)
-
-        self.json_plan = self.hcl.json_plan
 
     def aws_ecs_cluster(self):
         resource_type = "aws_ecs_cluster"
@@ -297,10 +294,8 @@ class ECS:
                             if subnet_names:
                                 self.hcl.add_additional_data(resource_type, service_arn, "subnet_names", subnet_names)
                             vpc_name = self.get_vpc_name(network_configuration)
-                            print(vpc_name)
                             if vpc_name:
                                 self.hcl.add_additional_data(resource_type, service_arn, "vpc_name", vpc_name)
-                            print(self.hcl.additional_data)
 
                         self.aws_appautoscaling_target(
                             cluster_name, service_name)

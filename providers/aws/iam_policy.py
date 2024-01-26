@@ -15,8 +15,7 @@ class IAM_POLICY:
         self.script_dir = script_dir
         self.schema_data = schema_data
         self.region = region
-        self.hcl = HCL(self.schema_data, self.provider_name,
-                       self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules)
+        self.hcl = HCL(self.schema_data, self.provider_name)
         self.resource_list = {}
 
         functions = {'get_policy_documents': self.get_policy_documents,}
@@ -48,7 +47,6 @@ class IAM_POLICY:
 
         self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id)
 
-        self.json_plan = self.hcl.json_plan
 
     def aws_iam_access_key(self):
         print("Processing IAM Access Keys...")

@@ -19,8 +19,7 @@ class Cloudmap:
         self.region = region
         self.workspace_id = workspace_id
         self.modules = modules
-        self.hcl = HCL(self.schema_data, self.provider_name,
-                       self.script_dir, self.transform_rules, self.region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules)
+        self.hcl = HCL(self.schema_data, self.provider_name)
         self.resource_list = {}
 
         functions = {}
@@ -43,7 +42,6 @@ class Cloudmap:
 
         self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id)
 
-        self.json_plan = self.hcl.json_plan
 
     def aws_service_discovery_http_namespace(self):
         print("Processing AWS Service Discovery HTTP Namespaces...")

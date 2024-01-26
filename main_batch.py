@@ -31,23 +31,23 @@ sts = session.client('sts')
 account_id = sts.get_caller_identity()['Account']
 
 module_list = [
-# "launchtemplate",
-# "codeartifact",
-# "vpc",
-# "apigateway",
-# "autoscaling",
-# "cloudmap",
-# "cloudfront",
-# "docdb",
-# "dynamodb",
-# "ec2",
-# "ecr",
-# "ecs",
-# "eks",
-# "elbv2",
-# "elasticache_redis",
-# "aws_lambda",
-# "rds",
+"launchtemplate",
+"codeartifact",
+"vpc",
+"apigateway",
+"autoscaling",
+"cloudmap",
+"cloudfront",
+"docdb",
+"dynamodb",
+"ec2",
+"ecr",
+"ecs",
+"eks",
+"elbv2",
+"elasticache_redis",
+"aws_lambda",
+"rds",
 "s3",
 "sns",
 "sqs",
@@ -60,6 +60,6 @@ module_list = [
 
 for module in module_list:
     print(f"========================== {module} ==========================")
-    if os.system(f"python main.py {account_id} {region_name} {module}") != 0:
+    if os.system(f"python main.py {module}") != 0:
         print("Command execution failed. Quitting the script.")
         break

@@ -19,8 +19,7 @@ class SECURITY_GROUP:
         self.dynamoDBTable = dynamoDBTable
         self.state_key = state_key
         if not hcl:
-            self.hcl = HCL(self.schema_data, self.provider_name,
-                       self.script_dir, self.transform_rules, self.region, self.s3Bucket, self.dynamoDBTable, self.state_key, self.workspace_id, self.modules)
+            self.hcl = HCL(self.schema_data, self.provider_name)
         else:
             self.hcl = hcl
 
@@ -53,7 +52,6 @@ class SECURITY_GROUP:
         
         self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id)
 
-        self.json_plan = self.hcl.json_plan
 
     def aws_security_group(self, security_group_id=None, ftstack=None):
         resource_type = "aws_security_group"
