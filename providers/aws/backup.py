@@ -15,6 +15,10 @@ class Backup:
         self.modules = modules
         self.hcl = HCL(self.schema_data, self.provider_name)
 
+        self.hcl.region = region
+        self.hcl.account_id = aws_account_id
+
+
     def backup(self):
         self.hcl.prepare_folder(os.path.join("generated", "backup"))
 
@@ -22,7 +26,8 @@ class Backup:
         self.aws_backup_vault()
 
         self.hcl.refresh_state()
-        self.hcl.generate_hcl_file()
+        self.hcl.request_tf_code()
+        # self.hcl.generate_hcl_file()
 
     def aws_backup_plan(self):
         print("Processing AWS Backup Plans...")

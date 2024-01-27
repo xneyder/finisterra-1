@@ -14,6 +14,10 @@ class Secretsmanager:
         self.workspace_id = workspace_id
         self.modules = modules
         self.hcl = HCL(self.schema_data, self.provider_name)
+
+        self.hcl.region = region
+        self.hcl.account_id = aws_account_id
+
     def secretsmanager(self):
         self.hcl.prepare_folder(os.path.join("generated", "secretsmanager"))
 
@@ -23,7 +27,8 @@ class Secretsmanager:
         self.aws_secretsmanager_secret_version()
 
         self.hcl.refresh_state()
-        self.hcl.generate_hcl_file()
+        self.hcl.request_tf_code()
+        # self.hcl.generate_hcl_file()
 
     def aws_secretsmanager_secret(self):
         print("Processing Secrets Manager Secrets...")

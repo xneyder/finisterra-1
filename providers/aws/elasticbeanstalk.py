@@ -25,6 +25,8 @@ class ElasticBeanstalk:
             self.hcl = HCL(self.schema_data, self.provider_name)
         else:
             self.hcl = hcl
+
+            
         self.service_roles = {}
         self.ec2_roles = {}
         self.insatce_profiles = {}
@@ -42,7 +44,8 @@ class ElasticBeanstalk:
 
         self.hcl.refresh_state()
 
-        self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id)
+        self.hcl.request_tf_code()
+        # self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id)
 
     def aws_elastic_beanstalk_application(self):
         print("Processing Elastic Beanstalk Applications...")

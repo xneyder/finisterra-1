@@ -23,6 +23,9 @@ class CloudFront:
         self.workspace_id = workspace_id
         self.modules = modules
         self.hcl = HCL(self.schema_data, self.provider_name)
+        self.hcl.region = region
+        self.hcl.account_id = aws_account_id
+
         
         
         self.aws_account_id = aws_account_id
@@ -63,7 +66,8 @@ class CloudFront:
         self.hcl.id_key_list.append("cloudfront_access_identity_path")
         self.hcl.id_key_list.append("bucket_domain_name")
         self.hcl.id_key_list.append("qualified_arn")
-        self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id)
+        self.hcl.request_tf_code()
+        # self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id)
 
 
     def aws_cloudfront_distribution(self):

@@ -17,6 +17,10 @@ class EBS:
         self.modules = modules
         self.hcl = HCL(self.schema_data, self.provider_name)
 
+        self.hcl.region = region
+        self.hcl.account_id = aws_account_id
+
+
     def ebs(self):
         self.hcl.prepare_folder(os.path.join("generated", "ebs"))
 
@@ -29,7 +33,8 @@ class EBS:
         self.aws_volume_attachment()
 
         self.hcl.refresh_state()
-        self.hcl.generate_hcl_file()
+        self.hcl.request_tf_code()
+        # self.hcl.generate_hcl_file()
 
     def aws_ebs_default_kms_key(self):
         print("Processing EBS Default KMS Key...")

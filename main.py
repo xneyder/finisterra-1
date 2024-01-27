@@ -116,12 +116,12 @@ def main(group_code):
 
     print("Finished processing AWS resources.")
 
-    TF_PLAN = os.environ.get("TF_PLAN", True)
-    if TF_PLAN:
-        create_gitignore_file("./")
-        stateKey = f'finisterra/generated/aws/{aws_account_id}/{aws_region}'
-        create_root_terragrunt(s3Bucket, aws_region,
-                            dynamoDBTable, stateKey, "./")
+    # TF_PLAN = os.environ.get("TF_PLAN", True)
+    # if TF_PLAN:
+    #     create_gitignore_file("./")
+    #     stateKey = f'finisterra/generated/aws/{aws_account_id}/{aws_region}'
+    #     create_root_terragrunt(s3Bucket, aws_region,
+    #                         dynamoDBTable, stateKey, "./")
 
 if __name__ == "__main__":
     main()

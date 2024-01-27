@@ -18,6 +18,10 @@ class StepFunction:
         self.modules = modules
         self.hcl = HCL(self.schema_data, self.provider_name)
 
+        self.hcl.region = region
+        self.hcl.account_id = aws_account_id
+
+
         self.iam_role_instance = IAM_ROLE(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)        
         self.logs_instance = Logs(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
 
@@ -32,7 +36,8 @@ class StepFunction:
 
         self.hcl.refresh_state()
 
-        self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id)
+        self.hcl.request_tf_code()
+        # self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id)
 
 
     def aws_sfn_state_machine(self):

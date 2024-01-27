@@ -15,6 +15,10 @@ class EFS:
         self.modules = modules
         self.hcl = HCL(self.schema_data, self.provider_name)
 
+        self.hcl.region = region
+        self.hcl.account_id = aws_account_id
+
+
     def efs(self):
         self.hcl.prepare_folder(os.path.join("generated", "efs"))
 
@@ -26,7 +30,8 @@ class EFS:
         self.aws_efs_replication_configuration()
 
         self.hcl.refresh_state()
-        self.hcl.generate_hcl_file()
+        self.hcl.request_tf_code()
+        # self.hcl.generate_hcl_file()
 
     def aws_efs_access_point(self):
         print("Processing EFS Access Points...")

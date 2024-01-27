@@ -16,6 +16,10 @@ class Route53:
         self.modules = modules
         self.hcl = HCL(self.schema_data, self.provider_name)
 
+        self.hcl.region = region
+        self.hcl.account_id = aws_account_id
+
+
     def route53(self):
         self.hcl.prepare_folder(os.path.join("generated", "route53"))
 
@@ -34,7 +38,8 @@ class Route53:
         self.aws_route53_zone_association()
 
         self.hcl.refresh_state()
-        self.hcl.generate_hcl_file()
+        self.hcl.request_tf_code()
+        # self.hcl.generate_hcl_file()
 
     def aws_route53_delegation_set(self):
         print("Processing Route53 Delegation Sets...")

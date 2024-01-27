@@ -21,6 +21,10 @@ class Apigateway:
             self.hcl = HCL(self.schema_data, self.provider_name)
         else:
             self.hcl = hcl
+
+        self.hcl.region = region
+        self.hcl.account_id = aws_account_id
+
         
         self.api_gateway_resource_list = {}
 
@@ -32,26 +36,12 @@ class Apigateway:
     def apigateway(self):
         self.hcl.prepare_folder(os.path.join("generated"))
 
-        # self.aws_api_gateway_account()
         self.aws_api_gateway_rest_api()
-        # self.aws_api_gateway_api_key()
-        # self.aws_api_gateway_authorizer()
-        # self.aws_api_gateway_base_path_mapping()
-        # self.aws_api_gateway_client_certificate()
-        # self.aws_api_gateway_domain_name()
-        # self.aws_api_gateway_gateway_response()
-        # self.aws_api_gateway_method_settings()
-        # self.aws_api_gateway_model()
-        # self.aws_api_gateway_request_validator()
-        # self.aws_api_gateway_resource()
-        # self.aws_api_gateway_rest_api_policy()
-        # self.aws_api_gateway_stage()``
-        # self.aws_api_gateway_usage_plan()
-        # self.aws_api_gateway_usage_plan_key()
 
         self.hcl.refresh_state()
+        self.hcl.request_tf_code()
 
-        self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id)
+        # self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id)
 
 
     def aws_api_gateway_account(self):

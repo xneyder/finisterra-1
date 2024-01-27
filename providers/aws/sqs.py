@@ -20,6 +20,10 @@ class SQS:
         self.hcl = HCL(self.schema_data, self.provider_name)
         self.dlq_list = {}
 
+        self.hcl.region = region
+        self.hcl.account_id = aws_account_id
+
+
 
 
     def sqs(self):
@@ -30,7 +34,8 @@ class SQS:
 
         self.hcl.refresh_state()
 
-        self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id)
+        self.hcl.request_tf_code()
+        # self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id)
 
 
     def aws_sqs_queue(self):

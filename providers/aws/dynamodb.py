@@ -17,6 +17,9 @@ class Dynamodb:
         self.hcl.region = region
         self.hcl.account_id = aws_account_id
 
+        self.hcl.region = region
+        self.hcl.account_id = aws_account_id
+
 
     def dynamodb_aws_dynamodb_target_name(self, table_name):
         service_namespace = 'dynamodb'
@@ -45,9 +48,8 @@ class Dynamodb:
 
         self.hcl.refresh_state()
         self.hcl.request_tf_code()
-        exit()
 
-        self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id)
+        # self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id)
 
 
     def aws_dynamodb_table(self):

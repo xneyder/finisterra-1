@@ -28,6 +28,9 @@ class VPC:
         else:
             self.hcl = hcl
         
+        self.hcl.region = region
+        self.hcl.account_id = aws_account_id
+
         self.public_subnets = {}
         self.private_subnets = {}
         self.public_route_table_ids = {}
@@ -66,7 +69,8 @@ class VPC:
         self.hcl.prepare_folder(os.path.join("generated"))
         self.aws_vpc()
         self.hcl.refresh_state()
-        self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id)
+        self.hcl.request_tf_code()
+        # self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id)
 
     def aws_vpc(self):
         resource_type = "aws_vpc"

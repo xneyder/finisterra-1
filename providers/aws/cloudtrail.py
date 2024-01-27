@@ -16,6 +16,10 @@ class Cloudtrail:
         self.modules = modules
         self.hcl = HCL(self.schema_data, self.provider_name)
 
+        self.hcl.region = region
+        self.hcl.account_id = aws_account_id
+
+
     def cloudtrail(self):
         self.hcl.prepare_folder(os.path.join("generated", "cloudtrail"))
 
@@ -23,7 +27,8 @@ class Cloudtrail:
         self.aws_cloudtrail_event_data_store()
 
         self.hcl.refresh_state()
-        self.hcl.generate_hcl_file()
+        self.hcl.request_tf_code()
+        # self.hcl.generate_hcl_file()
 
     def aws_cloudtrail(self):
         print("Processing AWS CloudTrail...")

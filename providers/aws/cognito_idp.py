@@ -15,6 +15,10 @@ class CognitoIDP:
         self.modules = modules
         self.hcl = HCL(self.schema_data, self.provider_name)
 
+        self.hcl.region = region
+        self.hcl.account_id = aws_account_id
+
+
     def cognito_idp(self):
         self.hcl.prepare_folder(os.path.join("generated", "cognito_idp"))
 
@@ -34,7 +38,8 @@ class CognitoIDP:
         self.aws_cognito_user_pool_domain()
 
         self.hcl.refresh_state()
-        self.hcl.generate_hcl_file()
+        self.hcl.request_tf_code()
+        # self.hcl.generate_hcl_file()
 
     def aws_cognito_identity_provider(self):
         print("Processing Cognito Identity Providers...")

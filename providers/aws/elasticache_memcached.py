@@ -18,6 +18,10 @@ class Elasticache:
         self.modules = modules
         self.hcl = HCL(self.schema_data, self.provider_name)
 
+        self.hcl.region = region
+        self.hcl.account_id = aws_account_id
+
+
 
     def elasticache(self):
         self.hcl.prepare_folder(os.path.join("generated", "elasticache"))
@@ -36,7 +40,8 @@ class Elasticache:
 
         self.hcl.refresh_state()
 
-        self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id)
+        self.hcl.request_tf_code()
+        # self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id)
 
         exit()
 

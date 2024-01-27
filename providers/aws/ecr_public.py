@@ -16,6 +16,10 @@ class ECR_PUBLIC:
         self.modules = modules
         self.hcl = HCL(self.schema_data, self.provider_name)
 
+        self.hcl.region = region
+        self.hcl.account_id = aws_account_id
+
+
     def ecr_public(self):
         self.hcl.prepare_folder(os.path.join("generated", "ecr_public"))
 
@@ -24,7 +28,8 @@ class ECR_PUBLIC:
             self.aws_ecrpublic_repository_policy()  # -
 
         self.hcl.refresh_state()
-        self.hcl.generate_hcl_file()
+        self.hcl.request_tf_code()
+        # self.hcl.generate_hcl_file()
 
     def aws_ecrpublic_repository(self):
         print("Processing ECR Public Repositories...")

@@ -21,6 +21,10 @@ class EC2:
         else:
             self.hcl = hcl
 
+        self.hcl.region = region
+        self.hcl.account_id = aws_account_id
+
+
 
         self.aws_account_id = aws_account_id
         self.additional_ips_count = 0
@@ -99,7 +103,8 @@ class EC2:
 
         self.hcl.refresh_state()
 
-        self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id)
+        self.hcl.request_tf_code()
+        # self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id)
 
 
     def aws_ami(self):

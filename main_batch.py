@@ -31,12 +31,12 @@ sts = session.client('sts')
 account_id = sts.get_caller_identity()['Account']
 
 module_list = [
-"launchtemplate",
-"codeartifact",
-"vpc",
-"apigateway",
-"autoscaling",
-"cloudmap",
+# "launchtemplate",
+# "codeartifact",
+# "vpc",
+# "apigateway",
+# "autoscaling",
+# "cloudmap",
 "cloudfront",
 "docdb",
 "dynamodb",

@@ -17,6 +17,10 @@ class Opensearch:
         self.hcl = HCL(self.schema_data, self.provider_name)
         self.aws_account_id = aws_account_id
 
+        self.hcl.region = region
+        self.hcl.account_id = aws_account_id
+
+
     def opensearch(self):
         self.hcl.prepare_folder(os.path.join("generated", "opensearch"))
 
@@ -37,6 +41,7 @@ class Opensearch:
 
         self.hcl.refresh_state()
 
+        self.hcl.request_tf_code()
         exit()
 
         self.hcl.module_hcl_code("terraform.tfstate", os.path.join(

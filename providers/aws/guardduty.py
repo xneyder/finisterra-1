@@ -15,6 +15,10 @@ class Guardduty:
         self.modules = modules
         self.hcl = HCL(self.schema_data, self.provider_name)
 
+        self.hcl.region = region
+        self.hcl.account_id = aws_account_id
+
+
     def guardduty(self):
         self.hcl.prepare_folder(os.path.join("generated", "guardduty"))
 
@@ -29,6 +33,7 @@ class Guardduty:
         self.aws_guardduty_threatintelset()
 
         self.hcl.refresh_state()
+        self.hcl.request_tf_code()
         # self.hcl.generate_hcl_file()
 
     def aws_guardduty_detector(self):

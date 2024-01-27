@@ -15,6 +15,10 @@ class VpnClient:
         self.modules = modules
         self.hcl = HCL(self.schema_data, self.provider_name)
 
+        self.hcl.region = region
+        self.hcl.account_id = aws_account_id
+
+
     def vpn_client(self):
         self.hcl.prepare_folder(os.path.join("generated", "vpn_client"))
 
@@ -23,7 +27,8 @@ class VpnClient:
         self.aws_ec2_client_vpn_network_association()
         self.aws_ec2_client_vpn_route()
 
-        self.hcl.refresh_state()
+        self.hcl.request_tf_code()
+        # self.hcl.refresh_state()
 
     def aws_ec2_client_vpn_authorization_rule(self):
         print("Processing EC2 Client VPN Authorization Rules...")

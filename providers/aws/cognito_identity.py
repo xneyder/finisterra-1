@@ -15,6 +15,10 @@ class CognitoIdentity:
         self.modules = modules
         self.hcl = HCL(self.schema_data, self.provider_name)
 
+        self.hcl.region = region
+        self.hcl.account_id = aws_account_id
+
+
     def cognito_identity(self):
         self.hcl.prepare_folder(os.path.join("generated", "cognito_identity"))
 
@@ -24,7 +28,8 @@ class CognitoIdentity:
             self.aws_cognito_identity_pool_roles_attachment()
 
         self.hcl.refresh_state()
-        self.hcl.generate_hcl_file()
+        self.hcl.request_tf_code()
+        # self.hcl.generate_hcl_file()
 
     def aws_cognito_identity_pool(self):
         print("Processing Cognito Identity Pools...")

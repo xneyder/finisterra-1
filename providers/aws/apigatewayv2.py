@@ -15,6 +15,10 @@ class Apigatewayv2:
         self.modules = modules
         self.hcl = HCL(self.schema_data, self.provider_name)
 
+        self.hcl.region = region
+        self.hcl.account_id = aws_account_id
+
+
     def apigatewayv2(self):
         self.hcl.prepare_folder(os.path.join("generated", "apigatewayv2"))
 
@@ -32,7 +36,8 @@ class Apigatewayv2:
         self.aws_apigatewayv2_vpc_link()
 
         self.hcl.refresh_state()
-        self.hcl.generate_hcl_file()
+        self.hcl.request_tf_code()
+        # self.hcl.generate_hcl_file()
 
     def aws_apigatewayv2_api(self):
         print("Processing API Gateway v2 APIs...")
