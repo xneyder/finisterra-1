@@ -4,6 +4,8 @@ tmp/*
 
 .terraform*
 generated/*
+finisterra/*
 
 *.pyc
 .env
+
