@@ -38,6 +38,7 @@ class LaunchTemplate:
     def aws_launch_template(self, launch_template_id=None, ftstack=None):
         print("Processing AWS Launch Templates...")
 
+
         # If launch_template_id is not provided, process all launch templates
         if launch_template_id is None:
             all_templates_response = self.aws_clients.ec2_client.describe_launch_templates()
@@ -76,12 +77,13 @@ class LaunchTemplate:
             "version": latest_version['VersionNumber'],
         }
 
+        if not ftstack:
+            ftstack = "launchtemplate"
+
         self.hcl.process_resource(
             resource_type, id, attributes)
         self.hcl.add_stack(resource_type, id, ftstack)
         
-        if not ftstack:
-            ftstack = "launchtemplate"
         
         #security_groups
         security_group_ids = launch_template_data.get("SecurityGroupIds", [])
