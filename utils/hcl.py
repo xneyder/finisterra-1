@@ -3,11 +3,7 @@ import os
 import re
 import shutil
 from utils.filesystem import create_version_file
-import yaml
-import hashlib
-import importlib
 from utils.filesystem import create_tmp_terragrunt
-import glob
 import tempfile
 import json
 import http.client
@@ -26,6 +22,7 @@ class HCL:
         # self.functions_module = importlib.import_module(functions_module_name)
         self.functions_module = None
         self.ftstacks = {}
+        self.unique_ftstacks = set()
         self.additional_data = {}
         self.id_key_list = ["id", "arn"]
         self.functions = {}
@@ -227,6 +224,7 @@ class HCL:
             if "ftstack_list" not in self.ftstacks[resource_name][id]:
                 self.ftstacks[resource_name][id]["ftstack_list"] = set()
             self.ftstacks[resource_name][id]["ftstack_list"].add(ftstack)
+            self.unique_ftstacks.add(ftstack)
                 
     def id_resource_processed(self, resource_name, id, ftstack):
         if ftstack:
@@ -310,8 +308,20 @@ class HCL:
             with zipfile.ZipFile(zip_file_path, 'r') as zip_ref:
                 zip_ref.extractall(root_path)
                 print('Zip file extracted to:', root_path)
+            
+            if True: #TO-DO Change to a flag
+                # plan the terragrunt
+                print("Planning Terraform...")
+                os.chdir(os.path.join(root_path,"finisterra"))
+                shutil.copyfile("./terragrunt.hcl", "./terragrunt.hcl.remote-state")
+                shutil.copyfile("./terragrunt.hcl.local-state", "./terragrunt.hcl")
+                for stack in self.unique_ftstacks:
+                    subprocess.run(["terragrunt", "run-all", "plan", "--terragrunt-include-dir", stack], check=True)
+                shutil.copyfile("./terragrunt.hcl", "./terragrunt.hcl.local-state")
+                shutil.copyfile("./terragrunt.hcl.remote-state", "./terragrunt.hcl")
+
         else:
-            print('Error: Failed to retrieve the zip file')        
+            print('Error: Failed to retrieve the zip file')
 
         # Close the connection
         conn.close()

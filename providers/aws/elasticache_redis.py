@@ -24,7 +24,7 @@ class ElasticacheRedis:
 
         self.processed_subnet_groups = set()
         self.processed_parameter_groups = set()
-        self.processed_security_groups = set()
+        # self.processed_security_groups = set()
 
         self.security_group_instance = SECURITY_GROUP(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
 
@@ -160,12 +160,12 @@ class ElasticacheRedis:
                     # Processing Security Groups
                     if "SecurityGroups" in cache_cluster:
                         for sg in cache_cluster["SecurityGroups"]:
-                            if sg['Status'] == 'active' and sg['SecurityGroupId'] not in self.processed_security_groups:
-                                # self.aws_security_group(
-                                #     [sg['SecurityGroupId']])
-                                self.security_group_instance.aws_security_group(sg['SecurityGroupId'], ftstack)
-                                self.processed_security_groups.add(
-                                    sg['SecurityGroupId'])
+                            self.security_group_instance.aws_security_group(sg['SecurityGroupId'], ftstack)
+                            # if sg['Status'] == 'active' and sg['SecurityGroupId'] not in self.processed_security_groups:
+                            #     # self.aws_security_group(
+                            #     #     [sg['SecurityGroupId']])
+                            #     self.processed_security_groups.add(
+                            #         sg['SecurityGroupId'])
 
 
     def aws_elasticache_parameter_group(self, group_name):

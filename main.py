@@ -3,7 +3,6 @@ import click
 import boto3
 
 from providers.aws.Aws import Aws
-from utils.git import Git
 from utils.filesystem import create_root_terragrunt, create_gitignore_file
 
 
@@ -27,7 +26,8 @@ def main(group_code):
         session = boto3.Session(
             aws_access_key_id=aws_access_key_id,
             aws_secret_access_key=aws_secret_access_key,
-            aws_session_token=aws_session_token
+            aws_session_token=aws_session_token,
+            region_name=aws_region
         )
 
     # Get the account ID
