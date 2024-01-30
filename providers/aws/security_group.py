@@ -69,6 +69,7 @@ class SECURITY_GROUP:
                 response = self.aws_clients.ec2_client.describe_security_groups(GroupIds=[security_group_id])
                 for security_group in response["SecurityGroups"]:
                     self.process_security_group(security_group, ftstack)
+                    return security_group["GroupName"]
             except Exception as e:
                 print(f"Error fetching Security Group {security_group_id}: {e}")
             return
@@ -107,12 +108,13 @@ class SECURITY_GROUP:
             ftstack = "security_group"
         self.hcl.add_stack(resource_type, id, ftstack)
 
-        self.aws_vpc_security_group_ingress_rule(security_group["GroupId"], ftstack)
-        self.aws_vpc_security_group_egress_rule(security_group["GroupId"], ftstack)
-
         vpc_name = self.get_vpc_name(vpc_id)
         if vpc_name:
             self.hcl.add_additional_data(resource_type, id, "vpc_name", vpc_name)
+
+        self.aws_vpc_security_group_ingress_rule(security_group["GroupId"], ftstack)
+        self.aws_vpc_security_group_egress_rule(security_group["GroupId"], ftstack)
+
 
     def aws_vpc_security_group_ingress_rule(self, security_group_id, ftstack=None):
         # Fetch security group rules

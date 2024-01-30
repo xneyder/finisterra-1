@@ -17,9 +17,6 @@ class HCL:
         self.script_dir = tempfile.mkdtemp()
         self.global_deployed_resources = []
         self.module_data = {}
-        # short_provider_name = self.provider_name.split("/")[-1]
-        # functions_module_name = f'providers.{short_provider_name}.hcl_functions.all'
-        # self.functions_module = importlib.import_module(functions_module_name)
         self.functions_module = None
         self.ftstacks = {}
         self.unique_ftstacks = set()
@@ -126,7 +123,6 @@ class HCL:
             self.replace_special_chars(resource_name))
         # search if resource exists in the state
         if not self.search_state_file(resource_type, resource_name, resource_id):
-            # print("Importing resource...")
             self.create_state_file(
                 resource_type, resource_name, attributes)
 
@@ -251,6 +247,8 @@ class HCL:
         #check if self.terraform_state_file is file bigger than 0
         if not os.path.isfile(self.terraform_state_file):
             return
+        print("Requesting Terraform code...")
+        print("Sending Terraform state file...", os.path.join(self.script_dir,"generated", self.terraform_state_file))
         with open(self.terraform_state_file, 'r') as f:
             tfstate = json.load(f)
 
@@ -303,8 +301,16 @@ class HCL:
 
             print('Zip file saved at:', zip_file_path)
 
-            # unzip the file to the current directory
             root_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            #clean up folder
+            try:
+                os.chdir(os.path.join(root_path,"finisterra"))
+                for stack in self.unique_ftstacks:
+                    shutil.rmtree(stack)
+            except:
+                pass
+                
+            # unzip the file to the current directory
             with zipfile.ZipFile(zip_file_path, 'r') as zip_ref:
                 zip_ref.extractall(root_path)
                 print('Zip file extracted to:', root_path)
@@ -316,6 +322,7 @@ class HCL:
                 shutil.copyfile("./terragrunt.hcl", "./terragrunt.hcl.remote-state")
                 shutil.copyfile("./terragrunt.hcl.local-state", "./terragrunt.hcl")
                 for stack in self.unique_ftstacks:
+                    subprocess.run(["terragrunt", "run-all", "init", "--terragrunt-include-dir", stack], check=True)
                     subprocess.run(["terragrunt", "run-all", "plan", "--terragrunt-include-dir", stack], check=True)
                 shutil.copyfile("./terragrunt.hcl", "./terragrunt.hcl.local-state")
                 shutil.copyfile("./terragrunt.hcl.remote-state", "./terragrunt.hcl")
