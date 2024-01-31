@@ -20,6 +20,7 @@ class HCL:
         self.functions_module = None
         self.ftstacks = {}
         self.unique_ftstacks = set()
+        self.ftstacks_files = {}
         self.additional_data = {}
         self.id_key_list = ["id", "arn"]
         self.functions = {}
@@ -211,7 +212,7 @@ class HCL:
             exit()
 
 
-    def add_stack(self, resource_name, id, ftstack):
+    def add_stack(self, resource_name, id, ftstack, files=None):
         if ftstack:
             if resource_name not in self.ftstacks:
                 self.ftstacks[resource_name] = {}
@@ -221,6 +222,10 @@ class HCL:
                 self.ftstacks[resource_name][id]["ftstack_list"] = set()
             self.ftstacks[resource_name][id]["ftstack_list"].add(ftstack)
             self.unique_ftstacks.add(ftstack)
+            if files:
+                if ftstack not in self.ftstacks_files:
+                    self.ftstacks_files[ftstack] = []
+                self.ftstacks_files[ftstack].append(files)
                 
     def id_resource_processed(self, resource_name, id, ftstack):
         if ftstack:
@@ -314,6 +319,21 @@ class HCL:
             with zipfile.ZipFile(zip_file_path, 'r') as zip_ref:
                 zip_ref.extractall(root_path)
                 print('Zip file extracted to:', root_path)
+
+
+            #Save additional files
+            print(self.ftstacks_files)
+            for ftstack, zip_files in self.ftstacks_files.items():
+                for zip_file in zip_files:
+                    print("zip_file", zip_file)
+                    base_dir = zip_file["base_dir"]
+                    filename = zip_file["filename"]
+                    target_dir = os.path.join(root_path, "finisterra", ftstack, filename)
+                    print('source', os.path.join(base_dir,filename))
+                    print('target_dir', target_dir)
+                    os.makedirs(os.path.dirname(target_dir), exist_ok=True)
+                    shutil.copyfile(os.path.join(base_dir,filename), target_dir)
+
             
             if True: #TO-DO Change to a flag
                 # plan the terragrunt

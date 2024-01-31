@@ -6,6 +6,8 @@ import http.client
 from urllib.parse import urlparse
 from providers.aws.iam_role import IAM_ROLE
 from providers.aws.logs import Logs
+from providers.aws.security_group import SECURITY_GROUP
+import shutil
 
 def convert_to_terraform_format(env_variables_dict):
     # Format the dictionary to Terraform format
@@ -41,21 +43,61 @@ class AwsLambda:
         self.hcl.region = region
         self.hcl.account_id = aws_account_id
 
-
-
         self.iam_role_instance = IAM_ROLE(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
         self.logs_instance = Logs(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
+        self.security_group_instance = SECURITY_GROUP(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
+
+    def get_subnet_names(self, subnet_ids):
+        subnet_names = []
+        for subnet_id in subnet_ids:
+            response = self.aws_clients.ec2_client.describe_subnets(SubnetIds=[subnet_id])
+
+            # Check if 'Subnets' key exists and it's not empty
+            if not response or 'Subnets' not in response or not response['Subnets']:
+                print(
+                    f"No subnet information found for Subnet ID: {subnet_id}")
+                continue
+
+            # Extract the 'Tags' key safely using get
+            subnet_tags = response['Subnets'][0].get('Tags', [])
+
+            # Extract the subnet name from the tags
+            subnet_name = next(
+                (tag['Value'] for tag in subnet_tags if tag['Key'] == 'Name'), None)
+
+            if subnet_name:
+                subnet_names.append(subnet_name)
+            else:
+                print(f"No 'Name' tag found for Subnet ID: {subnet_id}")
+
+        return subnet_names
+
+    def get_vpc_name(self, vpc_id):
+        response = self.aws_clients.ec2_client.describe_vpcs(VpcIds=[vpc_id])
+
+        if not response or 'Vpcs' not in response or not response['Vpcs']:
+            # Handle this case as required, for example:
+            print(f"No VPC information found for VPC ID: {vpc_id}")
+            return None
+
+        vpc_tags = response['Vpcs'][0].get('Tags', [])
+        vpc_name = next((tag['Value']
+                        for tag in vpc_tags if tag['Key'] == 'Name'), None)
+
+        if vpc_name is None:
+            print(f"No 'Name' tag found for VPC ID: {vpc_id}")
+
+        return vpc_name
 
 
     def aws_lambda(self):
         self.hcl.prepare_folder(os.path.join("generated"))
 
-
         self.aws_lambda_function()
 
         self.hcl.refresh_state()
         self.hcl.request_tf_code()
-        # self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id)
+
         
     def aws_lambda_function(self, selected_function_name=None, ftstack=None):
         resource_type = "aws_lambda_function"
@@ -77,8 +119,8 @@ class AwsLambda:
     def process_single_lambda_function(self, function_name, ftstack=None):
         resource_type = "aws_lambda_function"
 
-        # if function_name != 'st-image-classfication-dev':
-        #     return
+        if function_name != 'ApiGatewayCustomAuth':
+            return
         
         print(f"  Processing Lambda Function: {function_name}")
 
@@ -137,10 +179,28 @@ class AwsLambda:
         }
 
         self.hcl.process_resource(resource_type, function_arn, attributes)
-        self.hcl.add_stack(resource_type, function_arn, ftstack)
+        current_folder=os.getcwd()
+        files= {"base_dir": current_folder,"filename":filename }
+        self.hcl.add_stack(resource_type, function_arn, ftstack, files)
 
         role_name = function_details["Configuration"]["Role"].split('/')[-1]
         self.iam_role_instance.aws_iam_role(role_name, ftstack)
+
+        vpc_config = function_details["Configuration"].get('VpcConfig', {})
+        if vpc_config:
+            vpc_id = vpc_config.get('VpcId', '')
+            subnet_ids = vpc_config.get('SubnetIds', [])
+            security_group_ids = vpc_config.get('SecurityGroupIds', [])
+
+            vpc_name = self.get_vpc_name(vpc_id)
+            if vpc_name:
+                self.hcl.add_additional_data(resource_type, function_arn, "vpc_name", vpc_name)
+            subnet_names = self.get_subnet_names(subnet_ids)
+            if subnet_names:
+                self.hcl.add_additional_data(resource_type, function_arn, "subnet_names", subnet_names)
+
+            for security_group_id in security_group_ids:
+                self.security_group_instance.aws_security_group(security_group_id, ftstack)
 
         # log_group_name = f"/aws/lambda/{function_name}"
         # self.logs_instance.aws_cloudwatch_log_group(log_group_name, ftstack)
