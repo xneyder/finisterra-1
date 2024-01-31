@@ -70,7 +70,7 @@ class ElasticacheRedis:
 
         return vpc_name
         
-    def ec_redis_get_vpc_name_by_subnet(self, subnet_ids):
+    def get_vpc_name_by_subnet(self, subnet_ids):
         vpc_id = ""
         vpc_name = ""
         if subnet_ids:
@@ -140,8 +140,7 @@ class ElasticacheRedis:
                         CacheClusterId=cache_cluster_id)["CacheClusters"][0]
 
                     # if "CacheSubnetGroupName" in cache_cluster and not cache_cluster["CacheSubnetGroupName"].startswith("default") and cache_cluster["CacheSubnetGroupName"] not in self.processed_subnet_groups:
-                    self.aws_elasticache_subnet_group(id, 
-                        cache_cluster["CacheSubnetGroupName"], ftstack)
+                    self.aws_elasticache_subnet_group(cache_cluster["CacheSubnetGroupName"], ftstack)
                         # self.processed_subnet_groups.add(
                         #     cache_cluster["CacheSubnetGroupName"])
 
@@ -191,7 +190,7 @@ class ElasticacheRedis:
             self.hcl.process_resource(resource_type, id, attributes)
             self.hcl.add_stack(resource_type, id, ftstack)
 
-    def aws_elasticache_subnet_group(self, replication_group, group_name, ftstack):
+    def aws_elasticache_subnet_group(self, group_name, ftstack):
         resource_type = "aws_elasticache_subnet_group"
         if ftstack and self.hcl.id_resource_processed(resource_type, group_name, ftstack):
             print(f"  Skipping Subnet Group: {group_name} - already processed")
@@ -220,7 +219,7 @@ class ElasticacheRedis:
             if subnet_names:
                 self.hcl.add_additional_data(resource_type, id, "subnet_names",  subnet_names)
 
-            vpc_id, vpc_name = self.ec_redis_get_vpc_name_by_subnet(subnet_ids)
+            vpc_id, vpc_name = self.get_vpc_name_by_subnet(subnet_ids)
             if vpc_id:
                 self.hcl.add_additional_data(resource_type, id, "vpc_id",  vpc_id)
                 self.hcl.add_additional_data("aws_elasticache_replication_group", group_name, "vpc_id",  vpc_id)
