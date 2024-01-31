@@ -104,15 +104,15 @@ class CodeArtifact:
 
         kms_key_id = domain_info["domain"].get("encryptionKey")
         if kms_key_id:
-            alias = self.code_artifact_get_kms_alias(kms_key_id)
-            if alias:
-                if 'codeartifact' not in self.hcl.additional_data:
-                    self.hcl.additional_data["codeartifact"] = {}
-                if id not in self.hcl.additional_data["codeartifact"]:
-                    self.hcl.additional_data["codeartifact"] = {}
-                self.hcl.additional_data["codeartifact"][id] = {"kms_key_alias": alias}
-            kms_key_id = kms_key_id.split('/')[-1]
-            self.kms_instance.aws_kms_key(kms_key_id, ftstack)
+            type=self.kms_instance.aws_kms_key(kms_key_id, ftstack)
+            if type == "MANAGED":
+                alias = self.code_artifact_get_kms_alias(kms_key_id)
+                if alias:
+                    if 'codeartifact' not in self.hcl.additional_data:
+                        self.hcl.additional_data["codeartifact"] = {}
+                    if id not in self.hcl.additional_data["codeartifact"]:
+                        self.hcl.additional_data["codeartifact"] = {}
+                    self.hcl.additional_data["codeartifact"][id] = {"kms_key_alias": alias}
 
         # Process repositories in the specified domain
         repositories = self.aws_clients.codeartifact_client.list_repositories_in_domain(domain=domain_name)

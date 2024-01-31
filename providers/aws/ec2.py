@@ -356,14 +356,15 @@ class EC2:
                         if volume['Attachments'][0]['Device'] == instance["RootDeviceName"]:
                             if 'KmsKeyId' in volume:
                                 keyArn = volume['KmsKeyId']
-                                self.kms_instance.aws_kms_key(keyArn, ftstack)
-                                kms_key_alias = self.get_kms_alias(keyArn)
-                                if kms_key_alias:
-                                    if resource_type not in self.hcl.additional_data:
-                                        self.hcl.additional_data[resource_type] = {}
-                                    if id not in self.hcl.additional_data[resource_type]:
-                                        self.hcl.additional_data[resource_type][id] = {}
-                                    self.hcl.additional_data[resource_type][id]["kms_key_alias"] = kms_key_alias
+                                type=self.kms_instance.aws_kms_key(keyArn, ftstack)
+                                if type == "MANAGED":                                
+                                    kms_key_alias = self.get_kms_alias(keyArn)
+                                    if kms_key_alias:
+                                        if resource_type not in self.hcl.additional_data:
+                                            self.hcl.additional_data[resource_type] = {}
+                                        if id not in self.hcl.additional_data[resource_type]:
+                                            self.hcl.additional_data[resource_type][id] = {}
+                                        self.hcl.additional_data[resource_type][id]["kms_key_alias"] = kms_key_alias
 
                 if "IamInstanceProfile" in instance:
                     attributes["iam_instance_profile"] = instance["IamInstanceProfile"]["Arn"]
@@ -415,14 +416,15 @@ class EC2:
                     for volume in response['Volumes']:
                         if 'KmsKeyId' in volume:
                             keyArn = volume['KmsKeyId']
-                            self.kms_instance.aws_kms_key(keyArn, ftstack)
-                            kms_key_alias = self.get_kms_alias(keyArn)
-                            if kms_key_alias:
-                                if "aws_ebs_volume" not in self.hcl.additional_data:
-                                    self.hcl.additional_data["aws_ebs_volume"] = {}
-                                if volume_id not in self.hcl.additional_data["aws_ebs_volume"]:
-                                    self.hcl.additional_data["aws_ebs_volume"][volume_id] = {}
-                                self.hcl.additional_data["aws_ebs_volume"][volume_id]["kms_key_alias"] = kms_key_alias
+                            type=self.kms_instance.aws_kms_key(keyArn, ftstack)
+                            if type == "MANAGED":
+                                kms_key_alias = self.get_kms_alias(keyArn)
+                                if kms_key_alias:
+                                    if "aws_ebs_volume" not in self.hcl.additional_data:
+                                        self.hcl.additional_data["aws_ebs_volume"] = {}
+                                    if volume_id not in self.hcl.additional_data["aws_ebs_volume"]:
+                                        self.hcl.additional_data["aws_ebs_volume"][volume_id] = {}
+                                    self.hcl.additional_data["aws_ebs_volume"][volume_id]["kms_key_alias"] = kms_key_alias
 
                 #find the securitu groups and call self.security_group_instance.aws_security_group(sg, ftstack)
                 # print(instance.get("SecurityGroups", []))

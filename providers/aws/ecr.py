@@ -99,14 +99,15 @@ class ECR:
             if emcryption_configuration:
                 kmsKey = emcryption_configuration.get("kmsKey", None)
                 if kmsKey:
-                    self.kms_instance.aws_kms_key(kmsKey, ftstack)
-                    kms_key_alias = self.get_kms_alias(kmsKey)
-                    if kms_key_alias:
-                        if resource_type not in self.hcl.additional_data:
-                            self.hcl.additional_data[resource_type] = {}
-                        if id not in self.hcl.additional_data[resource_type]:
-                            self.hcl.additional_data[resource_type][id] = {}
-                        self.hcl.additional_data[resource_type][id]["kms_key_alias"] = kms_key_alias
+                    type=self.kms_instance.aws_kms_key(kmsKey, ftstack)
+                    if type == "MANAGED":
+                        kms_key_alias = self.get_kms_alias(kmsKey)
+                        if kms_key_alias:
+                            if resource_type not in self.hcl.additional_data:
+                                self.hcl.additional_data[resource_type] = {}
+                            if id not in self.hcl.additional_data[resource_type]:
+                                self.hcl.additional_data[resource_type][id] = {}
+                            self.hcl.additional_data[resource_type][id]["kms_key_alias"] = kms_key_alias
 
             self.hcl.add_stack(resource_type, id, ftstack)
 

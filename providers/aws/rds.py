@@ -3,6 +3,7 @@ from utils.hcl import HCL
 from providers.aws.iam_role import IAM_ROLE
 from providers.aws.logs import Logs
 from providers.aws.security_group import SECURITY_GROUP
+from providers.aws.kms import KMS
 
 class RDS:
     def __init__(self, aws_clients, script_dir, provider_name, schema_data, region, s3Bucket,
@@ -33,6 +34,26 @@ class RDS:
         self.iam_role_instance = IAM_ROLE(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
         self.logs_instance = Logs(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
         self.security_group_instance = SECURITY_GROUP(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
+        self.kms_instance = KMS(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
+
+    def get_kms_alias(self, kms_key_id):
+        try:
+            value = ""
+            response = self.aws_clients.kms_client.list_aliases()
+            aliases = response.get('Aliases', [])
+            while 'NextMarker' in response:
+                response = self.aws_clients.kms_client.list_aliases(Marker=response['NextMarker'])
+                aliases.extend(response.get('Aliases', []))
+            for alias in aliases:
+                if 'TargetKeyId' in alias and alias['TargetKeyId'] == kms_key_id.split('/')[-1]:
+                    value = alias['AliasName']
+                    break
+            return value
+        except botocore.exceptions.ClientError as e:
+            if e.response['Error']['Code'] == 'AccessDeniedException':
+                return ""
+            else:
+                raise e
 
     def get_subnet_names(self, subnet_ids):
         subnet_names = []
@@ -182,6 +203,23 @@ class RDS:
                         security_group_ids.append("default")
                     else:
                         security_group_ids.append(sg['VpcSecurityGroupId'])
+                self.hcl.add_additional_data(resource_type, id, "vpc_security_group_ids",  security_group_ids)
+
+                kms_key_id = instance.get("KmsKeyId")
+                if kms_key_id:
+                    type=self.kms_instance.aws_kms_key(kms_key_id, ftstack)
+                    if type == "MANAGED":
+                        kms_key_alias = self.get_kms_alias(kms_key_id)
+                        if kms_key_alias:
+                            self.hcl.add_additional_data(resource_type, id, "kms_key_alias",  kms_key_alias)
+
+                performance_insights_kms_key_id = instance.get("PerformanceInsightsKMSKeyId")
+                if performance_insights_kms_key_id:
+                    type=self.kms_instance.aws_kms_key(performance_insights_kms_key_id, ftstack)
+                    if type == "MANAGED":
+                        kms_key_alias = self.get_kms_alias(performance_insights_kms_key_id)
+                        if kms_key_alias:
+                            self.hcl.add_additional_data(resource_type, id, "performance_insights_kms_key_alias",  kms_key_alias)
 
     def aws_db_option_group(self, option_group_name, ftstack):
         resource_type = "aws_db_option_group"
@@ -239,8 +277,6 @@ class RDS:
     def aws_db_subnet_group(self, db_subnet_group_name, ftstack):
         resource_type = "aws_db_subnet_group"
         print(f"Processing DB Subnet Groups {db_subnet_group_name}")
-        if db_subnet_group_name.startswith("default"):
-            return
 
         paginator = self.aws_clients.rds_client.get_paginator("describe_db_subnet_groups")
         for page in paginator.paginate():
@@ -248,30 +284,32 @@ class RDS:
                 # Skip the subnet group if it's not the given one
                 if db_subnet_group["DBSubnetGroupName"] != db_subnet_group_name:
                     continue
-
-                print(f"  Processing DB Subnet Group: {db_subnet_group_name}")
+                
+                # Fetch the subnet names even for the default one
                 id = db_subnet_group_name
+                subnet_ids = [subnet["SubnetIdentifier"] for subnet in db_subnet_group["Subnets"]]
+                subnet_names = self.get_subnet_names(subnet_ids)
+                if subnet_names:
+                    self.hcl.add_additional_data(resource_type, id, "subnet_names",  subnet_names)
+
+                vpc_id, vpc_name = self.get_vpc_name_by_subnet(subnet_ids)
+                if vpc_id:
+                    self.hcl.add_additional_data(resource_type, id, "vpc_id",  vpc_id)
+                    self.hcl.add_additional_data("aws_db_instance", id, "vpc_id",  vpc_id)
+                if vpc_name:
+                    self.hcl.add_additional_data(resource_type, id, "vpc_name",  vpc_name)
+                    self.hcl.add_additional_data("aws_db_instance", id, "vpc_name",  vpc_name)
+
+                if db_subnet_group_name.startswith("default"):
+                    return
+                
+                print(f"  Processing DB Subnet Group: {db_subnet_group_name}")
                 attributes = {
                     "id": id,
                 }
                 self.hcl.process_resource(
                     resource_type, id, attributes)
                 self.hcl.add_stack(resource_type, id, ftstack)
-                
-
-            subnet_ids = [subnet["SubnetIdentifier"] for subnet in db_subnet_group["Subnets"]]
-            subnet_names = self.get_subnet_names(subnet_ids)
-            if subnet_names:
-                self.hcl.add_additional_data(resource_type, id, "subnet_names",  subnet_names)
-
-            vpc_id, vpc_name = self.get_vpc_name_by_subnet(subnet_ids)
-            if vpc_id:
-                self.hcl.add_additional_data(resource_type, id, "vpc_id",  vpc_id)
-                self.hcl.add_additional_data("aws_db_instance", id, "vpc_id",  vpc_id)
-            if vpc_name:
-                self.hcl.add_additional_data(resource_type, id, "vpc_name",  vpc_name)
-                self.hcl.add_additional_data("aws_db_instance", id, "vpc_name",  vpc_name)
-
 
     def aws_db_instance_automated_backups_replication(self, source_instance_arn, ftstack):
         resource_type = "aws_db_instance_automated_backups_replication"
@@ -304,71 +342,11 @@ class RDS:
                                 self.hcl.process_resource(resource_type, id, attributes)
                                 self.hcl.add_stack(resource_type, id, ftstack)
 
-    # def aws_cloudwatch_log_group(self, instance_id, log_export_name):
-    #     print(
-    #         f"Processing CloudWatch Log Group: {log_export_name} for DB Instance: {instance_id}")
+                                kms_key_id = backup.get("KmsKeyId")
+                                if kms_key_id:
+                                    type=self.kms_instance.aws_kms_key(kms_key_id, ftstack)
+                                    if type == "MANAGED":
+                                        kms_key_alias = self.get_kms_alias(kms_key_id)
+                                        if kms_key_alias:
+                                            self.hcl.add_additional_data(resource_type, id, "kms_key_alias",  kms_key_alias)
 
-    #     # assuming the log group name has prefix /aws/rds/instance/{instance_id}/{log_export_name}
-    #     log_group_name_prefix = f"/aws/rds/instance/{instance_id}/{log_export_name}"
-
-    #     response = self.aws_clients.logs_client.describe_log_groups(
-    #         logGroupNamePrefix=log_group_name_prefix)
-
-    #     while True:
-    #         for log_group in response.get('logGroups', []):
-    #             log_group_name = log_group.get('logGroupName')
-    #             if log_group_name.startswith(log_group_name_prefix):
-    #                 print(f"  Processing Log Group: {log_group_name}")
-    #                 attributes = {
-    #                     "id": log_group_name,
-    #                     "name": log_group_name,
-    #                     "retention_in_days": log_group.get('retentionInDays'),
-    #                     "arn": log_group.get('arn'),
-    #                 }
-    #                 self.hcl.process_resource(
-    #                     "aws_cloudwatch_log_group", log_group_name.replace("-", "_"), attributes)
-
-    #         if 'nextToken' in response:
-    #             response = self.aws_clients.logs_client.describe_log_groups(
-    #                 logGroupNamePrefix=log_group_name_prefix, nextToken=response['nextToken'])
-    #         else:
-    #             break
-
-    # def aws_iam_role(self, role_arn):
-    #     # the role name is the last part of the ARN
-    #     role_name = role_arn.split('/')[-1]
-
-    #     role = self.aws_clients.iam_client.get_role(RoleName=role_name)
-    #     print(f"Processing IAM Role: {role_name}")
-
-    #     attributes = {
-    #         "id": role_name,
-    #         # "name": role['Role']['RoleName'],
-    #         # "arn": role['Role']['Arn'],
-    #         # "description": role['Role']['Description'],
-    #         # "assume_role_policy": role['Role']['AssumeRolePolicyDocument'],
-    #     }
-    #     self.hcl.process_resource(
-    #         "aws_iam_role", role_name.replace("-", "_"), attributes)
-
-    #     # After processing the role, process the policies attached to it
-    #     self.aws_iam_role_policy_attachment(role_name)
-
-    # def aws_iam_role_policy_attachment(self, role_name):
-    #     attached_policies = self.aws_clients.iam_client.list_attached_role_policies(
-    #         RoleName=role_name)
-
-    #     for policy in attached_policies['AttachedPolicies']:
-    #         policy_name = policy['PolicyName']
-    #         print(
-    #             f"Processing IAM Role Policy Attachment: {policy_name} for Role: {role_name}")
-
-    #         resource_name = f"{role_name}/{policy_name}"
-
-    #         attributes = {
-    #             "id": f"{role_name}/{policy['PolicyArn']}",
-    #             "role": role_name,
-    #             "policy_arn": policy['PolicyArn']
-    #         }
-    #         self.hcl.process_resource(
-    #             "aws_iam_role_policy_attachment", resource_name.replace("-", "_"), attributes)

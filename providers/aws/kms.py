@@ -60,6 +60,8 @@ class KMS:
                 key_metadata = self.aws_clients.kms_client.describe_key(KeyId=key_arn)["KeyMetadata"]
                 if key_metadata["KeyManager"] == "CUSTOMER":
                     self.process_key(key_metadata, ftstack)
+                else:
+                    return "MANAGED"
             except botocore.exceptions.ClientError as e:
                 print(f"  Error processing KMS Key: {e}")
         else:
@@ -74,6 +76,8 @@ class KMS:
                         key_metadata = self.aws_clients.kms_client.describe_key(KeyId=key_id)["KeyMetadata"]
                         if key_metadata["KeyManager"] == "CUSTOMER":
                             self.process_key(key_metadata,ftstack)
+                        else:
+                            return "MANAGED"
                     except botocore.exceptions.ClientError as e:
                         print(f"  Error processing KMS Key: {e}")
 
