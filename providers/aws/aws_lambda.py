@@ -119,8 +119,8 @@ class AwsLambda:
     def process_single_lambda_function(self, function_name, ftstack=None):
         resource_type = "aws_lambda_function"
 
-        if function_name != 'ApiGatewayCustomAuth':
-            return
+        # if function_name != 'ApiGatewayCustomAuth':
+        #     return
         
         print(f"  Processing Lambda Function: {function_name}")
 
@@ -199,8 +199,15 @@ class AwsLambda:
             if subnet_names:
                 self.hcl.add_additional_data(resource_type, function_arn, "subnet_names", subnet_names)
 
+            final_security_group_ids=[]
             for security_group_id in security_group_ids:
-                self.security_group_instance.aws_security_group(security_group_id, ftstack)
+                sg_name=self.security_group_instance.aws_security_group(security_group_id, ftstack)
+                if sg_name == "default":
+                    final_security_group_ids.append("default")
+                else:
+                    final_security_group_ids.append(security_group_id)
+                self.hcl.add_additional_data(resource_type, function_arn, "security_group_ids",  final_security_group_ids)
+                                
 
         # log_group_name = f"/aws/lambda/{function_name}"
         # self.logs_instance.aws_cloudwatch_log_group(log_group_name, ftstack)
