@@ -322,7 +322,6 @@ class HCL:
 
 
             #Save additional files
-            print(self.ftstacks_files)
             for ftstack, zip_files in self.ftstacks_files.items():
                 for zip_file in zip_files:
                     print("zip_file", zip_file)

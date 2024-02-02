@@ -145,8 +145,6 @@ class Wafv2:
                 # Find IP sets for the ACL
                 ip_sets = self.aws_clients.wafv2_client.list_ip_sets(Scope=scope)["IPSets"]
                 for ip_set in ip_sets:
-                    print(ip_set)
-
                     ip_set_name = ip_set["Name"]
                     self.aws_wafv2_ip_set(web_acl_id, ip_set_name, scope)
 

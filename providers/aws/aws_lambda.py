@@ -191,13 +191,13 @@ class AwsLambda:
             vpc_id = vpc_config.get('VpcId', '')
             subnet_ids = vpc_config.get('SubnetIds', [])
             security_group_ids = vpc_config.get('SecurityGroupIds', [])
-
-            vpc_name = self.get_vpc_name(vpc_id)
-            if vpc_name:
-                self.hcl.add_additional_data(resource_type, function_arn, "vpc_name", vpc_name)
-            subnet_names = self.get_subnet_names(subnet_ids)
-            if subnet_names:
-                self.hcl.add_additional_data(resource_type, function_arn, "subnet_names", subnet_names)
+            if vpc_id:
+                vpc_name = self.get_vpc_name(vpc_id)
+                if vpc_name:
+                    self.hcl.add_additional_data(resource_type, function_arn, "vpc_name", vpc_name)
+                subnet_names = self.get_subnet_names(subnet_ids)
+                if subnet_names:
+                    self.hcl.add_additional_data(resource_type, function_arn, "subnet_names", subnet_names)
 
             final_security_group_ids=[]
             for security_group_id in security_group_ids:
