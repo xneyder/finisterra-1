@@ -4,6 +4,7 @@ from providers.aws.iam_role import IAM_ROLE
 from providers.aws.logs import Logs
 from providers.aws.security_group import SECURITY_GROUP
 from providers.aws.kms import KMS
+import botocore
 
 class RDS:
     def __init__(self, aws_clients, script_dir, provider_name, schema_data, region, s3Bucket,
@@ -114,7 +115,6 @@ class RDS:
                 vpc_name = self.get_vpc_name(vpc_id)
 
         return vpc_id, vpc_name
-
 
     def rds(self):
         self.hcl.prepare_folder(os.path.join("generated"))

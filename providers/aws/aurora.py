@@ -2,6 +2,9 @@ import os
 from utils.hcl import HCL
 from providers.aws.iam_role import IAM_ROLE
 from providers.aws.logs import Logs
+from providers.aws.security_group import SECURITY_GROUP
+from providers.aws.kms import KMS
+import botocore
 
 class Aurora:
     def __init__(self, aws_clients, script_dir, provider_name, schema_data, region, s3Bucket,
@@ -33,8 +36,89 @@ class Aurora:
 
         self.iam_role_instance = IAM_ROLE(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
         self.logs_instance = Logs(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
+        self.security_group_instance = SECURITY_GROUP(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
+        self.kms_instance = KMS(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
 
         self.aws_rds_cluster_attrs = {}
+
+    def get_kms_alias(self, kms_key_id):
+        try:
+            value = ""
+            response = self.aws_clients.kms_client.list_aliases()
+            aliases = response.get('Aliases', [])
+            while 'NextMarker' in response:
+                response = self.aws_clients.kms_client.list_aliases(Marker=response['NextMarker'])
+                aliases.extend(response.get('Aliases', []))
+            for alias in aliases:
+                if 'TargetKeyId' in alias and alias['TargetKeyId'] == kms_key_id.split('/')[-1]:
+                    value = alias['AliasName']
+                    break
+            return value
+        except botocore.exceptions.ClientError as e:
+            if e.response['Error']['Code'] == 'AccessDeniedException':
+                return ""
+            else:
+                raise e
+            
+    def get_subnet_names(self, subnet_ids):
+        subnet_names = []
+        for subnet_id in subnet_ids:
+            response = self.aws_clients.ec2_client.describe_subnets(SubnetIds=[subnet_id])
+
+            # Check if 'Subnets' key exists and it's not empty
+            if not response or 'Subnets' not in response or not response['Subnets']:
+                print(
+                    f"No subnet information found for Subnet ID: {subnet_id}")
+                continue
+
+            # Extract the 'Tags' key safely using get
+            subnet_tags = response['Subnets'][0].get('Tags', [])
+
+            # Extract the subnet name from the tags
+            subnet_name = next(
+                (tag['Value'] for tag in subnet_tags if tag['Key'] == 'Name'), None)
+
+            if subnet_name:
+                subnet_names.append(subnet_name)
+            else:
+                print(f"No 'Name' tag found for Subnet ID: {subnet_id}")
+
+        return subnet_names
+
+    def get_vpc_name(self, vpc_id):
+        response = self.aws_clients.ec2_client.describe_vpcs(VpcIds=[vpc_id])
+
+        if not response or 'Vpcs' not in response or not response['Vpcs']:
+            # Handle this case as required, for example:
+            print(f"No VPC information found for VPC ID: {vpc_id}")
+            return None
+
+        vpc_tags = response['Vpcs'][0].get('Tags', [])
+        vpc_name = next((tag['Value']
+                        for tag in vpc_tags if tag['Key'] == 'Name'), None)
+
+        if vpc_name is None:
+            print(f"No 'Name' tag found for VPC ID: {vpc_id}")
+
+        return vpc_name
+        
+    def get_vpc_name_by_subnet(self, subnet_ids):
+        vpc_id = ""
+        vpc_name = ""
+        if subnet_ids:
+            subnet_id = subnet_ids[0]
+            #get the vpc id for the subnet_id
+            response = self.aws_clients.ec2_client.describe_subnets(SubnetIds=[subnet_id])
+            if not response or 'Subnets' not in response or not response['Subnets']:
+                # Handle this case as required, for example:
+                print(f"No subnet information found for Subnet ID: {subnet_id}")
+                return None
+            vpc_id = response['Subnets'][0].get('VpcId', None)
+
+            if vpc_id:
+                vpc_name = self.get_vpc_name(vpc_id)
+
+        return vpc_id, vpc_name
 
 
     def aurora(self):
@@ -226,7 +310,8 @@ class Aurora:
                 self.hcl.process_resource(
                     "aws_db_option_group", option_group_name.replace("-", "_"), attributes)
 
-    def aws_db_parameter_group(self, parameter_group_name):
+    def aws_db_parameter_group(self, parameter_group_name, ftstack):
+        resource_type = "aws_db_parameter_group"
         print(f"Processing DB Parameter Group {parameter_group_name}")
         if parameter_group_name.startswith("default"):
             return
@@ -241,14 +326,16 @@ class Aurora:
 
                 print(
                     f"  Processing DB Parameter Group: {parameter_group_name}")
+                id = parameter_group_name
                 attributes = {
-                    "id": parameter_group_name,
+                    "id": id,
                     "name": parameter_group_name,
                     "family": parameter_group["DBParameterGroupFamily"],
                     "description": parameter_group["Description"],
                 }
                 self.hcl.process_resource(
-                    "aws_db_parameter_group", parameter_group_name.replace("-", "_"), attributes)
+                    resource_type, id, attributes)
+                self.hcl.add_stack(resource_type, id, ftstack)
 
     def aws_db_proxy(self):
         print("Processing DB Proxies...")
@@ -395,10 +482,9 @@ class Aurora:
                     self.hcl.process_resource(
                         "aws_db_snapshot_copy", db_snapshot_id.replace("-", "_"), attributes)
 
-    def aws_db_subnet_group(self, db_subnet_group_name):
+    def aws_db_subnet_group(self, db_subnet_group_name, ftstack):
+        resource_type = "aws_db_subnet_group"
         print(f"Processing DB Subnet Groups {db_subnet_group_name}")
-        if db_subnet_group_name.startswith("default"):
-            return
 
         paginator = self.aws_clients.rds_client.get_paginator("describe_db_subnet_groups")
         for page in paginator.paginate():
@@ -407,12 +493,31 @@ class Aurora:
                 if db_subnet_group["DBSubnetGroupName"] != db_subnet_group_name:
                     continue
 
+                # Fetch the subnet names even for the default one
+                id = db_subnet_group_name
+                subnet_ids = [subnet["SubnetIdentifier"] for subnet in db_subnet_group["Subnets"]]
+                subnet_names = self.get_subnet_names(subnet_ids)
+                if subnet_names:
+                    self.hcl.add_additional_data(resource_type, id, "subnet_names",  subnet_names)
+
+                vpc_id, vpc_name = self.get_vpc_name_by_subnet(subnet_ids)
+                if vpc_id:
+                    self.hcl.add_additional_data(resource_type, id, "vpc_id",  vpc_id)
+                    self.hcl.add_additional_data("aws_db_instance", id, "vpc_id",  vpc_id)
+                if vpc_name:
+                    self.hcl.add_additional_data(resource_type, id, "vpc_name",  vpc_name)
+                    self.hcl.add_additional_data("aws_db_instance", id, "vpc_name",  vpc_name)
+
+                if db_subnet_group_name.startswith("default"):
+                    return
+                
                 print(f"  Processing DB Subnet Group: {db_subnet_group_name}")
                 attributes = {
-                    "id": db_subnet_group_name,
+                    "id": id,
                 }
                 self.hcl.process_resource(
-                    "aws_db_subnet_group", db_subnet_group_name.replace("-", "_"), attributes)
+                    resource_type, id, attributes)
+                self.hcl.add_stack(resource_type, id, ftstack)
 
     def aws_rds_cluster(self):
         resource_type = "aws_rds_cluster"
@@ -454,10 +559,29 @@ class Aurora:
                 
                 self.hcl.add_stack(resource_type, cluster_arn, ftstack)
 
+                vpc_security_groups = rds_cluster.get("VpcSecurityGroups", [])
+                security_group_ids = []
+                for sg in vpc_security_groups:
+                    sg_name=self.security_group_instance.aws_security_group(sg['VpcSecurityGroupId'], ftstack)
+                    if sg_name == "default":
+                        security_group_ids.append("default")
+                    else:
+                        security_group_ids.append(sg['VpcSecurityGroupId'])
+                self.hcl.add_additional_data(resource_type, cluster_arn, "vpc_security_group_ids",  security_group_ids)
+
+                kms_key_id = rds_cluster.get("KmsKeyId")
+                if kms_key_id:
+                    type=self.kms_instance.aws_kms_key(kms_key_id, ftstack)
+                    if type == "MANAGED":
+                        kms_key_alias = self.get_kms_alias(kms_key_id)
+                        if kms_key_alias:
+                            self.hcl.add_additional_data(resource_type, cluster_arn, "kms_key_alias",  kms_key_alias)                        
+
+
                 parameter_group_name = rds_cluster.get(
-                    "DBClusterParameterGroupName", "")
+                    "DBClusterParameterGroup", "")
                 self.aws_rds_cluster_instance(rds_cluster_id, ftstack, rds_cluster)
-                self.aws_rds_cluster_parameter_group(parameter_group_name)
+                self.aws_rds_cluster_parameter_group(parameter_group_name, ftstack)
                 self.aws_rds_cluster_endpoint(rds_cluster_id)
                 self.aws_rds_cluster_role_association(rds_cluster_id)
                 # Call AppAutoScaling related functions
@@ -524,31 +648,40 @@ class Aurora:
                     print(f"  Processing RDS Cluster Instance: {instance_id}")
                     attributes = {
                         "id": rds_instance["DBInstanceArn"],
-                        # "instance_identifier": instance_id,
-                        # "cluster_identifier": rds_instance["DBClusterIdentifier"],
-                        # "instance_class": rds_instance["DBInstanceClass"],
-                        # "engine": rds_instance["Engine"],
                     }
                     self.hcl.process_resource(
                         "aws_rds_cluster_instance", instance_id.replace("-", "_"), attributes)
 
                     # Extract the DBSubnetGroupName and call the aws_db_subnet_group function
-                    db_subnet_group_name = rds_instance.get(
-                        "DBSubnetGroupName", "")
-                    if db_subnet_group_name:
-                        self.aws_db_subnet_group(db_subnet_group_name)
+                    db_subnet_group = rds_instance.get(
+                        "DBSubnetGroup", "")
+                    if db_subnet_group:
+                        db_subnet_group_name = db_subnet_group.get(
+                            "DBSubnetGroupName", "")
+                        self.aws_db_subnet_group(db_subnet_group_name, ftstack)
 
                     # Extract the DBParameterGroupName and call the aws_db_parameter_group function
-                    db_parameter_group_name = rds_instance.get(
-                        "DBParameterGroupName", "")
-                    if db_parameter_group_name:
-                        self.aws_db_parameter_group(db_parameter_group_name)
+                    
+                    db_parameter_groups = rds_instance.get(
+                        "DBParameterGroups", [])
+                    for db_parameter_group in db_parameter_groups:
+                        db_parameter_group_name = db_parameter_group.get(
+                            "DBParameterGroupName", "")
+                        self.aws_db_parameter_group(db_parameter_group_name, ftstack)
 
                     monitoring_role_arn = rds_instance.get("MonitoringRoleArn")
                     if monitoring_role_arn:
                         role_name = monitoring_role_arn.split('/')[-1]
                         self.iam_role_instance.aws_iam_role(role_name, ftstack)
                         # self.aws_iam_role(monitoring_role_arn)
+
+                    performance_insights_kms_key_id = rds_instance.get("PerformanceInsightsKMSKeyId")
+                    if performance_insights_kms_key_id:
+                        type=self.kms_instance.aws_kms_key(performance_insights_kms_key_id, ftstack)
+                        if type == "MANAGED":
+                            kms_key_alias = self.get_kms_alias(performance_insights_kms_key_id)
+                            if kms_key_alias:
+                                self.hcl.add_additional_data("aws_rds_cluster_instance", instance_id, "performance_insights_kms_key_alias",  kms_key_alias)
 
                     # call aws_cloudwatch_log_group function with instance_id and each log export name as parameters
                     for log_export_name in rds_instance.get("EnabledCloudwatchLogsExports", []):
@@ -564,7 +697,9 @@ class Aurora:
                     if tags:
                         self.hcl.add_additional_data("aws_rds_cluster_instance", instance_id, "tags", tags)
 
-    def aws_rds_cluster_parameter_group(self, parameter_group_name):
+    def aws_rds_cluster_parameter_group(self, parameter_group_name, ftstack):
+        
+        resource_type = "aws_rds_cluster_parameter_group"
         print("Processing RDS Cluster Parameter Groups...")
 
         paginator = self.aws_clients.rds_client.get_paginator(
@@ -576,14 +711,16 @@ class Aurora:
                 parameter_group_id = rds_cluster_parameter_group["DBClusterParameterGroupName"]
                 print(
                     f"  Processing RDS Cluster Parameter Group: {parameter_group_id}")
+                id = parameter_group_id
                 attributes = {
-                    "id": parameter_group_id,
+                    "id": id,
                     # "name": parameter_group_id,
                     # "family": rds_cluster_parameter_group["DBParameterGroupFamily"],
                     # "description": rds_cluster_parameter_group["Description"],
                 }
                 self.hcl.process_resource(
-                    "aws_rds_cluster_parameter_group", parameter_group_id.replace("-", "_"), attributes)
+                    resource_type, parameter_group_id.replace("-", "_"), attributes)
+                self.hcl.add_stack(resource_type, id, ftstack)
 
     def aws_rds_cluster_role_association(self, cluster_id):
         print("Processing RDS Cluster Role Associations...")
@@ -732,44 +869,44 @@ class Aurora:
         self.hcl.process_resource(
             "aws_security_group_rule", rule_id.replace("-", "_"), attributes)
 
-    def aws_iam_role(self, role_arn):
-        # the role name is the last part of the ARN
-        role_name = role_arn.split('/')[-1]
+    # def aws_iam_role(self, role_arn):
+    #     # the role name is the last part of the ARN
+    #     role_name = role_arn.split('/')[-1]
 
-        role = self.aws_clients.iam_client.get_role(RoleName=role_name)
-        print(f"Processing IAM Role: {role_name}")
+    #     role = self.aws_clients.iam_client.get_role(RoleName=role_name)
+    #     print(f"Processing IAM Role: {role_name}")
 
-        attributes = {
-            "id": role_name,
-            # "name": role['Role']['RoleName'],
-            # "arn": role['Role']['Arn'],
-            # "description": role['Role']['Description'],
-            # "assume_role_policy": role['Role']['AssumeRolePolicyDocument'],
-        }
-        self.hcl.process_resource(
-            "aws_iam_role", role_name.replace("-", "_"), attributes)
+    #     attributes = {
+    #         "id": role_name,
+    #         # "name": role['Role']['RoleName'],
+    #         # "arn": role['Role']['Arn'],
+    #         # "description": role['Role']['Description'],
+    #         # "assume_role_policy": role['Role']['AssumeRolePolicyDocument'],
+    #     }
+    #     self.hcl.process_resource(
+    #         "aws_iam_role", role_name.replace("-", "_"), attributes)
 
-        # After processing the role, process the policies attached to it
-        self.aws_iam_role_policy_attachment(role_name)
+    #     # After processing the role, process the policies attached to it
+    #     self.aws_iam_role_policy_attachment(role_name)
 
-    def aws_iam_role_policy_attachment(self, role_name):
-        attached_policies = self.aws_clients.iam_client.list_attached_role_policies(
-            RoleName=role_name)
+    # def aws_iam_role_policy_attachment(self, role_name):
+    #     attached_policies = self.aws_clients.iam_client.list_attached_role_policies(
+    #         RoleName=role_name)
 
-        for policy in attached_policies['AttachedPolicies']:
-            policy_name = policy['PolicyName']
-            print(
-                f"Processing IAM Role Policy Attachment: {policy_name} for Role: {role_name}")
+    #     for policy in attached_policies['AttachedPolicies']:
+    #         policy_name = policy['PolicyName']
+    #         print(
+    #             f"Processing IAM Role Policy Attachment: {policy_name} for Role: {role_name}")
 
-            resource_name = f"{role_name}/{policy_name}"
+    #         resource_name = f"{role_name}/{policy_name}"
 
-            attributes = {
-                "id": f"{role_name}/{policy['PolicyArn']}",
-                "role": role_name,
-                "policy_arn": policy['PolicyArn']
-            }
-            self.hcl.process_resource(
-                "aws_iam_role_policy_attachment", resource_name.replace("-", "_"), attributes)
+    #         attributes = {
+    #             "id": f"{role_name}/{policy['PolicyArn']}",
+    #             "role": role_name,
+    #             "policy_arn": policy['PolicyArn']
+    #         }
+    #         self.hcl.process_resource(
+    #             "aws_iam_role_policy_attachment", resource_name.replace("-", "_"), attributes)
 
     # def aws_cloudwatch_log_group(self, instance_id, log_export_name):
     #     print(

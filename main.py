@@ -15,7 +15,11 @@ def main(group_code):
     aws_secret_access_key = os.getenv('AWS_SECRET_ACCESS_KEY')
     aws_session_token = os.getenv('AWS_SESSION_TOKEN')
     aws_profile = os.getenv('AWS_PROFILE')
-    aws_region = os.getenv('AWS_REGION', 'us-east-1')
+    # Check if AWS_REGION is defined
+    aws_region = os.getenv('AWS_REGION')
+    if not aws_region:
+        print("AWS_REGION environment variable is not defined.")
+        exit()
 
     # Check if AWS_PROFILE is defined
     if aws_profile:
