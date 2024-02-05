@@ -3,6 +3,7 @@ from utils.hcl import HCL
 from providers.aws.vpc_endpoint import VPCEndPoint
 from providers.aws.elbv2 import ELBV2
 from providers.aws.logs import Logs
+from providers.aws.acm import ACM
 
 class Apigateway:
     def __init__(self, aws_clients, script_dir, provider_name, schema_data, region, s3Bucket,
@@ -31,6 +32,7 @@ class Apigateway:
         self.vpc_endpoint_instance = VPCEndPoint(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
         self.elbv2_instance = ELBV2(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
         self.logs_instance = Logs(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
+        self.acm_instance = ACM(self.aws_clients, script_dir, provider_name, schema_data, region, s3Bucket, dynamoDBTable, state_key, workspace_id, modules, aws_account_id, self.hcl)
 
 
     def apigateway(self):
@@ -40,8 +42,6 @@ class Apigateway:
 
         self.hcl.refresh_state()
         self.hcl.request_tf_code()
-
-        # self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id)
 
 
     def aws_api_gateway_account(self):
@@ -76,12 +76,8 @@ class Apigateway:
 
         for rest_api in rest_apis:
 
-            if rest_api["id"] != "9bqq19vjb5":
-                continue
-
-            # xi7d2kjr61
-
-            
+            # if rest_api["id"] != "9bqq19vjb5":
+            #     continue
 
             print(f"  Processing API Gateway REST API: {rest_api['name']}")
             api_id = rest_api["id"]
@@ -122,6 +118,7 @@ class Apigateway:
             self.aws_api_gateway_stage(rest_api["id"], ftstack)
             self.aws_api_gateway_gateway_response(rest_api["id"])
             self.aws_api_gateway_model(rest_api["id"])
+            self.aws_api_gateway_base_path_mapping(rest_api["id"], ftstack)
 
     def aws_api_gateway_deployment(self, rest_api_id, deployment_id, ftstack):
         print(f"Processing API Gateway Deployment: {deployment_id}")
@@ -164,9 +161,10 @@ class Apigateway:
             self.hcl.process_resource(
                 "aws_api_gateway_stage", resource_name, attributes)
             
-            log_group_name = stage["accessLogSettings"]["destinationArn"].split(":")[-1]
-            
-            self.logs_instance.aws_cloudwatch_log_group(log_group_name, ftstack)
+            accessLogSettings = stage.get("accessLogSettings", {})
+            if "destinationArn" in accessLogSettings:
+                log_group_name = accessLogSettings["destinationArn"].split(":")[-1]
+                self.logs_instance.aws_cloudwatch_log_group(log_group_name, ftstack)
             
             self.aws_api_gateway_deployment(rest_api_id, stage["deploymentId"], ftstack)
 
@@ -338,31 +336,35 @@ class Apigateway:
     #             self.hcl.process_resource(
     #                 "aws_api_gateway_authorizer", authorizer_id, attributes)
 
-    # def aws_api_gateway_base_path_mapping(self):
-    #     print("Processing API Gateway Base Path Mappings...")
+    def aws_api_gateway_base_path_mapping(self, api_id, ftstack):
+        print("Processing API Gateway Base Path Mappings...")
 
-    #     domain_names = self.aws_clients.apigateway_client.get_domain_names()["items"]
+        domains = self.aws_clients.apigateway_client.get_domain_names()["items"]
+        process_domain = False
+        for domain in domains:
+            base_path_mappings = self.aws_clients.apigateway_client.get_base_path_mappings(
+                domainName=domain["domainName"])["items"]
 
-    #     for domain_name in domain_names:
-    #         base_path_mappings = self.aws_clients.apigateway_client.get_base_path_mappings(
-    #             domainName=domain_name["domainName"])["items"]
+            for base_path_mapping in base_path_mappings:
+                if base_path_mapping["restApiId"] == api_id:
+                    print(
+                        f"  Processing API Gateway Base Path Mapping: {base_path_mapping['basePath']}")
 
-    #         for base_path_mapping in base_path_mappings:
-    #             print(
-    #                 f"  Processing API Gateway Base Path Mapping: {base_path_mapping['basePath']}")
+                    attributes = {
+                        "id": f"{domain['domainName']}/{base_path_mapping['basePath']}",
+                        "domain_name": domain["domainName"],
+                        "rest_api_id": base_path_mapping["restApiId"],
+                        "stage": base_path_mapping["stage"],
+                    }
 
-    #             attributes = {
-    #                 "id": f"{domain_name['domainName']}/{base_path_mapping['basePath']}",
-    #                 "domain_name": domain_name["domainName"],
-    #                 "rest_api_id": base_path_mapping["restApiId"],
-    #                 "stage": base_path_mapping["stage"],
-    #             }
+                    if "basePath" in base_path_mapping:
+                        attributes["base_path"] = base_path_mapping["basePath"]
 
-    #             if "basePath" in base_path_mapping:
-    #                 attributes["base_path"] = base_path_mapping["basePath"]
-
-    #             self.hcl.process_resource(
-    #                 "aws_api_gateway_base_path_mapping", attributes["id"], attributes)
+                    self.hcl.process_resource(
+                        "aws_api_gateway_base_path_mapping", attributes["id"], attributes)
+                    process_domain = True
+            if process_domain:
+                self.aws_api_gateway_domain_name(domain, ftstack)
 
     # def aws_api_gateway_client_certificate(self):
     #     print("Processing API Gateway Client Certificates...")
@@ -426,24 +428,38 @@ class Apigateway:
     #             self.hcl.process_resource(
     #                 "aws_api_gateway_documentation_version", documentation_version["version"], attributes)
 
-    # def aws_api_gateway_domain_name(self):
-    #     print("Processing API Gateway Domain Names...")
+    def aws_api_gateway_domain_name(self, filter_domain, ftstack):
+        resource_type = "aws_api_gateway_domain_name"
 
-    #     domain_names = self.aws_clients.apigateway_client.get_domain_names()["items"]
+        domains = self.aws_clients.apigateway_client.get_domain_names()["items"]
 
-    #     for domain_name in domain_names:
-    #         print(
-    #             f"  Processing API Gateway Domain Name: {domain_name['domainName']}")
+        for domain in domains:
+            if domain["domainName"] == filter_domain["domainName"]:
+                print(f"  Processing API Gateway Domain Name: {domain['domainName']}")
 
-    #         attributes = {
-    #             "id": domain_name["domainName"],
-    #             "domain_name": domain_name["domainName"],
-    #             "certificate_arn": domain_name.get("certificateArn", ""),
-    #             "security_policy": domain_name.get("securityPolicy", ""),
-    #         }
+                id = domain["domainName"]
+                attributes = {
+                    "id": id,
+                    "domain_name": domain["domainName"],
+                    "certificate_arn": domain.get("certificateArn", ""),
+                    "security_policy": domain.get("securityPolicy", ""),
+                }
 
-    #         self.hcl.process_resource(
-    #             "aws_api_gateway_domain_name", domain_name["domainName"], attributes)
+                self.hcl.process_resource(
+                    resource_type, id, attributes)
+                self.hcl.add_stack(resource_type, id, ftstack)
+
+                regional_certificate_arn = domain.get("regionalCertificateArn", "")
+                if regional_certificate_arn:
+                    self.acm_instance.aws_acm_certificate(regional_certificate_arn, ftstack)
+                certificate_arn = domain.get("certificateArn", "")
+                if certificate_arn:
+                    self.acm_instance.aws_acm_certificate(certificate_arn, ftstack)
+                ownership_verification_certificate_arn = domain.get("ownershipVerificationCertificateArn", "")
+                if ownership_verification_certificate_arn:
+                    self.acm_instance.aws_acm_certificate(ownership_verification_certificate_arn, ftstack)
+
+                
 
     def aws_api_gateway_gateway_response(self, rest_api_id):
         print(f"Processing API Gateway Gateway Responses for Rest API: {rest_api_id}")
