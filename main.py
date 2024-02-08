@@ -3,129 +3,124 @@ import click
 import boto3
 
 from providers.aws.Aws import Aws
-from utils.filesystem import create_root_terragrunt, create_gitignore_file
+from utils.auth import auth
 
 
 @click.command()
-@click.argument('group_code')
-def main(group_code):
-    """Fetches AWS resources using boto3."""
-    # Get AWS credentials from environment variables
-    aws_access_key_id = os.getenv('AWS_ACCESS_KEY_ID')
-    aws_secret_access_key = os.getenv('AWS_SECRET_ACCESS_KEY')
-    aws_session_token = os.getenv('AWS_SESSION_TOKEN')
-    aws_profile = os.getenv('AWS_PROFILE')
-    # Check if AWS_REGION is defined
-    aws_region = os.getenv('AWS_REGION')
-    if not aws_region:
-        print("AWS_REGION environment variable is not defined.")
-        exit()
+@click.option('--provider', '-p', default="aws", help='Provider name')
+@click.option('--module', '-m', required=True, help='Module name')
+def main(provider, module):
+    auth()
+    if provider == "aws":
+        # Get AWS credentials from environment variables
+        aws_access_key_id = os.getenv('AWS_ACCESS_KEY_ID')
+        aws_secret_access_key = os.getenv('AWS_SECRET_ACCESS_KEY')
+        aws_session_token = os.getenv('AWS_SESSION_TOKEN')
+        aws_profile = os.getenv('AWS_PROFILE')
+        # Check if AWS_REGION is defined
+        aws_region = os.getenv('AWS_REGION')
+        if not aws_region:
+            print("AWS_REGION environment variable is not defined.")
+            exit()
 
-    # Check if AWS_PROFILE is defined
-    if aws_profile:
-        # Create a session using the profile
-        session = boto3.Session(profile_name=aws_profile)
-    else:
-        # Create a session using the credentials
-        session = boto3.Session(
-            aws_access_key_id=aws_access_key_id,
-            aws_secret_access_key=aws_secret_access_key,
-            aws_session_token=aws_session_token,
-            region_name=aws_region
-        )
+        # Check if AWS_PROFILE is defined
+        if aws_profile:
+            # Create a session using the profile
+            session = boto3.Session(profile_name=aws_profile)
+        else:
+            # Create a session using the credentials
+            session = boto3.Session(
+                aws_access_key_id=aws_access_key_id,
+                aws_secret_access_key=aws_secret_access_key,
+                aws_session_token=aws_session_token,
+                region_name=aws_region
+            )
 
-    # Get the account ID
-    sts = session.client('sts')
-    aws_account_id = sts.get_caller_identity()['Account']
+        # Get the account ID
+        sts = session.client('sts')
+        aws_account_id = sts.get_caller_identity()['Account']
 
-    print("Fetching AWS resources using boto3...")
+        print("Fetching AWS resources using boto3...")
 
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    s3Bucket = f'ft-{aws_account_id}-{aws_region}-tfstate'
-    dynamoDBTable = f'ft-{aws_account_id}-{aws_region}-tfstate-lock'
-    stateKey = f'finisterra/generated/aws/{aws_account_id}/{aws_region}/{group_code}'
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        s3Bucket = f'ft-{aws_account_id}-{aws_region}-tfstate'
+        dynamoDBTable = f'ft-{aws_account_id}-{aws_region}-tfstate-lock'
+        stateKey = f'finisterra/generated/aws/{aws_account_id}/{aws_region}/{module}'
 
-    provider = Aws(script_dir, s3Bucket, dynamoDBTable, stateKey, aws_account_id, aws_region)
+        provider = Aws(script_dir, s3Bucket, dynamoDBTable, stateKey, aws_account_id, aws_region)
 
-    if group_code == 'vpc':
-        provider.vpc()
-    elif group_code == 'acm':
-        provider.acm()
-    elif group_code == 'apigateway':
-        provider.apigateway()
-    elif group_code == 'autoscaling':
-        provider.autoscaling()
-    elif group_code == 'cloudmap':
-        provider.cloudmap()
-    elif group_code == 'cloudfront':
-        provider.cloudfront()
-    elif group_code == 'logs':
-        provider.logs()
-    elif group_code == 'docdb':
-        provider.docdb()
-    elif group_code == 'dynamodb':
-        provider.dynamodb()
-    elif group_code == 'ec2':
-        provider.ec2()
-    elif group_code == 'ecr':
-        provider.ecr()
-    elif group_code == 'ecs':
-        provider.ecs()
-    elif group_code == 'eks':
-        provider.eks()
-    elif group_code == 'elbv2':
-        provider.elbv2()
-    elif group_code == 'elasticache_redis':
-        provider.elasticache_redis()
-    elif group_code == 'elasticbeanstalk':
-        provider.elasticbeanstalk()
-    elif group_code == 'iam':
-        aws_region = "global"
-        provider.iam_role()
-    elif group_code == 'kms':
-        provider.kms()
-    elif group_code == 'aws_lambda':
-        provider.aws_lambda()
-    elif group_code == 'rds':
-        provider.rds()
-    elif group_code == 's3':
-        provider.s3()
-    elif group_code == 'sns':
-        provider.sns()
-    elif group_code == 'sqs':
-        provider.sqs()
-    elif group_code == 'wafv2':
-        provider.wafv2()
-    elif group_code == 'stepfunction':
-        provider.stepfunction()
-    elif group_code == 'msk':
-        provider.msk()
-    elif group_code == 'aurora':
-        provider.aurora()
-    elif group_code == 'security_group':
-        provider.security_group()
-    elif group_code == 'vpc_endpoint':
-        provider.vpc_endpoint()
-    elif group_code == 'target_group':
-        provider.target_group()
-    elif group_code == 'elasticsearch':
-        provider.elasticsearch()
-    elif group_code == 'codeartifact':
-        provider.codeartifact()
-    elif group_code == 'launchtemplate':
-        provider.launchtemplate()
-    else:
-        print(f"Group code {group_code} not found.")
-        exit()
+        if module == 'vpc':
+            provider.vpc()
+        elif module == 'acm':
+            provider.acm()
+        elif module == 'apigateway':
+            provider.apigateway()
+        elif module == 'autoscaling':
+            provider.autoscaling()
+        elif module == 'cloudmap':
+            provider.cloudmap()
+        elif module == 'cloudfront':
+            provider.cloudfront()
+        elif module == 'logs':
+            provider.logs()
+        elif module == 'docdb':
+            provider.docdb()
+        elif module == 'dynamodb':
+            provider.dynamodb()
+        elif module == 'ec2':
+            provider.ec2()
+        elif module == 'ecr':
+            provider.ecr()
+        elif module == 'ecs':
+            provider.ecs()
+        elif module == 'eks':
+            provider.eks()
+        elif module == 'elbv2':
+            provider.elbv2()
+        elif module == 'elasticache_redis':
+            provider.elasticache_redis()
+        elif module == 'elasticbeanstalk':
+            provider.elasticbeanstalk()
+        elif module == 'iam':
+            aws_region = "global"
+            provider.iam_role()
+        elif module == 'kms':
+            provider.kms()
+        elif module == 'aws_lambda':
+            provider.aws_lambda()
+        elif module == 'rds':
+            provider.rds()
+        elif module == 's3':
+            provider.s3()
+        elif module == 'sns':
+            provider.sns()
+        elif module == 'sqs':
+            provider.sqs()
+        elif module == 'wafv2':
+            provider.wafv2()
+        elif module == 'stepfunction':
+            provider.stepfunction()
+        elif module == 'msk':
+            provider.msk()
+        elif module == 'aurora':
+            provider.aurora()
+        elif module == 'security_group':
+            provider.security_group()
+        elif module == 'vpc_endpoint':
+            provider.vpc_endpoint()
+        elif module == 'target_group':
+            provider.target_group()
+        elif module == 'elasticsearch':
+            provider.elasticsearch()
+        elif module == 'codeartifact':
+            provider.codeartifact()
+        elif module == 'launchtemplate':
+            provider.launchtemplate()
+        else:
+            print(f"Group code {module} not found.")
+            exit()
 
-    print("Finished processing AWS resources.")
-
-    # TF_PLAN = os.environ.get("TF_PLAN", True)
-    # if TF_PLAN:
-    #     create_gitignore_file("./")
-    #     stateKey = f'finisterra/generated/aws/{aws_account_id}/{aws_region}'
-    #     create_root_terragrunt(s3Bucket, aws_region,
-    #                         dynamoDBTable, stateKey, "./")
+        print("Finished processing AWS resources.")
 
 if __name__ == "__main__":
     main()

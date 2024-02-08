@@ -97,10 +97,8 @@ class HCL:
     def replace_special_chars(self, input_string):
         # Define a mapping of special characters to their ASCII representations
         ascii_map = {
-            ' ': 'SPACE',
-            '-': 'DASH',
-            '.': 'DOT'
-            # Add more mappings as needed
+            ' ': '',
+            '.': '-',
         }
 
         # Function to replace each match
@@ -261,15 +259,15 @@ class HCL:
         tfstate_json = json.dumps(tfstate)
 
         # Define the API endpoint
-        api_host = 'localhost'
+        api_token = os.environ.get('FT_API_TOKEN')
+        api_host = os.environ.get('API_HOST', 'localhost')
         api_port = 8000
         api_path = '/api/hcl/'
 
         # Create a connection to the API server
         conn = http.client.HTTPConnection(api_host, api_port)
-
         # Define the request headers
-        headers = {'Content-Type': 'application/json'}
+        headers = {'Content-Type': 'application/json', "Authorization": "Bearer " + api_token}
 
         # Define the request payload
         payload = {
@@ -347,7 +345,7 @@ class HCL:
                 shutil.copyfile("./terragrunt.hcl.remote-state", "./terragrunt.hcl")
 
         else:
-            print('Error: Failed to retrieve the zip file')
+            print(response.status, response.reason)
 
         # Close the connection
         conn.close()
