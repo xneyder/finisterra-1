@@ -267,6 +267,7 @@ class HCL:
             'id_key_list': self.id_key_list,
             'region': self.region,
             'account_id': self.account_id,
+            'local_modules': os.environ.get('LOCAL_MODULES', 'false')
         }
 
         if not tfstate_json:
