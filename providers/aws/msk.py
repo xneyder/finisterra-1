@@ -197,13 +197,18 @@ class MSK:
         for page in page_iterator:
             for target in page["ScalableTargets"]:
                 target_id = target["ResourceId"]
+                service_namespace = target["ServiceNamespace"]
+                scalable_dimension = target["ScalableDimension"]
+                resource_id = target["ResourceId"]
                 print(f"  Processing AppAutoScaling Target: {target_id}")
+
+                id = f"{service_namespace}/{resource_id}/{scalable_dimension}"
 
                 attributes = {
                     "id": target_id,
-                    "service_namespace": 'kafka',
-                    "resource_id": cluster_arn
-                    # Add other relevant details from 'target' as needed
+                    "service_namespace": service_namespace,
+                    "resource_id": resource_id,
+                    "scalable_dimension": scalable_dimension,
                 }
 
                 self.hcl.process_resource(
@@ -223,17 +228,24 @@ class MSK:
         for page in page_iterator:
             for policy in page["ScalingPolicies"]:
                 policy_name = policy["PolicyName"]
+                service_namespace = policy["ServiceNamespace"]
+                resource_id = policy["ResourceId"]
+                scalable_dimension = policy["ScalableDimension"]
+
+                id = f"{service_namespace}/{resource_id}/{scalable_dimension}/{policy_name}"
+
                 print(f"  Processing AppAutoScaling Policy: {policy_name}")
 
                 attributes = {
-                    "id": policy_name,
-                    "service_namespace": 'kafka',
-                    "resource_id": cluster_arn
-                    # Add other relevant details from 'policy' as needed
+                    "id": id,
+                    "name": policy_name,
+                    "scalable_dimension": scalable_dimension,
+                    "service_namespace": service_namespace,
+                    "resource_id": resource_id,
                 }
 
                 self.hcl.process_resource(
-                    "aws_appautoscaling_policy", policy_name, attributes)
+                    "aws_appautoscaling_policy", id, attributes)
 
     def aws_msk_configuration(self, cluster_arn):
         print(f"Processing MSK Configuration for Cluster {cluster_arn}...")

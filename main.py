@@ -10,7 +10,6 @@ from utils.auth import auth
 @click.option('--provider', '-p', default="aws", help='Provider name')
 @click.option('--module', '-m', required=True, help='Module name')
 def main(provider, module):
-    auth()
     if provider == "aws":
         # Get AWS credentials from environment variables
         aws_access_key_id = os.getenv('AWS_ACCESS_KEY_ID')
@@ -22,7 +21,7 @@ def main(provider, module):
         if not aws_region:
             print("AWS_REGION environment variable is not defined.")
             exit()
-
+        
         # Check if AWS_PROFILE is defined
         if aws_profile:
             # Create a session using the profile
@@ -39,6 +38,14 @@ def main(provider, module):
         # Get the account ID
         sts = session.client('sts')
         aws_account_id = sts.get_caller_identity()['Account']
+
+        auth_payload = {
+            "provider": provider,
+            "module": module,
+            "account_id": aws_account_id,
+            "region": aws_region
+        }
+        auth(auth_payload)
 
         print("Fetching AWS resources using boto3...")
 

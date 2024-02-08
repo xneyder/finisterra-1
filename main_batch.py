@@ -40,22 +40,22 @@ module_list = [
 # 'logs',
 # 'docdb',
 # 'dynamodb',
-'ec2',
-'ecr',
-'ecs',
-'eks',
-'elbv2',
-'elasticache_redis',
-'elasticbeanstalk',
-'iam',
-'kms',
-'aws_lambda',
-'rds',
-'s3',
-'sns',
-'sqs',
-'wafv2',
-'stepfunction',
+# 'ec2',
+# 'ecr',
+# 'ecs',
+# 'eks',
+# 'elbv2',
+# 'elasticache_redis',
+# 'elasticbeanstalk',
+# 'iam',
+# 'kms',
+# 'aws_lambda',
+# 'rds',
+# 's3',
+# 'sns',
+# 'sqs',
+# 'wafv2',
+# 'stepfunction',
 'msk',
 'aurora',
 'security_group',
@@ -68,6 +68,6 @@ module_list = [
 
 for module in module_list:
     print(f"========================== {module} ==========================")
-    if os.system(f"python main.py {module}") != 0:
+    if os.system(f"python main.py --module {module}") != 0:
         print("Command execution failed. Quitting the script.")
         break

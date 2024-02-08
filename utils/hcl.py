@@ -3,7 +3,6 @@ import os
 import re
 import shutil
 from utils.filesystem import create_version_file
-from utils.filesystem import create_tmp_terragrunt
 import tempfile
 import json
 import http.client
@@ -15,15 +14,12 @@ class HCL:
         self.schema_data = schema_data
         self.provider_name = provider_name
         self.script_dir = tempfile.mkdtemp()
-        self.global_deployed_resources = []
         self.module_data = {}
-        self.functions_module = None
         self.ftstacks = {}
         self.unique_ftstacks = set()
         self.ftstacks_files = {}
         self.additional_data = {}
         self.id_key_list = ["id", "arn"]
-        self.functions = {}
 
     def search_state_file(self, resource_type, resource_name, resource_id):
         # Load the state file
@@ -190,10 +186,7 @@ class HCL:
             self.create_folder(generated_path)
             os.chdir(generated_path)
             create_version_file()
-            # create_data_file()
-            # create_locals_file()
             destination_folder = os.getcwd()
-            create_tmp_terragrunt(os.path.join(destination_folder))
             print("Copying Terraform init files...")
             terraform_folder=os.path.join(
                 destination_folder, ".terraform")
@@ -203,12 +196,9 @@ class HCL:
             #Check if temp_dir exists
             if  os.path.exists(temp_dir):
                 shutil.copytree(temp_dir, terraform_folder)
-            # print("Initializing Terraform...")
-            # subprocess.run(["terraform", "init"], check=True)
         except Exception as e:
             print(e)
             exit()
-
 
     def add_stack(self, resource_name, id, ftstack, files=None):
         if ftstack:
@@ -244,10 +234,9 @@ class HCL:
             self.additional_data[resource_type][id] = {}
         self.additional_data[resource_type][id][key] = value
         
-
     def request_tf_code(self):
         tfstate = None
-        #check if self.terraform_state_file is file bigger than 0
+        # Check if self.terraform_state_file is file bigger than 0
         if not os.path.isfile(self.terraform_state_file):
             return
         print("Requesting Terraform code...")
@@ -313,13 +302,13 @@ class HCL:
             except:
                 pass
                 
-            # unzip the file to the current directory
+            # Unzip the file to the current directory
             with zipfile.ZipFile(zip_file_path, 'r') as zip_ref:
                 zip_ref.extractall(root_path)
                 print('Zip file extracted to:', root_path)
 
 
-            #Save additional files
+            # Save additional files
             for ftstack, zip_files in self.ftstacks_files.items():
                 for zip_file in zip_files:
                     print("zip_file", zip_file)
@@ -347,5 +336,4 @@ class HCL:
         else:
             print(response.status, response.reason)
 
-        # Close the connection
         conn.close()

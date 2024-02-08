@@ -1,11 +1,5 @@
-# Use the Ubuntu 20.04 LTS image as a parent image
-FROM ubuntu:20.04
-
-# Set the user to root
-USER root
-
-# Avoid warnings by switching to noninteractive
-ENV DEBIAN_FRONTEND=noninteractive
+# Use the official Python 3.9-slim image as a parent image
+FROM python:3.11-slim
 
 # Set the working directory in the Docker container
 WORKDIR /app
@@ -13,38 +7,26 @@ WORKDIR /app
 # Copy the current directory contents into the container at /app
 COPY . /app
 
-# Install system dependencies
-RUN apt-get update && apt-get upgrade -y && apt-get install -y \
-    software-properties-common \
-    curl \
-    unzip \
-    git \
-    && add-apt-repository ppa:deadsnakes/ppa \
-    && apt-get update \
-    && apt-get install -y python3.9 python3-pip \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+# Install system utilities required for downloading Terraform and Terragrunt, and also install git
+RUN apt-get update && apt-get install -y wget unzip git && rm -rf /var/lib/apt/lists/*
 
-RUN git config --global user.email "code@finisterra.io" && \
-    git config --global user.name "finisterra"
+# Install Terraform
+RUN TERRAFORM_VERSION="1.5.0" && \
+    wget https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip && \
+    unzip terraform_${TERRAFORM_VERSION}_linux_amd64.zip && \
+    mv terraform /usr/local/bin/ && \
+    rm terraform_${TERRAFORM_VERSION}_linux_amd64.zip
 
-# Install Terraform 1.0.5
-RUN curl -O https://releases.hashicorp.com/terraform/1.5.3/terraform_1.5.3_linux_amd64.zip \
-    && unzip terraform_1.5.3_linux_amd64.zip \
-    && mv terraform /usr/local/bin/ \
-    && rm terraform_1.5.3_linux_amd64.zip
-
-# Make Python 3.9 as the default python version
-RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.9 1
+# Install Terragrunt
+RUN TERRAGRUNT_VERSION="0.50.4" && \
+    wget https://github.com/gruntwork-io/terragrunt/releases/download/v${TERRAGRUNT_VERSION}/terragrunt_linux_amd64 && \
+    chmod +x terragrunt_linux_amd64 && \
+    mv terragrunt_linux_amd64 /usr/local/bin/terragrunt
 
 # Upgrade pip
-RUN pip3 install --upgrade pip
+RUN pip install --upgrade pip
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Install any needed packages specified in requirements.txt
-RUN pip3 install --no-cache-dir -r requirements.txt
+# Set the default command to python3
+ENTRYPOINT ["python3"]
 
-# Switch back to dialog for any ad-hoc use of apt-get
-ENV DEBIAN_FRONTEND=dialog
-
-# Set the default shell command to bash
-CMD ["python3", "scan_worker.py"]

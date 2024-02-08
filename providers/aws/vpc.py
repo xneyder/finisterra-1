@@ -1,7 +1,5 @@
 import os
 from utils.hcl import HCL
-from utils.filesystem import create_backend_file
-import json
 from providers.aws.iam_role import IAM_ROLE
 from providers.aws.s3 import S3
 from providers.aws.logs import Logs

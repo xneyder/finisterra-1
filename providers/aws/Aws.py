@@ -53,7 +53,6 @@ from providers.aws.stepfunction import StepFunction
 from providers.aws.msk import MSK
 from providers.aws.security_group import SECURITY_GROUP
 from providers.aws.target_group import TargetGroup
-# from utils.filesystem import create_tmp_terragrunt
 from providers.aws.elasticsearch import Elasticsearch
 from providers.aws.aws_clients import AwsClients
 from providers.aws.codeartifact import CodeArtifact
@@ -76,7 +75,6 @@ class Aws:
         self.aws_account_id = aws_account_id
         self.session = boto3.Session()
         self.aws_clients_instance = AwsClients(self.session, self.aws_region)
-        # create_tmp_terragrunt(os.path.join(script_dir, "generated"))
 
     def set_boto3_session(self, id_token=None, role_arn=None, session_duration=None, aws_region="us-east-1"):
         if id_token and role_arn and session_duration:
