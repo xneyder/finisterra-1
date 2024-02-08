@@ -319,7 +319,7 @@ class EC2:
                     continue
 
                 # if instance_id != "i-054c8a833bfb263b0" and instance_id != 'i-0beb80c7c8c16ca96':
-                # if instance_id != "i-054c8a833bfb263b0":
+                # if instance_id != "i-0a8f69f50619306c3":
                 #     continue
 
                 print(f"  Processing EC2 Instance: {instance_id}")
@@ -360,11 +360,8 @@ class EC2:
                                 if type == "MANAGED":                                
                                     kms_key_alias = self.get_kms_alias(keyArn)
                                     if kms_key_alias:
-                                        if resource_type not in self.hcl.additional_data:
-                                            self.hcl.additional_data[resource_type] = {}
-                                        if id not in self.hcl.additional_data[resource_type]:
-                                            self.hcl.additional_data[resource_type][id] = {}
-                                        self.hcl.additional_data[resource_type][id]["kms_key_alias"] = kms_key_alias
+                                        self.hcl.add_additional_data(
+                                            resource_type, id, "kms_key_alias", kms_key_alias)
 
                 if "IamInstanceProfile" in instance:
                     attributes["iam_instance_profile"] = instance["IamInstanceProfile"]["Arn"]

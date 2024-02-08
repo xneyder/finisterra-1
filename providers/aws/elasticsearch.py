@@ -42,8 +42,14 @@ class Elasticsearch:
                 vpc_id = response['Subnets'][0]['VpcId']
         if vpc_id:
             response = self.aws_clients.ec2_client.describe_vpcs(VpcIds=[vpc_id])
-            vpc_name = next(
-                (tag['Value'] for tag in response['Vpcs'][0]['Tags'] if tag['Key'] == 'Name'), None)
+            if not response or 'Vpcs' not in response or not response['Vpcs']:
+                # Handle this case as required, for example:
+                print(f"No VPC information found for VPC ID: {vpc_id}")
+                return None
+
+            vpc_tags = response['Vpcs'][0].get('Tags', [])
+            vpc_name = next((tag['Value']
+                            for tag in vpc_tags if tag['Key'] == 'Name'), None)
         return vpc_name
         
     def get_subnet_names(self, subnet_ids):
