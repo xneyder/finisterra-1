@@ -249,13 +249,16 @@ class HCL:
 
         # Define the API endpoint
         api_token = os.environ.get('FT_API_TOKEN')
-        api_host = os.environ.get('API_HOST', 'localhost')
-        api_port = 8000
-        api_path = '/api/hcl/'
+        api_host = os.environ.get('API_HOST', 'api.finisterra.io')
+        api_port = os.environ.get('API_PORT', 443)
+        api_path = '/hcl/'
 
         # Create a connection to the API server
-        conn = http.client.HTTPConnection(api_host, api_port)
-        # Define the request headers
+        if api_port == 443:
+            conn = http.client.HTTPSConnection(api_host, api_port)
+        else:
+            conn = http.client.HTTPConnection(api_host, api_port)
+
         headers = {'Content-Type': 'application/json', "Authorization": "Bearer " + api_token}
 
         # Define the request payload

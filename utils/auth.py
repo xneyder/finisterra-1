@@ -8,11 +8,14 @@ def auth(payload):
         # Do the redirect here to open an account and get a new token
         print("FT_API_TOKEN environment variable is not defined.")
         exit()
-    api_host = os.environ.get('API_HOST', 'localhost')
-    api_port = 8000
-    api_path = '/api/auth/'
+    api_host = os.environ.get('API_HOST', 'api.finisterra.io')
+    api_port = os.environ.get('API_PORT', 443)
+    api_path = '/auth/'
 
-    conn = http.client.HTTPConnection(api_host, api_port)
+    if api_port == 443:
+        conn = http.client.HTTPSConnection(api_host, api_port)
+    else:
+        conn = http.client.HTTPConnection(api_host, api_port)
     headers = {'Content-Type': 'application/json', "Authorization": "Bearer " + api_token}
 
     payload_json = json.dumps(payload, default=list)

@@ -33,16 +33,20 @@ class TargetGroup:
 
 
     def get_vpc_name(self, vpc_id):
-        response = self.aws_clients.ec2_client.describe_vpcs(VpcIds=[vpc_id])
-        if not response or 'Vpcs' not in response or not response['Vpcs']:
-            # Handle this case as required, for example:
-            print(f"No VPC information found for VPC ID: {vpc_id}")
-            return None
+        try:
+            response = self.aws_clients.ec2_client.describe_vpcs(VpcIds=[vpc_id])
+            if not response or 'Vpcs' not in response or not response['Vpcs']:
+                # Handle this case as required, for example:
+                print(f"No VPC information found for VPC ID: {vpc_id}")
+                return None
 
-        vpc_tags = response['Vpcs'][0].get('Tags', [])
-        vpc_name = next((tag['Value']
-                        for tag in vpc_tags if tag['Key'] == 'Name'), None)
-        return vpc_name
+            vpc_tags = response['Vpcs'][0].get('Tags', [])
+            vpc_name = next((tag['Value']
+                            for tag in vpc_tags if tag['Key'] == 'Name'), None)
+            return vpc_name
+        except Exception as e:
+            print(f"Error in get_vpc_name: {e}")
+            return None
 
     def target_group(self):
         self.hcl.prepare_folder(os.path.join("generated"))
@@ -72,8 +76,8 @@ class TargetGroup:
                 if target_group_arn and tg_arn != target_group_arn:
                     continue
 
-                # if tg_name != "default":
-                #     continue
+                if tg_name != "platform-int":
+                    continue
                 
                 print(f"  Processing Load Balancer Target Group: {tg_name}")
 
