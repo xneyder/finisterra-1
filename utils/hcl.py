@@ -175,15 +175,6 @@ class HCL:
     def prepare_folder(self, folder):
         try:
             create_version_file(self.script_dir)
-            # destination_folder = os.getcwd()
-            # terraform_folder=os.path.join(
-            #     destination_folder, ".terraform")
-            # if os.path.exists(terraform_folder):
-            #     shutil.rmtree(terraform_folder)
-            # temp_dir = os.path.join(self.script_dir, "tmp", ".terraform")
-            # #Check if temp_dir exists
-            # if os.path.exists(temp_dir):
-            #     shutil.copytree(temp_dir, terraform_folder)
         except Exception as e:
             print(e)
             exit()

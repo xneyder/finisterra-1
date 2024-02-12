@@ -1,13 +1,12 @@
 import os
 from utils.hcl import HCL
 import datetime
-from tqdm import tqdm
-import sys
 
 
 class ACM:
     def __init__(self, progress, aws_clients, script_dir, provider_name, schema_data, region, s3Bucket,
                  dynamoDBTable, state_key, workspace_id, modules, aws_account_id, hcl = None):
+        self.progress = progress
         self.aws_clients = aws_clients
         self.transform_rules = {}
         self.provider_name = provider_name
@@ -31,8 +30,13 @@ class ACM:
     def acm(self):
         self.hcl.prepare_folder(os.path.join("generated"))
         self.aws_acm_certificate()
+        self.progress.update(self.task, description=f"[cyan]{self.__class__.__name__} [bold]Refreshing state[/]")
         self.hcl.refresh_state()
+        self.progress.update(self.task, advance=1)
+        self.progress.update(self.task, description=f"[cyan]{self.__class__.__name__} [bold]Generating tf code[/]")
         self.hcl.request_tf_code()
+        self.progress.update(self.task, advance=1)
+
 
     def aws_acm_certificate(self, acm_arn=None, ftstack=None):
         resource_name = "aws_acm_certificate"
@@ -51,10 +55,10 @@ class ACM:
             for cert_summary in page["CertificateSummaryList"]:
                 total += 1
 
-        task = self.progress.add_task("[cyan]Processing ACM...", total=total)
+        self.task = self.progress.add_task(f"[cyan]Processing {self.__class__.__name__}...", total=total+2)
         for page in paginator.paginate():
             for cert_summary in page["CertificateSummaryList"]:
-                self.progress.update(task, advance=1, description=f"[cyan]Certificate [bold]{cert_summary['CertificateArn'].split('/')[-1]}[/]")
+                self.progress.update(self.task, advance=1, description=f"[cyan]{self.__class__.__name__} [bold]{cert_summary['CertificateArn'].split('/')[-1]}[/]")
                 cert_arn = cert_summary["CertificateArn"]
                 self.process_single_acm_certificate(cert_arn, ftstack)
 

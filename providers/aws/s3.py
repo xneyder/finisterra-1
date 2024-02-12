@@ -7,6 +7,7 @@ from botocore.exceptions import ClientError
 class S3:
     def __init__(self, progress, aws_clients, script_dir, provider_name, schema_data, region, s3Bucket,
                  dynamoDBTable, state_key, workspace_id, modules, aws_account_id,hcl = None):
+        self.progress = progress
         self.aws_clients = aws_clients
         self.transform_rules = {}
         self.provider_name = provider_name
@@ -35,9 +36,12 @@ class S3:
         self.hcl.prepare_folder(os.path.join("generated"))
 
         self.aws_s3_bucket()
-
+        self.progress.update(self.task, description=f"[cyan]{self.__class__.__name__} [bold]Refreshing state[/]")
         self.hcl.refresh_state()
+        self.progress.update(self.task, advance=1)
+        self.progress.update(self.task, description=f"[cyan]{self.__class__.__name__} [bold]Generating tf code[/]")
         self.hcl.request_tf_code()
+        self.progress.update(self.task, advance=1)
         
     def aws_s3_bucket(self, selected_s3_bucket=None, ftstack=None):
         resource_name = "aws_s3_bucket"
@@ -58,11 +62,10 @@ class S3:
 
         response = self.aws_clients.s3_client.list_buckets()
         all_buckets = response["Buckets"]
-        # with self.progress:   
-        task = self.progress.add_task("[cyan]Processing S3 Buckets...", total=len(all_buckets))
+        self.task = self.progress.add_task(f"[cyan]Processing {self.__class__.__name__}...", total=len(all_buckets)+2)
         for bucket in all_buckets:
             bucket_name = bucket["Name"]
-            self.progress.update(task, advance=1, description=f"[cyan]Bucket [bold]{bucket_name}[/]")
+            self.progress.update(self.task, advance=1, description=f"[cyan]{self.__class__.__name__} [bold]{bucket_name}[/]")
 
             try:
                 bucket_location_response = self.aws_clients.s3_client.get_bucket_location(Bucket=bucket_name)

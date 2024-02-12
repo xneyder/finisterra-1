@@ -3,8 +3,9 @@ from utils.hcl import HCL
 
 
 class Opensearch:
-    def __init__(self, aws_clients, script_dir, provider_name, schema_data, region, s3Bucket,
+    def __init__(self, progress, aws_clients, script_dir, provider_name, schema_data, region, s3Bucket,
                  dynamoDBTable, state_key, workspace_id, modules, aws_account_id,hcl = None):
+        self.progress = progress
         self.aws_clients = aws_clients
         self.transform_rules = {
         }

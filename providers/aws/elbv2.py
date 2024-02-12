@@ -9,8 +9,9 @@ import sys
 
 
 class ELBV2:
-    def __init__(self, aws_clients, script_dir, provider_name, schema_data, region, s3Bucket,
+    def __init__(self, progress, aws_clients, script_dir, provider_name, schema_data, region, s3Bucket,
                  dynamoDBTable, state_key, workspace_id, modules, aws_account_id,hcl = None):
+        self.progress = progress
         self.aws_clients = aws_clients
         self.transform_rules = {}
         self.provider_name = provider_name
@@ -106,12 +107,11 @@ class ELBV2:
             return
 
         load_balancers = self.aws_clients.elbv2_client.describe_load_balancers()["LoadBalancers"]
-        progress_bar = tqdm(load_balancers, desc="Processing Load Balancer")
+        self.task = self.progress.add_task(f"[cyan]Processing {self.__class__.__name__}...", total=len(load_balancers)+2)
         
-        for lb in progress_bar:
+        for lb in load_balancers:
             lb_arn = lb["LoadBalancerArn"]
-            progress_bar.set_postfix(Load_balancer=lb["LoadBalancerName"], refresh=True)
-            sys.stdout.flush()
+            self.progress.update(self.task, advance=1, description=f"[cyan]{self.__class__.__name__} [bold]{lb['LoadBalancerName']}[/]")
             self.process_single_lb(lb_arn, ftstack)
 
     def process_single_lb(self, lb_arn, ftstack=None):
