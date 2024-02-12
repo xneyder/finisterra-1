@@ -41,7 +41,7 @@ class VpnClient:
                     ClientVpnEndpointId=endpoint_id)
                 for rule in auth_rules_resp["AuthorizationRules"]:
                     print(
-                        f"  Processing EC2 Client VPN Authorization Rule: {rule['GroupId']}")
+                        f"Processing EC2 Client VPN Authorization Rule: {rule['GroupId']}")
 
                     if rule['GroupId'] != "":
                         id = f"{endpoint_id},{rule['DestinationCidr']},{rule['GroupId']}"
@@ -69,7 +69,7 @@ class VpnClient:
         response = self.aws_clients.ec2_client.describe_client_vpn_endpoints()
         for endpoint in response["ClientVpnEndpoints"]:
             endpoint_id = endpoint["ClientVpnEndpointId"]
-            print(f"  Processing EC2 Client VPN Endpoint: {endpoint_id}")
+            print(f"Processing EC2 Client VPN Endpoint: {endpoint_id}")
 
             attributes = {
                 "id": endpoint_id,
@@ -100,7 +100,7 @@ class VpnClient:
             for association in associations["ClientVpnTargetNetworks"]:
                 association_id = association["AssociationId"]
                 print(
-                    f"  Processing EC2 Client VPN Network Association: {association_id}")
+                    f"Processing EC2 Client VPN Network Association: {association_id}")
 
                 attributes = {
                     "id": association_id,
@@ -121,7 +121,7 @@ class VpnClient:
                 ClientVpnEndpointId=endpoint_id)
             for route in routes["Routes"]:
                 route_id = f"{endpoint_id},{route['DestinationCidr']},{route['TargetSubnet']}"
-                print(f"  Processing EC2 Client VPN Route: {route_id}")
+                print(f"Processing EC2 Client VPN Route: {route_id}")
 
                 attributes = {
                     "id": route_id,

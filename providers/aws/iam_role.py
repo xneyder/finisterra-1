@@ -34,8 +34,6 @@ class IAM_ROLE:
         self.hcl.refresh_state()
 
         self.hcl.request_tf_code()
-        # self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id)
-
 
     def aws_iam_role(self, role_name=None, ftstack=None):
         resource_type = "aws_iam_role"
@@ -70,7 +68,7 @@ class IAM_ROLE:
         if role_path.startswith("/aws-service-role/") or "AWS-QuickSetup" in current_role_name:
             return
 
-        print(f"  Processing IAM Role: {current_role_name}")
+        print(f"Processing IAM Role: {current_role_name}")
         id = current_role_name
         attributes = {
             "id": id,
@@ -106,7 +104,7 @@ class IAM_ROLE:
 
                 instance_profile_name = instance_profile["InstanceProfileName"]
                 print(
-                    f"  Processing IAM Instance Profile: {instance_profile_name} for role {role_name}")
+                    f"Processing IAM Instance Profile: {instance_profile_name} for role {role_name}")
 
                 attributes = {
                     "id": instance_profile_name,
@@ -127,7 +125,7 @@ class IAM_ROLE:
             for policy in policy_page["AttachedPolicies"]:
                 policy_arn = policy["PolicyArn"]
                 print(
-                    f"  Processing IAM Role Policy Attachment: {role_name} - {policy_arn}")
+                    f"Processing IAM Role Policy Attachment: {role_name} - {policy_arn}")
 
                 attributes = {
                     "id": f"{role_name}/{policy_arn}",
@@ -150,7 +148,7 @@ class IAM_ROLE:
         # if policy_name != "DenyCannedPublicACL":
         #     continue
 
-        print(f"  Processing IAM Policy: {policy_name}")
+        print(f"Processing IAM Policy: {policy_name}")
         id = policy_arn
         attributes = {
             "id": id,

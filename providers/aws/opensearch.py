@@ -24,28 +24,13 @@ class Opensearch:
     def opensearch(self):
         self.hcl.prepare_folder(os.path.join("generated", "opensearch"))
 
-        # aws_elasticsearch_domain
-        # aws_elasticsearch_domain_policy
-
-        # aws_iam_role
-        # aws_iam_service_linked_role
-        # aws_security_group
-        # aws_security_group_rule
-        # aws_security_group_rule
-        # aws_security_group_rule
 
         self.aws_opensearch_domain()
-        # self.aws_opensearch_domain_policy()
-        # self.aws_opensearch_domain_saml_options() # Currently, there's no direct way to list or describe outbound connections using boto3.
-        # self.aws_opensearch_outbound_connection() # Currently, there's no direct way to list or describe outbound connections using boto3.
 
         self.hcl.refresh_state()
 
         self.hcl.request_tf_code()
         exit()
-
-        self.hcl.module_hcl_code("terraform.tfstate", os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), "opensearch.yaml"), functions, self.region, self.aws_account_id)
 
 
     def aws_opensearch_domain(self):
@@ -57,7 +42,7 @@ class Opensearch:
             domain_info = self.aws_clients.opensearch_client.describe_domain(DomainName=domain_name)[
                 "DomainStatus"]
             arn = domain_info["ARN"]
-            print(f"  Processing OpenSearch Domain: {domain_name}")
+            print(f"Processing OpenSearch Domain: {domain_name}")
 
             attributes = {
                 "id": arn,
@@ -81,7 +66,7 @@ class Opensearch:
             "DomainStatus"]
         arn = domain_info["ARN"]
         access_policy = domain_info["AccessPolicies"]
-        print(f"  Processing OpenSearch Domain Policy: {domain_name}")
+        print(f"Processing OpenSearch Domain Policy: {domain_name}")
 
         attributes = {
             "id": arn,
@@ -107,7 +92,7 @@ class Opensearch:
 
     #         if saml_options is not None:
     #             print(
-    #                 f"  Processing OpenSearch Domain SAML Options: {domain_name}")
+    #                 f"Processing OpenSearch Domain SAML Options: {domain_name}")
 
     #             attributes = {
     #                 "id": arn,

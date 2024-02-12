@@ -10,40 +10,33 @@ import zipfile
 
 class HCL:
     def __init__(self, schema_data, provider_name):
-        self.terraform_state_file = "terraform.tfstate"
         self.schema_data = schema_data
         self.provider_name = provider_name
         self.script_dir = tempfile.mkdtemp()
+        self.terraform_state_file = os.path.join(self.script_dir, "terraform.tfstate")
         self.module_data = {}
         self.ftstacks = {}
         self.unique_ftstacks = set()
         self.ftstacks_files = {}
         self.additional_data = {}
         self.id_key_list = ["id", "arn"]
+        self.state_data = {
+            "version": 4,
+            "terraform_version": "1.5.0",
+            "serial": 2,
+            "lineage": "",
+            "outputs": {},
+            "resources": []
+        }
+        self.state_instances = {}
 
     def search_state_file(self, resource_type, resource_name, resource_id):
-        # Load the state file
-        try:
-            with open(self.terraform_state_file, 'r') as f:
-                state_data = json.load(f)
-            state_resources = state_data['resources']
-        except Exception as e:
-            return False
-
         # Search for the resource in the state
-        found = False
-        for resource in state_resources:
-            if resource.get('type') == resource_type \
-                    and resource.get('name') == resource_name \
-                    and resource.get('instances') is not None:
-                for instance in resource['instances']:
-                    if instance.get('attributes', {}).get('id') == resource_id:
-                        found = True
-                        break
-            if found:
-                break
-
-        return found
+        if resource_type in self.state_instances:
+            if resource_name in self.state_instances[resource_type]:
+                if resource_id in self.state_instances[resource_type][resource_name]:
+                    return True
+        return False
 
     def create_state_file(self, resource_type, resource_name, attributes):
         schema_version = int(self.schema_data['provider_schemas'][self.provider_name]
@@ -69,25 +62,14 @@ class HCL:
                 }
             ]
         }
-        # Load the state file
-        try:
-            with open(self.terraform_state_file, 'r') as f:
-                state_data = json.load(f)
-            # add resource to state
-            state_data['resources'].append(resource)
-        except Exception as e:
-            state_data = {
-                "version": 4,
-                "terraform_version": "1.5.0",
-                "serial": 2,
-                "lineage": "",
-                "outputs": {},
-                "resources": [
-                    resource
-                ]
-            }
-        with open(self.terraform_state_file, 'w') as state_file:
-            json.dump(state_data, state_file, indent=2)
+        self.state_data['resources'].append(resource)
+        if resource_type not in self.state_instances:
+            self.state_instances[resource_type] = {}
+        if resource_name not in self.state_instances[resource_type]:
+            self.state_instances[resource_type][resource_name] = {}
+        if attributes["id"] not in self.state_instances[resource_type][resource_name]:
+            self.state_instances[resource_type][resource_name][attributes["id"]] = True
+
 
 
     def replace_special_chars(self, input_string):
@@ -124,6 +106,18 @@ class HCL:
     def count_state(self):
         resource_count = {}
         try:
+            for resource in self.state_data["resources"]:
+                if resource["type"] in resource_count:
+                    resource_count[resource["type"]] += 1
+                else:
+                    resource_count[resource["type"]] = 1
+        except:
+            pass
+        return resource_count
+    
+    def count_state_file(self):
+        resource_count = {}
+        try:
             with open(self.terraform_state_file, "r") as state_file:
                 state_data = json.load(state_file)
                 for resource in state_data["resources"]:
@@ -133,7 +127,7 @@ class HCL:
                         resource_count[resource["type"]] = 1
         except:
             pass
-        return resource_count
+        return resource_count    
 
     def refresh_state(self):
         # count resources in state file
@@ -143,11 +137,15 @@ class HCL:
             print("No state file found.")
             return
         
+        with open(self.terraform_state_file, 'w') as state_file:
+            json.dump(self.state_data, state_file, indent=2)        
+        
         print("Initializing Terraform...")
-        subprocess.run(["terraform", "init"], check=True)
+        subprocess.run(["terraform", "init"], cwd=self.script_dir, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
         print("Refreshing state...")
-        subprocess.run(["terraform", "refresh"], check=True)
+        subprocess.run(["terraform", "refresh"], cwd=self.script_dir, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
         try:
             subprocess.run(
                 ["rm", self.terraform_state_file+".backup"], check=True)
@@ -155,11 +153,7 @@ class HCL:
             pass
 
         print("Counting resources in state file...")
-        with open(self.terraform_state_file, "r") as state_file:
-            state_data = json.load(state_file)
-            resources_count = len(state_data["resources"])
-
-        resources_count = self.count_state()
+        resources_count = self.count_state_file()
         for resource in prev_resources_count:
             if resource not in resources_count:
                 print(
@@ -177,25 +171,19 @@ class HCL:
             [shutil.rmtree(os.path.join(folder, f)) if os.path.isdir(os.path.join(folder, f)) else os.remove(os.path.join(folder, f)) for f in os.listdir(folder)]
             # shutil.rmtree(folder)
         os.makedirs(folder, exist_ok=True)
-        print(f"Folder '{folder}' has been created.")
 
     def prepare_folder(self, folder):
         try:
-            os.chdir(self.script_dir)
-            generated_path = os.path.join(folder)
-            self.create_folder(generated_path)
-            os.chdir(generated_path)
-            create_version_file()
-            destination_folder = os.getcwd()
-            print("Copying Terraform init files...")
-            terraform_folder=os.path.join(
-                destination_folder, ".terraform")
-            if os.path.exists(terraform_folder):
-                shutil.rmtree(terraform_folder)
-            temp_dir = os.path.join(self.script_dir, "tmp", ".terraform")
-            #Check if temp_dir exists
-            if  os.path.exists(temp_dir):
-                shutil.copytree(temp_dir, terraform_folder)
+            create_version_file(self.script_dir)
+            # destination_folder = os.getcwd()
+            # terraform_folder=os.path.join(
+            #     destination_folder, ".terraform")
+            # if os.path.exists(terraform_folder):
+            #     shutil.rmtree(terraform_folder)
+            # temp_dir = os.path.join(self.script_dir, "tmp", ".terraform")
+            # #Check if temp_dir exists
+            # if os.path.exists(temp_dir):
+            #     shutil.copytree(temp_dir, terraform_folder)
         except Exception as e:
             print(e)
             exit()
@@ -240,7 +228,7 @@ class HCL:
         if not os.path.isfile(self.terraform_state_file):
             return
         print("Requesting Terraform code...")
-        print("Sending Terraform state file...", os.path.join(self.script_dir,"generated", self.terraform_state_file))
+        print("Sending Terraform state file...", os.path.join(self.script_dir, self.terraform_state_file))
         with open(self.terraform_state_file, 'r') as f:
             tfstate = json.load(f)
 
@@ -325,7 +313,7 @@ class HCL:
                     shutil.copyfile(os.path.join(base_dir,filename), target_dir)
 
             
-            if True: #TO-DO Change to a flag
+            if False: #TO-DO Change to a flag
                 # plan the terragrunt
                 print("Planning Terraform...")
                 os.chdir(os.path.join(root_path,"finisterra"))

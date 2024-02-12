@@ -139,7 +139,7 @@ class RDS:
                 if instance.get("Engine", None) not in ["mysql", "postgres"]:
                     continue
                 instance_id = instance["DBInstanceIdentifier"]
-                print(f"  Processing DB Instance: {instance_id}")
+                print(f"Processing DB Instance: {instance_id}")
 
                 # if instance_id != "piwik-analytics":
                 #     continue
@@ -234,7 +234,7 @@ class RDS:
                 if option_group["OptionGroupName"] != option_group_name:
                     continue
 
-                print(f"  Processing DB Option Group: {option_group_name}")
+                print(f"Processing DB Option Group: {option_group_name}")
                 id = option_group_name
                 attributes = {
                     "id": id,
@@ -262,7 +262,7 @@ class RDS:
                     continue
 
                 print(
-                    f"  Processing DB Parameter Group: {parameter_group_name}")
+                    f"Processing DB Parameter Group: {parameter_group_name}")
                 id = parameter_group_name
                 attributes = {
                     "id": id,
@@ -303,7 +303,7 @@ class RDS:
                 if db_subnet_group_name.startswith("default"):
                     return
                 
-                print(f"  Processing DB Subnet Group: {db_subnet_group_name}")
+                print(f"Processing DB Subnet Group: {db_subnet_group_name}")
                 attributes = {
                     "id": id,
                 }
@@ -334,7 +334,7 @@ class RDS:
                             source_instance_id = instance["DBInstanceIdentifier"]
                             for replica_id in instance["ReadReplicaDBInstanceIdentifiers"]:
                                 print(
-                                    f"  Processing DB Instance Automated Backups Replication for {source_instance_id} to {replica_id}")
+                                    f"Processing DB Instance Automated Backups Replication for {source_instance_id} to {replica_id}")
                                 id=automated_backup_arn
                                 attributes = {
                                     "id": automated_backup_arn,

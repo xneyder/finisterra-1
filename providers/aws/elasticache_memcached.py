@@ -41,7 +41,6 @@ class Elasticache:
         self.hcl.refresh_state()
 
         self.hcl.request_tf_code()
-        # self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id)
 
         exit()
 
@@ -54,7 +53,7 @@ class Elasticache:
         for page in paginator.paginate():
             for cluster in page["CacheClusters"]:
                 print(
-                    f"  Processing ElastiCache Cluster: {cluster['CacheClusterId']}")
+                    f"Processing ElastiCache Cluster: {cluster['CacheClusterId']}")
 
                 attributes = {
                     "id": cluster["CacheClusterId"],
@@ -76,7 +75,7 @@ class Elasticache:
         for page in paginator.paginate():
             for global_replication_group in page["GlobalReplicationGroups"]:
                 print(
-                    f"  Processing ElastiCache Global Replication Group: {global_replication_group['GlobalReplicationGroupId']}")
+                    f"Processing ElastiCache Global Replication Group: {global_replication_group['GlobalReplicationGroupId']}")
 
                 attributes = {
                     "id": global_replication_group["GlobalReplicationGroupId"],
@@ -96,7 +95,7 @@ class Elasticache:
         for page in paginator.paginate():
             for parameter_group in page["CacheParameterGroups"]:
                 print(
-                    f"  Processing ElastiCache Parameter Group: {parameter_group['CacheParameterGroupName']}")
+                    f"Processing ElastiCache Parameter Group: {parameter_group['CacheParameterGroupName']}")
 
                 attributes = {
                     "id": parameter_group["CacheParameterGroupName"],
@@ -116,7 +115,7 @@ class Elasticache:
         for page in paginator.paginate():
             for replication_group in page["ReplicationGroups"]:
                 print(
-                    f"  Processing ElastiCache Replication Group: {replication_group['ReplicationGroupId']}")
+                    f"Processing ElastiCache Replication Group: {replication_group['ReplicationGroupId']}")
 
                 attributes = {
                     "id": replication_group["ReplicationGroupId"],
@@ -144,7 +143,7 @@ class Elasticache:
         for page in paginator.paginate():
             for subnet_group in page["CacheSubnetGroups"]:
                 print(
-                    f"  Processing ElastiCache Subnet Group: {subnet_group['CacheSubnetGroupName']}")
+                    f"Processing ElastiCache Subnet Group: {subnet_group['CacheSubnetGroupName']}")
 
                 attributes = {
                     "id": subnet_group["CacheSubnetGroupName"],
@@ -162,7 +161,7 @@ class Elasticache:
         paginator = self.aws_clients.elasticache_client.get_paginator("describe_users")
         for page in paginator.paginate():
             for user in page["Users"]:
-                print(f"  Processing ElastiCache User: {user['UserId']}")
+                print(f"Processing ElastiCache User: {user['UserId']}")
 
                 attributes = {
                     "id": user["UserId"],
@@ -185,7 +184,7 @@ class Elasticache:
         for page in paginator.paginate():
             for user_group in page["UserGroups"]:
                 print(
-                    f"  Processing ElastiCache User Group: {user_group['UserGroupId']}")
+                    f"Processing ElastiCache User Group: {user_group['UserGroupId']}")
 
                 attributes = {
                     "id": user_group["UserGroupId"],
@@ -209,7 +208,7 @@ class Elasticache:
                 if "UserGroupIds" in replication_group:
                     for user_group_id in replication_group["UserGroupIds"]:
                         print(
-                            f"  Processing ElastiCache User Group Association: {replication_group_id} - {user_group_id}")
+                            f"Processing ElastiCache User Group Association: {replication_group_id} - {user_group_id}")
 
                         attributes = {
                             "id": f"{replication_group_id}:{user_group_id}",

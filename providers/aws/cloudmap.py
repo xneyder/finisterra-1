@@ -52,7 +52,6 @@ class Cloudmap:
         self.hcl.refresh_state()
 
         self.hcl.request_tf_code()
-        # self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id)
 
 
     def aws_service_discovery_http_namespace(self):
@@ -66,7 +65,7 @@ class Cloudmap:
                     http_namespace = self.aws_clients.cloudmap_client.get_namespace(Id=namespace_id)[
                         "Namespace"]
                     print(
-                        f"  Processing AWS Service Discovery HTTP Namespace: {namespace_id}")
+                        f"Processing AWS Service Discovery HTTP Namespace: {namespace_id}")
 
                     attributes = {
                         "id": namespace_id,
@@ -90,7 +89,7 @@ class Cloudmap:
                     for instance in instance_page["Instances"]:
                         instance_id = instance["Id"]
                         print(
-                            f"  Processing AWS Service Discovery Instance: {instance_id}")
+                            f"Processing AWS Service Discovery Instance: {instance_id}")
 
                         attributes = {
                             "id": instance_id,
@@ -114,7 +113,7 @@ class Cloudmap:
                 if namespace["Type"] == "DNS_PRIVATE":
                     namespace_id = namespace["Id"]
                     private_dns_namespace = self.aws_clients.cloudmap_client.get_namespace(Id=namespace_id)["Namespace"]
-                    print(f"  Processing AWS Service Discovery Private DNS Namespace: {namespace_id}")
+                    print(f"Processing AWS Service Discovery Private DNS Namespace: {namespace_id}")
 
                     # Get the hosted zone ID of the namespace
                     hosted_zone_id = private_dns_namespace["Properties"]["DnsProperties"]["HostedZoneId"]
@@ -169,7 +168,7 @@ class Cloudmap:
                     public_dns_namespace = self.aws_clients.cloudmap_client.get_namespace(Id=namespace_id)[
                         "Namespace"]
                     print(
-                        f"  Processing AWS Service Discovery Public DNS Namespace: {namespace_id}")
+                        f"Processing AWS Service Discovery Public DNS Namespace: {namespace_id}")
 
                     attributes = {
                         "id": namespace_id,
@@ -200,7 +199,7 @@ class Cloudmap:
                 sd_service = self.aws_clients.cloudmap_client.get_service(Id=service_id)[
                     "Service"]
                 print(
-                    f"  Processing AWS Service Discovery Service: {service_id}")
+                    f"Processing AWS Service Discovery Service: {service_id}")
 
                 attributes = {
                     "id": service_id,

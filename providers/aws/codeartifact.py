@@ -53,7 +53,6 @@ class CodeArtifact:
         self.aws_codeartifact_domain()
         self.hcl.refresh_state()
         self.hcl.request_tf_code()
-        # self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id)
 
     def aws_codeartifact_domain(self, domain_name=None, ftstack=None):
         print("Processing CodeArtifact Domains")
@@ -83,7 +82,7 @@ class CodeArtifact:
         resource_type = "aws_codeartifact_domain"
         domain_info = self.aws_clients.codeartifact_client.describe_domain(domain=domain_name)
         domain_arn = domain_info["domain"]["arn"]
-        print(f"  Processing CodeArtifact Domain: {domain_name}")
+        print(f"Processing CodeArtifact Domain: {domain_name}")
 
         id = domain_arn
         attributes = {
@@ -123,7 +122,7 @@ class CodeArtifact:
     
     def aws_codeartifact_repository(self, domain_name, repository_arn, repository_name):
         resource_type = "aws_codeartifact_repository"
-        print(f"  Processing CodeArtifact Repository: {repository_arn}")
+        print(f"Processing CodeArtifact Repository: {repository_arn}")
 
         id = repository_arn
         attributes = {

@@ -40,7 +40,7 @@ class ECR_PUBLIC:
             repository_name = repo["repositoryName"]
             repository_arn = repo["repositoryArn"]
 
-            print(f"  Processing ECR Public Repository: {repository_name}")
+            print(f"Processing ECR Public Repository: {repository_name}")
 
             attributes = {
                 "id": repository_name,
@@ -66,7 +66,7 @@ class ECR_PUBLIC:
             policy_text = json.loads(policy["policyText"])
 
             print(
-                f"  Processing ECR Public Repository Policy for: {repository_name}")
+                f"Processing ECR Public Repository Policy for: {repository_name}")
 
             attributes = {
                 "id": repository_name,

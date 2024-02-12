@@ -28,8 +28,6 @@ class IAM_POLICY:
         self.hcl.refresh_state()
 
         self.hcl.request_tf_code()
-        # self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id)
-
 
     def aws_iam_access_key(self):
         print("Processing IAM Access Keys...")
@@ -45,7 +43,7 @@ class IAM_POLICY:
                     for access_key in access_keys_page["AccessKeyMetadata"]:
                         access_key_id = access_key["AccessKeyId"]
                         print(
-                            f"  Processing IAM Access Key: {access_key_id} for User: {user_name}")
+                            f"Processing IAM Access Key: {access_key_id} for User: {user_name}")
 
                         attributes = {
                             "id": access_key_id,
@@ -62,7 +60,7 @@ class IAM_POLICY:
 
         for page in paginator.paginate():
             for alias in page["AccountAliases"]:
-                print(f"  Processing IAM Account Alias: {alias}")
+                print(f"Processing IAM Account Alias: {alias}")
 
                 attributes = {
                     "id": alias,
@@ -103,7 +101,7 @@ class IAM_POLICY:
         for page in paginator.paginate():
             for group in page["Groups"]:
                 group_name = group["GroupName"]
-                print(f"  Processing IAM Group: {group_name}")
+                print(f"Processing IAM Group: {group_name}")
 
                 attributes = {
                     "id": group["GroupId"],
@@ -128,7 +126,7 @@ class IAM_POLICY:
                 for policies_page in policies_paginator.paginate(GroupName=group_name):
                     for policy_name in policies_page["PolicyNames"]:
                         print(
-                            f"  Processing IAM Group Policy: {group_name} - {policy_name}")
+                            f"Processing IAM Group Policy: {group_name} - {policy_name}")
 
                         policy_document = self.aws_clients.iam_client.get_group_policy(
                             GroupName=group_name, PolicyName=policy_name)
@@ -149,7 +147,7 @@ class IAM_POLICY:
             for instance_profile in page["InstanceProfiles"]:
                 instance_profile_name = instance_profile["InstanceProfileName"]
                 print(
-                    f"  Processing IAM Instance Profile: {instance_profile_name}")
+                    f"Processing IAM Instance Profile: {instance_profile_name}")
 
                 attributes = {
                     "id": instance_profile_name,
@@ -167,7 +165,7 @@ class IAM_POLICY:
 
         for provider in openid_providers:
             provider_arn = provider["Arn"]
-            print(f"  Processing IAM OpenID Connect Provider: {provider_arn}")
+            print(f"Processing IAM OpenID Connect Provider: {provider_arn}")
 
             provider_details = self.aws_clients.iam_client.get_open_id_connect_provider(
                 OpenIDConnectProviderArn=provider_arn)
@@ -196,7 +194,7 @@ class IAM_POLICY:
                 # if policy_name != "DenyCannedPublicACL":
                 #     continue
 
-                print(f"  Processing IAM Policy: {policy_name}")
+                print(f"Processing IAM Policy: {policy_name}")
 
                 attributes = {
                     "id": policy_arn,
@@ -273,7 +271,7 @@ class IAM_POLICY:
                 if role_path.startswith("/aws-service-role/") or "AWS-QuickSetup" in role_name:
                     continue
 
-                print(f"  Processing IAM Role: {role_name}")
+                print(f"Processing IAM Role: {role_name}")
 
                 attributes = {
                     "id": role_name,
@@ -300,7 +298,7 @@ class IAM_POLICY:
                         policy_document = self.aws_clients.iam_client.get_role_policy(
                             RoleName=role_name, PolicyName=policy_name)
                         print(
-                            f"  Processing IAM Role Policy: {policy_name} for Role: {role_name}")
+                            f"Processing IAM Role Policy: {policy_name} for Role: {role_name}")
 
                         attributes = {
                             "id": f"{role_name}:{policy_name}",
@@ -319,7 +317,7 @@ class IAM_POLICY:
         for provider in saml_providers:
             provider_arn = provider["Arn"]
             provider_name = provider_arn.split("/")[-1]
-            print(f"  Processing IAM SAML Provider: {provider_name}")
+            print(f"Processing IAM SAML Provider: {provider_name}")
 
             metadata_document = self.aws_clients.iam_client.get_saml_provider(
                 SAMLProviderArn=provider_arn)["SAMLMetadataDocument"]
@@ -340,7 +338,7 @@ class IAM_POLICY:
             for cert in page["ServerCertificateMetadataList"]:
                 cert_id = cert["ServerCertificateId"]
                 cert_name = cert["ServerCertificateName"]
-                print(f"  Processing IAM Server Certificate: {cert_name}")
+                print(f"Processing IAM Server Certificate: {cert_name}")
 
                 server_cert = self.aws_clients.iam_client.get_server_certificate(
                     ServerCertificateName=cert_name)
@@ -367,7 +365,7 @@ class IAM_POLICY:
             for role in page["Roles"]:
                 if "ServiceLinkedRole" in role["Path"]:
                     role_name = role["RoleName"]
-                    print(f"  Processing IAM Service Linked Role: {role_name}")
+                    print(f"Processing IAM Service Linked Role: {role_name}")
 
                     attributes = {
                         "id": role["RoleId"],
@@ -391,7 +389,7 @@ class IAM_POLICY:
                 credential_id = service_name+":"+user_name + \
                     ":"+credential["ServiceSpecificCredentialId"]
                 print(
-                    f"  Processing IAM Service Specific Credential: {credential_id} for user: {user_name}")
+                    f"Processing IAM Service Specific Credential: {credential_id} for user: {user_name}")
 
                 attributes = {
                     "id": credential_id,
@@ -413,7 +411,7 @@ class IAM_POLICY:
             for certificate in signing_certificates:
                 certificate_id = certificate["CertificateId"]
                 print(
-                    f"  Processing IAM Signing Certificate: {certificate_id} for user: {user_name}")
+                    f"Processing IAM Signing Certificate: {certificate_id} for user: {user_name}")
 
                 attributes = {
                     "id": certificate_id,
@@ -430,7 +428,7 @@ class IAM_POLICY:
         users = self.aws_clients.iam_client.list_users()["Users"]
         for user in users:
             user_name = user["UserName"]
-            print(f"  Processing IAM User: {user_name}")
+            print(f"Processing IAM User: {user_name}")
 
             attributes = {
                 "id": user_name,
@@ -453,7 +451,7 @@ class IAM_POLICY:
                 group_name = group["GroupName"]
                 membership_id = f"{user_name}/{group_name}"
                 print(
-                    f"  Processing IAM User Group Membership: {membership_id}")
+                    f"Processing IAM User Group Membership: {membership_id}")
 
                 attributes = {
                     "id": membership_id,
@@ -473,7 +471,7 @@ class IAM_POLICY:
             try:
                 login_profile = self.aws_clients.iam_client.get_login_profile(UserName=user_name)[
                     "LoginProfile"]
-                print(f"  Processing IAM User Login Profile: {user_name}")
+                print(f"Processing IAM User Login Profile: {user_name}")
 
                 attributes = {
                     "id": user_name,
@@ -496,7 +494,7 @@ class IAM_POLICY:
 
             for policy_name in user_policies:
                 policy_id = f"{user_name}:{policy_name}"
-                print(f"  Processing IAM User Policy: {policy_id}")
+                print(f"Processing IAM User Policy: {policy_id}")
 
                 policy_document = self.aws_clients.iam_client.get_user_policy(
                     UserName=user_name, PolicyName=policy_name
@@ -525,7 +523,7 @@ class IAM_POLICY:
                 policy_name = policy["PolicyName"]
                 attachment_id = f"{user_name}_{policy_name}"
                 print(
-                    f"  Processing IAM User Policy Attachment: {attachment_id}")
+                    f"Processing IAM User Policy Attachment: {attachment_id}")
 
                 attributes = {
                     "id": attachment_id,
@@ -546,7 +544,7 @@ class IAM_POLICY:
 
             for ssh_key in ssh_keys:
                 ssh_key_id = ssh_key["SSHPublicKeyId"]
-                print(f"  Processing IAM User SSH Key: {ssh_key_id}")
+                print(f"Processing IAM User SSH Key: {ssh_key_id}")
 
                 attributes = {
                     "id": ssh_key_id,
@@ -570,7 +568,7 @@ class IAM_POLICY:
                 path = mfa_device["User"]["Path"]
             else:
                 path = "/"
-            print(f"  Processing IAM Virtual MFA Device: {mfa_device_id}")
+            print(f"Processing IAM Virtual MFA Device: {mfa_device_id}")
 
             attributes = {
                 "id": mfa_device_arn,
@@ -600,7 +598,7 @@ class IAM_POLICY:
                     for policy in policy_page["AttachedPolicies"]:
                         policy_arn = policy["PolicyArn"]
                         print(
-                            f"  Processing IAM Group Policy Attachment: {group_name} - {policy_arn}")
+                            f"Processing IAM Group Policy Attachment: {group_name} - {policy_arn}")
 
                         attributes = {
                             "id": f"{group_name}/{policy_arn}",
@@ -624,7 +622,7 @@ class IAM_POLICY:
                     for policy in policy_page["AttachedPolicies"]:
                         policy_arn = policy["PolicyArn"]
                         print(
-                            f"  Processing IAM Role Policy Attachment: {role_name} - {policy_arn}")
+                            f"Processing IAM Role Policy Attachment: {role_name} - {policy_arn}")
 
                         attributes = {
                             "id": f"{role_name}/{policy_arn}",

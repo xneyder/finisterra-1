@@ -46,7 +46,7 @@ class SSM:
         for page in paginator.paginate():
             for activation in page["ActivationList"]:
                 activation_id = activation["ActivationId"]
-                print(f"  Processing SSM Activation: {activation_id}")
+                print(f"Processing SSM Activation: {activation_id}")
 
                 attributes = {
                     "id": activation_id,
@@ -74,7 +74,7 @@ class SSM:
                 instance_id = association.get("InstanceId")
                 name = association.get("Name")
 
-                print(f"  Processing SSM Association: {association_id}")
+                print(f"Processing SSM Association: {association_id}")
 
                 attributes = {
                     "id": association_id,
@@ -94,7 +94,7 @@ class SSM:
                 if baseline.get("DefaultBaseline"):
                     baseline_id = baseline["BaselineId"]
                     print(
-                        f"  Processing SSM Default Patch Baseline: {baseline_id}")
+                        f"Processing SSM Default Patch Baseline: {baseline_id}")
 
                     attributes = {
                         "id": baseline_id,
@@ -112,7 +112,7 @@ class SSM:
         for page in paginator.paginate():
             for doc_info in page["DocumentIdentifiers"]:
                 document_name = doc_info["Name"]
-                print(f"  Processing SSM Document: {document_name}")
+                print(f"Processing SSM Document: {document_name}")
 
                 document = self.aws_clients.ssm_client.get_document(Name=document_name)
                 content = document["Content"]
@@ -140,7 +140,7 @@ class SSM:
         for page in paginator.paginate():
             for window in page["WindowIdentities"]:
                 window_id = window["WindowId"]
-                print(f"  Processing SSM Maintenance Window: {window_id}")
+                print(f"Processing SSM Maintenance Window: {window_id}")
 
                 attributes = {
                     "id": window_id,
@@ -167,7 +167,7 @@ class SSM:
                     for target in target_page["Targets"]:
                         target_id = target["WindowTargetId"]
                         print(
-                            f"  Processing SSM Maintenance Window Target: {target_id}")
+                            f"Processing SSM Maintenance Window Target: {target_id}")
 
                         attributes = {
                             "id": target_id,
@@ -193,7 +193,7 @@ class SSM:
                     for task in task_page["Tasks"]:
                         task_id = task["WindowTaskId"]
                         print(
-                            f"  Processing SSM Maintenance Window Task: {task_id}")
+                            f"Processing SSM Maintenance Window Task: {task_id}")
 
                         attributes = {
                             "id": task_id,
@@ -214,7 +214,7 @@ class SSM:
         for page in paginator.paginate():
             for parameter in page["Parameters"]:
                 parameter_name = parameter["Name"]
-                print(f"  Processing SSM Parameter: {parameter_name}")
+                print(f"Processing SSM Parameter: {parameter_name}")
 
                 parameter_details = self.aws_clients.ssm_client.get_parameter(
                     Name=parameter_name, WithDecryption=False)
@@ -234,7 +234,7 @@ class SSM:
         for page in paginator.paginate():
             for baseline in page["BaselineIdentities"]:
                 baseline_id = baseline["BaselineId"]
-                print(f"  Processing SSM Patch Baseline: {baseline_id}")
+                print(f"Processing SSM Patch Baseline: {baseline_id}")
 
                 attributes = {
                     "id": baseline_id,
@@ -250,7 +250,7 @@ class SSM:
             for group in page["Mappings"]:
                 group_name = group["PatchGroup"]
                 baseline_id = group["BaselineIdentity"]["BaselineId"]
-                print(f"  Processing SSM Patch Group: {group_name}")
+                print(f"Processing SSM Patch Group: {group_name}")
 
                 attributes = {
                     "id": group_name,
@@ -266,7 +266,7 @@ class SSM:
         for page in paginator.paginate():
             for data_sync in page["ResourceDataSyncItems"]:
                 sync_name = data_sync["SyncName"]
-                print(f"  Processing SSM Resource Data Sync: {sync_name}")
+                print(f"Processing SSM Resource Data Sync: {sync_name}")
 
                 attributes = {
                     "id": sync_name,
@@ -288,7 +288,7 @@ class SSM:
             try:
                 service_setting = self.aws_clients.ssm_client.get_service_setting(
                     SettingId=setting_id)["ServiceSetting"]
-                print(f"  Processing SSM Service Setting: {setting_id}")
+                print(f"Processing SSM Service Setting: {setting_id}")
 
                 attributes = {
                     "id": setting_id,

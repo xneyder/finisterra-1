@@ -103,8 +103,6 @@ class Elasticsearch:
 
         self.hcl.refresh_state()
         self.hcl.request_tf_code()
-        # self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id)
-
 
     def aws_elasticsearch_domain(self):
         resource_type = "aws_elasticsearch_domain"
@@ -116,7 +114,7 @@ class Elasticsearch:
             domain_info = self.aws_clients.elasticsearch_client.describe_elasticsearch_domain(DomainName=domain_name)[
                 "DomainStatus"]
             arn = domain_info["ARN"]
-            print(f"  Processing OpenSearch Domain: {domain_name}")
+            print(f"Processing OpenSearch Domain: {domain_name}")
 
             id = arn
 
@@ -207,7 +205,7 @@ class Elasticsearch:
             "DomainStatus"]
         arn = domain_info["ARN"]
         # access_policy = domain_info["AccessPolicies"]
-        print(f"  Processing OpenSearch Domain Policy: {domain_name}")
+        print(f"Processing OpenSearch Domain Policy: {domain_name}")
 
         id = domain_name
 

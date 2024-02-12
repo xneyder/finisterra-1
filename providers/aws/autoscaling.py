@@ -65,7 +65,6 @@ class AutoScaling:
         self.hcl.refresh_state()
         self.hcl.request_tf_code()
 
-        # self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id)
 
 
     def aws_autoscaling_attachment(self):
@@ -79,7 +78,7 @@ class AutoScaling:
 
             for elb_name in as_group.get("LoadBalancerNames", []):
                 print(
-                    f"  Processing AutoScaling Attachment: ELB {elb_name} -> ASG: {as_group_name}")
+                    f"Processing AutoScaling Attachment: ELB {elb_name} -> ASG: {as_group_name}")
 
                 resource_name = f"{as_group_name}-{elb_name}-attachment"
                 attributes = {
@@ -113,7 +112,7 @@ class AutoScaling:
                     f"  Skipping Elastic Beanstalk or EKS AutoScaling Group: {as_group_name}")
                 continue  # Skip this AutoScaling group and move to the next
 
-            print(f"  Processing AutoScaling Group: {as_group_name}")
+            print(f"Processing AutoScaling Group: {as_group_name}")
 
             id = as_group_name
             attributes = {
@@ -176,7 +175,7 @@ class AutoScaling:
                 value = tag["Value"]
 
                 print(
-                    f"  Processing AutoScaling Group Tag: {key}={value} for ASG: {as_group_name}")
+                    f"Processing AutoScaling Group Tag: {key}={value} for ASG: {as_group_name}")
 
                 resource_name = f"{as_group_name}-tag-{key}"
                 attributes = {
@@ -201,7 +200,7 @@ class AutoScaling:
             for hook in hooks:
                 hook_name = hook["LifecycleHookName"]
                 print(
-                    f"  Processing AutoScaling Lifecycle Hook: {hook_name} for ASG: {as_group_name}")
+                    f"Processing AutoScaling Lifecycle Hook: {hook_name} for ASG: {as_group_name}")
 
                 resource_name = f"{hook_name}".replace(
                     "-", "_")
@@ -250,7 +249,7 @@ class AutoScaling:
 
             for sns_topic_arn in sns_topic_arns:
                 print(
-                    f"  Processing AutoScaling Notification for ASG: {as_group_name} with SNS Topic: {sns_topic_arn}")
+                    f"Processing AutoScaling Notification for ASG: {as_group_name} with SNS Topic: {sns_topic_arn}")
 
                 resource_name = f"{as_group_name}-notification-{sns_topic_arn.split(':')[-1]}"
                 attributes = {
@@ -288,7 +287,7 @@ class AutoScaling:
 
         for policy in policies:
             policy_name = policy["PolicyName"]
-            print(f"  Processing AutoScaling Policy: {policy_name}")
+            print(f"Processing AutoScaling Policy: {policy_name}")
 
             attributes = {
                 "id": policy_name,
@@ -333,7 +332,7 @@ class AutoScaling:
             for action in scheduled_actions:
                 action_name = action["ScheduledActionName"]
                 print(
-                    f"  Processing AutoScaling Schedule: {action_name} for ASG: {as_group_name}")
+                    f"Processing AutoScaling Schedule: {action_name} for ASG: {as_group_name}")
 
                 attributes = {
                     "id": action_name,
@@ -375,7 +374,7 @@ class AutoScaling:
 
     #     launch_template = launch_templates[0]
     #     lt_name = launch_template["LaunchTemplateName"]
-    #     print(f"  Processing specific Launch Template: {lt_name}")
+    #     print(f"Processing specific Launch Template: {lt_name}")
 
     #     default_version = launch_template.get("DefaultVersionNumber")
     #     try:
@@ -435,7 +434,7 @@ class AutoScaling:
 
         launch_configuration = launch_configurations[0]
         lc_name = launch_configuration["LaunchConfigurationName"]
-        print(f"  Processing specific Launch Configuration: {lc_name}")
+        print(f"Processing specific Launch Configuration: {lc_name}")
 
         attributes = {
             "id": lc_name,

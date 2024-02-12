@@ -38,7 +38,7 @@ class Backup:
                 backup_plan_id = backup_plan["BackupPlanId"]
                 plan = self.aws_clients.backup_client.get_backup_plan(
                     BackupPlanId=backup_plan_id)["BackupPlan"]
-                print(f"  Processing AWS Backup Plan: {backup_plan_id}")
+                print(f"Processing AWS Backup Plan: {backup_plan_id}")
 
                 attributes = {
                     "id": backup_plan_id,
@@ -59,7 +59,7 @@ class Backup:
                 backup_vault_name = backup_vault["BackupVaultName"]
                 vault = self.aws_clients.backup_client.describe_backup_vault(
                     BackupVaultName=backup_vault_name)
-                print(f"  Processing AWS Backup Vault: {backup_vault_name}")
+                print(f"Processing AWS Backup Vault: {backup_vault_name}")
 
                 attributes = {
                     "id": backup_vault_name,

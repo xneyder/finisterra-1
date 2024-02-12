@@ -95,7 +95,6 @@ class ECS:
         self.aws_ecs_cluster()
         self.hcl.refresh_state()
         self.hcl.request_tf_code()
-        # self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id)
 
     def aws_ecs_cluster(self):
         resource_type = "aws_ecs_cluster"
@@ -111,7 +110,7 @@ class ECS:
             # if cluster_name == "dev-ecs-cluster":
             #     continue
 
-            print(f"  Processing ECS Cluster: {cluster_name}")
+            print(f"Processing ECS Cluster: {cluster_name}")
             id = cluster_name
 
             ftstack = "ecs"
@@ -171,7 +170,7 @@ class ECS:
             for log_group in page['logGroups']:
                 if log_group['logGroupName'] == log_group_name:
                     print(
-                        f"  Processing CloudWatch Log Group: {log_group_name}")
+                        f"Processing CloudWatch Log Group: {log_group_name}")
 
                     # Prepare the attributes
                     attributes = {
@@ -200,7 +199,7 @@ class ECS:
 
                 for provider in capacity_providers:
                     print(
-                        f"  Processing ECS Cluster Capacity Provider: {provider} for Cluster: {cluster_name}")
+                        f"Processing ECS Cluster Capacity Provider: {provider} for Cluster: {cluster_name}")
 
                     resource_name = f"{cluster_name}-{provider}"
                     attributes = {
@@ -233,7 +232,7 @@ class ECS:
 
                     if auto_scaling_group_provider:
                         print(
-                            f"  Processing ECS Capacity Provider: {provider_name}")
+                            f"Processing ECS Capacity Provider: {provider_name}")
 
                         attributes = {
                             "id": provider_name,
@@ -410,7 +409,7 @@ class ECS:
                 return
 
 
-            print(f"  Processing IAM Role: {role['Arn']}")
+            print(f"Processing IAM Role: {role['Arn']}")
 
             attributes = {
                 "id": role['RoleName'],
@@ -433,7 +432,7 @@ class ECS:
             for page in paginator.paginate(RoleName=role_name):
                 for policy in page['AttachedPolicies']:
                     print(
-                        f"  Processing IAM Role Policy Attachment: {policy['PolicyName']} for role: {role_name}")
+                        f"Processing IAM Role Policy Attachment: {policy['PolicyName']} for role: {role_name}")
 
                     resource_name = f"{role_name}-{policy['PolicyName']}"
                     attributes = {
@@ -464,7 +463,7 @@ class ECS:
                 if policy_arn.startswith('arn:aws:iam::aws:policy/') or '/service-role/' in policy_arn:
                     return
 
-                print(f"  Processing IAM Policy: {policy_arn}")
+                print(f"Processing IAM Policy: {policy_arn}")
 
                 attributes = {
                     "id": policy_arn,
@@ -497,7 +496,7 @@ class ECS:
             if scalable_targets:
                 # We expect only one target per service
                 target = scalable_targets[0]
-                print(f"  Processing ECS AppAutoScaling Target: {resource_id}")
+                print(f"Processing ECS AppAutoScaling Target: {resource_id}")
 
                 resource_name = f"{service_namespace}-{resource_id.replace('/', '-')}"
                 attributes = {
@@ -537,7 +536,7 @@ class ECS:
 
             for policy in scaling_policies:
                 print(
-                    f"  Processing AppAutoScaling Policy: {policy['PolicyName']} for resource: {resource_id}")
+                    f"Processing AppAutoScaling Policy: {policy['PolicyName']} for resource: {resource_id}")
 
                 resource_name = f"{service_namespace}-{resource_id.replace('/', '-')}-{policy['PolicyName']}"
                 attributes = {
@@ -566,7 +565,7 @@ class ECS:
 
             for action in scheduled_actions:
                 print(
-                    f"  Processing AppAutoScaling Scheduled Action: {action['ScheduledActionName']} for resource: {resource_id}")
+                    f"Processing AppAutoScaling Scheduled Action: {action['ScheduledActionName']} for resource: {resource_id}")
 
                 resource_name = f"{service_namespace}-{resource_id.replace('/', '-')}-{action['ScheduledActionName']}"
                 attributes = {
@@ -590,7 +589,7 @@ class ECS:
             name = setting["name"]
             value = setting["value"]
 
-            print(f"  Processing ECS Account Setting Default: {name}")
+            print(f"Processing ECS Account Setting Default: {name}")
 
             attributes = {
                 "id": name,
@@ -643,7 +642,7 @@ class ECS:
             value = tag["value"]
 
             print(
-                f"  Processing ECS Tag: {key}={value} for {resource_type}: {resource_name}")
+                f"Processing ECS Tag: {key}={value} for {resource_type}: {resource_name}")
 
             hcl_resource_name = f"{resource_name}-tag-{key}"
             id = resource_arn + "," + key
@@ -676,7 +675,7 @@ class ECS:
                         cluster=cluster_arn, service=service_name, taskSets=[task_set_arn])["taskSets"][0]
                     task_set_id = task_set["id"]
 
-                    print(f"  Processing ECS Task Set: {task_set_id}")
+                    print(f"Processing ECS Task Set: {task_set_id}")
 
                     attributes = {
                         "id": task_set_id,
@@ -699,7 +698,7 @@ class ECS:
         for target_group in response["TargetGroups"]:
             tg_arn = target_group["TargetGroupArn"]
             tg_name = target_group["TargetGroupName"]
-            print(f"  Processing Load Balancer Target Group: {tg_name}")
+            print(f"Processing Load Balancer Target Group: {tg_name}")
 
             attributes = {
                 "id": tg_arn,
@@ -729,7 +728,7 @@ class ECS:
 
             for listener in listeners:
                 listener_arn = listener["ListenerArn"]
-                # print(f"  Processing Load Balancer Listener: {listener_arn}")
+                # print(f"Processing Load Balancer Listener: {listener_arn}")
 
                 rules = self.aws_clients.elbv2_client.describe_rules(
                     ListenerArn=listener_arn)["Rules"]
@@ -771,7 +770,7 @@ class ECS:
                     for action in listener['DefaultActions']:
                         if action['Type'] == 'forward' and any(tg['TargetGroupArn'] == target_group_arn for tg in action['ForwardConfig']['TargetGroups']):
                             listener_arn = listener["ListenerArn"]
-                            print(f"  Processing Listener: {listener_arn}")
+                            print(f"Processing Listener: {listener_arn}")
 
                             attributes = {
                                 "id": listener_arn,

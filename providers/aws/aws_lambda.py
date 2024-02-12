@@ -122,7 +122,7 @@ class AwsLambda:
         # if function_name != 'ApiGatewayCustomAuth':
         #     return
         
-        print(f"  Processing Lambda Function: {function_name}")
+        print(f"Processing Lambda Function: {function_name}")
 
         function_details = self.aws_clients.lambda_client.get_function(FunctionName=function_name)
         function_arn = function_details["Configuration"]["FunctionArn"]
@@ -222,7 +222,7 @@ class AwsLambda:
     #     try:
     #         role = self.aws_clients.iam_client.get_role(RoleName=role_name)['Role']
 
-    #         print(f"  Processing IAM Role: {role['Arn']}")
+    #         print(f"Processing IAM Role: {role['Arn']}")
 
     #         attributes = {
     #             "id": role['RoleName'],
@@ -245,7 +245,7 @@ class AwsLambda:
     #         for page in paginator.paginate(RoleName=role_name):
     #             for policy in page['AttachedPolicies']:
     #                 print(
-    #                     f"  Processing IAM Role Policy Attachment: {policy['PolicyName']} for role: {role_name}")
+    #                     f"Processing IAM Role Policy Attachment: {policy['PolicyName']} for role: {role_name}")
 
     #                 resource_name = f"{role_name}-{policy['PolicyName']}"
     #                 attributes = {
@@ -271,7 +271,7 @@ class AwsLambda:
     #         policy = response.get('Policy', {})
 
     #         if policy:
-    #             print(f"  Processing IAM Policy: {policy_arn}")
+    #             print(f"Processing IAM Policy: {policy_arn}")
 
     #             attributes = {
     #                 "id": policy_arn,
@@ -297,7 +297,7 @@ class AwsLambda:
             for log_group in page['logGroups']:
                 if log_group['logGroupName'] == log_group_name:
                     print(
-                        f"  Processing CloudWatch Log Group: {log_group_name}")
+                        f"Processing CloudWatch Log Group: {log_group_name}")
 
                     # Prepare the attributes
                     attributes = {
@@ -325,7 +325,7 @@ class AwsLambda:
             for alias in aliases:
                 alias_name = alias["Name"]
                 print(
-                    f"  Processing Lambda Alias: {alias_name} for Function: {function_name}")
+                    f"Processing Lambda Alias: {alias_name} for Function: {function_name}")
 
                 attributes = {
                     "id": alias["AliasArn"],
@@ -345,7 +345,7 @@ class AwsLambda:
         for page in paginator.paginate():
             for config in page.get("CodeSigningConfigs", []):
                 config_id = config["CodeSigningConfigId"]
-                print(f"  Processing Lambda Code Signing Config: {config_id}")
+                print(f"Processing Lambda Code Signing Config: {config_id}")
 
                 attributes = {
                     "id": config_id,
@@ -371,7 +371,7 @@ class AwsLambda:
             for mapping in event_source_mappings:
                 mapping_id = mapping["UUID"]
                 print(
-                    f"  Processing Lambda Event Source Mapping: {mapping_id} for Function: {function_name}")
+                    f"Processing Lambda Event Source Mapping: {mapping_id} for Function: {function_name}")
 
                 attributes = {
                     "id": mapping_id,
@@ -392,7 +392,7 @@ class AwsLambda:
                 event_invoke_config = self.aws_clients.lambda_client.get_function_event_invoke_config(
                     FunctionName=function_name)
                 print(
-                    f"  Processing Event Invoke Config for Lambda Function: {function_name}")
+                    f"Processing Event Invoke Config for Lambda Function: {function_name}")
 
                 attributes = {
                     "id": f"{function_name}:$LATEST",
@@ -420,7 +420,7 @@ class AwsLambda:
             region = self.region
             arn = function["FunctionArn"]
             url = f"https://{arn.split(':')[4]}.lambda.{region}.amazonaws.com/2015-03-31/functions/{arn}/invocations"
-            print(f"  Processing URL for Lambda Function: {function_name}")
+            print(f"Processing URL for Lambda Function: {function_name}")
 
             attributes = {
                 "id": f"{function_name}:$LATEST",
@@ -444,7 +444,7 @@ class AwsLambda:
             for layer_version in layer_versions:
                 version = layer_version["Version"]
                 print(
-                    f"  Processing Layer Version {version} for Lambda Layer: {layer_name}")
+                    f"Processing Layer Version {version} for Lambda Layer: {layer_name}")
 
                 attributes = {
                     "id": f"{layer_name}:{version}",
@@ -503,7 +503,7 @@ class AwsLambda:
                 for statement in policy["Statement"]:
                     statement_id = statement["Sid"]
                     print(
-                        f"  Processing Permission {statement_id} for Lambda Function: {function_name}")
+                        f"Processing Permission {statement_id} for Lambda Function: {function_name}")
 
                     attributes = {
                         "id": f"{function_name}-{statement_id}",
@@ -531,7 +531,7 @@ class AwsLambda:
                     version = config["FunctionVersion"]
                     allocated_concurrent_executions = config["RequestedProvisionedConcurrentExecutions"]
                     print(
-                        f"  Processing Provisioned Concurrency Configuration for Lambda Function: {function_name}, Version: {version}")
+                        f"Processing Provisioned Concurrency Configuration for Lambda Function: {function_name}, Version: {version}")
 
                     attributes = {
                         "id": f"{function_name}-{version}",

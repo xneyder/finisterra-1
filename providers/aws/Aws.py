@@ -60,8 +60,9 @@ from providers.aws.launchtemplate import LaunchTemplate
 
 
 class Aws:
-    def __init__(self, script_dir, s3Bucket,
+    def __init__(self, progress, script_dir, s3Bucket,
                  dynamoDBTable, state_key, aws_account_id, aws_region):
+        self.progress = progress
         self.provider_name = "registry.terraform.io/hashicorp/aws"
         self.script_dir = script_dir
         self.schema_data = self.load_provider_schema()
@@ -310,9 +311,6 @@ class Aws:
     def create_folder(self, folder):
         if not os.path.exists(folder):
             os.makedirs(folder)
-            print(f"Folder '{folder}' has been created.")
-        else:
-            print(f"Folder '{folder}' already exists.")
 
     def load_provider_schema(self):
         os.chdir(self.script_dir)
@@ -372,7 +370,7 @@ class Aws:
         instance.vpc_endpoint()
 
     def s3(self):
-        instance = S3(self.aws_clients_instance, self.script_dir, self.provider_name,
+        instance = S3(self.progress, self.aws_clients_instance, self.script_dir, self.provider_name,
                       self.schema_data, self.aws_region, self.s3Bucket,
                       self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.s3()
@@ -390,7 +388,7 @@ class Aws:
         instance.iam()
 
     def acm(self):
-        instance = ACM(self.aws_clients_instance, self.script_dir, self.provider_name,
+        instance = ACM(self.progress, self.aws_clients_instance, self.script_dir, self.provider_name,
                        self.schema_data, self.aws_region, self.s3Bucket,
                        self.dynamoDBTable, self.state_key, self.workspace_id, self.modules, self.aws_account_id)
         instance.acm()

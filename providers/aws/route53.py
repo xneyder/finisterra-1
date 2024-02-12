@@ -48,7 +48,7 @@ class Route53:
             "DelegationSets"]
         for delegation_set in delegation_sets:
             delegation_set_id = delegation_set["Id"]
-            print(f"  Processing Route53 Delegation Set: {delegation_set_id}")
+            print(f"Processing Route53 Delegation Set: {delegation_set_id}")
 
             attributes = {
                 "id": delegation_set_id,
@@ -67,7 +67,7 @@ class Route53:
             health_checks = page["HealthChecks"]
             for health_check in health_checks:
                 health_check_id = health_check["Id"]
-                print(f"  Processing Route53 Health Check: {health_check_id}")
+                print(f"Processing Route53 Health Check: {health_check_id}")
 
                 config = health_check["HealthCheckConfig"]
                 attributes = {
@@ -159,7 +159,7 @@ class Route53:
     #                 for ksk in key_signing_keys:
     #                     ksk_id = ksk["KeySigningKeyId"]
     #                     print(
-    #                         f"  Processing Route53 Key Signing Key: {ksk_id} for Hosted Zone: {hosted_zone_id}")
+    #                         f"Processing Route53 Key Signing Key: {ksk_id} for Hosted Zone: {hosted_zone_id}")
 
     #                     attributes = {
     #                         "id": ksk_id,
@@ -199,7 +199,7 @@ class Route53:
                         if config["HostedZoneId"] == hosted_zone_id:
                             config_id = config["Id"]
                             print(
-                                f"  Processing Route53 Query Log: {config_id} for Hosted Zone: {hosted_zone_id}")
+                                f"Processing Route53 Query Log: {config_id} for Hosted Zone: {hosted_zone_id}")
 
                             attributes = {
                                 "id": config_id,
@@ -236,7 +236,7 @@ class Route53:
 
                         record_id = f"{hosted_zone_id}-{record_name}-{record_type}"
                         print(
-                            f"  Processing Route53 Record: {record_name} with Type: {record_type} in Hosted Zone: {hosted_zone_id}")
+                            f"Processing Route53 Record: {record_name} with Type: {record_type} in Hosted Zone: {hosted_zone_id}")
 
                         attributes = {
                             "id": record_id,
@@ -269,7 +269,7 @@ class Route53:
                 traffic_policy_version = traffic_policy["LatestVersion"]
 
                 print(
-                    f"  Processing Route53 Traffic Policy: {traffic_policy_id} Version: {traffic_policy_version}")
+                    f"Processing Route53 Traffic Policy: {traffic_policy_id} Version: {traffic_policy_version}")
 
                 traffic_policy_detail = self.aws_clients.route53_client.get_traffic_policy(
                     Id=traffic_policy_id,
@@ -313,7 +313,7 @@ class Route53:
                 policy_version = instance["TrafficPolicyVersion"]
 
                 print(
-                    f"  Processing Route53 Traffic Policy Instance: {instance_id}")
+                    f"Processing Route53 Traffic Policy Instance: {instance_id}")
 
                 attributes = {
                     "id": instance_id,
@@ -352,7 +352,7 @@ class Route53:
                     vpc_region = vpc_assoc_auth["VPCRegion"]
 
                     print(
-                        f"  Processing Route53 VPC Association Authorization: Hosted Zone: {hosted_zone_id}, VPC: {vpc_id}")
+                        f"Processing Route53 VPC Association Authorization: Hosted Zone: {hosted_zone_id}, VPC: {vpc_id}")
 
                     attributes = {
                         "id": f"{hosted_zone_id}:{vpc_id}",
@@ -376,7 +376,7 @@ class Route53:
                 private_zone = hosted_zone["Config"]["PrivateZone"]
 
                 print(
-                    f"  Processing Route53 Zone: {name} (ID: {hosted_zone_id})")
+                    f"Processing Route53 Zone: {name} (ID: {hosted_zone_id})")
 
                 attributes = {
                     "id": hosted_zone_id,
@@ -405,7 +405,7 @@ class Route53:
                         association_id = f"{hosted_zone_id}-{vpc_id}"
 
                         print(
-                            f"  Processing Route53 Zone Association: Hosted Zone {hosted_zone_id} with VPC {vpc_id}")
+                            f"Processing Route53 Zone Association: Hosted Zone {hosted_zone_id} with VPC {vpc_id}")
 
                         attributes = {
                             "id": association_id,

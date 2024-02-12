@@ -108,7 +108,7 @@ class ElasticacheRedis:
                 # if replication_group['ReplicationGroupId'] != "bpu-replication-group":
                 #     continue
 
-                print(f"  Processing ElastiCache Replication Group: {replication_group['ReplicationGroupId']}")
+                print(f"Processing ElastiCache Replication Group: {replication_group['ReplicationGroupId']}")
                 id = replication_group["ReplicationGroupId"]
 
                 ftstack = "elasticache_redis"

@@ -67,7 +67,6 @@ class CloudFront:
         self.hcl.id_key_list.append("bucket_domain_name")
         self.hcl.id_key_list.append("qualified_arn")
         self.hcl.request_tf_code()
-        # self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id)
 
 
     def aws_cloudfront_distribution(self):
@@ -92,7 +91,7 @@ class CloudFront:
                 # if distribution_id != "E31WQ2W96RYYTV":
                 #     continue
 
-                print(f"  Processing CloudFront Distribution: {distribution_id}")
+                print(f"Processing CloudFront Distribution: {distribution_id}")
 
                 ftstack = "cloudfront"
                 try:
@@ -214,7 +213,7 @@ class CloudFront:
                 if cache_policy_id != specific_cache_policy_id:
                     continue
 
-                print(f"  Processing CloudFront Cache Policy: {cache_policy_id}")
+                print(f"Processing CloudFront Cache Policy: {cache_policy_id}")
 
                 attributes = {
                     "id": cache_policy_id,
@@ -233,7 +232,7 @@ class CloudFront:
             for config_summary in response["FieldLevelEncryptionList"]["Items"]:
                 config_id = config_summary["Id"]
                 print(
-                    f"  Processing CloudFront Field-Level Encryption Config: {config_id}")
+                    f"Processing CloudFront Field-Level Encryption Config: {config_id}")
 
                 attributes = {
                     "id": config_id,
@@ -250,7 +249,7 @@ class CloudFront:
             for profile_summary in response["FieldLevelEncryptionProfileList"]["Items"]:
                 profile_id = profile_summary["Id"]
                 print(
-                    f"  Processing CloudFront Field-Level Encryption Profile: {profile_id}")
+                    f"Processing CloudFront Field-Level Encryption Profile: {profile_id}")
 
                 attributes = {
                     "id": profile_id,
@@ -272,7 +271,7 @@ class CloudFront:
                     function_name = function_summary["Name"]
 
                     # Fetch the function's code or details using its name
-                    print(f"  Processing CloudFront Function: {function_name}")
+                    print(f"Processing CloudFront Function: {function_name}")
                     id = function_name
 
                     attributes = {
@@ -323,7 +322,7 @@ class CloudFront:
 
                     if monitoring_subscription.get("RealtimeMetricsSubscriptionConfig"):
                         print(
-                            f"  Processing CloudFront Monitoring Subscription: {distribution_id}")
+                            f"Processing CloudFront Monitoring Subscription: {distribution_id}")
 
                         attributes = {
                             "id": distribution_id,
@@ -355,7 +354,7 @@ class CloudFront:
 
                 oai_comment = oai_summary["Comment"]
                 print(
-                    f"  Processing CloudFront Origin Access Identity: {oai_id}")
+                    f"Processing CloudFront Origin Access Identity: {oai_id}")
 
                 attributes = {
                     "id": oai_id,
@@ -374,7 +373,7 @@ class CloudFront:
             for oai_summary in page["OriginAccessControlList"]["Items"]:
                 oai_id = oai_summary["Id"]
                 print(
-                    f"  Processing CloudFront Origin Access Identity: {oai_id}")
+                    f"Processing CloudFront Origin Access Identity: {oai_id}")
 
                 attributes = {
                     "id": oai_id,
@@ -402,7 +401,7 @@ class CloudFront:
             policy_response = self.aws_clients.cloudfront_client.get_origin_request_policy(Id=specific_policy_id)
             policy = policy_response["OriginRequestPolicy"]
 
-            print(f"  Processing CloudFront Origin Request Policy: {specific_policy_id}")
+            print(f"Processing CloudFront Origin Request Policy: {specific_policy_id}")
 
             attributes = {
                 "id": specific_policy_id,
@@ -423,7 +422,7 @@ class CloudFront:
         for page in paginator.paginate():
             for public_key_summary in page["PublicKeyList"]["Items"]:
                 public_key_id = public_key_summary["Id"]
-                print(f"  Processing CloudFront Public Key: {public_key_id}")
+                print(f"Processing CloudFront Public Key: {public_key_id}")
 
                 public_key = self.aws_clients.cloudfront_client.get_public_key(
                     Id=public_key_id)["PublicKey"]
@@ -443,7 +442,7 @@ class CloudFront:
 
         for public_key in response.get("PublicKeyList", {}).get("Items", []):
             public_key_id = public_key["Id"]
-            print(f"  Processing CloudFront Public Key: {public_key_id}")
+            print(f"Processing CloudFront Public Key: {public_key_id}")
 
             attributes = {
                 "id": public_key_id,
@@ -463,7 +462,7 @@ class CloudFront:
             for log_config in response["RealtimeLogConfigs"]["Items"]:
                 log_config_id = log_config["ARN"]
                 print(
-                    f"  Processing CloudFront Realtime Log Config: {log_config_id}")
+                    f"Processing CloudFront Realtime Log Config: {log_config_id}")
 
                 attributes = {
                     "id": log_config_id,
@@ -494,7 +493,7 @@ class CloudFront:
             policy_response = self.aws_clients.cloudfront_client.get_response_headers_policy(Id=specific_policy_id)
             policy = policy_response["ResponseHeadersPolicy"]
 
-            print(f"  Processing CloudFront Response Headers Policy: {specific_policy_id}")
+            print(f"Processing CloudFront Response Headers Policy: {specific_policy_id}")
 
             attributes = {
                 "id": specific_policy_id,

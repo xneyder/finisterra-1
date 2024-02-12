@@ -68,7 +68,6 @@ class VPC:
         self.aws_vpc()
         self.hcl.refresh_state()
         self.hcl.request_tf_code()
-        # self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id)
 
     def aws_vpc(self):
         resource_type = "aws_vpc"
@@ -80,7 +79,7 @@ class VPC:
                 vpc_id = vpc["VpcId"]
                 # if vpc_id != "vpc-0d4f801cafb8943b1":
                 #     continue
-                print(f"  Processing VPC: {vpc_id}")
+                print(f"Processing VPC: {vpc_id}")
                 id = vpc_id
 
                 ftstack = "vpc"
@@ -162,7 +161,7 @@ class VPC:
             attached_vpc_id = igw["Attachments"][0]["VpcId"] if igw["Attachments"] else ""
 
             if attached_vpc_id == vpc_id:
-                print(f"  Processing Internet Gateway: {igw_id}")
+                print(f"Processing Internet Gateway: {igw_id}")
 
                 attributes = {
                     "id": igw_id,
@@ -190,7 +189,7 @@ class VPC:
         for route_table in route_tables:
             route_table_id = route_table["RouteTableId"]
             print(
-                f"  Processing Default Route Table: {route_table_id} for VPC: {vpc_id}")
+                f"Processing Default Route Table: {route_table_id} for VPC: {vpc_id}")
             
             self.default_routes[route_table_id] = []
             for route in route_table["Routes"]:
@@ -215,7 +214,7 @@ class VPC:
             network_acl_id = network_acl["NetworkAclId"]
             default_network_acl_id = network_acl["NetworkAclId"]
             print(
-                f"  Processing Default Network ACL: {network_acl_id} for VPC: {vpc_id}")
+                f"Processing Default Network ACL: {network_acl_id} for VPC: {vpc_id}")
 
             attributes = {
                 "id": network_acl_id,
@@ -235,7 +234,7 @@ class VPC:
         for security_group in security_groups:
             security_group_id = security_group["GroupId"]
             print(
-                f"  Processing Default Security Group: {security_group_id} for VPC: {vpc_id}")
+                f"Processing Default Security Group: {security_group_id} for VPC: {vpc_id}")
 
             attributes = {
                 "id": security_group_id,
@@ -254,7 +253,7 @@ class VPC:
             vpc_id = subnet["VpcId"]
             subnet_id = subnet["SubnetId"]
             print(
-                f"  Processing Default Subnet: {subnet_id} for VPC: {vpc_id}")
+                f"Processing Default Subnet: {subnet_id} for VPC: {vpc_id}")
 
             attributes = {
                 "id": subnet_id,
@@ -273,7 +272,7 @@ class VPC:
 
         for vpc in vpcs:
             vpc_id = vpc["VpcId"]
-            print(f"  Processing Default VPC: {vpc_id}")
+            print(f"Processing Default VPC: {vpc_id}")
 
             attributes = {
                 "id": vpc_id,
@@ -289,7 +288,7 @@ class VPC:
 
         for dhcp_option in dhcp_options:
             dhcp_options_id = dhcp_option["DhcpOptionsId"]
-            print(f"  Processing Default VPC DHCP Options: {dhcp_options_id}")
+            print(f"Processing Default VPC DHCP Options: {dhcp_options_id}")
 
             attributes = {
                 "id": dhcp_options_id,
@@ -304,7 +303,7 @@ class VPC:
 
         for prefix_list in prefix_lists:
             prefix_list_id = prefix_list["PrefixListId"]
-            print(f"  Processing EC2 Managed Prefix List: {prefix_list_id}")
+            print(f"Processing EC2 Managed Prefix List: {prefix_list_id}")
 
             # Get the entries for the prefix list
             entries = self.aws_clients.ec2_client.get_managed_prefix_list_entries(
@@ -333,7 +332,7 @@ class VPC:
 
         for analysis in network_insights_analyses:
             analysis_id = analysis["NetworkInsightsAnalysisId"]
-            print(f"  Processing EC2 Network Insights Analysis: {analysis_id}")
+            print(f"Processing EC2 Network Insights Analysis: {analysis_id}")
 
             attributes = {
                 "id": analysis_id,
@@ -351,7 +350,7 @@ class VPC:
 
         for path in network_insights_paths:
             path_id = path["NetworkInsightsPathId"]
-            print(f"  Processing EC2 Network Insights Path: {path_id}")
+            print(f"Processing EC2 Network Insights Path: {path_id}")
 
             attributes = {
                 "id": path_id,
@@ -376,7 +375,7 @@ class VPC:
             for cidr_reservation in ipv4_cidr_reservations:
                 reservation_id = cidr_reservation["CidrReservationId"]
                 print(
-                    f"  Processing IPv4 Subnet CIDR Reservation: {reservation_id} in Subnet: {subnet_id}")
+                    f"Processing IPv4 Subnet CIDR Reservation: {reservation_id} in Subnet: {subnet_id}")
 
                 attributes = {
                     "id": reservation_id,
@@ -391,7 +390,7 @@ class VPC:
             for cidr_reservation in ipv6_cidr_reservations:
                 reservation_id = cidr_reservation["CidrReservationId"]
                 print(
-                    f"  Processing IPv6 Subnet CIDR Reservation: {reservation_id} in Subnet: {subnet_id}")
+                    f"Processing IPv6 Subnet CIDR Reservation: {reservation_id} in Subnet: {subnet_id}")
 
                 attributes = {
                     "id": reservation_id,
@@ -408,7 +407,7 @@ class VPC:
 
         for tm_filter in traffic_mirror_filters:
             tm_filter_id = tm_filter["TrafficMirrorFilterId"]
-            print(f"  Processing EC2 Traffic Mirror Filter: {tm_filter_id}")
+            print(f"Processing EC2 Traffic Mirror Filter: {tm_filter_id}")
 
             attributes = {
                 "id": tm_filter_id,
@@ -444,7 +443,7 @@ class VPC:
             for rule in rules:
                 rule_id = rule["TrafficMirrorFilterRuleId"]
                 print(
-                    f"  Processing EC2 Traffic Mirror Filter Rule: {rule_id} for Filter: {tm_filter_id}")
+                    f"Processing EC2 Traffic Mirror Filter Rule: {rule_id} for Filter: {tm_filter_id}")
 
                 attributes = {
                     "id": rule_id,
@@ -467,7 +466,7 @@ class VPC:
 
         for tm_session in traffic_mirror_sessions:
             tm_session_id = tm_session["TrafficMirrorSessionId"]
-            print(f"  Processing EC2 Traffic Mirror Session: {tm_session_id}")
+            print(f"Processing EC2 Traffic Mirror Session: {tm_session_id}")
 
             attributes = {
                 "id": tm_session_id,
@@ -488,7 +487,7 @@ class VPC:
 
         for tm_target in traffic_mirror_targets:
             tm_target_id = tm_target["TrafficMirrorTargetId"]
-            print(f"  Processing EC2 Traffic Mirror Target: {tm_target_id}")
+            print(f"Processing EC2 Traffic Mirror Target: {tm_target_id}")
 
             attributes = {
                 "id": tm_target_id,
@@ -507,7 +506,7 @@ class VPC:
         for egress_only_igw in egress_only_igws:
             egress_only_igw_id = egress_only_igw["EgressOnlyInternetGatewayId"]
             print(
-                f"  Processing Egress Only Internet Gateway: {egress_only_igw_id}")
+                f"Processing Egress Only Internet Gateway: {egress_only_igw_id}")
 
             # Assuming there is only one attachment per egress-only internet gateway
             vpc_id = egress_only_igw["Attachments"][0]["VpcId"] if egress_only_igw["Attachments"] else ""
@@ -527,7 +526,7 @@ class VPC:
             # Filter out flow_logs not associated with the vpc_id
             if flow_log["ResourceId"] == vpc_id:
                 flow_log_id = flow_log["FlowLogId"]
-                print(f"  Processing Flow Log: {flow_log_id}")
+                print(f"Processing Flow Log: {flow_log_id}")
 
                 attributes = {
                     "id": flow_log_id,
@@ -589,7 +588,7 @@ class VPC:
     #         for policy in policy_page["AttachedPolicies"]:
     #             policy_arn = policy["PolicyArn"]
     #             print(
-    #                 f"  Processing IAM Role Policy Attachment: {role_name} - {policy_arn}")
+    #                 f"Processing IAM Role Policy Attachment: {role_name} - {policy_arn}")
 
     #             attributes = {
     #                 "id": f"{role_name}/{policy_arn}",
@@ -624,7 +623,7 @@ class VPC:
             for log_group in page["logGroups"]:
                 if log_group["logGroupName"] == log_group_name:
                     print(
-                        f"  Processing CloudWatch Log Group: {log_group_name}")
+                        f"Processing CloudWatch Log Group: {log_group_name}")
 
                     attributes = {
                         "id": log_group_name,
@@ -648,7 +647,7 @@ class VPC:
             for attachment in igw["Attachments"]:
                 vpc_id = attachment["VpcId"]
                 print(
-                    f"  Processing Internet Gateway Attachment: {igw_id} <-> {vpc_id}")
+                    f"Processing Internet Gateway Attachment: {igw_id} <-> {vpc_id}")
 
                 attributes = {
                     "id": f"{igw_id}:{vpc_id}",
@@ -670,7 +669,7 @@ class VPC:
                 if assoc["Main"]:
                     assoc_id = assoc["RouteTableAssociationId"]
                     print(
-                        f"  Processing Main Route Table Association: {assoc_id} for VPC: {vpc_id}")
+                        f"Processing Main Route Table Association: {assoc_id} for VPC: {vpc_id}")
 
                     attributes = {
                         "id": assoc_id,
@@ -702,7 +701,7 @@ class VPC:
                 nat_gw_state = nat_gw["State"]
 
                 if nat_gw_state == "available":  # Add this condition
-                    print(f"  Processing NAT Gateway: {nat_gw_id}")
+                    print(f"Processing NAT Gateway: {nat_gw_id}")
 
                     attributes = {
                         "id": nat_gw_id,
@@ -741,7 +740,7 @@ class VPC:
 
         eip = self.aws_clients.ec2_client.describe_addresses(
             AllocationIds=[allocation_id])["Addresses"][0]
-        print(f"  Processing Elastic IP: {allocation_id}")
+        print(f"Processing Elastic IP: {allocation_id}")
 
         attributes = {
             "id": allocation_id,
@@ -786,7 +785,7 @@ class VPC:
             if not network_acl["IsDefault"] and network_acl["VpcId"] == vpc_id:
                 network_acl_id = network_acl["NetworkAclId"]
                 print(
-                    f"  Processing Network ACL: {network_acl_id} for VPC: {vpc_id}")
+                    f"Processing Network ACL: {network_acl_id} for VPC: {vpc_id}")
 
                 attributes = {
                     "id": network_acl_id,
@@ -809,7 +808,7 @@ class VPC:
                     assoc_id = assoc["NetworkAclAssociationId"]
                     subnet_id = assoc["SubnetId"]
                     print(
-                        f"  Processing Network ACL Association: {assoc_id} for Subnet: {subnet_id}")
+                        f"Processing Network ACL Association: {assoc_id} for Subnet: {subnet_id}")
 
                     attributes = {
                         "id": assoc_id,
@@ -834,7 +833,7 @@ class VPC:
                     rule_action = entry["RuleAction"]
                     rule_egress = entry["Egress"]
                     print(
-                        f"  Processing Network ACL Rule: {rule_number} for Network ACL: {network_acl_id}")
+                        f"Processing Network ACL Rule: {rule_number} for Network ACL: {network_acl_id}")
 
                     attributes = {
                         "id": f"{network_acl_id}-{rule_number}",
@@ -863,7 +862,7 @@ class VPC:
             description = network_interface.get("Description", "")
             private_ips = [private_ip["PrivateIpAddress"]
                            for private_ip in network_interface["PrivateIpAddresses"]]
-            print(f"  Processing Network Interface: {eni_id}")
+            print(f"Processing Network Interface: {eni_id}")
 
             attributes = {
                 "id": eni_id,
@@ -886,7 +885,7 @@ class VPC:
                 instance_id = attachment["InstanceId"]
                 device_index = attachment["DeviceIndex"]
                 print(
-                    f"  Processing Network Interface Attachment: {attachment_id} for ENI: {eni_id}")
+                    f"Processing Network Interface Attachment: {attachment_id} for ENI: {eni_id}")
 
                 attributes = {
                     "id": attachment_id,
@@ -906,7 +905,7 @@ class VPC:
             for sg in eni["Groups"]:
                 sg_id = sg["GroupId"]
                 print(
-                    f"  Processing Security Group Attachment for ENI: {eni_id} and SG: {sg_id}")
+                    f"Processing Security Group Attachment for ENI: {eni_id} and SG: {sg_id}")
 
                 attributes = {
                     "id": f"{eni_id}-{sg_id}",
@@ -932,7 +931,7 @@ class VPC:
 
                 route_table_id = rt["RouteTableId"]
                 print(
-                    f"  Processing Route Table: {route_table_id} for VPC: {vpc_id}")
+                    f"Processing Route Table: {route_table_id} for VPC: {vpc_id}")
 
                 attributes = {
                     "id": route_table_id,
@@ -966,7 +965,7 @@ class VPC:
             return
 
         print(
-            f"  Processing Route in Route Table: {route_table_id} for destination: {destination}")
+            f"Processing Route in Route Table: {route_table_id} for destination: {destination}")
         
         id = f"{route_table_id.replace('-', '_')}-{destination.replace('/', '-')}"
 
@@ -1026,7 +1025,7 @@ class VPC:
                 if not assoc.get("Main") and assoc["SubnetId"] == subnet_id:
                     assoc_id = assoc["RouteTableAssociationId"]
                     print(
-                        f"  Processing Route Table Association: {assoc_id} for Route Table: {route_table_id}")
+                        f"Processing Route Table Association: {assoc_id} for Route Table: {route_table_id}")
 
                     attributes = {
                         "id": assoc_id,
@@ -1068,7 +1067,7 @@ class VPC:
                     f"  Skipping Elastic Beanstalk Security Group: {sg_id} for VPC: {vpc_id}")
                 continue
 
-            print(f"  Processing Security Group: {sg_id} for VPC: {vpc_id}")
+            print(f"Processing Security Group: {sg_id} for VPC: {vpc_id}")
 
             attributes = {
                 "id": sg_id,
@@ -1084,7 +1083,7 @@ class VPC:
         dhcp_options = self.aws_clients.ec2_client.describe_dhcp_options(
             DhcpOptionsIds=[dhcp_options_id])["DhcpOptions"][0]
 
-        print(f"  Processing VPC DHCP Options: {dhcp_options_id}")
+        print(f"Processing VPC DHCP Options: {dhcp_options_id}")
 
         attributes = {
             "id": dhcp_options_id,
@@ -1104,7 +1103,7 @@ class VPC:
         dhcp_options_id = vpc["DhcpOptionsId"]
         if dhcp_options_id != "default":
             print(
-                f"  Processing VPC DHCP Options Association: {dhcp_options_id} for VPC: {vpc_id}")
+                f"Processing VPC DHCP Options Association: {dhcp_options_id} for VPC: {vpc_id}")
 
             assoc_id = f"{dhcp_options_id}-{vpc_id}"
             attributes = {
@@ -1137,7 +1136,7 @@ class VPC:
             vpc_id = endpoint["VpcId"]
             service_name = endpoint["ServiceName"]
             print(
-                f"  Processing VPC Endpoint: {endpoint_id} for VPC: {vpc_id}")
+                f"Processing VPC Endpoint: {endpoint_id} for VPC: {vpc_id}")
             attributes = {
                 "id": endpoint_id,
                 "vpc_id": vpc_id,
@@ -1161,7 +1160,7 @@ class VPC:
                 vpc_id = endpoint["VpcId"]
                 service_name = endpoint["ServiceName"]
                 print(
-                    f"  Processing VPC Endpoint Connection Accepter: {endpoint_id} for VPC: {vpc_id}")
+                    f"Processing VPC Endpoint Connection Accepter: {endpoint_id} for VPC: {vpc_id}")
 
                 accepter_id = f"{vpc_id}-{endpoint_id}"
                 attributes = {
@@ -1184,7 +1183,7 @@ class VPC:
             service_id = notification["ServiceId"]
             sns_topic_arn = notification["ConnectionNotificationArn"]
             print(
-                f"  Processing VPC Endpoint Connection Notification: {notification_id}")
+                f"Processing VPC Endpoint Connection Notification: {notification_id}")
 
             attributes = {
                 "id": notification_id,
@@ -1208,7 +1207,7 @@ class VPC:
             service_name = endpoint["ServiceName"]
             policy_document = endpoint["PolicyDocument"]
             print(
-                f"  Processing VPC Endpoint Policy: {endpoint_id} for VPC: {vpc_id}")
+                f"Processing VPC Endpoint Policy: {endpoint_id} for VPC: {vpc_id}")
 
             attributes = {
                 "id": endpoint_id,
@@ -1229,7 +1228,7 @@ class VPC:
 
             for route_table_id in route_table_ids:
                 print(
-                    f"  Processing VPC Endpoint Route Table Association: {endpoint_id} - {route_table_id}")
+                    f"Processing VPC Endpoint Route Table Association: {endpoint_id} - {route_table_id}")
 
                 assoc_id = f"{endpoint_id}-{route_table_id}"
                 attributes = {
@@ -1252,7 +1251,7 @@ class VPC:
 
             for security_group_id in security_group_ids:
                 print(
-                    f"  Processing VPC Endpoint Security Group Association: {endpoint_id} - {security_group_id}")
+                    f"Processing VPC Endpoint Security Group Association: {endpoint_id} - {security_group_id}")
 
                 assoc_id = f"{endpoint_id}-{security_group_id}"
                 attributes = {
@@ -1277,7 +1276,7 @@ class VPC:
                 continue
 
             print(
-                f"  Processing VPC Endpoint Service: {service_id} {service_name}")
+                f"Processing VPC Endpoint Service: {service_id} {service_name}")
 
             attributes = {
                 "id": service_id,
@@ -1301,7 +1300,7 @@ class VPC:
 
             for principal in allowed_principals:
                 print(
-                    f"  Processing VPC Endpoint Service Allowed Principal: {principal} for Service: {service_id}")
+                    f"Processing VPC Endpoint Service Allowed Principal: {principal} for Service: {service_id}")
 
                 assoc_id = f"{service_id}-{principal}"
                 attributes = {
@@ -1323,7 +1322,7 @@ class VPC:
 
             for subnet_id in subnet_ids:
                 print(
-                    f"  Processing VPC Endpoint Subnet Association: {endpoint_id} - {subnet_id}")
+                    f"Processing VPC Endpoint Subnet Association: {endpoint_id} - {subnet_id}")
 
                 assoc_id = f"{endpoint_id}-{subnet_id}"
                 attributes = {
@@ -1345,7 +1344,7 @@ class VPC:
             for cidr_block in cidr_blocks:
                 assoc_id = cidr_block["AssociationId"]
                 print(
-                    f"  Processing VPC IPv4 CIDR Block Association: {assoc_id} for VPC: {vpc_id}")
+                    f"Processing VPC IPv4 CIDR Block Association: {assoc_id} for VPC: {vpc_id}")
 
                 attributes = {
                     "id": assoc_id,
@@ -1366,7 +1365,7 @@ class VPC:
             for ipv6_cidr_block in ipv6_cidr_blocks:
                 assoc_id = ipv6_cidr_block["AssociationId"]
                 print(
-                    f"  Processing VPC IPv6 CIDR Block Association: {assoc_id} for VPC: {vpc_id}")
+                    f"Processing VPC IPv6 CIDR Block Association: {assoc_id} for VPC: {vpc_id}")
 
                 attributes = {
                     "id": assoc_id,
@@ -1388,7 +1387,7 @@ class VPC:
         for peering_connection in vpc_peering_connections:
             peering_connection_id = peering_connection["VpcPeeringConnectionId"]
             print(
-                f"  Processing VPC Peering Connection: {peering_connection_id}")
+                f"Processing VPC Peering Connection: {peering_connection_id}")
 
             attributes = {
                 "id": peering_connection_id,
@@ -1411,7 +1410,7 @@ class VPC:
                 continue
 
             print(
-                f"  Processing VPC Peering Connection Accepter: {peering_connection_id}")
+                f"Processing VPC Peering Connection Accepter: {peering_connection_id}")
 
             attributes = {
                 "id": peering_connection_id,
@@ -1429,7 +1428,7 @@ class VPC:
         for peering_connection in vpc_peering_connections:
             peering_connection_id = peering_connection["VpcPeeringConnectionId"]
             print(
-                f"  Processing VPC Peering Connection Options: {peering_connection_id}")
+                f"Processing VPC Peering Connection Options: {peering_connection_id}")
             attributes = {
                 "id": peering_connection_id,
                 "vpc_peering_connection_id": peering_connection_id,

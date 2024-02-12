@@ -96,7 +96,6 @@ class MSK:
         self.hcl.refresh_state()
 
         self.hcl.request_tf_code()
-        # self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id)
 
 
     def aws_msk_cluster(self):
@@ -111,7 +110,7 @@ class MSK:
             for cluster_info in page["ClusterInfoList"]:
                 cluster_arn = cluster_info["ClusterArn"]
                 cluster_name = cluster_info["ClusterName"]
-                print(f"  Processing MSK Cluster: {cluster_name}")
+                print(f"Processing MSK Cluster: {cluster_name}")
                 id = cluster_arn
 
                 ftstack = "msk"
@@ -170,7 +169,7 @@ class MSK:
         )
 
         for secret in secrets.get("SecretArnList", []):
-            print(f"  Processing SCRAM Secret: {secret}")
+            print(f"Processing SCRAM Secret: {secret}")
 
             attributes = {
                 "id": secret,
@@ -200,7 +199,7 @@ class MSK:
                 service_namespace = target["ServiceNamespace"]
                 scalable_dimension = target["ScalableDimension"]
                 resource_id = target["ResourceId"]
-                print(f"  Processing AppAutoScaling Target: {target_id}")
+                print(f"Processing AppAutoScaling Target: {target_id}")
 
                 id = f"{service_namespace}/{resource_id}/{scalable_dimension}"
 
@@ -234,7 +233,7 @@ class MSK:
 
                 id = f"{service_namespace}/{resource_id}/{scalable_dimension}/{policy_name}"
 
-                print(f"  Processing AppAutoScaling Policy: {policy_name}")
+                print(f"Processing AppAutoScaling Policy: {policy_name}")
 
                 attributes = {
                     "id": id,
@@ -267,7 +266,7 @@ class MSK:
 
         config_name = configuration["Name"]
 
-        print(f"  Processing MSK Configuration: {config_name}")
+        print(f"Processing MSK Configuration: {config_name}")
 
         attributes = {
             "id": configuration_arn,
@@ -288,7 +287,7 @@ class MSK:
 
     #     for security_group in response["SecurityGroups"]:
     #         print(
-    #             f"  Processing Security Group: {security_group['GroupName']}")
+    #             f"Processing Security Group: {security_group['GroupName']}")
 
     #         attributes = {
     #             "id": security_group["GroupId"],

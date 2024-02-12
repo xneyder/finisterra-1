@@ -42,7 +42,7 @@ class Guardduty:
         detectors = self.aws_clients.guardduty_client.list_detectors()["DetectorIds"]
 
         for detector_id in detectors:
-            print(f"  Processing GuardDuty Detector: {detector_id}")
+            print(f"Processing GuardDuty Detector: {detector_id}")
 
             attributes = {
                 "id": detector_id,
@@ -65,7 +65,7 @@ class Guardduty:
 
             for page in page_iterator:
                 for filter_name in page["FilterNames"]:
-                    print(f"  Processing GuardDuty Filter: {filter_name}")
+                    print(f"Processing GuardDuty Filter: {filter_name}")
 
                     filter_details = self.aws_clients.guardduty_client.get_filter(
                         DetectorId=detector_id, FilterName=filter_name)
@@ -88,7 +88,7 @@ class Guardduty:
 
         for invitation in invitations:
             print(
-                f"  Processing GuardDuty Invite Accepter: {invitation['AccountId']}")
+                f"Processing GuardDuty Invite Accepter: {invitation['AccountId']}")
 
             attributes = {
                 "detector_id": invitation["DetectorId"],
@@ -112,7 +112,7 @@ class Guardduty:
 
             for page in page_iterator:
                 for ip_set_id in page["IpSetIds"]:
-                    print(f"  Processing GuardDuty IP Set: {ip_set_id}")
+                    print(f"Processing GuardDuty IP Set: {ip_set_id}")
 
                     ip_set = self.aws_clients.guardduty_client.get_ip_set(
                         DetectorId=detector_id, IpSetId=ip_set_id)
@@ -143,7 +143,7 @@ class Guardduty:
             for page in page_iterator:
                 for member in page["Members"]:
                     print(
-                        f"  Processing GuardDuty Member: {member['AccountId']}")
+                        f"Processing GuardDuty Member: {member['AccountId']}")
 
                     attributes = {
                         "detector_id": detector_id,
@@ -163,7 +163,7 @@ class Guardduty:
         for page in paginator.paginate():
             for admin_account in page["AdminAccounts"]:
                 print(
-                    f"  Processing GuardDuty Organization Admin Account: {admin_account['AdminAccountId']}")
+                    f"Processing GuardDuty Organization Admin Account: {admin_account['AdminAccountId']}")
 
                 attributes = {
                     "admin_account_id": admin_account["AdminAccountId"],
@@ -207,7 +207,7 @@ class Guardduty:
 
             for destination in response["Destinations"]:
                 print(
-                    f"  Processing GuardDuty Publishing Destination: {destination['DestinationId']}")
+                    f"Processing GuardDuty Publishing Destination: {destination['DestinationId']}")
 
                 attributes = {
                     "detector_id": detector_id,
@@ -235,7 +235,7 @@ class Guardduty:
             for page in page_iterator:
                 for threat_intel_set in page["ThreatIntelSetIds"]:
                     print(
-                        f"  Processing GuardDuty ThreatIntelSet: {threat_intel_set}")
+                        f"Processing GuardDuty ThreatIntelSet: {threat_intel_set}")
 
                     set_details = self.aws_clients.guardduty_client.get_threat_intel_set(
                         DetectorId=detector_id, ThreatIntelSetId=threat_intel_set)

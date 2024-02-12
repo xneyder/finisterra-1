@@ -62,7 +62,6 @@ class ECR:
 
         self.hcl.refresh_state()
         self.hcl.request_tf_code()
-        # self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id)
 
     def aws_ecr_repository(self):
         resource_type = "aws_ecr_repository"
@@ -73,7 +72,7 @@ class ECR:
             repository_name = repo["repositoryName"]
             repository_arn = repo["repositoryArn"]
 
-            print(f"  Processing ECR Repository: {repository_name}")
+            print(f"Processing ECR Repository: {repository_name}")
             id = repository_name
 
             ftstack = "ecr"
@@ -146,7 +145,7 @@ class ECR:
             return
 
         print(
-            f"  Processing ECR Lifecycle Policy for repository: {repository_name}")
+            f"Processing ECR Lifecycle Policy for repository: {repository_name}")
 
         attributes = {
             "id": repository_name,
@@ -167,7 +166,7 @@ class ECR:
         except self.aws_clients.ecr_client.exceptions.RegistryPolicyNotFoundException:
             return
 
-        print(f"  Processing ECR Registry Policy")
+        print(f"Processing ECR Registry Policy")
         id = self.aws_clients.ecr_client.describe_registries()["registries"][0]["registryId"],
 
         attributes = {
@@ -199,7 +198,7 @@ class ECR:
             for rule in cache_settings_data.get("rules", []):
                 if rule["repositoryName"] == repository_name:
                     print(
-                        f"  Processing ECR Pull Through Cache Rule for repository: {repository_name}")
+                        f"Processing ECR Pull Through Cache Rule for repository: {repository_name}")
                     id = repository_name
                     attributes = {
                         "id": id,
@@ -217,7 +216,7 @@ class ECR:
         image_scanning_config = repo["imageScanningConfiguration"]
 
         print(
-            f"  Processing ECR Registry Scanning Configuration for repository: {repository_name}")
+            f"Processing ECR Registry Scanning Configuration for repository: {repository_name}")
 
         attributes = {
             "id": repository_name,
@@ -244,7 +243,7 @@ class ECR:
             print("  No rules for ECR Replication Configuration. Skipping...")
             return
 
-        print(f"  Processing ECR Replication Configuration")
+        print(f"Processing ECR Replication Configuration")
 
         # formatted_rules = []
         # for rule in rules:

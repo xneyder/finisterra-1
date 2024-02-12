@@ -47,7 +47,7 @@ class Apigatewayv2:
 
         for page in page_iterator:
             for api in page["Items"]:
-                print(f"  Processing API Gateway v2 API: {api['ApiId']}")
+                print(f"Processing API Gateway v2 API: {api['ApiId']}")
 
                 attributes = {
                     "name": api["Name"],
@@ -72,7 +72,7 @@ class Apigatewayv2:
         for api in apis:
             api_id = api["ApiId"]
             print(
-                f"  Processing API Gateway v2 API Mappings for API ID: {api_id}")
+                f"Processing API Gateway v2 API Mappings for API ID: {api_id}")
 
             paginator = self.aws_clients.apigatewayv2_client.get_paginator(
                 "get_api_mappings")
@@ -101,7 +101,7 @@ class Apigatewayv2:
         for api in apis:
             api_id = api["ApiId"]
             print(
-                f"  Processing API Gateway v2 Authorizers for API ID: {api_id}")
+                f"Processing API Gateway v2 Authorizers for API ID: {api_id}")
 
             paginator = self.aws_clients.apigatewayv2_client.get_paginator(
                 "get_authorizers")
@@ -134,7 +134,7 @@ class Apigatewayv2:
         for api in apis:
             api_id = api["ApiId"]
             print(
-                f"  Processing API Gateway v2 Deployments for API ID: {api_id}")
+                f"Processing API Gateway v2 Deployments for API ID: {api_id}")
 
             paginator = self.aws_clients.apigatewayv2_client.get_paginator(
                 "get_deployments")
@@ -180,7 +180,7 @@ class Apigatewayv2:
         for api in apis:
             api_id = api["ApiId"]
             print(
-                f"  Processing API Gateway v2 Integrations for API ID: {api_id}")
+                f"Processing API Gateway v2 Integrations for API ID: {api_id}")
 
             paginator = self.aws_clients.apigatewayv2_client.get_paginator(
                 "get_integrations")
@@ -216,7 +216,7 @@ class Apigatewayv2:
         for api in apis:
             api_id = api["ApiId"]
             print(
-                f"  Processing API Gateway v2 Integration Responses for API ID: {api_id}")
+                f"Processing API Gateway v2 Integration Responses for API ID: {api_id}")
 
             integrations = self.aws_clients.apigatewayv2_client.get_integrations(ApiId=api_id)[
                 "Items"]
@@ -250,7 +250,7 @@ class Apigatewayv2:
         apis = self.aws_clients.apigatewayv2_client.get_apis()["Items"]
         for api in apis:
             api_id = api["ApiId"]
-            print(f"  Processing API Gateway v2 Models for API ID: {api_id}")
+            print(f"Processing API Gateway v2 Models for API ID: {api_id}")
 
             paginator = self.aws_clients.apigatewayv2_client.get_paginator("get_models")
             page_iterator = paginator.paginate(ApiId=api_id)
@@ -277,7 +277,7 @@ class Apigatewayv2:
 
         for api in api_ids:
             api_id = api["ApiId"]
-            print(f"  Processing API Gateway v2 Routes for API ID: {api_id}")
+            print(f"Processing API Gateway v2 Routes for API ID: {api_id}")
 
             paginator = self.aws_clients.apigatewayv2_client.get_paginator("get_routes")
             page_iterator = paginator.paginate(ApiId=api_id)
@@ -305,7 +305,7 @@ class Apigatewayv2:
 
         for api in api_ids:
             api_id = api["ApiId"]
-            print(f"  Processing Route Responses for API ID: {api_id}")
+            print(f"Processing Route Responses for API ID: {api_id}")
 
             routes = self.aws_clients.apigatewayv2_client.get_routes(ApiId=api_id)["Items"]
 
@@ -340,7 +340,7 @@ class Apigatewayv2:
 
         for api in api_ids:
             api_id = api["ApiId"]
-            print(f"  Processing API Gateway v2 Stages for API ID: {api_id}")
+            print(f"Processing API Gateway v2 Stages for API ID: {api_id}")
 
             paginator = self.aws_clients.apigatewayv2_client.get_paginator("get_stages")
             page_iterator = paginator.paginate(ApiId=api_id)
@@ -371,7 +371,7 @@ class Apigatewayv2:
 
         for vpc_link in vpc_links:
             print(
-                f"  Processing API Gateway v2 VPC Link: {vpc_link['VpcLinkId']}")
+                f"Processing API Gateway v2 VPC Link: {vpc_link['VpcLinkId']}")
 
             attributes = {
                 "name": vpc_link["Name"],

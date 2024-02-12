@@ -49,7 +49,6 @@ class Dynamodb:
         self.hcl.refresh_state()
         self.hcl.request_tf_code()
 
-        # self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id)
 
 
     def aws_dynamodb_table(self):
@@ -64,7 +63,7 @@ class Dynamodb:
                 # if table_name != "staging_WallFeedItem":
                 #     continue
 
-                print(f"  Processing DynamoDB Table: {table_name}")
+                print(f"Processing DynamoDB Table: {table_name}")
                 id = table_name
 
                 ftstack = "dynamodb"
@@ -120,7 +119,7 @@ class Dynamodb:
 
             for target in scalable_targets:
                 print(
-                    f"  Processing DynamoDB AppAutoScaling Target: {resource_id} with dimension: {target['ScalableDimension']}")
+                    f"Processing DynamoDB AppAutoScaling Target: {resource_id} with dimension: {target['ScalableDimension']}")
 
                 resource_name = f"{service_namespace}-{resource_id.replace('/', '-')}-{target['ScalableDimension']}"
                 attributes = {
@@ -158,7 +157,7 @@ class Dynamodb:
 
             for policy in scaling_policies:
                 print(
-                    f"  Processing AppAutoScaling Policy: {policy['PolicyName']} for resource: {resource_id}")
+                    f"Processing AppAutoScaling Policy: {policy['PolicyName']} for resource: {resource_id}")
 
                 resource_name = f"{service_namespace}-{resource_id.replace('/', '-')}-{policy['PolicyName']}"
                 attributes = {
@@ -186,7 +185,7 @@ class Dynamodb:
     #                 status = contributor_insights["ContributorInsightsStatus"]
 
     #                 print(
-    #                     f"  Processing DynamoDB Contributor Insights: {table_name}")
+    #                     f"Processing DynamoDB Contributor Insights: {table_name}")
 
     #                 attributes = {
     #                     "table_name": table_name,
@@ -211,7 +210,7 @@ class Dynamodb:
     #             GlobalTableName=global_table_name)["GlobalTableDescription"]
 
     #         print(
-    #             f"  Processing DynamoDB Global Table: {global_table_name}")
+    #             f"Processing DynamoDB Global Table: {global_table_name}")
 
     #         attributes = {
     #             "id": global_table_name,
@@ -234,7 +233,7 @@ class Dynamodb:
 
     #             for destination in destinations:
     #                 print(
-    #                     f"  Processing DynamoDB Kinesis Streaming Destination: {table_name}")
+    #                     f"Processing DynamoDB Kinesis Streaming Destination: {table_name}")
 
     #                 attributes = {
     #                     "id": destination["StreamArn"],
@@ -261,7 +260,7 @@ class Dynamodb:
     #             if "Replicas" in table_description:
     #                 for replica in table_description["Replicas"]:
     #                     print(
-    #                         f"  Processing DynamoDB Table Replica: {table_name}")
+    #                         f"Processing DynamoDB Table Replica: {table_name}")
 
     #                     attributes = {
     #                         "id": f"{table_name}-{replica['RegionName']}",
@@ -283,7 +282,7 @@ class Dynamodb:
 
     #             for tag in tags:
     #                 print(
-    #                     f"  Processing DynamoDB Tag: {tag['Key']} for Table: {table_name}")
+    #                     f"Processing DynamoDB Tag: {tag['Key']} for Table: {table_name}")
 
     #                 attributes = {
     #                     "id": f"{table_name},{tag['Key']}",

@@ -127,7 +127,6 @@ class Aurora:
         self.aws_rds_cluster()
         self.hcl.refresh_state()
         self.hcl.request_tf_code()
-        # self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id)
 
     def aws_db_cluster_snapshot(self):
         print("Processing DB Cluster Snapshots...")
@@ -138,7 +137,7 @@ class Aurora:
             for snapshot in page.get("DBClusterSnapshots", []):
                 if snapshot["Engine"] in ["mysql", "postgres"]:
                     snapshot_id = snapshot["DBClusterSnapshotIdentifier"]
-                    print(f"  Processing DB Cluster Snapshot: {snapshot_id}")
+                    print(f"Processing DB Cluster Snapshot: {snapshot_id}")
 
                     attributes = {
                         "id": snapshot_id,
@@ -160,7 +159,7 @@ class Aurora:
         for page in page_iterator:
             for target in page["ScalableTargets"]:
                 target_id = target["ResourceId"]
-                print(f"  Processing AppAutoScaling Target: {target_id}")
+                print(f"Processing AppAutoScaling Target: {target_id}")
 
                 attributes = {
                     "id": target_id,
@@ -186,7 +185,7 @@ class Aurora:
         for page in page_iterator:
             for policy in page["ScalingPolicies"]:
                 policy_name = policy["PolicyName"]
-                print(f"  Processing AppAutoScaling Policy: {policy_name}")
+                print(f"Processing AppAutoScaling Policy: {policy_name}")
 
                 attributes = {
                     "id": policy_name,
@@ -206,7 +205,7 @@ class Aurora:
         for page in paginator.paginate():
             for subscription in page.get("EventSubscriptionsList", []):
                 subscription_id = subscription["CustSubscriptionId"]
-                print(f"  Processing DB Event Subscription: {subscription_id}")
+                print(f"Processing DB Event Subscription: {subscription_id}")
 
                 attributes = {
                     "id": subscription_id,
@@ -228,7 +227,7 @@ class Aurora:
                 if instance.get("Engine", None) not in ["mysql", "postgres"]:
                     continue
                 instance_id = instance["DBInstanceIdentifier"]
-                print(f"  Processing DB Instance: {instance_id}")
+                print(f"Processing DB Instance: {instance_id}")
 
                 attributes = {
                     "id": instance_id,
@@ -260,7 +259,7 @@ class Aurora:
                     source_instance_id = instance["DBInstanceIdentifier"]
                     for replica_id in instance["ReadReplicaDBInstanceIdentifiers"]:
                         print(
-                            f"  Processing DB Instance Automated Backups Replication for {source_instance_id} to {replica_id}")
+                            f"Processing DB Instance Automated Backups Replication for {source_instance_id} to {replica_id}")
                         attributes = {
                             "id": f"{source_instance_id}-{replica_id}",
                             "source_db_instance_identifier": source_instance_id,
@@ -282,7 +281,7 @@ class Aurora:
                 for role in associated_roles:
                     role_arn = role["RoleArn"]
                     print(
-                        f"  Processing DB Instance Role Association for {instance_id} with Role ARN {role_arn}")
+                        f"Processing DB Instance Role Association for {instance_id} with Role ARN {role_arn}")
                     attributes = {
                         "id": f"{instance_id}-{role_arn}",
                         "db_instance_identifier": instance_id,
@@ -299,7 +298,7 @@ class Aurora:
         for page in paginator.paginate():
             for option_group in page.get("OptionGroupsList", []):
                 option_group_name = option_group["OptionGroupName"]
-                print(f"  Processing DB Option Group: {option_group_name}")
+                print(f"Processing DB Option Group: {option_group_name}")
                 attributes = {
                     "id": option_group_name,
                     "name": option_group_name,
@@ -325,7 +324,7 @@ class Aurora:
                     continue
 
                 print(
-                    f"  Processing DB Parameter Group: {parameter_group_name}")
+                    f"Processing DB Parameter Group: {parameter_group_name}")
                 id = parameter_group_name
                 attributes = {
                     "id": id,
@@ -344,7 +343,7 @@ class Aurora:
         for page in paginator.paginate():
             for db_proxy in page.get("DBProxies", []):
                 db_proxy_name = db_proxy["DBProxyName"]
-                print(f"  Processing DB Proxy: {db_proxy_name}")
+                print(f"Processing DB Proxy: {db_proxy_name}")
                 attributes = {
                     "id": db_proxy["DBProxyArn"],
                     "name": db_proxy_name,
@@ -373,7 +372,7 @@ class Aurora:
             for target_group in target_groups:
                 target_group_name = target_group.get("DBProxyName")
                 print(
-                    f"  Processing DB Proxy Default Target Group: {target_group_name}")
+                    f"Processing DB Proxy Default Target Group: {target_group_name}")
                 attributes = {
                     "id": target_group.get("TargetGroupArn"),
                     "name": target_group_name,
@@ -391,7 +390,7 @@ class Aurora:
             for db_proxy_endpoint in page.get("DBProxyEndpoints", []):
                 db_proxy_endpoint_name = db_proxy_endpoint["DBProxyEndpointName"]
                 print(
-                    f"  Processing DB Proxy Endpoint: {db_proxy_endpoint_name}")
+                    f"Processing DB Proxy Endpoint: {db_proxy_endpoint_name}")
                 attributes = {
                     "id": db_proxy_endpoint["DBProxyEndpointArn"],
                     "name": db_proxy_endpoint_name,
@@ -418,7 +417,7 @@ class Aurora:
             for page in paginator.paginate(DBProxyName=db_proxy_name):
                 for db_proxy_target in page.get("Targets", []):
                     target_arn = db_proxy_target["TargetArn"]
-                    print(f"  Processing DB Proxy Target: {target_arn}")
+                    print(f"Processing DB Proxy Target: {target_arn}")
                     attributes = {
                         "id": target_arn,
                         "db_proxy_name": db_proxy_target["DBProxyName"],
@@ -438,7 +437,7 @@ class Aurora:
     #         for db_security_group in page.get("DBSecurityGroups", []):
     #             db_security_group_name = db_security_group["DBSecurityGroupName"]
     #             print(
-    #                 f"  Processing DB Security Group: {db_security_group_name}")
+    #                 f"Processing DB Security Group: {db_security_group_name}")
     #             attributes = {
     #                 "id": db_security_group["DBSecurityGroupArn"],
     #                 "name": db_security_group_name,
@@ -454,7 +453,7 @@ class Aurora:
         for page in paginator.paginate():
             for db_snapshot in page.get("DBSnapshots", []):
                 db_snapshot_id = db_snapshot["DBSnapshotIdentifier"]
-                print(f"  Processing DB Snapshot: {db_snapshot_id}")
+                print(f"Processing DB Snapshot: {db_snapshot_id}")
                 attributes = {
                     "id": db_snapshot_id,
                     # "snapshot_identifier": db_snapshot_id,
@@ -472,7 +471,7 @@ class Aurora:
             for db_snapshot in page.get("DBSnapshots", []):
                 if "SourceRegion" in db_snapshot:
                     db_snapshot_id = db_snapshot["DBSnapshotIdentifier"]
-                    print(f"  Processing DB Snapshot Copy: {db_snapshot_id}")
+                    print(f"Processing DB Snapshot Copy: {db_snapshot_id}")
                     attributes = {
                         "id": db_snapshot["DBSnapshotArn"],
                         "snapshot_identifier": db_snapshot_id,
@@ -511,7 +510,7 @@ class Aurora:
                 if db_subnet_group_name.startswith("default"):
                     return
                 
-                print(f"  Processing DB Subnet Group: {db_subnet_group_name}")
+                print(f"Processing DB Subnet Group: {db_subnet_group_name}")
                 attributes = {
                     "id": id,
                 }
@@ -530,7 +529,7 @@ class Aurora:
                 if not engine.startswith("aurora"):
                     continue
                 rds_cluster_id = rds_cluster["DBClusterIdentifier"]
-                print(f"  Processing RDS Cluster: {rds_cluster_id}")
+                print(f"Processing RDS Cluster: {rds_cluster_id}")
                 cluster_arn = rds_cluster["DBClusterArn"]
 
                 ftstack = "aurora"
@@ -603,7 +602,7 @@ class Aurora:
                     "ActivityStreamMode", "disabled")
                 if activity_stream_mode != "disabled":
                     print(
-                        f"  Processing RDS Cluster Activity Stream: {rds_cluster_id}")
+                        f"Processing RDS Cluster Activity Stream: {rds_cluster_id}")
                     attributes = {
                         "id": rds_cluster["DBClusterArn"],
                         "cluster_identifier": rds_cluster_id,
@@ -624,7 +623,7 @@ class Aurora:
                     continue
                 if "DBClusterEndpointIdentifier" in rds_cluster_endpoint:
                     endpoint_id = rds_cluster_endpoint["DBClusterEndpointIdentifier"]
-                    print(f"  Processing RDS Cluster Endpoint: {endpoint_id}")
+                    print(f"Processing RDS Cluster Endpoint: {endpoint_id}")
                     attributes = {
                         "id": endpoint_id,
                         # "endpoint_identifier": endpoint_id,
@@ -645,7 +644,7 @@ class Aurora:
                     continue
                 if "DBClusterIdentifier" in rds_instance and rds_instance["Engine"].startswith("aurora"):
                     instance_id = rds_instance["DBInstanceIdentifier"]
-                    print(f"  Processing RDS Cluster Instance: {instance_id}")
+                    print(f"Processing RDS Cluster Instance: {instance_id}")
                     attributes = {
                         "id": rds_instance["DBInstanceArn"],
                     }
@@ -710,7 +709,7 @@ class Aurora:
                     continue
                 parameter_group_id = rds_cluster_parameter_group["DBClusterParameterGroupName"]
                 print(
-                    f"  Processing RDS Cluster Parameter Group: {parameter_group_id}")
+                    f"Processing RDS Cluster Parameter Group: {parameter_group_id}")
                 id = parameter_group_id
                 attributes = {
                     "id": id,
@@ -740,7 +739,7 @@ class Aurora:
                     role_name = role_arn.split("/")[-1]
                     association_id = f"{cluster_id}-{role_name}"
                     print(
-                        f"  Processing RDS Cluster Role Association: {association_id}")
+                        f"Processing RDS Cluster Role Association: {association_id}")
                     attributes = {
                         "id": association_id,
                         "cluster_identifier": cluster_id,
@@ -756,7 +755,7 @@ class Aurora:
         for page in paginator.paginate():
             for export_task in page.get("ExportTasks", []):
                 export_task_id = export_task["ExportTaskIdentifier"]
-                print(f"  Processing RDS Export Task: {export_task_id}")
+                print(f"Processing RDS Export Task: {export_task_id}")
                 attributes = {
                     "id": export_task_id,
                     "source_arn": export_task["SourceArn"],
@@ -777,7 +776,7 @@ class Aurora:
         for page in paginator.paginate():
             for global_cluster in page.get("GlobalClusters", []):
                 global_cluster_id = global_cluster["GlobalClusterIdentifier"]
-                print(f"  Processing RDS Global Cluster: {global_cluster_id}")
+                print(f"Processing RDS Global Cluster: {global_cluster_id}")
                 attributes = {
                     "id": global_cluster["GlobalClusterArn"],
                     "global_cluster_identifier": global_cluster_id,
@@ -797,7 +796,7 @@ class Aurora:
             for reserved_instance in page.get("ReservedDBInstances", []):
                 reserved_instance_id = reserved_instance["ReservedDBInstanceId"]
                 print(
-                    f"  Processing RDS Reserved Instance: {reserved_instance_id}")
+                    f"Processing RDS Reserved Instance: {reserved_instance_id}")
                 attributes = {
                     "id": reserved_instance_id,
                     "db_instance_class": reserved_instance["DBInstanceClass"],
@@ -823,7 +822,7 @@ class Aurora:
 
         for security_group in response["SecurityGroups"]:
             print(
-                f"  Processing Security Group: {security_group['GroupName']}")
+                f"Processing Security Group: {security_group['GroupName']}")
 
             attributes = {
                 "id": security_group["GroupId"],
@@ -922,7 +921,7 @@ class Aurora:
     #         for log_group in response.get('logGroups', []):
     #             log_group_name = log_group.get('logGroupName')
     #             if log_group_name.startswith(log_group_name_prefix):
-    #                 print(f"  Processing Log Group: {log_group_name}")
+    #                 print(f"Processing Log Group: {log_group_name}")
     #                 attributes = {
     #                     "id": log_group_name,
     #                     "name": log_group_name,
@@ -953,7 +952,7 @@ class Aurora:
         for page in page_iterator:
             for target in page["ScalableTargets"]:
                 target_id = target["ResourceId"]
-                print(f"  Processing AppAutoScaling Target: {target_id}")
+                print(f"Processing AppAutoScaling Target: {target_id}")
 
                 attributes = {
                     "id": target_id,
@@ -980,7 +979,7 @@ class Aurora:
         for page in page_iterator:
             for policy in page["ScalingPolicies"]:
                 policy_name = policy["PolicyName"]
-                print(f"  Processing AppAutoScaling Policy: {policy_name}")
+                print(f"Processing AppAutoScaling Policy: {policy_name}")
 
                 attributes = {
                     "id": policy_name,

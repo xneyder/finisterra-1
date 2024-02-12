@@ -57,7 +57,6 @@ class TargetGroup:
 
 
         self.hcl.request_tf_code()
-        # self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id)
 
 
 
@@ -76,10 +75,10 @@ class TargetGroup:
                 if target_group_arn and tg_arn != target_group_arn:
                     continue
 
-                if tg_name != "platform-int":
-                    continue
+                # if tg_name != "platform-int":
+                #     continue
                 
-                print(f"  Processing Load Balancer Target Group: {tg_name}")
+                print(f"Processing Load Balancer Target Group: {tg_name}")
 
                 id = tg_arn
                 attributes = {
@@ -148,7 +147,7 @@ class TargetGroup:
 
             for listener in self.listeners[lb_arn]:
                 listener_arn = listener["ListenerArn"]
-                # print(f"  Processing Load Balancer Listener: {listener_arn}")
+                # print(f"Processing Load Balancer Listener: {listener_arn}")
 
                 rules = self.aws_clients.elbv2_client.describe_rules(
                     ListenerArn=listener_arn)["Rules"]

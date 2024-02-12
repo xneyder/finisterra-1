@@ -38,7 +38,7 @@ class Secretsmanager:
             for secret in page["SecretList"]:
                 secret_id = secret["ARN"]
                 secret_name = secret["Name"]
-                print(f"  Processing Secrets Manager Secret: {secret_name}")
+                print(f"Processing Secrets Manager Secret: {secret_name}")
 
                 attributes = {
                     "id": secret_id,
@@ -62,7 +62,7 @@ class Secretsmanager:
                     if 'ResourcePolicy' in policy_response:    # Check if 'ResourcePolicy' exists
                         policy = policy_response["ResourcePolicy"]
                         print(
-                            f"  Processing Secrets Manager Secret Policy for Secret: {secret_name}")
+                            f"Processing Secrets Manager Secret Policy for Secret: {secret_name}")
 
                         attributes = {
                             "id": secret_id,
@@ -94,7 +94,7 @@ class Secretsmanager:
                         rotation_rules = rotation_response["RotationRules"]
 
                         print(
-                            f"  Processing Secrets Manager Secret Rotation for Secret: {secret_name}")
+                            f"Processing Secrets Manager Secret Rotation for Secret: {secret_name}")
 
                         attributes = {
                             "id": secret_id,
@@ -127,7 +127,7 @@ class Secretsmanager:
 
                     if "AWSCURRENT" in version["VersionStages"]:
                         print(
-                            f"  Processing Secrets Manager Secret Version: {version_id} for Secret: {secret_name}")
+                            f"Processing Secrets Manager Secret Version: {version_id} for Secret: {secret_name}")
 
                         attributes = {
                             "id": f"{secret_id}|{version_id}",

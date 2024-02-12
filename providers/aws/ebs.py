@@ -57,7 +57,7 @@ class EBS:
         key_metadata = self.aws_clients.kms_client.describe_key(KeyId=default_kms_key_id)
         default_kms_key_arn = key_metadata['KeyMetadata']['Arn']
 
-        print(f"  Processing EBS Default KMS Key: {default_kms_key_arn}")
+        print(f"Processing EBS Default KMS Key: {default_kms_key_arn}")
 
         attributes = {
             "id": default_kms_key_id,
@@ -87,7 +87,7 @@ class EBS:
 
         for snapshot in snapshots:
             snapshot_id = snapshot["SnapshotId"]
-            print(f"  Processing EBS Snapshot: {snapshot_id}")
+            print(f"Processing EBS Snapshot: {snapshot_id}")
 
             attributes = {
                 "id": snapshot_id,
@@ -118,7 +118,7 @@ class EBS:
                         f"  Skipping EBS Volume (attached to Auto Scaling group instance): {volume_id}")
                     continue
 
-            print(f"  Processing EBS Volume: {volume_id}")
+            print(f"Processing EBS Volume: {volume_id}")
 
             attributes = {
                 "id": volume_id,
@@ -147,7 +147,7 @@ class EBS:
                 user_id = permission["UserId"]
 
                 print(
-                    f"  Processing Snapshot Create Volume Permission for Snapshot: {snapshot_id}, User ID: {user_id}")
+                    f"Processing Snapshot Create Volume Permission for Snapshot: {snapshot_id}, User ID: {user_id}")
 
                 attributes = {
                     "id": f"{snapshot_id}-{user_id}",
@@ -180,7 +180,7 @@ class EBS:
                     device_name = attachment["Device"]
 
                     print(
-                        f"  Processing Volume Attachment: {volume_id} -> Instance: {instance_id}")
+                        f"Processing Volume Attachment: {volume_id} -> Instance: {instance_id}")
 
                     attachment_id = f"{volume_id}-{instance_id}"
                     attributes = {

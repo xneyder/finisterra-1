@@ -33,7 +33,6 @@ class LaunchTemplate:
         self.aws_launch_template()
         self.hcl.refresh_state()
         self.hcl.request_tf_code()
-        # self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id)
 
     def aws_launch_template(self, launch_template_id=None, ftstack=None):
         print("Processing AWS Launch Templates...")
@@ -67,7 +66,7 @@ class LaunchTemplate:
         latest_version = response['LaunchTemplateVersions'][0]
         launch_template_data = latest_version['LaunchTemplateData']
 
-        print(f"  Processing Launch Template: {latest_version['LaunchTemplateName']} with ID: {launch_template_id}")
+        print(f"Processing Launch Template: {latest_version['LaunchTemplateName']} with ID: {launch_template_id}")
 
         id = launch_template_id
 

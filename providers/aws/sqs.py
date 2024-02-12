@@ -35,7 +35,6 @@ class SQS:
         self.hcl.refresh_state()
 
         self.hcl.request_tf_code()
-        # self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id)
 
 
     def aws_sqs_queue(self):
@@ -111,7 +110,7 @@ class SQS:
         if "Attributes" in response and "Policy" in response["Attributes"]:
             policy = response["Attributes"]["Policy"]
 
-            print(f"  Processing SQS Queue Policy: {queue_name}")
+            print(f"Processing SQS Queue Policy: {queue_name}")
 
             attributes = {
                 "id": queue_url,
@@ -134,7 +133,7 @@ class SQS:
         # If a RedrivePolicy exists, process it as a separate resource
         if 'Attributes' in response and 'RedrivePolicy' in response['Attributes']:
             redrive_policy = response['Attributes']['RedrivePolicy']
-            print(f"  Processing SQS Queue Redrive Policy: {queue_name}")
+            print(f"Processing SQS Queue Redrive Policy: {queue_name}")
 
             # Process the redrive policy as a separate resource
             attributes = {
@@ -158,7 +157,7 @@ class SQS:
         # If a Policy exists, process it as a separate resource
         if 'Attributes' in response and 'Policy' in response['Attributes']:
             redrive_allow_policy = response['Attributes']['RedriveAllowPolicy']
-            print(f"  Processing SQS Queue Redrive Allow Policy: {queue_name}")
+            print(f"Processing SQS Queue Redrive Allow Policy: {queue_name}")
 
             # Process the allow policy as a separate resource
             attributes = {

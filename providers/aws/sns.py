@@ -27,8 +27,6 @@ class SNS:
     def sns(self):
         self.hcl.prepare_folder(os.path.join("generated"))
 
-        # self.aws_sns_platform_application()
-        # self.aws_sns_sms_preferences()
         self.aws_sns_topic()
 
 
@@ -36,7 +34,6 @@ class SNS:
         self.hcl.refresh_state()
 
         self.hcl.request_tf_code()
-        # self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id)
 
 
     def aws_sns_platform_application(self):
@@ -47,7 +44,7 @@ class SNS:
             for platform_application in page.get("PlatformApplications", []):
                 arn = platform_application["PlatformApplicationArn"]
                 name = arn.split(":")[-1]
-                print(f"  Processing SNS Platform Application: {name}")
+                print(f"Processing SNS Platform Application: {name}")
 
                 attributes = {
                     "id": arn,
@@ -80,7 +77,7 @@ class SNS:
 
                 # if name != 'learning-mediaAssetModified':
                 #     continue
-                print(f"  Processing SNS Topic: {name}")
+                print(f"Processing SNS Topic: {name}")
                 id = arn
 
                 ftstack = "sns"
@@ -159,7 +156,7 @@ class SNS:
                     if arn == "PendingConfirmation":
                         continue
                     name = arn.split(":")[-1]
-                    print(f"  Processing SNS Topic Subscription: {name}")
+                    print(f"Processing SNS Topic Subscription: {name}")
 
                     attributes = {
                         "id": arn,

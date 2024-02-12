@@ -82,7 +82,6 @@ class EKS:
 
         self.hcl.refresh_state()
         self.hcl.request_tf_code()
-        # self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id)
 
     def aws_eks_cluster(self):
         resource_type = 'aws_eks_cluster'
@@ -101,7 +100,7 @@ class EKS:
             # if cluster_name != "dev":
             #     continue
 
-            print(f"  Processing EKS Cluster: {cluster_name}")
+            print(f"Processing EKS Cluster: {cluster_name}")
             id = cluster_name
 
             attributes = {
@@ -166,7 +165,7 @@ class EKS:
             addon = self.aws_clients.eks_client.describe_addon(
                 clusterName=cluster_name, addonName=addon_name)["addon"]
             print(
-                f"  Processing EKS Add-on: {addon_name} for Cluster: {cluster_name}")
+                f"Processing EKS Add-on: {addon_name} for Cluster: {cluster_name}")
 
             id = cluster_name + ":" + addon_name
             attributes = {
@@ -219,7 +218,7 @@ class EKS:
                 continue  # Skip if it doesn't match
 
             print(
-                f"  Processing IAM OpenID Connect Provider: {provider_url} for Cluster: {cluster_name}")
+                f"Processing IAM OpenID Connect Provider: {provider_url} for Cluster: {cluster_name}")
 
             attributes = {
                 "id": provider_arn,  # Using the ARN as the unique identifier
@@ -247,7 +246,7 @@ class EKS:
                 fargate_profile = self.aws_clients.eks_client.describe_fargate_profile(
                     clusterName=cluster_name, fargateProfileName=profile_name)["fargateProfile"]
                 print(
-                    f"  Processing EKS Fargate Profile: {profile_name} for Cluster: {cluster_name}")
+                    f"Processing EKS Fargate Profile: {profile_name} for Cluster: {cluster_name}")
 
                 attributes = {
                     "id": fargate_profile["fargateProfileArn"],
@@ -268,7 +267,7 @@ class EKS:
             config_name = config["name"]
             config_type = config["type"]
             print(
-                f"  Processing EKS Identity Provider Config: {config_name} for Cluster: {cluster_name}")
+                f"Processing EKS Identity Provider Config: {config_name} for Cluster: {cluster_name}")
 
             attributes = {
                 "id": f"{cluster_name}:{config_name}",
@@ -334,7 +333,7 @@ class EKS:
             node_group = self.aws_clients.eks_client.describe_nodegroup(
                 clusterName=cluster_name, nodegroupName=node_group_name)["nodegroup"]
             print(
-                f"  Processing EKS Node Group: {node_group_name} for Cluster: {cluster_name}")
+                f"Processing EKS Node Group: {node_group_name} for Cluster: {cluster_name}")
 
             id = cluster_name + ":" + node_group_name
             attributes = {
@@ -382,7 +381,7 @@ class EKS:
     #     latest_version = response['LaunchTemplateVersions'][0]
     #     launch_template_data = latest_version['LaunchTemplateData']
 
-    #     print(f"  Processing Launch Template: {latest_version['LaunchTemplateName']} with ID: {launch_template_id}")
+    #     print(f"Processing Launch Template: {latest_version['LaunchTemplateName']} with ID: {launch_template_id}")
 
     #     attributes = {
     #         "id": launch_template_id,
@@ -422,7 +421,7 @@ class EKS:
             for action in scheduled_actions:
                 id = action['ScheduledActionName']
                 print(
-                    f"  Processing Auto Scaling Schedule: {id} for Group: {autoscaling_group_name}")
+                    f"Processing Auto Scaling Schedule: {id} for Group: {autoscaling_group_name}")
 
                 attributes = {
                     "id": id,

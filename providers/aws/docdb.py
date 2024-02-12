@@ -65,7 +65,6 @@ class DocDb:
         self.hcl.refresh_state()
 
         self.hcl.request_tf_code()
-        # self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id)
 
 
     def aws_docdb_cluster(self):
@@ -76,7 +75,7 @@ class DocDb:
         for page in paginator.paginate():
             for db_cluster in page["DBClusters"]:
                 if db_cluster["Engine"] == "docdb":
-                    print(f"  Processing DocumentDB Cluster: {db_cluster['DBClusterIdentifier']}")
+                    print(f"Processing DocumentDB Cluster: {db_cluster['DBClusterIdentifier']}")
 
                     id = db_cluster["DBClusterIdentifier"]
 
@@ -122,7 +121,7 @@ class DocDb:
             for db_instance in page["DBInstances"]:
                 if db_instance["Engine"] == "docdb" and db_instance["DBClusterIdentifier"] == db_cluster["DBClusterIdentifier"]:
                     print(
-                        f"  Processing DocumentDB Cluster Instance: {db_instance['DBInstanceIdentifier']}")
+                        f"Processing DocumentDB Cluster Instance: {db_instance['DBInstanceIdentifier']}")
 
                     attributes = {
                         "id": db_instance["DBInstanceIdentifier"],
@@ -161,7 +160,7 @@ class DocDb:
                     # Check if it's a DocumentDB parameter group
                     if "docdb" in parameter_group["DBParameterGroupFamily"]:
                         print(
-                            f"  Processing DocumentDB Cluster Parameter Group: {parameter_group['DBClusterParameterGroupName']}")
+                            f"Processing DocumentDB Cluster Parameter Group: {parameter_group['DBClusterParameterGroupName']}")
 
                         attributes = {
                             "id": parameter_group["DBClusterParameterGroupName"],
@@ -184,7 +183,7 @@ class DocDb:
                     # Check if it's a DocumentDB subnet group
                     if "DocumentDB" in subnet_group.get("DBSubnetGroupDescription", ""):
                         print(
-                            f"  Processing DocumentDB Subnet Group: {subnet_group['DBSubnetGroupName']}")
+                            f"Processing DocumentDB Subnet Group: {subnet_group['DBSubnetGroupName']}")
                         
                         subnet_ids = [subnet['SubnetIdentifier'] for subnet in subnet_group.get("Subnets", [])]
                         id = subnet_group["DBSubnetGroupName"]
@@ -236,7 +235,7 @@ class DocDb:
             for snapshot in page["DBClusterSnapshots"]:
                 if snapshot["Engine"] == "docdb":
                     print(
-                        f"  Processing DocumentDB Cluster Snapshot: {snapshot['DBClusterSnapshotIdentifier']}")
+                        f"Processing DocumentDB Cluster Snapshot: {snapshot['DBClusterSnapshotIdentifier']}")
 
                     attributes = {
                         "id": snapshot["DBClusterSnapshotIdentifier"],
@@ -260,7 +259,7 @@ class DocDb:
         for page in paginator.paginate():
             for subscription in page["EventSubscriptionsList"]:
                 print(
-                    f"  Processing DocumentDB Event Subscription: {subscription['CustSubscriptionId']}")
+                    f"Processing DocumentDB Event Subscription: {subscription['CustSubscriptionId']}")
 
                 attributes = {
                     "id": subscription["CustSubscriptionId"],
@@ -281,7 +280,7 @@ class DocDb:
             for cluster in page["DBClusters"]:
                 if "GlobalClusterIdentifier" in cluster and cluster["Engine"] == "docdb":
                     print(
-                        f"  Processing DocumentDB Global Cluster: {cluster['GlobalClusterIdentifier']}")
+                        f"Processing DocumentDB Global Cluster: {cluster['GlobalClusterIdentifier']}")
 
                     attributes = {
                         "id": cluster["GlobalClusterIdentifier"],

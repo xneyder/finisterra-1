@@ -32,21 +32,10 @@ class Logs:
     def logs(self):
         self.hcl.prepare_folder(os.path.join("generated"))
 
-        # self.aws_cloudwatch_log_destination()
-        # self.aws_cloudwatch_log_destination_policy()
         self.aws_cloudwatch_log_group()
-        # self.aws_cloudwatch_log_metric_filter()
-        # if "gov" not in self.region:
-        #     self.aws_cloudwatch_log_data_protection_policy()
-
-        # self.aws_cloudwatch_log_resource_policy()
-        # # self.aws_cloudwatch_log_stream() #could be a lot of data
-        # self.aws_cloudwatch_log_subscription_filter()
-        # self.aws_cloudwatch_query_definition()
 
         self.hcl.refresh_state()
         self.hcl.request_tf_code()
-        # self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id)
 
     def aws_cloudwatch_log_data_protection_policy(self):
         print("Processing CloudWatch Log Data Protection Policies...")
@@ -57,7 +46,7 @@ class Logs:
             for policy in page["resourcePolicies"]:
                 policy_name = policy["policyName"]
                 print(
-                    f"  Processing CloudWatch Log Data Protection Policy: {policy_name}")
+                    f"Processing CloudWatch Log Data Protection Policy: {policy_name}")
 
                 attributes = {
                     "id": policy_name,
@@ -76,7 +65,7 @@ class Logs:
             for destination in page["destinations"]:
                 destination_name = destination["destinationName"]
                 print(
-                    f"  Processing CloudWatch Log Destination: {destination_name}")
+                    f"Processing CloudWatch Log Destination: {destination_name}")
 
                 attributes = {
                     "id": destination_name,
@@ -101,7 +90,7 @@ class Logs:
                     destination_policy = self.aws_clients.logs_client.get_destination_policy(
                         destinationName=destination_name)
                     print(
-                        f"  Processing CloudWatch Log Destination Policy: {destination_name}")
+                        f"Processing CloudWatch Log Destination Policy: {destination_name}")
 
                     attributes = {
                         "id": destination_name,
@@ -136,7 +125,7 @@ class Logs:
         if not log_group:
             return
         log_group= log_group[0]
-        print(f"  Processing CloudWatch Log Group: {log_group_name}")
+        print(f"Processing CloudWatch Log Group: {log_group_name}")
         id = log_group_name
         attributes = {
             "id": id,
@@ -169,7 +158,7 @@ class Logs:
                     for metric_filter in filter_page["metricFilters"]:
                         filter_name = metric_filter["filterName"]
                         print(
-                            f"  Processing CloudWatch Log Metric Filter: {filter_name}")
+                            f"Processing CloudWatch Log Metric Filter: {filter_name}")
 
                         attributes = {
                             "id": filter_name,
@@ -191,7 +180,7 @@ class Logs:
             for resource_policy in page["resourcePolicies"]:
                 policy_name = resource_policy["policyName"]
                 print(
-                    f"  Processing CloudWatch Log Resource Policy: {policy_name}")
+                    f"Processing CloudWatch Log Resource Policy: {policy_name}")
 
                 attributes = {
                     "id": policy_name,
@@ -216,7 +205,7 @@ class Logs:
                     for log_stream in stream_page["logStreams"]:
                         stream_name = log_stream["logStreamName"]
                         print(
-                            f"  Processing CloudWatch Log Stream: {stream_name}")
+                            f"Processing CloudWatch Log Stream: {stream_name}")
 
                         attributes = {
                             "id": stream_name,
@@ -241,7 +230,7 @@ class Logs:
                     for subscription_filter in filter_page["subscriptionFilters"]:
                         filter_name = subscription_filter["filterName"]
                         print(
-                            f"  Processing CloudWatch Log Subscription Filter: {filter_name}")
+                            f"Processing CloudWatch Log Subscription Filter: {filter_name}")
 
                         attributes = {
                             "id": filter_name,
@@ -263,7 +252,7 @@ class Logs:
         for query_definition in query_definitions_response["queryDefinitions"]:
             query_definition_id = query_definition["queryDefinitionId"]
             print(
-                f"  Processing CloudWatch Query Definition: {query_definition_id}")
+                f"Processing CloudWatch Query Definition: {query_definition_id}")
 
             attributes = {
                 "id": query_definition_id,

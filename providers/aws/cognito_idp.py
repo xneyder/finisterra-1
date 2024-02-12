@@ -276,7 +276,7 @@ class CognitoIDP:
                     if "UICustomization" in ui_customization_response:
                         ui_customization = ui_customization_response["UICustomization"]
                         print(
-                            f"  Processing Cognito User Pool UI Customization: {pool_id}")
+                            f"Processing Cognito User Pool UI Customization: {pool_id}")
 
                         if "ClientId" in ui_customization:
                             attributes = {

@@ -104,7 +104,6 @@ class EC2:
         self.hcl.refresh_state()
 
         self.hcl.request_tf_code()
-        # self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id)
 
 
     def aws_ami(self):
@@ -114,7 +113,7 @@ class EC2:
 
         for image in images:
             image_id = image["ImageId"]
-            print(f"  Processing AMI: {image_id}")
+            print(f"Processing AMI: {image_id}")
 
             attributes = {
                 "id": image_id,
@@ -141,7 +140,7 @@ class EC2:
             for permission in launch_permissions:
                 user_id = permission["UserId"]
                 print(
-                    f"  Processing Launch Permission for AMI: {image_id}, User: {user_id}")
+                    f"Processing Launch Permission for AMI: {image_id}, User: {user_id}")
 
                 attributes = {
                     "id": f"{image_id}-{user_id}",
@@ -161,7 +160,7 @@ class EC2:
 
         for reservation in capacity_reservations:
             reservation_id = reservation["CapacityReservationId"]
-            print(f"  Processing EC2 Capacity Reservation: {reservation_id}")
+            print(f"Processing EC2 Capacity Reservation: {reservation_id}")
 
             attributes = {
                 "id": reservation_id,
@@ -185,7 +184,7 @@ class EC2:
 
         for host in hosts:
             host_id = host["HostId"]
-            print(f"  Processing EC2 Dedicated Host: {host_id}")
+            print(f"Processing EC2 Dedicated Host: {host_id}")
 
             attributes = {
                 "id": host_id,
@@ -226,7 +225,7 @@ class EC2:
             value = resource["Value"]
 
             tag_id = f"{resource_id},{key}"
-            print(f"  Processing EC2 Tag: {tag_id}")
+            print(f"Processing EC2 Tag: {tag_id}")
 
             attributes = {
                 "id": tag_id,
@@ -272,7 +271,7 @@ class EC2:
         for eip in eips["Addresses"]:
             if "AssociationId" in eip:
                 association_id = eip["AssociationId"]
-                print(f"  Processing Elastic IP Association: {association_id}")
+                print(f"Processing Elastic IP Association: {association_id}")
 
                 attributes = {
                     "id": association_id,
@@ -318,11 +317,10 @@ class EC2:
                         f"  Skipping EC2 Instance (managed by EKS): {instance_id}")
                     continue
 
-                # if instance_id != "i-054c8a833bfb263b0" and instance_id != 'i-0beb80c7c8c16ca96':
                 # if instance_id != "i-0a8f69f50619306c3":
                 #     continue
 
-                print(f"  Processing EC2 Instance: {instance_id}")
+                print(f"Processing EC2 Instance: {instance_id}")
                 id = instance_id
 
                 ftstack = "ec2"
@@ -423,8 +421,6 @@ class EC2:
                                         self.hcl.additional_data["aws_ebs_volume"][volume_id] = {}
                                     self.hcl.additional_data["aws_ebs_volume"][volume_id]["kms_key_alias"] = kms_key_alias
 
-                #find the securitu groups and call self.security_group_instance.aws_security_group(sg, ftstack)
-                # print(instance.get("SecurityGroups", []))
                 for sg in instance.get("SecurityGroups", []):
                     self.security_group_instance.aws_security_group(sg["GroupId"], ftstack)
 
@@ -605,7 +601,7 @@ class EC2:
             IncludePublicKey=True)["KeyPairs"]
         for key_pair in key_pairs:
             key_pair_name = key_pair["KeyName"]
-            print(f"  Processing Key Pair: {key_pair_name}")
+            print(f"Processing Key Pair: {key_pair_name}")
 
             attributes = {
                 "id": key_pair_name,
@@ -623,7 +619,7 @@ class EC2:
             "LaunchTemplates"]
         for launch_template in launch_templates:
             launch_template_id = launch_template["LaunchTemplateId"]
-            print(f"  Processing Launch Template: {launch_template_id}")
+            print(f"Processing Launch Template: {launch_template_id}")
 
             attributes = {
                 "id": launch_template_id,
@@ -642,7 +638,7 @@ class EC2:
             "PlacementGroups"]
         for placement_group in placement_groups:
             placement_group_name = placement_group["GroupName"]
-            print(f"  Processing Placement Group: {placement_group_name}")
+            print(f"Processing Placement Group: {placement_group_name}")
 
             attributes = {
                 "id": placement_group_name,
@@ -660,7 +656,7 @@ class EC2:
             subscription = spot_datafeed_subscription["SpotDatafeedSubscription"]
 
             bucket_id = subscription["Bucket"]
-            print(f"  Processing Spot Datafeed Subscription: {bucket_id}")
+            print(f"Processing Spot Datafeed Subscription: {bucket_id}")
 
             attributes = {
                 "id": subscription["OwnerId"],
@@ -682,7 +678,7 @@ class EC2:
             "SpotFleetRequestConfigs"]
         for spot_fleet_request in spot_fleet_requests:
             request_id = spot_fleet_request["SpotFleetRequestId"]
-            print(f"  Processing Spot Fleet Request: {request_id}")
+            print(f"Processing Spot Fleet Request: {request_id}")
 
             attributes = {
                 "id": request_id,
@@ -700,7 +696,7 @@ class EC2:
             "SpotInstanceRequests"]
         for spot_instance_request in spot_instance_requests:
             request_id = spot_instance_request["SpotInstanceRequestId"]
-            print(f"  Processing Spot Instance Request: {request_id}")
+            print(f"Processing Spot Instance Request: {request_id}")
 
             attributes = {
                 "id": request_id,

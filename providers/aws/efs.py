@@ -45,7 +45,7 @@ class EFS:
 
             for access_point in access_points:
                 access_point_id = access_point["AccessPointId"]
-                print(f"  Processing EFS Access Point: {access_point_id}")
+                print(f"Processing EFS Access Point: {access_point_id}")
 
                 attributes = {
                     "id": access_point_id,
@@ -67,7 +67,7 @@ class EFS:
                 status = backup_policy["Status"]
 
                 print(
-                    f"  Processing EFS Backup Policy for FileSystem: {file_system_id}")
+                    f"Processing EFS Backup Policy for FileSystem: {file_system_id}")
 
                 attributes = {
                     "id": file_system_id,
@@ -86,7 +86,7 @@ class EFS:
 
         for file_system in file_systems:
             file_system_id = file_system["FileSystemId"]
-            print(f"  Processing EFS File System: {file_system_id}")
+            print(f"Processing EFS File System: {file_system_id}")
 
             attributes = {
                 "id": file_system_id,
@@ -105,7 +105,7 @@ class EFS:
                 policy = self.aws_clients.efs_client.describe_file_system_policy(
                     FileSystemId=file_system_id)["Policy"]
                 print(
-                    f"  Processing EFS File System Policy for FileSystem: {file_system_id}")
+                    f"Processing EFS File System Policy for FileSystem: {file_system_id}")
 
                 attributes = {
                     "id": file_system_id,
@@ -130,7 +130,7 @@ class EFS:
             for mount_target in mount_targets:
                 mount_target_id = mount_target["MountTargetId"]
                 print(
-                    f"  Processing EFS Mount Target: {mount_target_id} for FileSystem: {file_system_id}")
+                    f"Processing EFS Mount Target: {mount_target_id} for FileSystem: {file_system_id}")
 
                 attributes = {
                     "id": mount_target_id,
@@ -154,7 +154,7 @@ class EFS:
                 for config in replication_configurations["Rules"]:
                     rule_id = config["RuleId"]
                     print(
-                        f"  Processing EFS Replication Configuration Rule: {rule_id} for FileSystem: {file_system_id}")
+                        f"Processing EFS Replication Configuration Rule: {rule_id} for FileSystem: {file_system_id}")
 
                     attributes = {
                         "id": file_system_id,

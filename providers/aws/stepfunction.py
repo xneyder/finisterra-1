@@ -37,7 +37,6 @@ class StepFunction:
         self.hcl.refresh_state()
 
         self.hcl.request_tf_code()
-        # self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id)
 
 
     def aws_sfn_state_machine(self):
@@ -47,7 +46,7 @@ class StepFunction:
         paginator = self.aws_clients.sfn_client.get_paginator("list_state_machines")
         for page in paginator.paginate():
             for state_machine_summary in page["stateMachines"]:
-                print(f"  Processing State Machine: {state_machine_summary['name']}")
+                print(f"Processing State Machine: {state_machine_summary['name']}")
 
                 # if state_machine_summary['name'] != 'dev-fpm-3431_backfill-email-verified':
                 #     continue

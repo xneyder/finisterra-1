@@ -45,7 +45,6 @@ class ElasticBeanstalk:
         self.hcl.refresh_state()
 
         self.hcl.request_tf_code()
-        # self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id)
 
     def aws_elastic_beanstalk_application(self):
         print("Processing Elastic Beanstalk Applications...")
@@ -55,7 +54,7 @@ class ElasticBeanstalk:
 
         for app in applications:
             app_name = app["ApplicationName"]
-            print(f"  Processing Elastic Beanstalk Application: {app_name}")
+            print(f"Processing Elastic Beanstalk Application: {app_name}")
 
             attributes = {
                 "id": app_name,
@@ -80,7 +79,7 @@ class ElasticBeanstalk:
                 version_label = version["VersionLabel"]
                 version_id = f"{app_name}-{version_label}"
                 print(
-                    f"  Processing Elastic Beanstalk Application Version: {version_id}")
+                    f"Processing Elastic Beanstalk Application Version: {version_id}")
 
                 source_bundle = version.get("SourceBundle")
                 bucket = ""
@@ -139,7 +138,7 @@ class ElasticBeanstalk:
                 for template_name, template in templates.items():
                     template_id = template["id"]
                     print(
-                        f"  Processing Elastic Beanstalk Configuration Template: {template_id}")
+                        f"Processing Elastic Beanstalk Configuration Template: {template_id}")
 
                     attributes = {
                         "id": template_id,
@@ -161,7 +160,7 @@ class ElasticBeanstalk:
 
             # if env_id != "e-asi52zmcu8":
             #     continue
-            print(f"  Processing Elastic Beanstalk Environment: {env_id}")
+            print(f"Processing Elastic Beanstalk Environment: {env_id}")
             id = env_id
 
             ftstack = "beanstalk"

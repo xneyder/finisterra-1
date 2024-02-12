@@ -1,6 +1,7 @@
 import os
 from utils.hcl import HCL
-import json
+from tqdm import tqdm
+import sys
 
 
 class SECURITY_GROUP:
@@ -30,8 +31,6 @@ class SECURITY_GROUP:
         self.processed_security_groups = {}
 
 
-        # self.hcl.additional_data = {}
-
     def get_vpc_name(self, vpc_id):
         response = self.aws_clients.ec2_client.describe_vpcs(VpcIds=[vpc_id])
         
@@ -53,7 +52,6 @@ class SECURITY_GROUP:
         self.hcl.refresh_state()
         
         self.hcl.request_tf_code()
-        # self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id)
 
 
     def aws_security_group(self, security_group_id=None, ftstack=None):
@@ -62,7 +60,7 @@ class SECURITY_GROUP:
         # If security_group_id is provided, process only that specific security group
         if security_group_id:
             if ftstack and self.hcl.id_resource_processed(resource_type, security_group_id, ftstack):
-                print(f"  Skipping Security Group: {security_group_id} - already processed")
+                tqdm.write(f"  Skipping Security Group: {security_group_id} - already processed")
                 return
 
             try:
@@ -71,12 +69,15 @@ class SECURITY_GROUP:
                     self.process_security_group(security_group, ftstack)
                     return security_group["GroupName"]
             except Exception as e:
-                print(f"Error fetching Security Group {security_group_id}: {e}")
+                tqdm.write(f"Error fetching Security Group {security_group_id}: {e}")
             return
 
-        print("Processing Security Groups...")
+        tqdm.write("Processing Security Groups...")
         response = self.aws_clients.ec2_client.describe_security_groups()
-        for security_group in response["SecurityGroups"]:
+        progress_bar = tqdm(response["SecurityGroups"], desc="Processing Security Groups")
+        for security_group in progress_bar:
+            progress_bar.set_postfix(security_group=security_group["GroupName"], refresh=True)
+            sys.stdout.flush()
             self.process_security_group(security_group, ftstack)
 
     def process_security_group(self, security_group, ftstack=None):
@@ -88,10 +89,10 @@ class SECURITY_GROUP:
         is_elasticbeanstalk = any(tag['Key'].startswith('elasticbeanstalk:') for tag in security_group.get('Tags', []))
         is_eks = any(tag['Key'].startswith('eks:') for tag in security_group.get('Tags', []))
         if is_elasticbeanstalk or is_eks:
-            print(f"  Skipping Elastic Beanstalk or EKS AutoScaling Group: {security_group['GroupName']}")
+            tqdm.write(f"  Skipping Elastic Beanstalk or EKS AutoScaling Group: {security_group['GroupName']}")
             return
 
-        print(f"  Processing Security Group: {security_group['GroupName']}")
+        tqdm.write(f"Processing Security Group: {security_group['GroupName']}")
         vpc_id = security_group.get("VpcId", "")
         id = security_group["GroupId"]
 
@@ -127,7 +128,7 @@ class SECURITY_GROUP:
             # Filter for ingress rules
             if not rule.get('IsEgress', False):
                 rule_id = rule['SecurityGroupRuleId']
-                print(f"Processing VPC Security Group Ingress Rule {rule_id}...")
+                tqdm.write(f"Processing VPC Security Group Ingress Rule {rule_id}...")
 
                 attributes = {
                     "id": rule_id,
@@ -152,7 +153,7 @@ class SECURITY_GROUP:
             # Filter for egress rules
             if rule.get('IsEgress', True):
                 rule_id = rule['SecurityGroupRuleId']
-                print(f"Processing VPC Security Group Egress Rule {rule_id}...")
+                tqdm.write(f"Processing VPC Security Group Egress Rule {rule_id}...")
 
                 attributes = {
                     "id": rule_id,

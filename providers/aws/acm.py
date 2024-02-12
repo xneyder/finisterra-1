@@ -1,10 +1,12 @@
 import os
 from utils.hcl import HCL
 import datetime
+from tqdm import tqdm
+import sys
 
 
 class ACM:
-    def __init__(self, aws_clients, script_dir, provider_name, schema_data, region, s3Bucket,
+    def __init__(self, progress, aws_clients, script_dir, provider_name, schema_data, region, s3Bucket,
                  dynamoDBTable, state_key, workspace_id, modules, aws_account_id, hcl = None):
         self.aws_clients = aws_clients
         self.transform_rules = {}
@@ -23,6 +25,7 @@ class ACM:
 
         self.hcl.region = region
         self.hcl.account_id = aws_account_id
+        self.progress = progress
 
 
     def acm(self):
@@ -30,7 +33,6 @@ class ACM:
         self.aws_acm_certificate()
         self.hcl.refresh_state()
         self.hcl.request_tf_code()
-        # self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id)
 
     def aws_acm_certificate(self, acm_arn=None, ftstack=None):
         resource_name = "aws_acm_certificate"
@@ -44,8 +46,15 @@ class ACM:
             return
 
         paginator = self.aws_clients.acm_client.get_paginator("list_certificates")
+        total = 0        
         for page in paginator.paginate():
             for cert_summary in page["CertificateSummaryList"]:
+                total += 1
+
+        task = self.progress.add_task("[cyan]Processing ACM...", total=total)
+        for page in paginator.paginate():
+            for cert_summary in page["CertificateSummaryList"]:
+                self.progress.update(task, advance=1, description=f"[cyan]Certificate [bold]{cert_summary['CertificateArn'].split('/')[-1]}[/]")
                 cert_arn = cert_summary["CertificateArn"]
                 self.process_single_acm_certificate(cert_arn, ftstack)
 
@@ -62,7 +71,7 @@ class ACM:
         if certificate_type == "IMPORTED" or status != "ISSUED" or (expiration_date and expiration_date < datetime.datetime.now(tz=datetime.timezone.utc)):
             return
 
-        print(f"  Processing ACM Certificate: {cert_arn}")
+        print(f"Processing ACM Certificate: {cert_arn}")
 
         # Tag processing and other logic
         if not ftstack:
@@ -90,7 +99,7 @@ class ACM:
         # self.aws_acm_certificate_validation(cert_arn, cert_details)
 
     def aws_acm_certificate_validation(self, cert_arn, cert):
-        print(f"  Processing ACM Certificate Validation: {cert_arn}")
+        print(f"Processing ACM Certificate Validation: {cert_arn}")
 
         attributes = {
             "id": cert_arn,

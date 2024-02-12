@@ -45,8 +45,6 @@ class KMS:
         self.hcl.refresh_state()
 
         self.hcl.request_tf_code()
-        # self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id)
-
 
 
     def aws_kms_key(self, key_arn=None, ftstack=None):
@@ -84,7 +82,7 @@ class KMS:
     def process_key(self, key_metadata, ftstack):
         resource_type = "aws_kms_key"
         key_id = key_metadata["KeyId"]
-        print(f"  Processing KMS Key: {key_id}")
+        print(f"Processing KMS Key: {key_id}")
 
         id = key_id
 
@@ -124,7 +122,7 @@ class KMS:
                     print(f"Skipping empty {alias_name}")
                     continue
 
-                print(f"  Processing KMS Alias: {alias_name}")
+                print(f"Processing KMS Alias: {alias_name}")
 
                 attributes = {
                     "id": alias_name,
@@ -147,7 +145,7 @@ class KMS:
     #             ciphertext = self.aws_clients.kms_client.encrypt(KeyId=key_arn, Plaintext=data)[
     #                 "CiphertextBlob"]
     #             b64_ciphertext = base64.b64encode(ciphertext).decode("utf-8")
-    #             print(f"  Processing KMS Ciphertext for Key ARN: {key_arn}")
+    #             print(f"Processing KMS Ciphertext for Key ARN: {key_arn}")
 
     #             attributes = {
     #                 "id": f"{key_arn}-{hashlib.sha1(data.encode('utf-8')).hexdigest()}",
@@ -165,7 +163,7 @@ class KMS:
 
     #     for cks in custom_key_stores:
     #         cks_id = cks["CustomKeyStoreId"]
-    #         print(f"  Processing KMS Custom Key Store: {cks_id}")
+    #         print(f"Processing KMS Custom Key Store: {cks_id}")
 
     #         attributes = {
     #             "id": cks_id,
@@ -186,7 +184,7 @@ class KMS:
 
     #         for grant in grants:
     #             grant_id = grant["GrantId"]
-    #             print(f"  Processing KMS Grant: {grant_id}")
+    #             print(f"Processing KMS Grant: {grant_id}")
 
     #             attributes = {
     #                 "id": kms_arn + ":" + grant_id,
@@ -227,7 +225,7 @@ class KMS:
                         print(f"  Skipping Grant ID: {grant_id} due to non-existent IAM role: {role_name}")
                         continue
 
-                print(f"  Processing KMS Grant: {grant_id}")
+                print(f"Processing KMS Grant: {grant_id}")
                 attributes = {
                     "id": kms_arn + ":" + grant_id,
                     # Additional attributes can be included as needed
@@ -246,7 +244,7 @@ class KMS:
             policy = self.aws_clients.kms_client.get_key_policy(
                 KeyId=kms_arn, PolicyName="default")["Policy"]
 
-            print(f"  Processing KMS Key Policy for Key: {kms_arn}")
+            print(f"Processing KMS Key Policy for Key: {kms_arn}")
 
             attributes = {
                 "id": kms_arn,
@@ -277,7 +275,7 @@ class KMS:
                         # Check for replicas in the same region
                         for replica_key in replica_keys:
                             if replica_key["Region"] == self.region:
-                                print(f"  Processing Multi-Region KMS Replica Key: {replica_key['Arn']}")
+                                print(f"Processing Multi-Region KMS Replica Key: {replica_key['Arn']}")
 
                                 attributes = {
                                     "id": key_metadata['KeyId'],
@@ -307,7 +305,7 @@ class KMS:
                     key_metadata = self.aws_clients.kms_client.describe_key(KeyId=key_id)["KeyMetadata"]
 
                     if key_metadata["Origin"] == "EXTERNAL":
-                        print(f"  Processing KMS External Key: {key_id}")
+                        print(f"Processing KMS External Key: {key_id}")
 
                         attributes = {
                             "id": key_id,
@@ -340,7 +338,7 @@ class KMS:
                         # Check for replicas in the same region
                         for replica_key in replica_keys:
                             if replica_key["Region"] == self.region:
-                                print(f"  Processing KMS Replica External Key: {replica_key['Arn']}")
+                                print(f"Processing KMS Replica External Key: {replica_key['Arn']}")
 
                                 attributes = {
                                     "id": key_metadata['KeyId'],

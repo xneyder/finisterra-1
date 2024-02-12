@@ -42,7 +42,7 @@ class CognitoIdentity:
                 identity_pool = self.aws_clients.cognito_identity_client.describe_identity_pool(
                     IdentityPoolId=pool_id)["IdentityPool"]
 
-                print(f"  Processing Cognito Identity Pool: {pool_id}")
+                print(f"Processing Cognito Identity Pool: {pool_id}")
 
                 attributes = {
                     "id": pool_id,
@@ -69,7 +69,7 @@ class CognitoIdentity:
                 if tags:
                     for tag_key, tag_value in tags.items():
                         print(
-                            f"  Processing Cognito Identity Pool Provider Principal Tag: {tag_key}")
+                            f"Processing Cognito Identity Pool Provider Principal Tag: {tag_key}")
 
                         attributes = {
                             "id": f"{pool_id}:{tag_key}",
@@ -93,7 +93,7 @@ class CognitoIdentity:
 
                 if "Roles" in identity_pool:
                     print(
-                        f"  Processing Cognito Identity Pool Roles Attachment: {pool_id}")
+                        f"Processing Cognito Identity Pool Roles Attachment: {pool_id}")
 
                     attributes = {
                         "id": pool_id,

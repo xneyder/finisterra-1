@@ -39,7 +39,7 @@ class Cloudwatch:
         for page in paginator.paginate(AlarmTypes=["CompositeAlarm"]):
             for composite_alarm in page["CompositeAlarms"]:
                 alarm_name = composite_alarm["AlarmName"]
-                print(f"  Processing CloudWatch Composite Alarm: {alarm_name}")
+                print(f"Processing CloudWatch Composite Alarm: {alarm_name}")
 
                 attributes = {
                     "id": alarm_name,
@@ -62,7 +62,7 @@ class Cloudwatch:
         for page in paginator.paginate():
             for dashboard in page["DashboardEntries"]:
                 dashboard_name = dashboard["DashboardName"]
-                print(f"  Processing CloudWatch Dashboard: {dashboard_name}")
+                print(f"Processing CloudWatch Dashboard: {dashboard_name}")
 
                 dashboard_body = self.aws_clients.cloudwatch_client.get_dashboard(
                     DashboardName=dashboard_name)["DashboardBody"]
@@ -83,7 +83,7 @@ class Cloudwatch:
         for page in paginator.paginate(AlarmTypes=["MetricAlarm"]):
             for metric_alarm in page["MetricAlarms"]:
                 alarm_name = metric_alarm["AlarmName"]
-                print(f"  Processing CloudWatch Metric Alarm: {alarm_name}")
+                print(f"Processing CloudWatch Metric Alarm: {alarm_name}")
 
                 attributes = {
                     "id": alarm_name,
@@ -116,7 +116,7 @@ class Cloudwatch:
             "Entries"]
         for metric_stream in metric_streams:
             stream_name = metric_stream["Name"]
-            print(f"  Processing CloudWatch Metric Stream: {stream_name}")
+            print(f"Processing CloudWatch Metric Stream: {stream_name}")
 
             attributes = {
                 "id": stream_name,

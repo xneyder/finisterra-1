@@ -3,6 +3,8 @@ from utils.hcl import HCL
 from providers.aws.security_group import SECURITY_GROUP
 from providers.aws.acm import ACM
 from providers.aws.s3 import S3
+from tqdm import tqdm
+import sys
 # from providers.aws.target_group import TargetGroup
 
 
@@ -45,7 +47,7 @@ class ELBV2:
 
             # Check if 'Subnets' key exists and it's not empty
             if not response or 'Subnets' not in response or not response['Subnets']:
-                print(f"No subnet information found for Subnet ID: {subnet_id}")
+                tqdm.write(f"No subnet information found for Subnet ID: {subnet_id}")
                 continue
 
             subnet_info = response['Subnets'][0]
@@ -61,7 +63,7 @@ class ELBV2:
             if subnet_name and subnet_cidr:
                 subnets_info.append({'name': subnet_name, 'cidr_block': subnet_cidr})
             else:
-                print(f"No 'Name' tag or CIDR block found for Subnet ID: {subnet_id}")
+                tqdm.write(f"No 'Name' tag or CIDR block found for Subnet ID: {subnet_id}")
 
         return subnets_info
     
@@ -70,7 +72,7 @@ class ELBV2:
 
         if not response or 'Vpcs' not in response or not response['Vpcs']:
             # Handle this case as required, for example:
-            print(f"No VPC information found for VPC ID: {vpc_id}")
+            tqdm.write(f"No VPC information found for VPC ID: {vpc_id}")
             return None
 
         vpc_tags = response['Vpcs'][0].get('Tags', [])
@@ -78,7 +80,7 @@ class ELBV2:
                         for tag in vpc_tags if tag['Key'] == 'Name'), None)
 
         if vpc_name is None:
-            print(f"No 'Name' tag found for VPC ID: {vpc_id}")
+            tqdm.write(f"No 'Name' tag found for VPC ID: {vpc_id}")
 
         return vpc_name    
 
@@ -90,23 +92,26 @@ class ELBV2:
         self.hcl.refresh_state()
 
         self.hcl.request_tf_code()
-        # self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id)
 
 
     def aws_lb(self, selected_lb_arn=None, ftstack=None):
         resource_type = "aws_lb"
-        print("Processing Load Balancers...")
+        tqdm.write("Processing Load Balancers...")
 
         if selected_lb_arn and ftstack:
             if self.hcl.id_resource_processed(resource_type, selected_lb_arn, ftstack):
-                print(f"  Skipping Elbv2: {selected_lb_arn} already processed")
+                tqdm.write(f"  Skipping Elbv2: {selected_lb_arn} already processed")
                 return
             self.process_single_lb(selected_lb_arn, ftstack)
             return
 
         load_balancers = self.aws_clients.elbv2_client.describe_load_balancers()["LoadBalancers"]
-        for lb in load_balancers:
+        progress_bar = tqdm(load_balancers, desc="Processing Load Balancer")
+        
+        for lb in progress_bar:
             lb_arn = lb["LoadBalancerArn"]
+            progress_bar.set_postfix(Load_balancer=lb["LoadBalancerName"], refresh=True)
+            sys.stdout.flush()
             self.process_single_lb(lb_arn, ftstack)
 
     def process_single_lb(self, lb_arn, ftstack=None):
@@ -130,13 +135,13 @@ class ELBV2:
         is_k8s_created = any(tag["Key"] in ["kubernetes.io/ingress-name", "kubernetes.io/ingress.class", "elbv2.k8s.aws/cluster"] for tag in tags)
 
         if is_ebs_created:
-            print(f"  Skipping Elastic Beanstalk Load Balancer: {lb_name}")
+            tqdm.write(f"  Skipping Elastic Beanstalk Load Balancer: {lb_name}")
             return
         elif is_k8s_created:
-            print(f"  Skipping Kubernetes Load Balancer: {lb_name}")
+            tqdm.write(f"  Skipping Kubernetes Load Balancer: {lb_name}")
             return
 
-        print(f"  Processing Load Balancer: {lb_name}")
+        tqdm.write(f"Processing Load Balancer: {lb_name}")
 
         if not ftstack:
             ftstack = "elbv2"
@@ -201,7 +206,7 @@ class ELBV2:
         self.aws_lb_listener([lb_arn], ftstack)
 
     def aws_lb_listener(self, load_balancer_arns, ftstack=None):
-        print("Processing Load Balancer Listeners...")
+        tqdm.write("Processing Load Balancer Listeners...")
 
         for lb_arn in load_balancer_arns:
             paginator = self.aws_clients.elbv2_client.get_paginator("describe_listeners")
@@ -210,7 +215,7 @@ class ELBV2:
                     listener_arn = listener["ListenerArn"]                    
                     # listener_arns.append(listener_arn)
 
-                    print(f"  Processing Listener: {listener_arn}")
+                    tqdm.write(f"Processing Listener: {listener_arn}")
 
                     attributes = {
                         "id": listener_arn,
@@ -231,7 +236,7 @@ class ELBV2:
 
 
     def aws_lb_listener_certificate(self, listener_arns, ftstack):
-        print("Processing Load Balancer Listener Certificates...")
+        tqdm.write("Processing Load Balancer Listener Certificates...")
 
         for listener_arn in listener_arns:
             listener_certificates = self.aws_clients.elbv2_client.describe_listener_certificates(
@@ -246,8 +251,8 @@ class ELBV2:
 
                     cert_arn = cert["CertificateArn"]
                     cert_id = cert_arn.split("/")[-1]
-                    print(
-                        f"  Processing Load Balancer Listener Certificate: {cert_id} for Listener ARN: {listener_arn}")
+                    tqdm.write(
+                        f"Processing Load Balancer Listener Certificate: {cert_id} for Listener ARN: {listener_arn}")
 
                     id = listener_arn + "_" + cert_arn
                     attributes = {
@@ -261,6 +266,6 @@ class ELBV2:
                     
                     self.acm_instance.aws_acm_certificate(cert_arn, ftstack)
             else:
-                print(
+                tqdm.write(
                     f"No certificates found for Listener ARN: {listener_arn}")
 

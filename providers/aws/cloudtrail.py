@@ -43,7 +43,7 @@ class Cloudtrail:
             if trail_region != self.region:
                 continue
 
-            print(f"  Processing AWS CloudTrail: {trail_name}")
+            print(f"Processing AWS CloudTrail: {trail_name}")
 
             attributes = {
                 "id": trail_name,
@@ -77,7 +77,7 @@ class Cloudtrail:
                     for data_resource in event_selector["DataResources"]:
                         if data_resource["Type"] == "AWS::S3::Object":
                             print(
-                                f"  Processing AWS CloudTrail Event Data Store: {data_resource['Values'][0]}")
+                                f"Processing AWS CloudTrail Event Data Store: {data_resource['Values'][0]}")
 
                             attributes = {
                                 "id": data_resource["Values"][0],

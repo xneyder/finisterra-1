@@ -37,7 +37,6 @@ class Wafv2:
         self.hcl.refresh_state()
 
         self.hcl.request_tf_code()
-        # self.hcl.module_hcl_code("terraform.tfstate","../providers/aws/", {}, self.region, self.aws_account_id)
 
 
     def aws_wafv2_ip_set(self, waf_id, ip_set_name, scope):
@@ -62,7 +61,7 @@ class Wafv2:
     #     for regex_pattern_set in regex_pattern_sets:
     #         regex_pattern_set_id = regex_pattern_set["Id"]
     #         print(
-    #             f"  Processing WAFv2 Regex Pattern Set: {regex_pattern_set_id}")
+    #             f"Processing WAFv2 Regex Pattern Set: {regex_pattern_set_id}")
 
     #         regex_pattern_set_info = self.aws_clients.wafv2_client.get_regex_pattern_set(
     #             Id=regex_pattern_set_id, Scope=scope)["RegexPatternSet"]
@@ -84,7 +83,7 @@ class Wafv2:
 
     #     for rule_group in rule_groups:
     #         rule_group_id = rule_group["Id"]
-    #         print(f"  Processing WAFv2 Rule Group: {rule_group_id}")
+    #         print(f"Processing WAFv2 Rule Group: {rule_group_id}")
 
     #         rule_group_info = self.aws_clients.wafv2_client.get_rule_group(
     #             Id=rule_group_id, Scope=scope)["RuleGroup"]
@@ -115,7 +114,7 @@ class Wafv2:
                 # if web_acl_name != "aws-managed-waf-sandbox":
                 #     continue
 
-                print(f"  Processing WAFv2 Web ACL: {web_acl_id}")
+                print(f"Processing WAFv2 Web ACL: {web_acl_id}")
 
                 web_acl_info = self.aws_clients.wafv2_client.get_web_acl(
                     Id=web_acl_id, Name=web_acl_name, Scope=scope)["WebACL"]
@@ -171,7 +170,7 @@ class Wafv2:
                     if 'WebACL' in association and association['WebACL']['Id'] == web_acl_id:
                         association_id = f"{web_acl_id},{resource_arn}"
                         print(
-                            f"  Processing WAFv2 Web ACL Association: {association_id}")
+                            f"Processing WAFv2 Web ACL Association: {association_id}")
 
                         attributes = {
                             "id": association_id,
@@ -197,7 +196,7 @@ class Wafv2:
             for index, log_destination_config in enumerate(log_destination_configs):
                 config_id = f"{web_acl_id}-{index}"
                 print(
-                    f"  Processing WAFv2 Web ACL Logging Configuration: {config_id}")
+                    f"Processing WAFv2 Web ACL Logging Configuration: {config_id}")
 
                 if "arn:aws:s3" in log_destination_config:
                     bucket_name = log_destination_config.split(":")[-1]
