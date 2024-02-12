@@ -45,7 +45,7 @@ The script uses environment variables for configuration. Ensure these are set be
 The script is executed from the command line with options to specify the provider (currently only aws is supported) and the module(s) to execute. The modules can be specified as a comma-separated list or "all" to execute operations for all supported modules.
 
 ```
-python aws_resource_fetcher.py --provider aws --module <module_name(s)>
+python main.py --provider aws --module <module_name(s)>
 ```
 
 ### CLI Options
