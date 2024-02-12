@@ -9,3 +9,4 @@ finisterra/*
 *.pyc
 .env
 
+.vscode/*
